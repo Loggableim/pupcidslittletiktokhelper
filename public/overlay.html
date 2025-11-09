@@ -338,6 +338,118 @@
         let isPlayingSound = false;
         let audioUnlocked = false;
 
+        // Load HUD Configuration
+        async function loadHudConfiguration() {
+            try {
+                const response = await fetch('/api/hud-config');
+                const data = await response.json();
+
+                if (data.success) {
+                    // Apply resolution
+                    if (data.resolution) {
+                        const [width, height] = data.resolution.split('x').map(Number);
+                        document.body.style.width = width + 'px';
+                        document.body.style.height = height + 'px';
+
+                        const viewport = document.querySelector('meta[name="viewport"]');
+                        viewport.setAttribute('content', `width=${width}, height=${height}`);
+                    }
+
+                    // Apply element positions and visibility
+                    data.elements.forEach(element => {
+                        applyElementConfiguration(element);
+                    });
+
+                    console.log('✅ HUD Configuration loaded');
+                }
+            } catch (error) {
+                console.error('Error loading HUD configuration:', error);
+            }
+        }
+
+        function applyElementConfiguration(config) {
+            let elementId = '';
+
+            // Map element_id to DOM element ID
+            switch(config.element_id) {
+                case 'alert':
+                    elementId = 'alert-container';
+                    break;
+                case 'event-feed':
+                    elementId = 'event-feed';
+                    break;
+                case 'chat':
+                    elementId = 'chat-container';
+                    break;
+                case 'goal':
+                    elementId = 'goal-container';
+                    break;
+                default:
+                    return;
+            }
+
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            // Apply visibility
+            if (!config.enabled) {
+                element.style.display = 'none';
+                return;
+            }
+
+            // Apply position based on anchor
+            const pos = config.position_x + config.position_unit;
+            const posY = config.position_y + config.position_unit;
+
+            // Reset all positioning
+            element.style.top = 'auto';
+            element.style.bottom = 'auto';
+            element.style.left = 'auto';
+            element.style.right = 'auto';
+            element.style.transform = 'none';
+
+            // Apply based on anchor
+            switch(config.anchor) {
+                case 'top-left':
+                    element.style.top = posY;
+                    element.style.left = pos;
+                    break;
+                case 'top-center':
+                    element.style.top = posY;
+                    element.style.left = pos;
+                    element.style.transform = 'translateX(-50%)';
+                    break;
+                case 'top-right':
+                    element.style.top = posY;
+                    element.style.right = pos;
+                    break;
+                case 'center':
+                    element.style.top = posY;
+                    element.style.left = pos;
+                    element.style.transform = 'translate(-50%, -50%)';
+                    break;
+                case 'bottom-left':
+                    element.style.bottom = posY;
+                    element.style.left = pos;
+                    break;
+                case 'bottom-center':
+                    element.style.bottom = posY;
+                    element.style.left = pos;
+                    element.style.transform = 'translateX(-50%)';
+                    break;
+                case 'bottom-right':
+                    element.style.bottom = posY;
+                    element.style.right = pos;
+                    break;
+                default:
+                    element.style.top = posY;
+                    element.style.left = pos;
+            }
+        }
+
+        // Load configuration on page load
+        loadHudConfiguration();
+
         // Audio Unlock (Browser Autoplay Policy umgehen)
         function unlockAudio() {
             if (audioUnlocked) return;
