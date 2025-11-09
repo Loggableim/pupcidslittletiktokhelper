@@ -185,12 +185,12 @@
         <div class="mb-6">
             <div class="border-b border-gray-700 flex gap-2">
                 <button class="tab-btn active" data-tab="events">📋 Events</button>
-                <button class="tab-btn" data-tab="tts">🎤 TTS</button>
+                <button class="tab-btn" data-tab="tts" data-plugin="tts">🎤 TTS</button>
                 <button class="tab-btn" data-tab="overlays">🖼️ Overlays</button>
                 <button class="tab-btn" data-tab="flows">⚡ Flows</button>
                 <button class="tab-btn" data-tab="soundboard">🔊 Soundboard</button>
                 <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
-                <button class="tab-btn" data-tab="multiGuest">👥 Multi-Guest</button>
+                <button class="tab-btn" data-tab="multiGuest" data-plugin="vdoninja">👥 Multi-Guest</button>
                 <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
@@ -222,7 +222,7 @@
         </div>
 
         <!-- Tab: TTS -->
-        <div id="tab-tts" class="tab-content">
+        <div id="tab-tts" class="tab-content" data-plugin="tts">
             <!-- TTS Settings -->
             <div class="bg-gray-800 rounded-lg p-6 mb-6">
                 <h2 class="text-xl mb-6 font-semibold">🎤 Text-to-Speech Settings</h2>
@@ -692,7 +692,7 @@
         </div>
 
         <!-- PATCH: Tab: Multi-Guest (VDO.Ninja) -->
-        <div id="tab-multiGuest" class="tab-content">
+        <div id="tab-multiGuest" class="tab-content" data-plugin="vdoninja">
             <!-- Room Management -->
             <div class="bg-gray-800 rounded-lg p-6 mb-6">
                 <h2 class="text-xl mb-6 font-semibold">🏠 VDO.Ninja Room Management</h2>

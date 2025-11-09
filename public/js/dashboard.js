@@ -7,7 +7,8 @@ let settings = {};
 let voices = {};
 
 // ========== INITIALIZATION ==========
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await checkPluginsAndUpdateUI(); // Prüfe Plugins ZUERST
     initializeTabs();
     initializeButtons();
     initializeSocketListeners();
@@ -1442,4 +1443,53 @@ function initializeAudioInfoBanner() {
         banner.style.display = 'none';
         localStorage.setItem('audio-info-dismissed', 'true');
     });
+}
+
+// ========== PLUGIN-BASED UI VISIBILITY ==========
+async function checkPluginsAndUpdateUI() {
+    try {
+        // Lade Plugin-Liste vom Server
+        const response = await fetch('/api/plugins');
+        const data = await response.json();
+
+        if (!data.success) {
+            console.warn('Failed to load plugins, showing all UI elements');
+            return;
+        }
+
+        // Erstelle Set von aktiven Plugin-IDs
+        const activePlugins = new Set(
+            data.plugins
+                .filter(p => p.enabled)
+                .map(p => p.id)
+        );
+
+        console.log('Active plugins:', Array.from(activePlugins));
+
+        // Verstecke Tab-Buttons für inaktive Plugins
+        document.querySelectorAll('[data-plugin]').forEach(element => {
+            const requiredPlugin = element.getAttribute('data-plugin');
+
+            if (!activePlugins.has(requiredPlugin)) {
+                // Plugin ist nicht aktiv -> Element verstecken
+                element.style.display = 'none';
+                console.log(`Hiding UI element for inactive plugin: ${requiredPlugin}`);
+
+                // Wenn es ein Tab-Button ist und er aktiv war, wechsle zu Events-Tab
+                if (element.classList.contains('tab-btn') && element.classList.contains('active')) {
+                    const eventsTab = document.querySelector('[data-tab="events"]');
+                    if (eventsTab) {
+                        eventsTab.click();
+                    }
+                }
+            } else {
+                // Plugin ist aktiv -> Element anzeigen (falls es versteckt war)
+                element.style.display = '';
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking plugins:', error);
+        // Bei Fehler: Zeige alle UI-Elemente an (fail-safe)
+    }
 }
