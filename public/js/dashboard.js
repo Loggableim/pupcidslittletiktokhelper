@@ -618,7 +618,6 @@ async function loadSoundboardSettings() {
         document.getElementById('soundboard-enabled').checked = settings.soundboard_enabled === 'true';
         document.getElementById('soundboard-play-mode').value = settings.soundboard_play_mode || 'overlap';
         document.getElementById('soundboard-max-queue').value = settings.soundboard_max_queue_length || '10';
-        document.getElementById('soundboard-queue-delay').value = settings.soundboard_queue_delay_ms || '2000';
 
         // Event sounds
         document.getElementById('soundboard-follow-url').value = settings.soundboard_follow_sound || '';
@@ -644,7 +643,6 @@ async function saveSoundboardSettings() {
         soundboard_enabled: document.getElementById('soundboard-enabled').checked ? 'true' : 'false',
         soundboard_play_mode: document.getElementById('soundboard-play-mode').value,
         soundboard_max_queue_length: document.getElementById('soundboard-max-queue').value,
-        soundboard_queue_delay_ms: document.getElementById('soundboard-queue-delay').value,
         soundboard_follow_sound: document.getElementById('soundboard-follow-url').value,
         soundboard_follow_volume: document.getElementById('soundboard-follow-volume').value,
         soundboard_subscribe_sound: document.getElementById('soundboard-subscribe-url').value,

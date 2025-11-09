@@ -11,11 +11,9 @@ class SoundboardManager extends EventEmitter {
         super();
         this.db = db;
         this.io = io;
-        this.queue = [];
-        this.isProcessing = false;
         this.likeHistory = []; // Deque for like threshold tracking
 
-        console.log('✅ Soundboard Manager initialized');
+        console.log('✅ Soundboard Manager initialized (Queue managed in frontend)');
     }
 
     /**
@@ -194,12 +192,10 @@ class SoundboardManager extends EventEmitter {
     }
 
     /**
-     * Core sound playback function with queue management
+     * Core sound playback function
+     * Queue management happens in the frontend based on play_mode
      */
     async playSound(url, volume = 1.0, label = 'Sound') {
-        const playMode = this.db.getSetting('soundboard_play_mode') || 'overlap';
-        const maxQueueLength = parseInt(this.db.getSetting('soundboard_max_queue_length')) || 10;
-
         const soundData = {
             url: url,
             volume: volume,
@@ -207,51 +203,10 @@ class SoundboardManager extends EventEmitter {
             timestamp: Date.now()
         };
 
-        if (playMode === 'sequential') {
-            // Add to queue
-            if (this.queue.length >= maxQueueLength) {
-                console.log(`⚠️ Soundboard queue full, dropping sound: ${label}`);
-                return;
-            }
-
-            this.queue.push(soundData);
-            console.log(`🎵 Added to queue: ${label} (Queue: ${this.queue.length})`);
-
-            // Process queue if not already processing
-            if (!this.isProcessing) {
-                this.processQueue();
-            }
-        } else {
-            // Overlap mode: play immediately
-            this.emitSound(soundData);
-            console.log(`🎵 Playing (overlap): ${label}`);
-        }
-    }
-
-    /**
-     * Process sound queue sequentially
-     */
-    async processQueue() {
-        if (this.isProcessing || this.queue.length === 0) {
-            return;
-        }
-
-        this.isProcessing = true;
-
-        while (this.queue.length > 0) {
-            const sound = this.queue.shift();
-            console.log(`🎵 Playing from queue: ${sound.label} (Remaining: ${this.queue.length})`);
-
-            // Emit sound to overlay
-            this.emitSound(sound);
-
-            // Wait for sound duration (estimate based on URL or use fixed delay)
-            // Since we don't have audio duration info, use a configurable delay
-            const delayMs = parseInt(this.db.getSetting('soundboard_queue_delay_ms')) || 2000;
-            await this.sleep(delayMs);
-        }
-
-        this.isProcessing = false;
+        // Always send to frontend immediately
+        // Frontend handles queue management based on play_mode (overlap/sequential)
+        this.emitSound(soundData);
+        console.log(`🎵 Playing: ${label}`);
     }
 
     /**
@@ -414,29 +369,23 @@ class SoundboardManager extends EventEmitter {
     }
 
     /**
-     * Clear sound queue
+     * Clear sound queue (deprecated - queue is now managed in frontend)
      */
     clearQueue() {
-        this.queue = [];
-        console.log('🗑️ Sound queue cleared');
+        // Queue management is now handled in the frontend
+        console.log('⚠️ clearQueue() called but queue is managed in frontend');
     }
 
     /**
-     * Get current queue status
+     * Get current queue status (deprecated - queue is now managed in frontend)
      */
     getQueueStatus() {
         return {
-            length: this.queue.length,
-            isProcessing: this.isProcessing,
-            items: this.queue.map(s => ({ label: s.label, volume: s.volume }))
+            length: 0,
+            isProcessing: false,
+            items: [],
+            note: 'Queue management is now handled in the frontend'
         };
-    }
-
-    /**
-     * Utility: Sleep function
-     */
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 
