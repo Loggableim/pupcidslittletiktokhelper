@@ -10,6 +10,10 @@ database.db-wal
 *.db-shm
 *.db-wal
 
+# User profile management
+user_configs/.active_profile
+database.db.backup
+
 # Logs
 logs
 *.log

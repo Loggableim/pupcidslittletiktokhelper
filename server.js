@@ -11,6 +11,7 @@ const AlertManager = require('./modules/alerts');
 const FlowEngine = require('./modules/flows');
 const SoundboardManager = require('./modules/soundboard');
 const { GoalManager } = require('./modules/goals');
+const UserProfileManager = require('./modules/user-profiles');
 
 // ========== EXPRESS APP ==========
 const app = express();
@@ -21,9 +22,56 @@ const io = socketIO(server);
 app.use(express.json());
 app.use(express.static('public'));
 
+// ========== USER PROFILE INITIALISIEREN ==========
+const profileManager = new UserProfileManager();
+const fs = require('fs');
+
+// Startup-Logik für User-Profile
+let activeProfile = profileManager.getActiveProfile();
+const oldDbPath = path.join(__dirname, 'database.db');
+
+// Falls kein aktives Profil existiert
+if (!activeProfile) {
+    // Prüfe, ob eine alte database.db existiert (Migration)
+    if (fs.existsSync(oldDbPath)) {
+        console.log('📦 Alte database.db gefunden - Migration wird durchgeführt...');
+        const defaultUsername = 'default';
+        profileManager.migrateOldDatabase(defaultUsername);
+        profileManager.setActiveProfile(defaultUsername);
+        activeProfile = defaultUsername;
+
+        // Alte Datenbank umbenennen als Backup
+        const backupPath = path.join(__dirname, 'database.db.backup');
+        fs.renameSync(oldDbPath, backupPath);
+
+        // WAL und SHM Dateien auch umbenennen
+        const walPath = `${oldDbPath}-wal`;
+        const shmPath = `${oldDbPath}-shm`;
+        if (fs.existsSync(walPath)) {
+            fs.renameSync(walPath, `${backupPath}-wal`);
+        }
+        if (fs.existsSync(shmPath)) {
+            fs.renameSync(shmPath, `${backupPath}-shm`);
+        }
+
+        console.log(`✅ Migration abgeschlossen - Profil "${defaultUsername}" erstellt`);
+        console.log(`   Alte Datenbank als Backup gespeichert: ${backupPath}`);
+    } else {
+        // Erstelle ein neues Default-Profil
+        const defaultUsername = 'default';
+        console.log(`📝 Erstelle neues Profil: ${defaultUsername}`);
+        profileManager.createProfile(defaultUsername);
+        profileManager.setActiveProfile(defaultUsername);
+        activeProfile = defaultUsername;
+    }
+}
+
+console.log(`👤 Aktives User-Profil: ${activeProfile}`);
+
 // ========== DATABASE INITIALISIEREN ==========
-const db = new Database('./database.db');
-console.log('✅ Database initialized');
+const dbPath = profileManager.getProfilePath(activeProfile);
+const db = new Database(dbPath);
+console.log(`✅ Database initialized: ${dbPath}`);
 
 // ========== MODULE INITIALISIEREN ==========
 const tiktok = new TikTokConnector(io, db);
@@ -326,6 +374,110 @@ app.post('/api/settings', (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error saving settings:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ========== USER PROFILE ROUTES ==========
+
+// Liste aller verfügbaren Profile
+app.get('/api/profiles', (req, res) => {
+    try {
+        const profiles = profileManager.listProfiles();
+        const activeProfile = profileManager.getActiveProfile();
+
+        res.json({
+            profiles: profiles.map(p => ({
+                username: p.username,
+                created: p.created,
+                modified: p.modified,
+                size: p.size,
+                isActive: p.username === activeProfile
+            })),
+            activeProfile
+        });
+    } catch (error) {
+        console.error('Error listing profiles:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Aktuelles aktives Profil
+app.get('/api/profiles/active', (req, res) => {
+    try {
+        const activeProfile = profileManager.getActiveProfile();
+        res.json({ activeProfile });
+    } catch (error) {
+        console.error('Error getting active profile:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Neues Profil erstellen
+app.post('/api/profiles', (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ success: false, error: 'Username is required' });
+    }
+
+    try {
+        const profile = profileManager.createProfile(username);
+        res.json({ success: true, profile });
+    } catch (error) {
+        console.error('Error creating profile:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Profil löschen
+app.delete('/api/profiles/:username', (req, res) => {
+    const { username } = req.params;
+
+    try {
+        profileManager.deleteProfile(username);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting profile:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Profil wechseln (erfordert Server-Neustart)
+app.post('/api/profiles/switch', (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ success: false, error: 'Username is required' });
+    }
+
+    try {
+        if (!profileManager.profileExists(username)) {
+            return res.status(404).json({ success: false, error: 'Profile not found' });
+        }
+
+        profileManager.setActiveProfile(username);
+
+        res.json({
+            success: true,
+            message: 'Profile switched. Please restart the application.',
+            requiresRestart: true
+        });
+    } catch (error) {
+        console.error('Error switching profile:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Profil-Backup erstellen
+app.post('/api/profiles/:username/backup', (req, res) => {
+    const { username } = req.params;
+
+    try {
+        const backup = profileManager.backupProfile(username);
+        res.json({ success: true, backup });
+    } catch (error) {
+        console.error('Error creating backup:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
