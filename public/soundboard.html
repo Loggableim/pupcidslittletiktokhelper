@@ -580,7 +580,10 @@
       return `<div class="${rowClass}" data-gift-id="${g.id}">
         <div class="flex items-center gap-3">
           <input type="checkbox" class="gift-checkbox w-4 h-4 rounded cursor-pointer" data-gift-id="${g.id}" onchange="updateBulkSelection()" />
-          <img src="${g.image_url || ''}" alt="" class="w-12 h-12 rounded-lg object-cover bg-black/30" onerror="this.style.display='none'"/>
+          ${g.image_url
+            ? `<img src="${g.image_url}" alt="${safeName}" class="w-12 h-12 rounded-lg object-cover bg-black/30" onerror="this.outerHTML='<div class=\\'w-12 h-12 rounded-lg bg-slate-700 flex items-center justify-center text-xl\\'>🎁</div>'"/>`
+            : `<div class="w-12 h-12 rounded-lg bg-slate-700 flex items-center justify-center text-xl">🎁</div>`
+          }
           <div class="flex-1 min-w-0">
             <div class="font-medium text-sm">${safeName}</div>
             <div class="text-xs text-slate-400">ID: ${g.id} · 💎 ${g.diamond_count ?? '—'}</div>
