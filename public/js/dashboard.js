@@ -51,6 +51,7 @@ function switchTab(tabName) {
     } else if (tabName === 'soundboard') {
         loadSoundboardSettings();
         loadGiftSounds();
+        loadGiftCatalog();
     }
 }
 
@@ -673,18 +674,24 @@ async function loadGiftSounds() {
         tbody.innerHTML = '';
 
         if (gifts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">No gift sounds configured yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">No gift sounds configured yet</td></tr>';
             return;
         }
 
         gifts.forEach(gift => {
             const row = document.createElement('tr');
             row.className = 'border-b border-gray-700';
+
+            const animationInfo = gift.animationUrl && gift.animationType !== 'none'
+                ? `<span class="text-green-400">${gift.animationType}</span>`
+                : '<span class="text-gray-500">none</span>';
+
             row.innerHTML = `
                 <td class="py-2 pr-4">${gift.giftId}</td>
                 <td class="py-2 pr-4 font-semibold">${gift.label}</td>
                 <td class="py-2 pr-4 text-sm truncate max-w-xs">${gift.mp3Url}</td>
                 <td class="py-2 pr-4">${gift.volume}</td>
+                <td class="py-2 pr-4">${animationInfo}</td>
                 <td class="py-2">
                     <button onclick="testGiftSound('${gift.mp3Url}', ${gift.volume})"
                             class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700 mr-1">
@@ -709,9 +716,11 @@ async function addGiftSound() {
     const label = document.getElementById('new-gift-label').value;
     const url = document.getElementById('new-gift-url').value;
     const volume = document.getElementById('new-gift-volume').value;
+    const animationUrl = document.getElementById('new-gift-animation-url').value;
+    const animationType = document.getElementById('new-gift-animation-type').value;
 
     if (!giftId || !label || !url) {
-        alert('Please fill in Gift ID, Label and URL!');
+        alert('Please select a gift from the catalog above and enter a sound URL!');
         return;
     }
 
@@ -723,20 +732,22 @@ async function addGiftSound() {
                 giftId: parseInt(giftId),
                 label: label,
                 mp3Url: url,
-                volume: parseFloat(volume)
+                volume: parseFloat(volume),
+                animationUrl: animationUrl || null,
+                animationType: animationType || 'none'
             })
         });
 
         const result = await response.json();
         if (result.success) {
-            // Clear inputs
-            document.getElementById('new-gift-id').value = '';
-            document.getElementById('new-gift-label').value = '';
-            document.getElementById('new-gift-url').value = '';
-            document.getElementById('new-gift-volume').value = '1.0';
+            alert('✅ Gift sound added/updated successfully!');
 
-            // Reload list
-            loadGiftSounds();
+            // Clear inputs
+            clearGiftSoundForm();
+
+            // Reload lists
+            await loadGiftSounds();
+            await loadGiftCatalog(); // Reload catalog to update checkmarks
         }
     } catch (error) {
         console.error('Error adding gift sound:', error);
@@ -754,7 +765,8 @@ async function deleteGiftSound(giftId) {
 
         const result = await response.json();
         if (result.success) {
-            loadGiftSounds();
+            await loadGiftSounds();
+            await loadGiftCatalog(); // Reload catalog to update checkmarks
         }
     } catch (error) {
         console.error('Error deleting gift sound:', error);
@@ -867,6 +879,160 @@ async function searchMyInstants() {
 function useMyInstantsSound(name, url) {
     document.getElementById('new-gift-label').value = name;
     document.getElementById('new-gift-url').value = url;
+}
+
+// ========== GIFT CATALOG ==========
+async function loadGiftCatalog() {
+    try {
+        const response = await fetch('/api/gift-catalog');
+        const data = await response.json();
+
+        const infoDiv = document.getElementById('gift-catalog-info');
+        const catalogDiv = document.getElementById('gift-catalog-list');
+
+        if (!data.success) {
+            infoDiv.innerHTML = '<span class="text-red-400">Error loading gift catalog</span>';
+            catalogDiv.innerHTML = '';
+            return;
+        }
+
+        const catalog = data.catalog || [];
+        const lastUpdate = data.lastUpdate;
+
+        // Info anzeigen
+        if (catalog.length === 0) {
+            infoDiv.innerHTML = `
+                <span class="text-yellow-400">⚠️ No gifts in catalog. Connect to a stream and click "Refresh Catalog"</span>
+            `;
+            catalogDiv.innerHTML = '';
+            return;
+        }
+
+        const updateText = lastUpdate ? `Last updated: ${new Date(lastUpdate).toLocaleString()}` : 'Never updated';
+        infoDiv.innerHTML = `
+            <span class="text-green-400">✅ ${catalog.length} gifts available</span>
+            <span class="mx-2">•</span>
+            <span class="text-gray-400">${updateText}</span>
+        `;
+
+        // Katalog anzeigen
+        catalogDiv.innerHTML = '';
+        catalog.forEach(gift => {
+            const giftCard = document.createElement('div');
+            giftCard.className = 'bg-gray-600 p-3 rounded cursor-pointer hover:bg-gray-500 transition flex flex-col items-center';
+            giftCard.onclick = () => selectGift(gift);
+
+            const hasSound = isGiftConfigured(gift.id);
+            const borderClass = hasSound ? 'border-2 border-green-500' : '';
+
+            giftCard.innerHTML = `
+                <div class="relative ${borderClass} rounded">
+                    ${gift.image_url
+                        ? `<img src="${gift.image_url}" alt="${gift.name}" class="w-16 h-16 object-contain rounded">`
+                        : `<div class="w-16 h-16 flex items-center justify-center text-3xl">🎁</div>`
+                    }
+                    ${hasSound ? '<div class="absolute -top-1 -right-1 bg-green-500 rounded-full w-4 h-4 flex items-center justify-center text-xs">✓</div>' : ''}
+                </div>
+                <div class="text-xs text-center mt-2 font-semibold truncate w-full">${gift.name}</div>
+                <div class="text-xs text-gray-400">ID: ${gift.id}</div>
+                ${gift.diamond_count ? `<div class="text-xs text-yellow-400">💎 ${gift.diamond_count}</div>` : ''}
+            `;
+
+            catalogDiv.appendChild(giftCard);
+        });
+
+    } catch (error) {
+        console.error('Error loading gift catalog:', error);
+        document.getElementById('gift-catalog-info').innerHTML = '<span class="text-red-400">Error loading catalog</span>';
+    }
+}
+
+function isGiftConfigured(giftId) {
+    // Prüfe ob ein Sound für dieses Gift bereits konfiguriert ist
+    const table = document.getElementById('gift-sounds-list');
+    if (!table) return false;
+
+    const rows = table.querySelectorAll('tr');
+    for (const row of rows) {
+        const firstCell = row.querySelector('td:first-child');
+        if (firstCell && parseInt(firstCell.textContent) === giftId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+async function refreshGiftCatalog() {
+    const btn = document.getElementById('refresh-catalog-btn');
+    const icon = document.getElementById('refresh-icon');
+    const infoDiv = document.getElementById('gift-catalog-info');
+
+    // Button deaktivieren und Animation starten
+    btn.disabled = true;
+    icon.style.animation = 'spin 1s linear infinite';
+    icon.style.display = 'inline-block';
+    infoDiv.innerHTML = '<span class="text-blue-400">🔄 Updating gift catalog from stream...</span>';
+
+    try {
+        const response = await fetch('/api/gift-catalog/update', {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            infoDiv.innerHTML = `<span class="text-green-400">✅ ${result.message || 'Catalog updated successfully'}</span>`;
+            // Katalog neu laden
+            await loadGiftCatalog();
+        } else {
+            infoDiv.innerHTML = `<span class="text-red-400">❌ ${result.error || 'Failed to update catalog'}</span>`;
+        }
+    } catch (error) {
+        console.error('Error refreshing gift catalog:', error);
+        infoDiv.innerHTML = '<span class="text-red-400">❌ Error updating catalog. Make sure you are connected to a stream.</span>';
+    } finally {
+        btn.disabled = false;
+        icon.style.animation = '';
+    }
+}
+
+function selectGift(gift) {
+    // Formular mit Gift-Daten füllen
+    document.getElementById('new-gift-id').value = gift.id;
+    document.getElementById('new-gift-label').value = gift.name;
+
+    // Wenn bereits ein Sound konfiguriert ist, diese Daten laden
+    loadExistingGiftSound(gift.id);
+
+    // Scroll zum Formular
+    document.getElementById('new-gift-url').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('new-gift-url').focus();
+}
+
+async function loadExistingGiftSound(giftId) {
+    try {
+        const response = await fetch('/api/soundboard/gifts');
+        const gifts = await response.json();
+
+        const existingGift = gifts.find(g => g.giftId === giftId);
+        if (existingGift) {
+            document.getElementById('new-gift-url').value = existingGift.mp3Url || '';
+            document.getElementById('new-gift-volume').value = existingGift.volume || 1.0;
+            document.getElementById('new-gift-animation-url').value = existingGift.animationUrl || '';
+            document.getElementById('new-gift-animation-type').value = existingGift.animationType || 'none';
+        }
+    } catch (error) {
+        console.error('Error loading existing gift sound:', error);
+    }
+}
+
+function clearGiftSoundForm() {
+    document.getElementById('new-gift-id').value = '';
+    document.getElementById('new-gift-label').value = '';
+    document.getElementById('new-gift-url').value = '';
+    document.getElementById('new-gift-volume').value = '1.0';
+    document.getElementById('new-gift-animation-url').value = '';
+    document.getElementById('new-gift-animation-type').value = 'none';
 }
 
 // ========== TTS SETTINGS ==========
