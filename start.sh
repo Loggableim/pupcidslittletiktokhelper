@@ -3,48 +3,96 @@
 # TikTok Stream Tool - Launcher Script (Linux/Mac)
 # Doppelklick auf diese Datei um das Tool zu starten
 
+# ========== TTY & UTF-8 DETECTION ==========
+# Prüfe ob wir in einem TTY sind (für Farben)
+if [ -t 1 ]; then
+    HAS_TTY=true
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m'
+else
+    HAS_TTY=false
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    NC=''
+fi
+
+# Prüfe UTF-8 Support für Emojis
+if [[ "$LANG" =~ UTF-8 ]] && [[ ! "$TERM" =~ "dumb" ]] && [ "$HAS_TTY" = true ]; then
+    CHECK="🔍"
+    SUCCESS="✅"
+    ERROR="❌"
+    WARNING="⚠️"
+    INFO="ℹ️"
+    ROCKET="🚀"
+else
+    CHECK="[*]"
+    SUCCESS="[OK]"
+    ERROR="[X]"
+    WARNING="[!]"
+    INFO="[i]"
+    ROCKET=">>>"
+fi
+
 clear
 echo "=========================================="
 echo "  TikTok Stream Tool - Launcher"
 echo "=========================================="
 echo ""
 
-# Farben für Output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# 1. Prüfe ob Node.js installiert ist
-echo "🔍 Prüfe Node.js Installation..."
+# ========== 1. NODE.JS PRUEFEN ==========
+echo -e "[1/5] ${CHECK} Pruefe Node.js Installation..."
 if ! command -v node &> /dev/null; then
-    echo -e "${RED}❌ Node.js ist nicht installiert!${NC}"
+    echo -e "${RED}${ERROR} Node.js ist nicht installiert!${NC}"
     echo ""
     echo "Bitte installiere Node.js von https://nodejs.org"
-    echo "Empfohlen: Node.js LTS Version"
+    echo "Empfohlen: Node.js LTS Version 18 oder 20"
     echo ""
-    read -p "Drücke Enter zum Beenden..."
+    read -p "Druecke Enter zum Beenden..."
     exit 1
 fi
 
 NODE_VERSION=$(node -v)
-echo -e "${GREEN}✅ Node.js gefunden: $NODE_VERSION${NC}"
+echo -e "${GREEN}${SUCCESS} Node.js gefunden: $NODE_VERSION${NC}"
 
-# 2. Prüfe ob npm installiert ist
-echo "🔍 Prüfe npm Installation..."
-if ! command -v npm &> /dev/null; then
-    echo -e "${RED}❌ npm ist nicht installiert!${NC}"
+# Node Version validieren (18-23 erforderlich)
+NODE_MAJOR=$(echo $NODE_VERSION | cut -d'v' -f2 | cut -d'.' -f1)
+
+if [ "$NODE_MAJOR" -lt 18 ]; then
+    echo -e "${RED}${ERROR} Node.js Version $NODE_VERSION ist zu alt!${NC}"
+    echo "Erforderlich: Node.js 18.x bis 23.x"
+    echo "Bitte update Node.js von https://nodejs.org"
     echo ""
-    read -p "Drücke Enter zum Beenden..."
+    read -p "Druecke Enter zum Beenden..."
+    exit 1
+fi
+
+if [ "$NODE_MAJOR" -ge 24 ]; then
+    echo -e "${YELLOW}${WARNING} Node.js Version $NODE_VERSION ist zu neu!${NC}"
+    echo "Empfohlen: Node.js 18.x bis 23.x"
+    echo "Das Tool koennte instabil sein."
+    echo ""
+fi
+
+# ========== 2. NPM PRUEFEN ==========
+echo -e "[2/5] ${CHECK} Pruefe npm Installation..."
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}${ERROR} npm ist nicht installiert!${NC}"
+    echo ""
+    read -p "Druecke Enter zum Beenden..."
     exit 1
 fi
 
 NPM_VERSION=$(npm -v)
-echo -e "${GREEN}✅ npm gefunden: $NPM_VERSION${NC}"
+echo -e "${GREEN}${SUCCESS} npm gefunden: v$NPM_VERSION${NC}"
 echo ""
 
-# 3. Git Auto-Update Feature
-echo "🔄 Prüfe auf Updates..."
+# ========== 3. GIT AUTO-UPDATE (Optional) ==========
+echo -e "[3/5] ${CHECK} Pruefe auf Updates..."
 if command -v git &> /dev/null; then
     # Prüfe ob wir in einem Git-Repository sind
     if git rev-parse --git-dir > /dev/null 2>&1; then

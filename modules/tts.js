@@ -75,15 +75,18 @@ const TIKTOK_VOICES = {
 };
 
 class TTSEngine {
-    constructor(db, io) {
+    constructor(db, io, logger) {
         this.db = db;
         this.io = io;
+        this.logger = logger;
         this.queue = [];
         this.isPlaying = false;
         this.currentAudio = null;
         this.ttsApiUrl = 'https://tiktok-tts.weilnet.workers.dev/api/generation';
         this.blacklist = ['http', 'https', 'www.', '.com', '.de', '.org'];
         this.maxTextLength = 300;
+        this.MAX_QUEUE_SIZE = 100;
+        this.QUEUE_WARNING_THRESHOLD = 80; // 80%
     }
 
     static getVoices(provider = 'tiktok') {
@@ -141,6 +144,25 @@ class TTSEngine {
             const audioData = await this.generateTTS(filteredText, voice, provider);
 
             if (audioData) {
+                // Queue-Size-Limit prüfen
+                if (this.queue.length >= this.MAX_QUEUE_SIZE) {
+                    const removed = this.queue.shift(); // Ältestes Element entfernen
+                    if (this.logger) {
+                        this.logger.warn(`TTS queue full (${this.MAX_QUEUE_SIZE}), removed oldest item: "${removed.text}"`);
+                    } else {
+                        console.warn(`⚠️ TTS queue full (${this.MAX_QUEUE_SIZE}), removed oldest item: "${removed.text}"`);
+                    }
+                }
+
+                // Warning bei 80% Füllung
+                if (this.queue.length >= this.MAX_QUEUE_SIZE * (this.QUEUE_WARNING_THRESHOLD / 100)) {
+                    if (this.logger) {
+                        this.logger.warn(`TTS queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity (${Math.round(this.queue.length / this.MAX_QUEUE_SIZE * 100)}%)`);
+                    } else {
+                        console.warn(`⚠️ TTS queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity`);
+                    }
+                }
+
                 // In Queue einreihen
                 this.queue.push({
                     username,
@@ -150,14 +172,18 @@ class TTSEngine {
                     timestamp: Date.now()
                 });
 
-                console.log(`🔊 TTS queued: "${filteredText}" (Voice: ${voice}, TeamLevel: ${userMetadata.teamMemberLevel || 0})`);
+                console.log(`🔊 TTS queued: "${filteredText}" (Voice: ${voice}, Queue: ${this.queue.length}/${this.MAX_QUEUE_SIZE})`);
 
                 // Verarbeitung starten
                 this.processQueue();
             }
 
         } catch (error) {
-            console.error('❌ TTS Error:', error.message);
+            if (this.logger) {
+                this.logger.error('TTS Error:', error);
+            } else {
+                console.error('❌ TTS Error:', error.message);
+            }
         }
     }
 

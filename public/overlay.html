@@ -751,19 +751,19 @@
             switch (type) {
                 case 'gift':
                     icon = '🎁';
-                    text = `<span class="username">${username}</span> sent ${data.giftName} x${data.repeatCount}`;
+                    text = `<span class="username">${escapeHtml(username)}</span> sent ${escapeHtml(data.giftName)} x${escapeHtml(String(data.repeatCount))}`;
                     break;
                 case 'follow':
                     icon = '⭐';
-                    text = `<span class="username">${username}</span> followed!`;
+                    text = `<span class="username">${escapeHtml(username)}</span> followed!`;
                     break;
                 case 'subscribe':
                     icon = '🌟';
-                    text = `<span class="username">${username}</span> subscribed!`;
+                    text = `<span class="username">${escapeHtml(username)}</span> subscribed!`;
                     break;
                 case 'share':
                     icon = '🔄';
-                    text = `<span class="username">${username}</span> shared the stream`;
+                    text = `<span class="username">${escapeHtml(username)}</span> shared the stream`;
                     break;
             }
 

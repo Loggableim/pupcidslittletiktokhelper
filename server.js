@@ -31,6 +31,29 @@ const io = socketIO(server);
 
 // Middleware
 app.use(express.json());
+
+// CORS-Header für OBS-Kompatibilität
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Entferne X-Frame-Options für OBS Docks und Overlays
+    const obsRoutes = ['/overlay.html', '/obs-dock.html', '/obs-dock-controls.html', '/obs-dock-goals.html', '/goal/', '/leaderboard-overlay.html', '/minigames-overlay.html'];
+    const isOBSRoute = obsRoutes.some(route => req.path.includes(route));
+
+    if (!isOBSRoute) {
+        res.header('X-Frame-Options', 'SAMEORIGIN');
+    }
+
+    // CSP für OBS Browser Sources
+    if (isOBSRoute) {
+        res.header('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' ws: wss: http: https: data: blob:; frame-ancestors 'self' *;");
+    }
+
+    next();
+});
+
 app.use(express.static('public'));
 
 // i18n Middleware
@@ -121,17 +144,17 @@ const db = new Database(dbPath);
 logger.info(`✅ Database initialized: ${dbPath}`);
 
 // ========== MODULE INITIALISIEREN ==========
-const tiktok = new TikTokConnector(io, db);
-const tts = new TTSEngine(db, io);
-const alerts = new AlertManager(io, db);
-const flows = new FlowEngine(db, alerts, tts);
-const soundboard = new SoundboardManager(db, io);
-const goals = new GoalManager(db, io);
+const tiktok = new TikTokConnector(io, db, logger);
+const tts = new TTSEngine(db, io, logger);
+const alerts = new AlertManager(io, db, logger);
+const flows = new FlowEngine(db, alerts, tts, logger);
+const soundboard = new SoundboardManager(db, io, logger);
+const goals = new GoalManager(db, io, logger);
 
 // New Modules
-const obs = new OBSWebSocket(db, io);
-const subscriptionTiers = new SubscriptionTiers(db, io);
-const leaderboard = new Leaderboard(db, io);
+const obs = new OBSWebSocket(db, io, logger);
+const subscriptionTiers = new SubscriptionTiers(db, io, logger);
+const leaderboard = new Leaderboard(db, io, logger);
 
 logger.info('✅ All modules initialized');
 
