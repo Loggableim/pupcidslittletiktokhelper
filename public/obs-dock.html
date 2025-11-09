@@ -19,6 +19,63 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: white;
             overflow-x: hidden;
+            position: relative;
+            transition: all 0.2s ease-in-out;
+        }
+
+        body.minimized {
+            width: 60px;
+            height: 60px;
+            min-height: 60px;
+            overflow: hidden;
+        }
+
+        body.minimized .dock-content {
+            display: none;
+        }
+
+        /* Control Bar */
+        .dock-controls {
+            background: #0f172a;
+            padding: 6px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #1e293b;
+            position: sticky;
+            top: 0;
+            z-index: 101;
+        }
+
+        .control-btn {
+            background: #374151;
+            border: none;
+            color: #9ca3af;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            font-weight: bold;
+            min-width: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            background: #4b5563;
+            color: #fff;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-group {
+            display: flex;
+            gap: 4px;
         }
 
         /* Header */
@@ -27,7 +84,7 @@
             padding: 12px 16px;
             border-bottom: 2px solid #3b82f6;
             position: sticky;
-            top: 0;
+            top: 35px;
             z-index: 100;
         }
 
@@ -341,9 +398,80 @@
             color: #fbbf24;
             font-size: 13px;
         }
+
+        /* Resize Handle */
+        .resize-handle {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: nwse-resize;
+            z-index: 200;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .resize-handle:hover {
+            opacity: 1;
+        }
+
+        .resize-handle::after {
+            content: '⋰';
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 12px;
+            color: white;
+        }
+
+        /* Minimize Icon */
+        .minimize-icon {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 50px;
+            height: 50px;
+            background: #3b82f6;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+            z-index: 300;
+            transition: all 0.2s ease-in-out;
+        }
+
+        body.minimized .minimize-icon {
+            display: flex;
+        }
+
+        .minimize-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.7);
+        }
     </style>
 </head>
 <body>
+    <!-- Control Bar -->
+    <div class="dock-controls">
+        <div class="control-group">
+            <button class="control-btn" id="btn-size-down" title="Verkleinern (-10%)">↓</button>
+            <button class="control-btn" id="btn-size-up" title="Vergrößern (+10%)">↑</button>
+        </div>
+        <div class="control-group">
+            <button class="control-btn" id="btn-minimize" title="Minimieren">_</button>
+        </div>
+    </div>
+
+    <!-- Minimize Icon (shown when minimized) -->
+    <div class="minimize-icon" id="minimize-icon">🧰</div>
+
+    <!-- Dock Content -->
+    <div class="dock-content">
     <!-- Header -->
     <div class="dock-header">
         <h1>🎥 TikTok Stream Dock</h1>
@@ -425,6 +553,10 @@
             <label><input type="checkbox" id="auto-clear" checked class="config-checkbox"> Auto-Clear (30s)</label>
         </div>
     </div>
+    </div> <!-- End dock-content -->
+
+    <!-- Resize Handle -->
+    <div class="resize-handle" id="resize-handle"></div>
 
     <script>
         const socket = io();
@@ -439,6 +571,12 @@
             autoClear: true
         };
 
+        let dockState = {
+            width: 400,
+            height: window.innerHeight,
+            minimized: false
+        };
+
         let stats = {
             viewerCount: 0,
             likeCount: 0,
@@ -447,6 +585,9 @@
 
         const MAX_ITEMS = 50; // Maximum Anzahl an Items pro Sektion
         const AUTO_CLEAR_DELAY = 30000; // 30 Sekunden
+        const MIN_WIDTH = 250;
+        const MAX_WIDTH = 800;
+        const MIN_HEIGHT = 400;
 
         // Load Config from LocalStorage
         function loadConfig() {
@@ -458,6 +599,99 @@
                 document.getElementById('show-events').checked = config.showEvents;
                 document.getElementById('auto-clear').checked = config.autoClear;
             }
+
+            // Load dock state
+            const savedState = localStorage.getItem('obs-dock-state');
+            if (savedState) {
+                dockState = { ...dockState, ...JSON.parse(savedState) };
+                applyDockState();
+            }
+        }
+
+        // Apply dock state (size and minimized)
+        function applyDockState() {
+            document.body.style.width = dockState.width + 'px';
+            document.body.style.height = dockState.height + 'px';
+
+            if (dockState.minimized) {
+                document.body.classList.add('minimized');
+            } else {
+                document.body.classList.remove('minimized');
+            }
+        }
+
+        // Save dock state to localStorage
+        function saveDockState() {
+            localStorage.setItem('obs-dock-state', JSON.stringify(dockState));
+        }
+
+        // Resize dock by percentage
+        function resizeDock(percentage) {
+            const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, dockState.width * (1 + percentage)));
+            const newHeight = Math.max(MIN_HEIGHT, dockState.height * (1 + percentage));
+
+            dockState.width = newWidth;
+            dockState.height = newHeight;
+
+            applyDockState();
+            saveDockState();
+
+            console.log(`📐 Dock resized to ${Math.round(newWidth)}x${Math.round(newHeight)}`);
+        }
+
+        // Toggle minimize
+        function toggleMinimize() {
+            dockState.minimized = !dockState.minimized;
+            applyDockState();
+            saveDockState();
+
+            console.log(`${dockState.minimized ? '📦 Minimized' : '📂 Maximized'}`);
+        }
+
+        // Drag to resize
+        let isResizing = false;
+        let startX, startY, startWidth, startHeight;
+
+        function initDragResize() {
+            const resizeHandle = document.getElementById('resize-handle');
+
+            resizeHandle.addEventListener('mousedown', (e) => {
+                if (dockState.minimized) return;
+
+                isResizing = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = dockState.width;
+                startHeight = dockState.height;
+
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+
+                const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + deltaX));
+                const newHeight = Math.max(MIN_HEIGHT, startHeight + deltaY);
+
+                dockState.width = newWidth;
+                dockState.height = newHeight;
+
+                applyDockState();
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (!isResizing) return;
+
+                isResizing = false;
+                document.body.style.userSelect = '';
+                saveDockState();
+
+                console.log(`📐 Dock resized to ${Math.round(dockState.width)}x${Math.round(dockState.height)}`);
+            });
         }
 
         // Update Stats Display
@@ -779,6 +1013,15 @@
             document.querySelectorAll('.config-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', saveConfig);
             });
+
+            // Dock control listeners
+            document.getElementById('btn-size-up')?.addEventListener('click', () => resizeDock(0.1));
+            document.getElementById('btn-size-down')?.addEventListener('click', () => resizeDock(-0.1));
+            document.getElementById('btn-minimize')?.addEventListener('click', toggleMinimize);
+            document.getElementById('minimize-icon')?.addEventListener('click', toggleMinimize);
+
+            // Initialize drag-to-resize
+            initDragResize();
         }
 
         // Initialization

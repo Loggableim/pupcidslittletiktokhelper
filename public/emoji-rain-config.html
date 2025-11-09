@@ -342,6 +342,37 @@
             <div class="emoji-preview" id="emoji-preview"></div>
         </div>
 
+        <!-- Custom Images Configuration -->
+        <div class="config-section">
+            <h2>🖼️ Custom Grafiken</h2>
+            <div class="form-group">
+                <label for="use_custom_images" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="use_custom_images" style="width: auto;">
+                    Custom Grafiken statt Emojis verwenden
+                </label>
+                <div class="help-text">Wenn aktiviert, werden Bilder statt Emojis verwendet</div>
+            </div>
+            <div class="form-group">
+                <label for="image_urls">Bild-URLs (eine pro Zeile)</label>
+                <textarea id="image_urls" rows="5" placeholder="/images/coin.png&#10;/images/heart.png&#10;https://example.com/star.png"></textarea>
+                <div class="help-text">Gib die URLs zu deinen Bildern ein (PNG, GIF, JPG)</div>
+            </div>
+        </div>
+
+        <!-- Effect Configuration -->
+        <div class="config-section">
+            <h2>✨ Effekte</h2>
+            <div class="form-group">
+                <label for="effect">Animation beim Aufprall</label>
+                <select id="effect">
+                    <option value="bounce">Bounce (Standard)</option>
+                    <option value="bubble">Bubble Blop</option>
+                    <option value="none">Keine Animation</option>
+                </select>
+                <div class="help-text">Wähle die Animation, die beim Aufprall am Boden abgespielt wird</div>
+            </div>
+        </div>
+
         <!-- Physics Settings -->
         <div class="config-section">
             <h2>⚙️ Physik Einstellungen</h2>
@@ -482,12 +513,19 @@
             updateEnabledStatus();
 
             // Canvas settings
-            document.getElementById('width_px').value = config.width_px;
-            document.getElementById('height_px').value = config.height_px;
+            document.getElementById('width_px').value = config.width_px || 1280;
+            document.getElementById('height_px').value = config.height_px || 720;
 
             // Emoji set
             document.getElementById('emoji_set').value = config.emoji_set.join(',');
             updateEmojiPreview();
+
+            // Custom images
+            document.getElementById('use_custom_images').checked = config.use_custom_images || false;
+            document.getElementById('image_urls').value = (config.image_urls || []).join('\n');
+
+            // Effect
+            document.getElementById('effect').value = config.effect || 'bounce';
 
             // Physics
             setRangeValue('physics_gravity_y', config.physics_gravity_y);
@@ -523,11 +561,17 @@
 
         // Save configuration
         async function saveConfig() {
+            const imageUrlsText = document.getElementById('image_urls').value;
+            const imageUrls = imageUrlsText.split('\n').map(url => url.trim()).filter(url => url);
+
             const newConfig = {
                 enabled: document.getElementById('enabled-toggle').checked,
                 width_px: parseInt(document.getElementById('width_px').value),
                 height_px: parseInt(document.getElementById('height_px').value),
                 emoji_set: document.getElementById('emoji_set').value.split(',').map(e => e.trim()).filter(e => e),
+                use_custom_images: document.getElementById('use_custom_images').checked,
+                image_urls: imageUrls,
+                effect: document.getElementById('effect').value,
                 physics_gravity_y: parseFloat(document.getElementById('physics_gravity_y').value),
                 physics_air: parseFloat(document.getElementById('physics_air').value),
                 physics_friction: parseFloat(document.getElementById('physics_friction').value),
