@@ -119,6 +119,27 @@
             <div id="connection-info" class="mt-4 text-gray-400 text-sm"></div>
         </div>
 
+        <!-- Audio Activation Info Banner -->
+        <div class="mb-6 bg-yellow-600 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <span class="text-2xl">⚠️</span>
+                <div class="flex-1">
+                    <div class="font-bold mb-1">WICHTIG: Audio-Aktivierung erforderlich!</div>
+                    <p class="text-sm mb-2">
+                        Browser blockieren standardmäßig automatisches Audio-Abspielen. Damit Sounds, Alerts und TTS funktionieren:
+                    </p>
+                    <ol class="text-sm space-y-1 ml-4 list-decimal">
+                        <li>Öffne das <a href="/overlay.html" target="_blank" class="underline font-semibold hover:text-white">Overlay in einem neuen Tab</a></li>
+                        <li>Klicke auf den Button <strong>"🔊 Audio aktivieren"</strong></li>
+                        <li>Verwende dieses Tab als OBS Browser-Source</li>
+                    </ol>
+                </div>
+                <button id="dismiss-audio-info" class="text-yellow-200 hover:text-white text-sm px-2">
+                    ✕
+                </button>
+            </div>
+        </div>
+
         <!-- Update Notification Banner -->
         <div id="update-banner" class="mb-6 bg-blue-600 rounded-lg p-4 hidden">
             <div class="flex justify-between items-center">
