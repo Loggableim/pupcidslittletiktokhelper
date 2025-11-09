@@ -316,6 +316,69 @@
                     </a>
                 </div>
 
+                <div class="mt-6 p-4 bg-gradient-to-r from-blue-900 to-cyan-900 bg-opacity-50 border border-blue-600 rounded">
+                    <h3 class="font-bold mb-3 text-blue-200">🎛️ OBS Custom Browser Docks</h3>
+                    <p class="text-sm text-blue-100 mb-4">
+                        Integriere Stream-Controls direkt in deine OBS-Oberfläche! Wie bei Tikfinity, aber kostenlos und mit mehr Features.
+                    </p>
+
+                    <div class="space-y-3">
+                        <!-- Main Stream Dock -->
+                        <div class="bg-gray-800 p-3 rounded">
+                            <div class="font-semibold text-sm mb-2">💬 Main Stream Dock</div>
+                            <div class="text-xs text-gray-400 mb-2">Chat, Gifts, Events, Stats, Leaderboard, Quick Actions</div>
+                            <div class="flex gap-2">
+                                <input type="text" readonly id="dock-main-url" value=""
+                                       class="bg-gray-700 text-white px-3 py-2 rounded flex-1 font-mono text-xs">
+                                <button class="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm" onclick="copyURL('dock-main-url')">
+                                    📋 Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Controls Dock -->
+                        <div class="bg-gray-800 p-3 rounded">
+                            <div class="font-semibold text-sm mb-2">⚡ Quick Controls Dock</div>
+                            <div class="text-xs text-gray-400 mb-2">Stats, TTS, Soundboard, OBS Szenen (kompakt, 300px breit)</div>
+                            <div class="flex gap-2">
+                                <input type="text" readonly id="dock-controls-url" value=""
+                                       class="bg-gray-700 text-white px-3 py-2 rounded flex-1 font-mono text-xs">
+                                <button class="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm" onclick="copyURL('dock-controls-url')">
+                                    📋 Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Goals Dock -->
+                        <div class="bg-gray-800 p-3 rounded">
+                            <div class="font-semibold text-sm mb-2">🎯 Goals Overview Dock</div>
+                            <div class="text-xs text-gray-400 mb-2">Alle 4 Goals mit Progress Bars und schneller Bearbeitung</div>
+                            <div class="flex gap-2">
+                                <input type="text" readonly id="dock-goals-url" value=""
+                                       class="bg-gray-700 text-white px-3 py-2 rounded flex-1 font-mono text-xs">
+                                <button class="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm" onclick="copyURL('dock-goals-url')">
+                                    📋 Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-gray-800 rounded">
+                        <div class="font-semibold text-sm mb-2">📖 Setup in OBS Studio:</div>
+                        <ol class="list-decimal list-inside space-y-1 text-xs text-gray-300">
+                            <li>OBS Studio öffnen</li>
+                            <li>Menü: <strong>View → Docks → Custom Browser Docks...</strong></li>
+                            <li>Dock Name eingeben (z.B. "TikTok Stream Dock")</li>
+                            <li>URL kopieren und einfügen</li>
+                            <li><strong>Apply</strong> klicken</li>
+                            <li>Dock frei in OBS positionieren</li>
+                        </ol>
+                        <div class="text-xs text-blue-300 mt-2">
+                            💡 Tipp: Du kannst alle 3 Docks gleichzeitig nutzen!
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mt-6 p-4 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded">
                     <h3 class="font-bold mb-2 text-yellow-300">⚠️ WICHTIG: Audio aktivieren!</h3>
                     <p class="text-sm text-yellow-100 mb-3">
