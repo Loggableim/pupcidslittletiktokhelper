@@ -18,6 +18,22 @@
     .gift-row:hover { background: rgba(148,163,184,.08); }
     .gift-row.assigned { background: rgba(14, 165, 233, 0.1); border-color: rgba(14, 165, 233, 0.3); }
 
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .animate-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
     /* Light Mode */
     .light-mode {
       background: #f5f5f7;
@@ -301,7 +317,13 @@
     socket.on('tiktok:status', (data) => {
       const connected = data.status === 'connected';
       setStatus(connected);
-      if (connected) {
+
+      // Update username field when connection status changes
+      if (data.username) {
+        document.getElementById('tiktok_user').value = data.username;
+      }
+
+      if (connected && data.username) {
         showToast(`Verbunden mit @${data.username}`);
       }
     });
@@ -564,6 +586,29 @@
       document.getElementById('picker').classList.remove('flex');
     }
 
+    // Close picker with Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const picker = document.getElementById('picker');
+        if (!picker.classList.contains('hidden')) {
+          closePicker();
+        }
+      }
+
+      // Ctrl+S to save
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        document.getElementById('btnSaveAll').click();
+        showToast('💾 Speichern mit Strg+S');
+      }
+
+      // Ctrl+E to export
+      if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        document.getElementById('btnExport').click();
+      }
+    });
+
     function switchTab(tab) {
       document.querySelectorAll('.tab-btn').forEach(b => b.setAttribute('aria-selected','false'));
       document.querySelectorAll('[id^="tab-"]').forEach(p => p.classList.add('hidden'));
@@ -575,6 +620,20 @@
       if (panel) {
         panel.classList.remove('hidden');
         panel.classList.add('flex');
+      }
+
+      // Auto-load content when switching to certain tabs
+      if (tab === 'trending') {
+        const trendingEl = document.getElementById('trendingResults');
+        if (!trendingEl.children.length || trendingEl.innerHTML.includes('Keine')) {
+          document.getElementById('btnLoadTrending').click();
+        }
+      }
+      if (tab === 'random') {
+        const randomEl = document.getElementById('randomResults');
+        if (!randomEl.children.length || randomEl.innerHTML.includes('Keine')) {
+          document.getElementById('btnLoadRandom').click();
+        }
       }
     }
 
@@ -600,30 +659,45 @@
 
     // ========== MyInstants API Functions ==========
 
+    function showLoadingSkeleton(targetElement, count = 5) {
+      targetElement.innerHTML = Array(count).fill(0).map(() => `
+        <div class="animate-pulse border border-slate-700 rounded-xl p-3">
+          <div class="h-4 bg-slate-700 rounded w-3/4 mb-2"></div>
+          <div class="h-3 bg-slate-700 rounded w-1/2 mb-2"></div>
+          <div class="h-3 bg-slate-700 rounded w-2/3"></div>
+        </div>
+      `).join('');
+    }
+
     function renderSoundResults(items, targetElement) {
       if (!items || items.length === 0) {
-        targetElement.innerHTML = `<div class="text-sm text-slate-400">Keine Ergebnisse gefunden</div>`;
+        targetElement.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+            <div class="text-4xl mb-2">🔍</div>
+            <div class="text-sm">Keine Ergebnisse gefunden</div>
+          </div>
+        `;
         return;
       }
 
       targetElement.innerHTML = items.map(item => {
         const mp3 = String(item.url || '').replace(/'/g, "&#39;");
-        const title = String(item.name || '').replace(/'/g, "&#39;");
+        const title = String(item.name || 'Unbenannt').replace(/'/g, "&#39;");
         const description = String(item.description || '').replace(/'/g, "&#39;");
         const tags = (item.tags || []).slice(0, 3).join(', ');
 
         return `<div class="flex flex-col gap-2 border border-slate-700 rounded-xl p-3 hover:border-sky-500 transition-colors">
           <div class="flex items-start gap-2">
-            <div class="flex-1">
-              <div class="font-medium text-sm mb-1">${title}</div>
-              ${description ? `<div class="text-xs text-slate-400 mb-1">${description}</div>` : ''}
-              ${tags ? `<div class="text-xs text-slate-500">🏷️ ${tags}</div>` : ''}
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-sm mb-1 truncate" title="${title}">${title}</div>
+              ${description ? `<div class="text-xs text-slate-400 mb-1 line-clamp-2">${description}</div>` : ''}
+              ${tags ? `<div class="text-xs text-slate-500 truncate">🏷️ ${tags}</div>` : ''}
             </div>
-            <div class="flex gap-1">
+            <div class="flex gap-1 flex-shrink-0">
               <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-2 py-1 text-sm"
-                      onclick="playSound('${mp3}', 1.0, '${title}')">▶</button>
+                      onclick="playSound('${mp3}', 1.0, '${title}')" title="Vorschau">▶</button>
               <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-2 py-1 text-sm"
-                      onclick="assignToTarget('${mp3}'); closePicker();">Wählen</button>
+                      onclick="assignToTarget('${mp3}'); closePicker();" title="Sound zuweisen">Wählen</button>
             </div>
           </div>
         </div>`;
@@ -632,20 +706,38 @@
 
     document.getElementById('btnSearch').onclick = async () => {
       const query = document.getElementById('searchQuery').value.trim();
-      if (!query) return showToast('Bitte Suchbegriff eingeben');
+      if (!query) return showToast('⚠️ Bitte Suchbegriff eingeben');
 
       const resultsEl = document.getElementById('searchResults');
-      resultsEl.innerHTML = '<div class="text-sm text-slate-400">🔍 Suche...</div>';
+      showLoadingSkeleton(resultsEl, 6);
 
-      const result = await apiCall('/api/myinstants/search?query=' + encodeURIComponent(query));
+      try {
+        const result = await apiCall('/api/myinstants/search?query=' + encodeURIComponent(query));
 
-      if (result.success) {
-        renderSoundResults(result.results, resultsEl);
-        if (result.results.length > 0) {
-          showToast(`${result.results.length} Sounds gefunden`);
+        if (result.success) {
+          renderSoundResults(result.results, resultsEl);
+          if (result.results.length > 0) {
+            showToast(`✅ ${result.results.length} Sounds gefunden`);
+          } else {
+            showToast('ℹ️ Keine Sounds gefunden');
+          }
+        } else {
+          resultsEl.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12 text-rose-400">
+              <div class="text-4xl mb-2">⚠️</div>
+              <div class="text-sm">Fehler: ${result.error || 'Unbekannt'}</div>
+            </div>
+          `;
+          showToast('❌ Suche fehlgeschlagen');
         }
-      } else {
-        resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
+      } catch (error) {
+        resultsEl.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 text-rose-400">
+            <div class="text-4xl mb-2">💥</div>
+            <div class="text-sm">Netzwerkfehler: ${error.message}</div>
+          </div>
+        `;
+        showToast('❌ Verbindungsfehler');
       }
     };
 
@@ -656,27 +748,61 @@
 
     document.getElementById('btnLoadTrending').onclick = async () => {
       const resultsEl = document.getElementById('trendingResults');
-      resultsEl.innerHTML = '<div class="text-sm text-slate-400">🔥 Lade Trending Sounds...</div>';
+      showLoadingSkeleton(resultsEl, 8);
 
-      const result = await apiCall('/api/myinstants/trending?limit=30');
+      try {
+        const result = await apiCall('/api/myinstants/trending?limit=30');
 
-      if (result.success) {
-        renderSoundResults(result.results, resultsEl);
-      } else {
-        resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
+        if (result.success) {
+          renderSoundResults(result.results, resultsEl);
+          showToast(`🔥 ${result.results.length} Trending Sounds geladen`);
+        } else {
+          resultsEl.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12 text-rose-400">
+              <div class="text-4xl mb-2">⚠️</div>
+              <div class="text-sm">Fehler: ${result.error || 'Unbekannt'}</div>
+            </div>
+          `;
+          showToast('❌ Trending Sounds konnten nicht geladen werden');
+        }
+      } catch (error) {
+        resultsEl.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 text-rose-400">
+            <div class="text-4xl mb-2">💥</div>
+            <div class="text-sm">Verbindungsfehler</div>
+          </div>
+        `;
+        showToast('❌ Verbindungsfehler');
       }
     };
 
     document.getElementById('btnLoadRandom').onclick = async () => {
       const resultsEl = document.getElementById('randomResults');
-      resultsEl.innerHTML = '<div class="text-sm text-slate-400">🎲 Lade zufällige Sounds...</div>';
+      showLoadingSkeleton(resultsEl, 8);
 
-      const result = await apiCall('/api/myinstants/random?limit=30');
+      try {
+        const result = await apiCall('/api/myinstants/random?limit=30');
 
-      if (result.success) {
-        renderSoundResults(result.results, resultsEl);
-      } else {
-        resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
+        if (result.success) {
+          renderSoundResults(result.results, resultsEl);
+          showToast(`🎲 ${result.results.length} zufällige Sounds geladen`);
+        } else {
+          resultsEl.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12 text-rose-400">
+              <div class="text-4xl mb-2">⚠️</div>
+              <div class="text-sm">Fehler: ${result.error || 'Unbekannt'}</div>
+            </div>
+          `;
+          showToast('❌ Zufällige Sounds konnten nicht geladen werden');
+        }
+      } catch (error) {
+        resultsEl.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 text-rose-400">
+            <div class="text-4xl mb-2">💥</div>
+            <div class="text-sm">Verbindungsfehler</div>
+          </div>
+        `;
+        showToast('❌ Verbindungsfehler');
       }
     };
 
@@ -891,10 +1017,16 @@
     loadSettings();
     loadCatalog();
 
-    // Check connection status
+    // Check connection status and load username
     apiCall('/api/status').then(data => {
       setStatus(data.isConnected);
-      if (data.isConnected) {
+
+      // Load current username into input field
+      if (data.username) {
+        document.getElementById('tiktok_user').value = data.username;
+      }
+
+      if (data.isConnected && data.username) {
         showToast(`Bereits verbunden mit @${data.username}`);
       }
     });
