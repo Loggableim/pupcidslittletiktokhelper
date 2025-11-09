@@ -1515,7 +1515,9 @@ tiktok.on('gift', async (data) => {
         await soundboard.playGiftSound(data);
     }
 
-    // Goals: Coins erhöhen
+    // Goals: Coins erhöhen (Event-Data enthält bereits korrekte Coins-Berechnung)
+    // Der TikTok-Connector berechnet: diamondCount * 2 * repeatCount
+    // und zählt nur bei Streak-Ende (bei streakable Gifts)
     await goals.incrementGoal('coins', data.coins || 0);
 
     // Leaderboard: Update user stats
@@ -1610,11 +1612,12 @@ tiktok.on('like', async (data) => {
         await soundboard.handleLikeEvent(data.likeCount || 1);
     }
 
-    // Goals: Total Likes setzen (wenn vorhanden)
-    if (data.totalLikes !== undefined) {
+    // Goals: Total Likes setzen (Event-Data enthält bereits robustes totalLikes)
+    // Der TikTok-Connector extrahiert totalLikes aus verschiedenen Properties
+    if (data.totalLikes !== undefined && data.totalLikes !== null) {
         await goals.setGoal('likes', data.totalLikes);
     } else {
-        // Fallback: inkrementieren
+        // Sollte nicht mehr vorkommen, da Connector immer totalLikes liefert
         await goals.incrementGoal('likes', data.likeCount || 1);
     }
 

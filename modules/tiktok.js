@@ -329,10 +329,53 @@ class TikTokConnector extends EventEmitter {
                 totalCoins: this.stats.totalCoins,
                 timestamp: new Date().toISOString()
             };
+            // Robuste Coins-Berechnung: diamond_count * 2 * repeat_count
+            // (≈2 Coins pro Diamond ist die Standard-Konvertierung)
+            const repeatCount = parseInt(data.repeatCount) || 1;
+            let coins = 0;
 
-            this.handleEvent('gift', eventData);
-            this.db.logEvent('gift', eventData.username, eventData);
-            this.broadcastStats();
+            // Methode 1: Versuche diamond_count aus verschiedenen Quellen
+            const diamondCount = data.diamondCount || data.diamond_count ||
+                                (data.gift && (data.gift.diamondCount || data.gift.diamond_count)) || 0;
+
+            if (diamondCount > 0) {
+                coins = diamondCount * 2 * repeatCount;
+            }
+
+            // Streak-Ende prüfen
+            // Streakable Gifts nur zählen wenn Streak beendet ist
+            const isStreakEnd = data.repeatEnd === 1 || data.repeatEnd === true ||
+                              data.streaking === false || data.streaking === 0;
+            const isStreakable = data.giftType === 1; // giftType 1 = streakable
+
+            // Nur zählen wenn:
+            // - Kein streakable Gift ODER
+            // - Streakable Gift UND Streak ist beendet
+            if (!isStreakable || (isStreakable && isStreakEnd)) {
+                this.stats.totalCoins += coins;
+
+                const userData = this.extractUserData(data);
+                const eventData = {
+                    username: userData.username,
+                    nickname: userData.nickname,
+                    giftName: data.giftName,
+                    giftId: data.giftId,
+                    giftPictureUrl: data.giftPictureUrl,
+                    repeatCount: repeatCount,
+                    diamondCount: diamondCount,
+                    coins: coins,
+                    totalCoins: this.stats.totalCoins,
+                    isStreakEnd: isStreakEnd,
+                    timestamp: new Date().toISOString()
+                };
+
+                this.handleEvent('gift', eventData);
+                this.db.logEvent('gift', eventData.username, eventData);
+                this.broadcastStats();
+            } else {
+                // Streak läuft noch - nicht zählen, aber loggen für Debugging
+                console.log(`🎁 Streak läuft: ${data.giftName} x${repeatCount} (noch nicht gezählt)`);
+            }
         });
 
         // ========== FOLLOW ==========
@@ -371,14 +414,39 @@ class TikTokConnector extends EventEmitter {
 
         // ========== LIKE ==========
         this.connection.on('like', (data) => {
-            const likeCount = data.likeCount || 1;
-            this.stats.likes += likeCount;
+            // Robuste Extraktion von totalLikes aus verschiedenen Properties
+            let totalLikes = null;
+            const possibleTotalProps = [
+                'totalLikes',
+                'total_like_count',
+                'totalLikeCount',
+                'total',
+                'total_likes'
+            ];
+
+            for (const prop of possibleTotalProps) {
+                const value = data[prop];
+                if (typeof value === 'number' && value >= 0) {
+                    totalLikes = value;
+                    break;
+                }
+            }
+
+            // Wenn totalLikes gefunden wurde, verwende diesen Wert direkt
+            if (totalLikes !== null) {
+                this.stats.likes = totalLikes;
+            } else {
+                // Fallback: Inkrementiere basierend auf likeCount
+                const likeCount = data.likeCount || 1;
+                this.stats.likes += likeCount;
+            }
 
             const userData = this.extractUserData(data);
             const eventData = {
                 username: userData.username,
                 nickname: userData.nickname,
                 likeCount: likeCount,
+                likeCount: data.likeCount || 1,
                 totalLikes: this.stats.likes,
                 timestamp: new Date().toISOString()
             };
