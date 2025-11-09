@@ -47,6 +47,9 @@ function switchTab(tabName) {
         loadVoiceMapping();
     } else if (tabName === 'flows') {
         loadFlows();
+    } else if (tabName === 'soundboard') {
+        loadSoundboardSettings();
+        loadGiftSounds();
     }
 }
 
@@ -522,4 +525,277 @@ function copyURL(elementId) {
     setTimeout(() => {
         btn.textContent = originalText;
     }, 2000);
+}
+
+// ========== SOUNDBOARD ==========
+async function loadSoundboardSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        // Load settings into UI
+        document.getElementById('soundboard-enabled').checked = settings.soundboard_enabled === 'true';
+        document.getElementById('soundboard-play-mode').value = settings.soundboard_play_mode || 'overlap';
+        document.getElementById('soundboard-max-queue').value = settings.soundboard_max_queue_length || '10';
+        document.getElementById('soundboard-queue-delay').value = settings.soundboard_queue_delay_ms || '2000';
+
+        // Event sounds
+        document.getElementById('soundboard-follow-url').value = settings.soundboard_follow_sound || '';
+        document.getElementById('soundboard-follow-volume').value = settings.soundboard_follow_volume || '1.0';
+        document.getElementById('soundboard-subscribe-url').value = settings.soundboard_subscribe_sound || '';
+        document.getElementById('soundboard-subscribe-volume').value = settings.soundboard_subscribe_volume || '1.0';
+        document.getElementById('soundboard-share-url').value = settings.soundboard_share_sound || '';
+        document.getElementById('soundboard-share-volume').value = settings.soundboard_share_volume || '1.0';
+        document.getElementById('soundboard-gift-url').value = settings.soundboard_default_gift_sound || '';
+        document.getElementById('soundboard-gift-volume').value = settings.soundboard_gift_volume || '1.0';
+        document.getElementById('soundboard-like-url').value = settings.soundboard_like_sound || '';
+        document.getElementById('soundboard-like-volume').value = settings.soundboard_like_volume || '1.0';
+        document.getElementById('soundboard-like-threshold').value = settings.soundboard_like_threshold || '0';
+        document.getElementById('soundboard-like-window').value = settings.soundboard_like_window_seconds || '10';
+
+    } catch (error) {
+        console.error('Error loading soundboard settings:', error);
+    }
+}
+
+async function saveSoundboardSettings() {
+    const newSettings = {
+        soundboard_enabled: document.getElementById('soundboard-enabled').checked ? 'true' : 'false',
+        soundboard_play_mode: document.getElementById('soundboard-play-mode').value,
+        soundboard_max_queue_length: document.getElementById('soundboard-max-queue').value,
+        soundboard_queue_delay_ms: document.getElementById('soundboard-queue-delay').value,
+        soundboard_follow_sound: document.getElementById('soundboard-follow-url').value,
+        soundboard_follow_volume: document.getElementById('soundboard-follow-volume').value,
+        soundboard_subscribe_sound: document.getElementById('soundboard-subscribe-url').value,
+        soundboard_subscribe_volume: document.getElementById('soundboard-subscribe-volume').value,
+        soundboard_share_sound: document.getElementById('soundboard-share-url').value,
+        soundboard_share_volume: document.getElementById('soundboard-share-volume').value,
+        soundboard_default_gift_sound: document.getElementById('soundboard-gift-url').value,
+        soundboard_gift_volume: document.getElementById('soundboard-gift-volume').value,
+        soundboard_like_sound: document.getElementById('soundboard-like-url').value,
+        soundboard_like_volume: document.getElementById('soundboard-like-volume').value,
+        soundboard_like_threshold: document.getElementById('soundboard-like-threshold').value,
+        soundboard_like_window_seconds: document.getElementById('soundboard-like-window').value
+    };
+
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newSettings)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ Soundboard settings saved!');
+        }
+    } catch (error) {
+        console.error('Error saving soundboard settings:', error);
+        alert('❌ Error saving settings!');
+    }
+}
+
+async function loadGiftSounds() {
+    try {
+        const response = await fetch('/api/soundboard/gifts');
+        const gifts = await response.json();
+
+        const tbody = document.getElementById('gift-sounds-list');
+        tbody.innerHTML = '';
+
+        if (gifts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">No gift sounds configured yet</td></tr>';
+            return;
+        }
+
+        gifts.forEach(gift => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-700';
+            row.innerHTML = `
+                <td class="py-2 pr-4">${gift.giftId}</td>
+                <td class="py-2 pr-4 font-semibold">${gift.label}</td>
+                <td class="py-2 pr-4 text-sm truncate max-w-xs">${gift.mp3Url}</td>
+                <td class="py-2 pr-4">${gift.volume}</td>
+                <td class="py-2">
+                    <button onclick="testGiftSound('${gift.mp3Url}', ${gift.volume})"
+                            class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700 mr-1">
+                        🔊 Test
+                    </button>
+                    <button onclick="deleteGiftSound(${gift.giftId})"
+                            class="bg-red-600 px-2 py-1 rounded text-xs hover:bg-red-700">
+                        🗑️ Delete
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+    } catch (error) {
+        console.error('Error loading gift sounds:', error);
+    }
+}
+
+async function addGiftSound() {
+    const giftId = document.getElementById('new-gift-id').value;
+    const label = document.getElementById('new-gift-label').value;
+    const url = document.getElementById('new-gift-url').value;
+    const volume = document.getElementById('new-gift-volume').value;
+
+    if (!giftId || !label || !url) {
+        alert('Please fill in Gift ID, Label and URL!');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/soundboard/gifts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                giftId: parseInt(giftId),
+                label: label,
+                mp3Url: url,
+                volume: parseFloat(volume)
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            // Clear inputs
+            document.getElementById('new-gift-id').value = '';
+            document.getElementById('new-gift-label').value = '';
+            document.getElementById('new-gift-url').value = '';
+            document.getElementById('new-gift-volume').value = '1.0';
+
+            // Reload list
+            loadGiftSounds();
+        }
+    } catch (error) {
+        console.error('Error adding gift sound:', error);
+        alert('Error adding gift sound!');
+    }
+}
+
+async function deleteGiftSound(giftId) {
+    if (!confirm(`Delete sound for Gift ID ${giftId}?`)) return;
+
+    try {
+        const response = await fetch(`/api/soundboard/gifts/${giftId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            loadGiftSounds();
+        }
+    } catch (error) {
+        console.error('Error deleting gift sound:', error);
+    }
+}
+
+async function testGiftSound(url, volume) {
+    try {
+        await fetch('/api/soundboard/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, volume })
+        });
+    } catch (error) {
+        console.error('Error testing sound:', error);
+    }
+}
+
+async function testEventSound(eventType) {
+    let url, volume;
+
+    switch (eventType) {
+        case 'follow':
+            url = document.getElementById('soundboard-follow-url').value;
+            volume = document.getElementById('soundboard-follow-volume').value;
+            break;
+        case 'subscribe':
+            url = document.getElementById('soundboard-subscribe-url').value;
+            volume = document.getElementById('soundboard-subscribe-volume').value;
+            break;
+        case 'share':
+            url = document.getElementById('soundboard-share-url').value;
+            volume = document.getElementById('soundboard-share-volume').value;
+            break;
+        case 'gift':
+            url = document.getElementById('soundboard-gift-url').value;
+            volume = document.getElementById('soundboard-gift-volume').value;
+            break;
+        case 'like':
+            url = document.getElementById('soundboard-like-url').value;
+            volume = document.getElementById('soundboard-like-volume').value;
+            break;
+    }
+
+    if (!url) {
+        alert('Please enter a sound URL first!');
+        return;
+    }
+
+    try {
+        await fetch('/api/soundboard/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, volume: parseFloat(volume) })
+        });
+    } catch (error) {
+        console.error('Error testing sound:', error);
+    }
+}
+
+async function searchMyInstants() {
+    const query = document.getElementById('myinstants-search-input').value;
+
+    if (!query) {
+        alert('Please enter a search query!');
+        return;
+    }
+
+    const resultsDiv = document.getElementById('myinstants-results');
+    resultsDiv.innerHTML = '<div class="text-gray-400 text-sm">🔍 Searching...</div>';
+
+    try {
+        const response = await fetch(`/api/myinstants/search?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+
+        if (!data.success || data.results.length === 0) {
+            resultsDiv.innerHTML = '<div class="text-gray-400 text-sm">No results found</div>';
+            return;
+        }
+
+        resultsDiv.innerHTML = '';
+        data.results.forEach(sound => {
+            const div = document.createElement('div');
+            div.className = 'bg-gray-600 p-2 rounded flex items-center justify-between';
+            div.innerHTML = `
+                <div class="flex-1">
+                    <div class="font-semibold text-sm">${sound.name}</div>
+                    <div class="text-xs text-gray-400 truncate">${sound.url}</div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="testGiftSound('${sound.url}', 1.0)"
+                            class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700">
+                        🔊
+                    </button>
+                    <button onclick="useMyInstantsSound('${sound.name}', '${sound.url}')"
+                            class="bg-green-600 px-2 py-1 rounded text-xs hover:bg-green-700">
+                        Use
+                    </button>
+                </div>
+            `;
+            resultsDiv.appendChild(div);
+        });
+
+    } catch (error) {
+        console.error('Error searching MyInstants:', error);
+        resultsDiv.innerHTML = '<div class="text-red-400 text-sm">Error searching MyInstants</div>';
+    }
+}
+
+function useMyInstantsSound(name, url) {
+    document.getElementById('new-gift-label').value = name;
+    document.getElementById('new-gift-url').value = url;
 }

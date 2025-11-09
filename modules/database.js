@@ -74,6 +74,18 @@ class DatabaseManager {
             )
         `);
 
+        // Soundboard: Gift-spezifische Sounds
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS gift_sounds (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                gift_id INTEGER UNIQUE NOT NULL,
+                label TEXT NOT NULL,
+                mp3_url TEXT NOT NULL,
+                volume REAL DEFAULT 1.0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Default-Einstellungen setzen
         this.setDefaultSettings();
     }
@@ -86,7 +98,24 @@ class DatabaseManager {
             'tts_chat_enabled': 'false',
             'tts_min_coins': '0',
             'alert_gift_min_coins': '100',
-            'theme': 'dark'
+            'theme': 'dark',
+            // Soundboard Einstellungen
+            'soundboard_enabled': 'true',
+            'soundboard_play_mode': 'overlap',
+            'soundboard_max_queue_length': '10',
+            'soundboard_queue_delay_ms': '2000',
+            'soundboard_like_threshold': '0',
+            'soundboard_like_window_seconds': '10',
+            'soundboard_follow_sound': '',
+            'soundboard_follow_volume': '1.0',
+            'soundboard_subscribe_sound': '',
+            'soundboard_subscribe_volume': '1.0',
+            'soundboard_share_sound': '',
+            'soundboard_share_volume': '1.0',
+            'soundboard_like_sound': '',
+            'soundboard_like_volume': '1.0',
+            'soundboard_default_gift_sound': '',
+            'soundboard_gift_volume': '1.0'
         };
 
         const stmt = this.db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
