@@ -273,7 +273,6 @@
           <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="true" onclick="switchTab('browse')">Browser</button>
           <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('search')">🔍 Suche</button>
           <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('favorites')">⭐ Favoriten</button>
-          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('search')">Suche</button>
           <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('trending')">🔥 Trending</button>
           <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('random')">🎲 Zufall</button>
         </div>
@@ -321,13 +320,6 @@
           <button id="btnClearFavorites" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-3 py-2">Alle löschen</button>
         </div>
         <div id="favoritesResults" class="overflow-y-auto flex-1 space-y-2"></div>
-      </div>
-
-          <input id="searchQuery" placeholder="Suchbegriff eingeben..."
-                 class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
-          <button id="btnSearch" class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2">🔍 Suchen</button>
-        </div>
-        <div id="searchResults" class="overflow-y-auto flex-1 space-y-2"></div>
       </div>
 
       <!-- Trending Tab -->
@@ -1195,37 +1187,10 @@
           </div>
         `;
         showToast('❌ Verbindungsfehler');
-    // ========== MyInstants API Functions ==========
-
-    function renderSoundResults(items, targetElement) {
-      if (!items || items.length === 0) {
-        targetElement.innerHTML = `<div class="text-sm text-slate-400">Keine Ergebnisse gefunden</div>`;
-        return;
       }
+    };
 
-      targetElement.innerHTML = items.map(item => {
-        const mp3 = String(item.url || '').replace(/'/g, "&#39;");
-        const title = String(item.name || '').replace(/'/g, "&#39;");
-        const description = String(item.description || '').replace(/'/g, "&#39;");
-        const tags = (item.tags || []).slice(0, 3).join(', ');
-
-        return `<div class="flex flex-col gap-2 border border-slate-700 rounded-xl p-3 hover:border-sky-500 transition-colors">
-          <div class="flex items-start gap-2">
-            <div class="flex-1">
-              <div class="font-medium text-sm mb-1">${title}</div>
-              ${description ? `<div class="text-xs text-slate-400 mb-1">${description}</div>` : ''}
-              ${tags ? `<div class="text-xs text-slate-500">🏷️ ${tags}</div>` : ''}
-            </div>
-            <div class="flex gap-1">
-              <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-2 py-1 text-sm"
-                      onclick="playSound('${mp3}', 1.0, '${title}')">▶</button>
-              <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-2 py-1 text-sm"
-                      onclick="assignToTarget('${mp3}'); closePicker();">Wählen</button>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-    }
+    // ========== MyInstants API Functions ==========
 
     document.getElementById('btnSearch').onclick = async () => {
       const query = document.getElementById('searchQuery').value.trim();
@@ -1256,19 +1221,6 @@
       resultsEl.innerHTML = '<div class="text-sm text-slate-400">🔥 Lade Trending Sounds...</div>';
 
       const result = await apiCall('/api/myinstants/trending?limit=30');
-
-      if (result.success) {
-        renderSoundResults(result.results, resultsEl);
-      } else {
-        resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
-      }
-    };
-
-    document.getElementById('btnLoadRandom').onclick = async () => {
-      const resultsEl = document.getElementById('randomResults');
-      resultsEl.innerHTML = '<div class="text-sm text-slate-400">🎲 Lade zufällige Sounds...</div>';
-
-      const result = await apiCall('/api/myinstants/random?limit=30');
 
       if (result.success) {
         renderSoundResults(result.results, resultsEl);
