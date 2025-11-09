@@ -166,6 +166,10 @@ class PluginManager {
             if (data.success) {
                 this.showSuccess(`Plugin ${pluginId} aktiviert`);
                 await this.loadPlugins();
+                // UI für Dashboard aktualisieren
+                if (typeof checkPluginsAndUpdateUI === 'function') {
+                    await checkPluginsAndUpdateUI();
+                }
             } else {
                 this.showError('Fehler: ' + data.error);
             }
@@ -188,6 +192,10 @@ class PluginManager {
             if (data.success) {
                 this.showSuccess(`Plugin ${pluginId} deaktiviert`);
                 await this.loadPlugins();
+                // UI für Dashboard aktualisieren
+                if (typeof checkPluginsAndUpdateUI === 'function') {
+                    await checkPluginsAndUpdateUI();
+                }
             } else {
                 this.showError('Fehler: ' + data.error);
             }
@@ -210,6 +218,10 @@ class PluginManager {
             if (data.success) {
                 this.showSuccess(`Plugin ${pluginId} neu geladen`);
                 await this.loadPlugins();
+                // UI für Dashboard aktualisieren
+                if (typeof checkPluginsAndUpdateUI === 'function') {
+                    await checkPluginsAndUpdateUI();
+                }
             } else {
                 this.showError('Fehler: ' + data.error);
             }
@@ -236,6 +248,10 @@ class PluginManager {
             if (data.success) {
                 this.showSuccess(`Plugin ${pluginId} gelöscht`);
                 await this.loadPlugins();
+                // UI für Dashboard aktualisieren
+                if (typeof checkPluginsAndUpdateUI === 'function') {
+                    await checkPluginsAndUpdateUI();
+                }
             } else {
                 this.showError('Fehler: ' + data.error);
             }
@@ -262,6 +278,10 @@ class PluginManager {
             if (data.success) {
                 this.showSuccess('Alle Plugins neu geladen');
                 await this.loadPlugins();
+                // UI für Dashboard aktualisieren
+                if (typeof checkPluginsAndUpdateUI === 'function') {
+                    await checkPluginsAndUpdateUI();
+                }
             } else {
                 this.showError('Fehler: ' + data.error);
             }
@@ -297,6 +317,10 @@ class PluginManager {
             if (data.success) {
                 this.showSuccess(`Plugin "${data.plugin.name}" erfolgreich hochgeladen und geladen`);
                 await this.loadPlugins();
+                // UI für Dashboard aktualisieren
+                if (typeof checkPluginsAndUpdateUI === 'function') {
+                    await checkPluginsAndUpdateUI();
+                }
             } else {
                 this.showError('Fehler beim Hochladen: ' + data.error);
             }
