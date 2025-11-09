@@ -196,11 +196,17 @@ const pluginsDir = path.join(__dirname, 'plugins');
 const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
 logger.info('🔌 Plugin Loader initialized');
 
+// Plugin-System initialisieren
+const pluginsDir = path.join(__dirname, 'plugins');
+const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
+logger.info('🔌 Plugin Loader initialized');
+
 // Update-Checker initialisieren
 const updateChecker = new UpdateChecker(logger);
 logger.info('🔄 Update Checker initialized');
 
 logger.info('✅ All core modules initialized');
+logger.info('✅ All modules initialized');
 
 // ========== SWAGGER DOCUMENTATION ==========
 setupSwagger(app);

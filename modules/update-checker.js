@@ -92,6 +92,11 @@ class UpdateChecker {
 
             if (error.response) {
                 this.logger.warn(`GitHub API Error: ${error.response.status} - ${error.response.statusText}`);
+            this.logger.error(`Failed to check for updates: ${error.message}`);
+
+            // Detaillierter Error-Log
+            if (error.response) {
+                this.logger.error(`GitHub API Error: ${error.response.status} - ${error.response.statusText}`);
             }
 
             return {
@@ -99,6 +104,7 @@ class UpdateChecker {
                 error: error.message,
                 currentVersion: this.currentVersion,
                 available: false
+                currentVersion: this.currentVersion
             };
         }
     }
