@@ -147,6 +147,8 @@
                 <button class="tab-btn" data-tab="overlays">🖼️ Overlays</button>
                 <button class="tab-btn" data-tab="flows">⚡ Flows</button>
                 <button class="tab-btn" data-tab="soundboard">🔊 Soundboard</button>
+                <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
+                <button class="tab-btn" data-tab="multiGuest">👥 Multi-Guest</button>
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
         </div>
@@ -646,6 +648,192 @@
             </div>
         </div>
 
+        <!-- PATCH: Tab: Multi-Guest (VDO.Ninja) -->
+        <div id="tab-multiGuest" class="tab-content">
+            <!-- Room Management -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl mb-6 font-semibold">🏠 VDO.Ninja Room Management</h2>
+
+                <!-- Active Room Status -->
+                <div id="vdo-room-status" class="mb-6 bg-gray-700 p-4 rounded">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-sm text-gray-400">Room Status</div>
+                            <div id="vdo-room-name" class="text-xl font-bold text-gray-400">No Active Room</div>
+                        </div>
+                        <div>
+                            <span id="vdo-guest-count" class="text-3xl font-bold text-blue-400">0/6</span>
+                            <div class="text-xs text-gray-400 text-center">Guests</div>
+                        </div>
+                    </div>
+                    <div id="vdo-room-urls" class="space-y-2 hidden">
+                        <div>
+                            <label class="text-xs text-gray-400">Director URL (OBS Overlay)</label>
+                            <div class="flex gap-2">
+                                <input type="text" readonly id="vdo-director-url" class="bg-gray-600 text-white px-3 py-2 rounded flex-1 font-mono text-xs">
+                                <button onclick="copyVDOUrl('vdo-director-url')" class="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm">📋</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Guest Invite URL (Share with Guests)</label>
+                            <div class="flex gap-2">
+                                <input type="text" readonly id="vdo-invite-url" class="bg-gray-600 text-white px-3 py-2 rounded flex-1 font-mono text-xs">
+                                <button onclick="copyVDOUrl('vdo-invite-url')" class="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm">📋</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Room Controls -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Create New Room -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-semibold mb-3">➕ Create New Room</h3>
+                        <div class="space-y-2">
+                            <input type="text" id="vdo-new-room-name" placeholder="Room Name"
+                                   class="bg-gray-600 text-white px-3 py-2 rounded w-full text-sm">
+                            <input type="number" id="vdo-new-room-max-guests" min="1" max="12" value="6"
+                                   placeholder="Max Guests" class="bg-gray-600 text-white px-3 py-2 rounded w-full text-sm">
+                            <button onclick="createVDORoom()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full text-sm font-semibold">
+                                🚀 Create Room
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Load Existing Room -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-semibold mb-3">📂 Load Existing Room</h3>
+                        <div class="space-y-2">
+                            <select id="vdo-existing-rooms" class="bg-gray-600 text-white px-3 py-2 rounded w-full text-sm">
+                                <option value="">Select Room...</option>
+                            </select>
+                            <button onclick="loadVDORoom()" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 w-full text-sm font-semibold">
+                                📥 Load Room
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Close Room -->
+                    <div class="bg-gray-700 p-4 rounded">
+                        <h3 class="font-semibold mb-3">🔒 Close Active Room</h3>
+                        <div class="space-y-2">
+                            <button onclick="closeVDORoom()" id="vdo-close-room-btn" disabled
+                                    class="bg-red-600 px-4 py-2 rounded hover:bg-red-700 w-full text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                                ⛔ Close Room
+                            </button>
+                            <button onclick="deleteVDORoom()" id="vdo-delete-room-btn" disabled
+                                    class="bg-red-800 px-4 py-2 rounded hover:bg-red-900 w-full text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                                🗑️ Delete Room
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guest Controls -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold">👥 Guest Controls</h2>
+                    <div class="flex gap-2">
+                        <button onclick="muteAllVDOGuests()" id="vdo-mute-all-btn" disabled
+                                class="bg-orange-600 px-4 py-2 rounded hover:bg-orange-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                            🔇 Mute All
+                        </button>
+                        <button onclick="unmuteAllVDOGuests()" id="vdo-unmute-all-btn" disabled
+                                class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                            🔊 Unmute All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Guest List -->
+                <div id="vdo-guest-list" class="space-y-3">
+                    <!-- Guests will be dynamically inserted here -->
+                    <div class="text-center text-gray-400 py-8">
+                        No guests connected. Share the invite URL with your guests!
+                    </div>
+                </div>
+
+                <!-- Add Guest Manually (Optional) -->
+                <div class="mt-6 p-4 bg-gray-700 rounded">
+                    <h3 class="font-semibold mb-3">➕ Add Guest Manually</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <input type="number" id="vdo-manual-slot" min="0" max="11" placeholder="Slot (0-11)"
+                               class="bg-gray-600 text-white px-3 py-2 rounded text-sm">
+                        <input type="text" id="vdo-manual-stream-id" placeholder="Stream ID"
+                               class="bg-gray-600 text-white px-3 py-2 rounded text-sm">
+                        <input type="text" id="vdo-manual-guest-name" placeholder="Guest Name"
+                               class="bg-gray-600 text-white px-3 py-2 rounded text-sm">
+                        <button onclick="addVDOGuest()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 text-sm font-semibold">
+                            ✅ Add Guest
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Layout Controls -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl mb-4 font-semibold">🎨 Layout Presets</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button onclick="changeVDOLayout('Grid 2x2', 'fade')"
+                            class="bg-purple-600 px-4 py-3 rounded hover:bg-purple-700 font-semibold">
+                        ⬜⬜<br>⬜⬜ Grid 2x2
+                    </button>
+                    <button onclick="changeVDOLayout('Grid 3x2', 'fade')"
+                            class="bg-purple-600 px-4 py-3 rounded hover:bg-purple-700 font-semibold">
+                        ⬜⬜⬜<br>⬜⬜⬜ Grid 3x2
+                    </button>
+                    <button onclick="changeVDOLayout('Solo', 'fade')"
+                            class="bg-purple-600 px-4 py-3 rounded hover:bg-purple-700 font-semibold">
+                        ◻️<br>Solo
+                    </button>
+                    <button onclick="changeVDOLayout('PIP', 'fade')"
+                            class="bg-purple-600 px-4 py-3 rounded hover:bg-purple-700 font-semibold">
+                        ◻️<small>◽</small><br>PIP
+                    </button>
+                </div>
+
+                <!-- Current Layout Display -->
+                <div class="mt-4 p-3 bg-gray-700 rounded text-center">
+                    <div class="text-sm text-gray-400">Current Layout:</div>
+                    <div id="vdo-current-layout" class="text-lg font-bold text-purple-400">Grid 2x2</div>
+                </div>
+            </div>
+
+            <!-- Info & Help -->
+            <div class="bg-gradient-to-r from-blue-900 to-purple-900 bg-opacity-50 border border-blue-600 rounded-lg p-6">
+                <h2 class="text-xl mb-4 font-semibold">📚 VDO.Ninja Multi-Guest Info</h2>
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <strong>✅ Setup:</strong>
+                        <ol class="list-decimal list-inside ml-4 mt-2 space-y-1 text-gray-300">
+                            <li>Create a new room or load an existing one</li>
+                            <li>Copy the Director URL and add it as Browser Source in OBS (1920x1080)</li>
+                            <li>Share the Guest Invite URL with your guests</li>
+                            <li>Control guests in real-time from this dashboard</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <strong>🎮 Features:</strong>
+                        <ul class="list-disc list-inside ml-4 mt-2 space-y-1 text-gray-300">
+                            <li>Mute/Unmute audio and video per guest</li>
+                            <li>Adjust individual guest volume</li>
+                            <li>Solo mode: Spotlight one guest temporarily</li>
+                            <li>Kick guests if needed</li>
+                            <li>Switch layouts instantly (Grid, Solo, PIP)</li>
+                            <li>Integrate with Flows: TikTok events can trigger guest actions!</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <strong>⚡ Flow Integration Example:</strong>
+                        <p class="ml-4 mt-2 text-gray-300 italic">
+                            "When user sends 1000 coin gift → Solo Guest #1 for 15 seconds"
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Tab: Settings -->
         <div id="tab-settings" class="tab-content">
             <div class="bg-gray-800 rounded-lg p-6">
@@ -735,5 +923,7 @@
     </div>
 
     <script src="/js/dashboard.js"></script>
+    <!-- PATCH: VDO.Ninja Dashboard Client -->
+    <script src="/js/vdoninja-dashboard.js"></script>
 </body>
 </html>
