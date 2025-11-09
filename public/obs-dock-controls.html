@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=300, height=600">
+    <title>Quick Controls - OBS Dock</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 300px;
+            min-height: 100vh;
+            background: #1f2937;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow-x: hidden;
+            padding: 16px;
+        }
+
+        /* Header */
+        .dock-header {
+            background: #111827;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 2px solid #3b82f6;
+        }
+
+        .dock-header h1 {
+            font-size: 16px;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 6px;
+        }
+
+        .status {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .status.connected {
+            color: #10b981;
+        }
+
+        /* Control Group */
+        .control-group {
+            background: #374151;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .control-group h2 {
+            font-size: 13px;
+            font-weight: bold;
+            color: #e5e7eb;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 10px 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn.success {
+            background: #10b981;
+        }
+
+        .btn.success:hover {
+            background: #059669;
+        }
+
+        .btn.danger {
+            background: #ef4444;
+        }
+
+        .btn.danger:hover {
+            background: #dc2626;
+        }
+
+        .btn.secondary {
+            background: #6b7280;
+        }
+
+        .btn.secondary:hover {
+            background: #4b5563;
+        }
+
+        /* Input Group */
+        .input-group {
+            margin-bottom: 8px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 8px;
+            background: #1f2937;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .stat-item {
+            background: #1f2937;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+
+        /* Scene List */
+        .scene-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .scene-item {
+            padding: 8px 10px;
+            background: #1f2937;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .scene-item:hover {
+            background: #374151;
+            transform: translateX(2px);
+        }
+
+        .scene-item.active {
+            background: #3b82f6;
+            font-weight: bold;
+        }
+
+        /* Scrollbar */
+        .scene-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scene-list::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        .scene-list::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 2px;
+        }
+
+        .scene-list::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: #10b981;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .notification.error {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="dock-header">
+        <h1>⚡ Quick Controls</h1>
+        <div class="status" id="connection-status">⚫ Disconnected</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="control-group">
+        <h2>📊 Live Stats</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">Viewer</div>
+                <div class="stat-value" id="viewer-count">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Likes</div>
+                <div class="stat-value" id="like-count">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Gifts</div>
+                <div class="stat-value" id="gift-count">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Follower</div>
+                <div class="stat-value" id="follower-count">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TTS Controls -->
+    <div class="control-group">
+        <h2>🔊 Text-to-Speech</h2>
+        <div class="input-group">
+            <label>Nachricht</label>
+            <input type="text" id="tts-text" placeholder="Test-Nachricht eingeben...">
+        </div>
+        <div class="input-group">
+            <label>Voice</label>
+            <select id="tts-voice">
+                <option value="ghostface">Ghostface</option>
+                <option value="stitch">Stitch</option>
+                <option value="c3po">C3PO</option>
+                <option value="rocket">Rocket</option>
+                <option value="stormtrooper">Stormtrooper</option>
+            </select>
+        </div>
+        <button class="btn" onclick="testTTS()">🎙️ TTS abspielen</button>
+    </div>
+
+    <!-- Sound Controls -->
+    <div class="control-group">
+        <h2>🎵 Soundboard</h2>
+        <button class="btn secondary" onclick="clearSoundQueue()">🗑️ Sound Queue löschen</button>
+        <button class="btn secondary" onclick="openSoundboard()">🎹 Soundboard öffnen</button>
+    </div>
+
+    <!-- OBS Controls -->
+    <div class="control-group">
+        <h2>🎥 OBS Szenen</h2>
+        <div class="scene-list" id="scene-list">
+            <div style="text-align: center; color: #9ca3af; font-size: 11px; padding: 20px;">
+                Verbinde mit OBS...
+            </div>
+        </div>
+        <button class="btn success" onclick="refreshScenes()">🔄 Szenen aktualisieren</button>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="control-group">
+        <h2>⚡ Quick Actions</h2>
+        <button class="btn" onclick="testAlert()">🔔 Alert testen</button>
+        <button class="btn danger" onclick="clearAll()">🗑️ Alles zurücksetzen</button>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+        const socket = io();
+
+        // State
+        let stats = {
+            viewerCount: 0,
+            likeCount: 0,
+            giftCount: 0,
+            followerCount: 0
+        };
+
+        let scenes = [];
+        let currentScene = null;
+
+        // Update Stats Display
+        function updateStats() {
+            document.getElementById('viewer-count').textContent = stats.viewerCount;
+            document.getElementById('like-count').textContent = stats.likeCount;
+            document.getElementById('gift-count').textContent = stats.giftCount;
+            document.getElementById('follower-count').textContent = stats.followerCount;
+        }
+
+        // Show Notification
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification show' + (isError ? ' error' : '');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // TTS Test
+        async function testTTS() {
+            const text = document.getElementById('tts-text').value || 'TikTok Stream Control Test';
+            const voice = document.getElementById('tts-voice').value;
+
+            try {
+                const response = await fetch('/api/tts/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice })
+                });
+
+                if (response.ok) {
+                    showNotification('✅ TTS wird abgespielt');
+                } else {
+                    showNotification('❌ TTS Test fehlgeschlagen', true);
+                }
+            } catch (error) {
+                showNotification('❌ Fehler: ' + error.message, true);
+            }
+        }
+
+        // Clear Sound Queue
+        async function clearSoundQueue() {
+            try {
+                const response = await fetch('/api/soundboard/queue/clear', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showNotification('✅ Sound Queue gelöscht');
+                } else {
+                    showNotification('❌ Fehler beim Löschen', true);
+                }
+            } catch (error) {
+                showNotification('❌ Fehler: ' + error.message, true);
+            }
+        }
+
+        // Open Soundboard
+        function openSoundboard() {
+            window.open('/soundboard.html', '_blank');
+        }
+
+        // Test Alert
+        async function testAlert() {
+            try {
+                const response = await fetch('/api/alerts/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ eventType: 'gift' })
+                });
+
+                if (response.ok) {
+                    showNotification('✅ Alert gesendet');
+                } else {
+                    showNotification('❌ Alert Test fehlgeschlagen', true);
+                }
+            } catch (error) {
+                showNotification('❌ Fehler: ' + error.message, true);
+            }
+        }
+
+        // Clear All
+        async function clearAll() {
+            if (confirm('Möchtest du wirklich alle Daten zurücksetzen?')) {
+                stats = { viewerCount: 0, likeCount: 0, giftCount: 0, followerCount: 0 };
+                updateStats();
+                showNotification('✅ Daten zurückgesetzt');
+            }
+        }
+
+        // Refresh Scenes
+        async function refreshScenes() {
+            try {
+                const response = await fetch('/api/obs/scenes');
+                if (response.ok) {
+                    scenes = await response.json();
+                    renderScenes();
+                    showNotification('✅ Szenen aktualisiert');
+                } else {
+                    showNotification('❌ OBS nicht verbunden', true);
+                }
+            } catch (error) {
+                showNotification('❌ Fehler: ' + error.message, true);
+            }
+        }
+
+        // Switch Scene
+        async function switchScene(sceneName) {
+            try {
+                const response = await fetch(`/api/obs/scene/${encodeURIComponent(sceneName)}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    currentScene = sceneName;
+                    renderScenes();
+                    showNotification(`✅ Szene: ${sceneName}`);
+                } else {
+                    showNotification('❌ Szene konnte nicht gewechselt werden', true);
+                }
+            } catch (error) {
+                showNotification('❌ Fehler: ' + error.message, true);
+            }
+        }
+
+        // Render Scenes
+        function renderScenes() {
+            const container = document.getElementById('scene-list');
+
+            if (scenes.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #9ca3af; font-size: 11px; padding: 20px;">Keine Szenen verfügbar</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            scenes.forEach(scene => {
+                const item = document.createElement('div');
+                item.className = 'scene-item' + (scene.sceneName === currentScene ? ' active' : '');
+                item.innerHTML = `
+                    ${scene.sceneName === currentScene ? '▶️' : '🎬'} ${scene.sceneName}
+                `;
+                item.onclick = () => switchScene(scene.sceneName);
+                container.appendChild(item);
+            });
+        }
+
+        // Socket.IO Listeners
+        socket.on('tiktok:status', (data) => {
+            const statusEl = document.getElementById('connection-status');
+            if (data.status === 'connected') {
+                statusEl.textContent = `🟢 Connected: @${data.username || ''}`;
+                statusEl.classList.add('connected');
+            } else {
+                statusEl.textContent = '⚫ Disconnected';
+                statusEl.classList.remove('connected');
+            }
+        });
+
+        socket.on('tiktok:stats', (data) => {
+            if (data.viewerCount !== undefined) stats.viewerCount = data.viewerCount;
+            if (data.likeCount !== undefined) stats.likeCount = data.likeCount;
+            updateStats();
+        });
+
+        socket.on('tiktok:like', (data) => {
+            stats.likeCount += (data.likeCount || 1);
+            updateStats();
+        });
+
+        socket.on('tiktok:event', (event) => {
+            const { type } = event;
+
+            if (type === 'gift') {
+                stats.giftCount++;
+                updateStats();
+            } else if (type === 'follow') {
+                stats.followerCount++;
+                updateStats();
+            }
+        });
+
+        socket.on('obs:connected', () => {
+            refreshScenes();
+        });
+
+        socket.on('obs:scene-changed', (data) => {
+            currentScene = data.sceneName;
+            renderScenes();
+        });
+
+        // Initialization
+        refreshScenes();
+
+        console.log('✅ Quick Controls Dock initialized');
+    </script>
+</body>
+</html>

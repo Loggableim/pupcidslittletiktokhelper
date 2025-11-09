@@ -47,6 +47,25 @@
             color: #10b981;
         }
 
+        .stats-compact {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .stats-compact span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stats-compact span span {
+            font-weight: bold;
+            color: #3b82f6;
+        }
+
         /* Section */
         .section {
             margin: 16px;
@@ -255,6 +274,73 @@
             width: 16px;
             height: 16px;
         }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: 500;
+        }
+
+        .action-btn:hover {
+            background: #2563eb;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Leaderboard Items */
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #1f2937;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .leaderboard-rank {
+            font-weight: bold;
+            color: #fbbf24;
+            font-size: 14px;
+            min-width: 20px;
+        }
+
+        .leaderboard-info {
+            flex: 1;
+        }
+
+        .leaderboard-username {
+            font-weight: bold;
+            color: #e5e7eb;
+            font-size: 12px;
+        }
+
+        .leaderboard-stats {
+            color: #9ca3af;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        .leaderboard-value {
+            font-weight: bold;
+            color: #fbbf24;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -262,6 +348,11 @@
     <div class="dock-header">
         <h1>🎥 TikTok Stream Dock</h1>
         <div class="status" id="connection-status">⚫ Disconnected</div>
+        <div class="stats-compact" id="stats-compact">
+            <span>👥 <span id="viewer-count">0</span></span>
+            <span>❤️ <span id="like-count">0</span></span>
+            <span>🎁 <span id="gift-count">0</span></span>
+        </div>
     </div>
 
     <!-- Chat Section -->
@@ -297,6 +388,32 @@
         </div>
     </div>
 
+    <!-- Quick Actions Section -->
+    <div class="section" id="actions-section">
+        <div class="section-header toggle-section" onclick="toggleSection('actions')">
+            <span class="toggle-icon">▼</span>
+            ⚡ Quick Actions
+        </div>
+        <div class="section-content" id="actions-content">
+            <div class="quick-actions">
+                <button class="action-btn" onclick="testTTS()">🔊 TTS Test</button>
+                <button class="action-btn" onclick="clearChat()">🗑️ Chat löschen</button>
+                <button class="action-btn" onclick="testAlert()">🔔 Alert Test</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Section -->
+    <div class="section" id="leaderboard-section">
+        <div class="section-header toggle-section" onclick="toggleSection('leaderboard')">
+            <span class="toggle-icon">▼</span>
+            🏆 Top Gifters
+        </div>
+        <div class="section-content" id="leaderboard-content">
+            <div class="empty-state">Keine Daten verfügbar...</div>
+        </div>
+    </div>
+
     <!-- Config Panel -->
     <div class="config-panel">
         <div class="config-row">
@@ -317,7 +434,15 @@
             showChat: true,
             showGifts: true,
             showEvents: true,
+            showActions: true,
+            showLeaderboard: true,
             autoClear: true
+        };
+
+        let stats = {
+            viewerCount: 0,
+            likeCount: 0,
+            giftCount: 0
         };
 
         const MAX_ITEMS = 50; // Maximum Anzahl an Items pro Sektion
@@ -335,6 +460,13 @@
             }
         }
 
+        // Update Stats Display
+        function updateStats() {
+            document.getElementById('viewer-count').textContent = stats.viewerCount;
+            document.getElementById('like-count').textContent = stats.likeCount;
+            document.getElementById('gift-count').textContent = stats.giftCount;
+        }
+
         // Save Config to LocalStorage
         function saveConfig() {
             config.showChat = document.getElementById('show-chat').checked;
@@ -347,6 +479,68 @@
             document.getElementById('chat-section').style.display = config.showChat ? 'block' : 'none';
             document.getElementById('gifts-section').style.display = config.showGifts ? 'block' : 'none';
             document.getElementById('events-section').style.display = config.showEvents ? 'block' : 'none';
+        }
+
+        // Quick Actions
+        async function testTTS() {
+            try {
+                const response = await fetch('/api/tts/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: 'TikTok Stream Dock Test', voice: 'ghostface' })
+                });
+                if (response.ok) {
+                    console.log('✅ TTS Test erfolgreich');
+                }
+            } catch (error) {
+                console.error('❌ TTS Test fehlgeschlagen:', error);
+            }
+        }
+
+        function clearChat() {
+            const container = document.getElementById('chat-content');
+            container.innerHTML = '<div class="empty-state">Warte auf Chat-Nachrichten...</div>';
+        }
+
+        async function testAlert() {
+            try {
+                const response = await fetch('/api/alerts/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ eventType: 'gift' })
+                });
+                if (response.ok) {
+                    console.log('✅ Alert Test erfolgreich');
+                }
+            } catch (error) {
+                console.error('❌ Alert Test fehlgeschlagen:', error);
+            }
+        }
+
+        // Update Leaderboard
+        function updateLeaderboard(data) {
+            const container = document.getElementById('leaderboard-content');
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="empty-state">Keine Daten verfügbar...</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            data.slice(0, 5).forEach((user, index) => {
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                item.innerHTML = `
+                    <div class="leaderboard-rank">#${index + 1}</div>
+                    <div class="leaderboard-info">
+                        <div class="leaderboard-username">${escapeHtml(user.username || 'Unknown')}</div>
+                        <div class="leaderboard-stats">${user.gifts || 0} Geschenke</div>
+                    </div>
+                    <div class="leaderboard-value">${user.totalCoins || 0} 💰</div>
+                `;
+                container.appendChild(item);
+            });
         }
 
         // Toggle Section Collapse
@@ -393,6 +587,10 @@
         // Add Gift
         function addGift(data) {
             if (!config.showGifts) return;
+
+            // Update gift stats
+            stats.giftCount++;
+            updateStats();
 
             const container = document.getElementById('gifts-content');
 
@@ -523,9 +721,47 @@
             }
         });
 
+        socket.on('tiktok:connected', (data) => {
+            console.log('✅ TikTok connected:', data);
+        });
+
+        socket.on('tiktok:stats', (data) => {
+            if (data.viewerCount !== undefined) stats.viewerCount = data.viewerCount;
+            if (data.likeCount !== undefined) stats.likeCount = data.likeCount;
+            updateStats();
+        });
+
+        socket.on('tiktok:like', (data) => {
+            stats.likeCount += (data.likeCount || 1);
+            updateStats();
+        });
+
+        socket.on('leaderboard:update', (data) => {
+            if (data.type === 'gifters') {
+                updateLeaderboard(data.leaderboard);
+            }
+        });
+
+        // Fetch initial leaderboard data
+        async function fetchLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard/gifters');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateLeaderboard(data);
+                }
+            } catch (error) {
+                console.error('❌ Leaderboard fetch failed:', error);
+            }
+        }
+
+        // Fetch leaderboard every 30 seconds
+        setInterval(fetchLeaderboard, 30000);
+
         // Initialization
         loadConfig();
         saveConfig(); // Apply initial config
+        fetchLeaderboard(); // Load initial leaderboard data
 
         console.log('✅ OBS Dock initialized');
     </script>

@@ -21,6 +21,7 @@ Professionelles All-in-One-Tool für TikTok LIVE Streamer mit erweiterten Featur
 | **Goals** | 1 Goal | **4 separate Goals** ✅ |
 | **Flows** | Keine | **Unbegrenzte Automatisierungen** ✅ |
 | **User-Profile** | Keine | **Multi-User-Support** ✅ |
+| **OBS Docks** | Premium | **3 Docks (Chat, Controls, Goals)** ✅ |
 
 ---
 
@@ -121,6 +122,82 @@ Professionelles All-in-One-Tool für TikTok LIVE Streamer mit erweiterten Featur
 - ✅ **Pixel- oder Prozent-Positionen**
 - ✅ **Live-Preview** der Änderungen
 - ✅ **Audio-Unlock-System** (wegen Browser Autoplay Policy)
+
+### 🎛️ OBS Custom Browser Docks (NEU!)
+**Professionelle Streaming-Controls direkt in OBS - wie bei Tikfinity!**
+
+Mit OBS Custom Browser Docks kannst du wichtige Stream-Informationen und Kontrollen direkt in deine OBS-Oberfläche integrieren - keine separaten Browser-Fenster mehr nötig!
+
+#### 📱 Verfügbare Docks
+
+**1. Main Stream Dock** (`http://localhost:3000/obs-dock.html`)
+- 💬 **Live Chat** - Alle Chat-Nachrichten in Echtzeit
+- 🎁 **Gift Feed** - Geschenke mit Coins und Repeat-Count
+- ⭐ **Events** - Follows, Subscribes, Shares, Joins
+- 📊 **Live Stats** - Viewer, Likes, Gifts auf einen Blick
+- 🏆 **Top Gifters** - Leaderboard der Top 5 Gifter
+- ⚡ **Quick Actions** - TTS Test, Chat löschen, Alert Test
+- ⚙️ **Konfigurierbar** - Sektionen ein-/ausblenden, Auto-Clear
+
+**2. Quick Controls Dock** (`http://localhost:3000/obs-dock-controls.html`)
+- 📊 **Live Stats Grid** - Viewer, Likes, Gifts, Follower
+- 🔊 **TTS Controls** - Sofort TTS testen (Text + Voice-Auswahl)
+- 🎵 **Soundboard Controls** - Sound Queue löschen, Soundboard öffnen
+- 🎥 **OBS Szenen** - Schneller Szenen-Wechsel mit einem Klick
+- 🔔 **Quick Actions** - Alert testen, Daten zurücksetzen
+- 🎯 **Kompakt** - Optimal für kleine Seitenleisten (300px breit)
+
+**3. Goals Overview Dock** (`http://localhost:3000/obs-dock-goals.html`)
+- 🎯 **Alle 4 Goals** auf einen Blick (Likes, Follower, Subs, Coins)
+- 📊 **Progress Bars** mit Echtzeit-Updates
+- 📈 **Detaillierte Stats** - Aktuell, Ziel, Verbleibend
+- ⚡ **Schnelle Bearbeitung** - Goals setzen, incrementen, resetten
+- 👁️ **Sichtbarkeits-Toggle** - Goals ein-/ausblenden
+- 🎨 **Farbcodiert** - Jedes Goal mit eigener Farbe
+- 📊 **Gesamtfortschritt** - Durchschnitt aller aktiven Goals
+
+#### 🔧 Einrichtung in OBS Studio
+
+**Schritt 1: Server starten**
+```bash
+npm start
+```
+
+**Schritt 2: Custom Browser Dock hinzufügen**
+
+1. **OBS Studio** öffnen
+2. Menü: **View** → **Docks** → **Custom Browser Docks...**
+3. Dock hinzufügen:
+   - **Dock Name**: `TikTok Stream Dock` (oder beliebiger Name)
+   - **URL**: `http://localhost:3000/obs-dock.html`
+4. **Apply** klicken
+5. Das Dock erscheint jetzt in OBS und kann frei positioniert werden!
+
+**Optional: Mehrere Docks**
+Du kannst alle drei Docks gleichzeitig nutzen:
+- Dock 1: `http://localhost:3000/obs-dock.html` (Main Stream Dock)
+- Dock 2: `http://localhost:3000/obs-dock-controls.html` (Quick Controls)
+- Dock 3: `http://localhost:3000/obs-dock-goals.html` (Goals Overview)
+
+#### 💡 Tipps für optimale Nutzung
+
+- **Mehrere Monitore**: Docks auf zweitem Monitor positionieren
+- **Seitenleiste**: Controls Dock (300px) passt perfekt in schmale Seitenleisten
+- **Minimale UI**: Unnötige Sektionen ausblenden für mehr Platz
+- **Auto-Clear**: Aktivieren, damit alte Nachrichten automatisch verschwinden (30s)
+- **Always on Top**: Docks bleiben auch beim Wechsel zu anderen Fenstern sichtbar
+- **Quick Access**: OBS Szenen direkt aus dem Controls Dock wechseln
+
+#### 🆚 Vergleich mit Tikfinity Docks
+
+| Feature | Tikfinity | Pup Cid's Helper |
+|---------|-----------|------------------|
+| Chat Dock | ✅ (Basic) | ✅ **+ Auto-Clear, Filter** |
+| Gift Feed | ✅ | ✅ **+ Leaderboard** |
+| Controls | ❌ | ✅ **TTS, Sounds, OBS** |
+| Goals Dock | ❌ | ✅ **4 Goals gleichzeitig** |
+| Preis | Premium Feature | **Kostenlos** ✅ |
+| Anpassbar | Begrenzt | **Voll konfigurierbar** ✅ |
 
 ### 👤 User-Profile-System
 - ✅ **Mehrere Datenbanken** für verschiedene User/Setups
