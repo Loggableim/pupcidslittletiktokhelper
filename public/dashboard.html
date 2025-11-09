@@ -61,6 +61,14 @@
                 transform: translateX(0);
             }
         }
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
         .modal {
             display: none;
             position: fixed;
@@ -476,6 +484,21 @@
                 <div class="mb-8">
                     <h3 class="font-bold text-lg mb-4">🎁 Gift-Specific Sounds</h3>
 
+                    <!-- Gift Catalog Browser -->
+                    <div class="mb-4 bg-gray-700 p-4 rounded">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-semibold">📦 Available Gifts from Stream</h4>
+                            <button onclick="refreshGiftCatalog()" id="refresh-catalog-btn"
+                                    class="bg-purple-600 px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2">
+                                <span id="refresh-icon">🔄</span> Refresh Catalog
+                            </button>
+                        </div>
+                        <div id="gift-catalog-info" class="text-sm text-gray-400 mb-3"></div>
+                        <div id="gift-catalog-list" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-96 overflow-y-auto">
+                            <!-- Wird dynamisch gefüllt -->
+                        </div>
+                    </div>
+
                     <!-- MyInstants Search -->
                     <div class="mb-4 bg-gray-700 p-4 rounded">
                         <h4 class="font-semibold mb-2">🔍 Search MyInstants</h4>
@@ -489,20 +512,35 @@
 
                     <!-- Add Gift Sound -->
                     <div class="mb-4 bg-gray-700 p-4 rounded">
-                        <h4 class="font-semibold mb-2">➕ Add Gift Sound</h4>
+                        <h4 class="font-semibold mb-2">➕ Add/Edit Gift Sound</h4>
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <input type="number" id="new-gift-id" placeholder="Gift ID"
+                            <input type="number" id="new-gift-id" placeholder="Gift ID" readonly
                                    class="bg-gray-600 text-white px-3 py-2 rounded">
-                            <input type="text" id="new-gift-label" placeholder="Label (e.g., Rose)"
+                            <input type="text" id="new-gift-label" placeholder="Label (e.g., Rose)" readonly
                                    class="bg-gray-600 text-white px-3 py-2 rounded">
                             <input type="text" id="new-gift-url" placeholder="MP3 URL"
                                    class="bg-gray-600 text-white px-3 py-2 rounded">
                             <input type="number" id="new-gift-volume" min="0" max="1" step="0.1" value="1.0"
                                    placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
                         </div>
-                        <button onclick="addGiftSound()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 mt-2">
-                            ➕ Add Gift Sound
-                        </button>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                            <input type="text" id="new-gift-animation-url" placeholder="Animation URL (optional)"
+                                   class="bg-gray-600 text-white px-3 py-2 rounded">
+                            <select id="new-gift-animation-type" class="bg-gray-600 text-white px-3 py-2 rounded">
+                                <option value="none">No Animation</option>
+                                <option value="image">Image</option>
+                                <option value="video">Video</option>
+                                <option value="gif">GIF</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="addGiftSound()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 flex-1">
+                                ➕ Add/Update Gift Sound
+                            </button>
+                            <button onclick="clearGiftSoundForm()" class="bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">
+                                Clear
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Gift Sounds List -->
@@ -512,8 +550,9 @@
                                 <tr class="text-left text-gray-400 border-b border-gray-700">
                                     <th class="pb-2 pr-4">Gift ID</th>
                                     <th class="pb-2 pr-4">Label</th>
-                                    <th class="pb-2 pr-4">URL</th>
+                                    <th class="pb-2 pr-4">Sound</th>
                                     <th class="pb-2 pr-4">Volume</th>
+                                    <th class="pb-2 pr-4">Animation</th>
                                     <th class="pb-2">Actions</th>
                                 </tr>
                             </thead>
