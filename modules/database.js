@@ -116,8 +116,20 @@ class DatabaseManager {
             )
         `);
 
+        // Emoji Rain HUD Konfiguration
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS emoji_rain_config (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                enabled INTEGER DEFAULT 1,
+                config_json TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Default-Einstellungen setzen
         this.setDefaultSettings();
+        this.initializeEmojiRainDefaults();
     }
 
     setDefaultSettings() {
@@ -511,6 +523,114 @@ class DatabaseManager {
             WHERE element_id = ?
         `);
         stmt.run(enabled ? 1 : 0, elementId);
+    }
+
+    /**
+     * Initialize default Emoji Rain configuration
+     */
+    initializeEmojiRainDefaults() {
+        const defaultConfig = {
+            width_px: 1280,
+            height_px: 720,
+            transparent_bg: true,
+            bg_color: "rgba(0,0,0,0)",
+            emoji_set: ["💧","💙","💚","💜","❤️","🩵","✨","🌟","🔥","🎉"],
+            assign_per_user: true,
+            enforce_color: false,
+            emoji_color: "#ffffff",
+            physics_gravity_y: 1.0,
+            physics_air: 0.02,
+            physics_wind_force: 0.00005,
+            physics_side_walls: true,
+            physics_floor: false,
+            physics_restitution: 0.05,
+            spin_min: -0.5,
+            spin_max: 0.5,
+            size_min_px: 28,
+            size_max_px: 64,
+            spawn_per_like: 1.0,
+            max_burst: 20,
+            max_queue: 200,
+            max_active: 140,
+            drop_despawn_s: 8.0,
+            debug_overlay: false,
+            show_username: false,
+            username_font: "600 14px Inter, system-ui, Arial, sans-serif",
+            username_color: "#ffffff",
+            username_shadow: "0 2px 8px rgba(0,0,0,.75)",
+            hue_rotate_deg: 0,
+            saturate: 1.0,
+            brightness: 1.0,
+            contrast: 1.0,
+            drop_shadow_css: "0 6px 14px rgba(0,0,0,.35)",
+            gift_scale_enabled: true,
+            gift_scale_strategy: "sqrt",
+            gift_scale_per_100_coins: 0.25,
+            gift_min_scale: 1.0,
+            gift_max_scale: 3.0,
+            gift_spawn_per_gift: 1.0,
+            like_scale_per_count: 0.1,
+            like_min_scale: 1.0,
+            like_max_scale: 2.0
+        };
+
+        const stmt = this.db.prepare(`
+            INSERT OR IGNORE INTO emoji_rain_config (id, enabled, config_json)
+            VALUES (1, 1, ?)
+        `);
+        stmt.run(JSON.stringify(defaultConfig));
+    }
+
+    /**
+     * Get Emoji Rain configuration
+     */
+    getEmojiRainConfig() {
+        const stmt = this.db.prepare('SELECT * FROM emoji_rain_config WHERE id = 1');
+        const row = stmt.get();
+
+        if (!row) {
+            // Fallback: initialize and return
+            this.initializeEmojiRainDefaults();
+            return this.getEmojiRainConfig();
+        }
+
+        return {
+            enabled: Boolean(row.enabled),
+            config: JSON.parse(row.config_json)
+        };
+    }
+
+    /**
+     * Update Emoji Rain configuration
+     */
+    updateEmojiRainConfig(config, enabled = null) {
+        const current = this.getEmojiRainConfig();
+        const newEnabled = enabled !== null ? (enabled ? 1 : 0) : (current.enabled ? 1 : 0);
+        const newConfig = { ...current.config, ...config };
+
+        const stmt = this.db.prepare(`
+            UPDATE emoji_rain_config
+            SET config_json = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+        `);
+        stmt.run(JSON.stringify(newConfig), newEnabled);
+
+        return {
+            enabled: Boolean(newEnabled),
+            config: newConfig
+        };
+    }
+
+    /**
+     * Toggle Emoji Rain enabled state
+     */
+    toggleEmojiRain(enabled) {
+        const stmt = this.db.prepare(`
+            UPDATE emoji_rain_config
+            SET enabled = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+        `);
+        stmt.run(enabled ? 1 : 0);
     }
 
     /**
