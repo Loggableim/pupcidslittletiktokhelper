@@ -357,7 +357,7 @@
 
     <!-- Chat Section -->
     <div class="section" id="chat-section">
-        <div class="section-header toggle-section" onclick="toggleSection('chat')">
+        <div class="section-header toggle-section" data-section="chat">
             <span class="toggle-icon">▼</span>
             💬 Chat
         </div>
@@ -368,7 +368,7 @@
 
     <!-- Gifts Section -->
     <div class="section" id="gifts-section">
-        <div class="section-header toggle-section" onclick="toggleSection('gifts')">
+        <div class="section-header toggle-section" data-section="gifts">
             <span class="toggle-icon">▼</span>
             🎁 Geschenke
         </div>
@@ -379,7 +379,7 @@
 
     <!-- Events Section (Follows, Joins) -->
     <div class="section" id="events-section">
-        <div class="section-header toggle-section" onclick="toggleSection('events')">
+        <div class="section-header toggle-section" data-section="events">
             <span class="toggle-icon">▼</span>
             ⭐ Events (Follows, Joins)
         </div>
@@ -390,22 +390,22 @@
 
     <!-- Quick Actions Section -->
     <div class="section" id="actions-section">
-        <div class="section-header toggle-section" onclick="toggleSection('actions')">
+        <div class="section-header toggle-section" data-section="actions">
             <span class="toggle-icon">▼</span>
             ⚡ Quick Actions
         </div>
         <div class="section-content" id="actions-content">
             <div class="quick-actions">
-                <button class="action-btn" onclick="testTTS()">🔊 TTS Test</button>
-                <button class="action-btn" onclick="clearChat()">🗑️ Chat löschen</button>
-                <button class="action-btn" onclick="testAlert()">🔔 Alert Test</button>
+                <button class="action-btn" id="btn-test-tts-dock">🔊 TTS Test</button>
+                <button class="action-btn" id="btn-clear-chat">🗑️ Chat löschen</button>
+                <button class="action-btn" id="btn-test-alert-dock">🔔 Alert Test</button>
             </div>
         </div>
     </div>
 
     <!-- Leaderboard Section -->
     <div class="section" id="leaderboard-section">
-        <div class="section-header toggle-section" onclick="toggleSection('leaderboard')">
+        <div class="section-header toggle-section" data-section="leaderboard">
             <span class="toggle-icon">▼</span>
             🏆 Top Gifters
         </div>
@@ -417,12 +417,12 @@
     <!-- Config Panel -->
     <div class="config-panel">
         <div class="config-row">
-            <label><input type="checkbox" id="show-chat" checked onchange="saveConfig()"> Chat anzeigen</label>
-            <label><input type="checkbox" id="show-gifts" checked onchange="saveConfig()"> Geschenke anzeigen</label>
+            <label><input type="checkbox" id="show-chat" checked class="config-checkbox"> Chat anzeigen</label>
+            <label><input type="checkbox" id="show-gifts" checked class="config-checkbox"> Geschenke anzeigen</label>
         </div>
         <div class="config-row">
-            <label><input type="checkbox" id="show-events" checked onchange="saveConfig()"> Events anzeigen</label>
-            <label><input type="checkbox" id="auto-clear" checked onchange="saveConfig()"> Auto-Clear (30s)</label>
+            <label><input type="checkbox" id="show-events" checked class="config-checkbox"> Events anzeigen</label>
+            <label><input type="checkbox" id="auto-clear" checked class="config-checkbox"> Auto-Clear (30s)</label>
         </div>
     </div>
 
@@ -758,10 +758,34 @@
         // Fetch leaderboard every 30 seconds
         setInterval(fetchLeaderboard, 30000);
 
+        // Setup event listeners
+        function setupEventListeners() {
+            // Section toggle listeners (Event delegation)
+            document.querySelectorAll('.toggle-section').forEach(header => {
+                header.addEventListener('click', () => {
+                    const section = header.dataset.section;
+                    if (section) {
+                        toggleSection(section);
+                    }
+                });
+            });
+
+            // Quick action button listeners
+            document.getElementById('btn-test-tts-dock')?.addEventListener('click', testTTS);
+            document.getElementById('btn-clear-chat')?.addEventListener('click', clearChat);
+            document.getElementById('btn-test-alert-dock')?.addEventListener('click', testAlert);
+
+            // Config checkbox listeners
+            document.querySelectorAll('.config-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', saveConfig);
+            });
+        }
+
         // Initialization
         loadConfig();
         saveConfig(); // Apply initial config
         fetchLeaderboard(); // Load initial leaderboard data
+        setupEventListeners(); // Setup all event listeners
 
         console.log('✅ OBS Dock initialized');
     </script>

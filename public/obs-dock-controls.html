@@ -293,14 +293,14 @@
                 <option value="stormtrooper">Stormtrooper</option>
             </select>
         </div>
-        <button class="btn" onclick="testTTS()">🎙️ TTS abspielen</button>
+        <button class="btn" id="btn-test-tts">🎙️ TTS abspielen</button>
     </div>
 
     <!-- Sound Controls -->
     <div class="control-group">
         <h2>🎵 Soundboard</h2>
-        <button class="btn secondary" onclick="clearSoundQueue()">🗑️ Sound Queue löschen</button>
-        <button class="btn secondary" onclick="openSoundboard()">🎹 Soundboard öffnen</button>
+        <button class="btn secondary" id="btn-clear-queue">🗑️ Sound Queue löschen</button>
+        <button class="btn secondary" id="btn-open-soundboard">🎹 Soundboard öffnen</button>
     </div>
 
     <!-- OBS Controls -->
@@ -311,14 +311,14 @@
                 Verbinde mit OBS...
             </div>
         </div>
-        <button class="btn success" onclick="refreshScenes()">🔄 Szenen aktualisieren</button>
+        <button class="btn success" id="btn-refresh-scenes">🔄 Szenen aktualisieren</button>
     </div>
 
     <!-- Quick Actions -->
     <div class="control-group">
         <h2>⚡ Quick Actions</h2>
-        <button class="btn" onclick="testAlert()">🔔 Alert testen</button>
-        <button class="btn danger" onclick="clearAll()">🗑️ Alles zurücksetzen</button>
+        <button class="btn" id="btn-test-alert">🔔 Alert testen</button>
+        <button class="btn danger" id="btn-clear-all">🗑️ Alles zurücksetzen</button>
     </div>
 
     <!-- Notification -->
@@ -477,10 +477,11 @@
             scenes.forEach(scene => {
                 const item = document.createElement('div');
                 item.className = 'scene-item' + (scene.sceneName === currentScene ? ' active' : '');
+                item.dataset.sceneName = scene.sceneName;
                 item.innerHTML = `
                     ${scene.sceneName === currentScene ? '▶️' : '🎬'} ${scene.sceneName}
                 `;
-                item.onclick = () => switchScene(scene.sceneName);
+                item.addEventListener('click', () => switchScene(scene.sceneName));
                 container.appendChild(item);
             });
         }
@@ -529,7 +530,18 @@
             renderScenes();
         });
 
+        // Setup button event listeners
+        function setupButtonListeners() {
+            document.getElementById('btn-test-tts').addEventListener('click', testTTS);
+            document.getElementById('btn-clear-queue').addEventListener('click', clearSoundQueue);
+            document.getElementById('btn-open-soundboard').addEventListener('click', openSoundboard);
+            document.getElementById('btn-refresh-scenes').addEventListener('click', refreshScenes);
+            document.getElementById('btn-test-alert').addEventListener('click', testAlert);
+            document.getElementById('btn-clear-all').addEventListener('click', clearAll);
+        }
+
         // Initialization
+        setupButtonListeners();
         refreshScenes();
 
         console.log('✅ Quick Controls Dock initialized');
