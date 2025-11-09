@@ -181,9 +181,8 @@ logger.info(`✅ Database initialized: ${dbPath}`);
 
 // ========== MODULE INITIALISIEREN ==========
 const tiktok = new TikTokConnector(io, db, logger);
-const tts = new TTSEngine(db, io, logger);
 const alerts = new AlertManager(io, db, logger);
-const flows = new FlowEngine(db, alerts, tts, logger);
+const flows = new FlowEngine(db, alerts, null, logger); // TTS wird später via Plugin injiziert
 const soundboard = new SoundboardManager(db, io, logger);
 const goals = new GoalManager(db, io, logger);
 
@@ -192,10 +191,10 @@ const obs = new OBSWebSocket(db, io, logger);
 const subscriptionTiers = new SubscriptionTiers(db, io, logger);
 const leaderboard = new Leaderboard(db, io, logger);
 
-// PATCH: VDO.Ninja Multi-Guest Integration
-const vdoninja = new VDONinjaManager(db, io, logger);
-flows.vdoninjaManager = vdoninja; // Inject VDONinja Manager into Flows
-logger.info('✅ VDO.Ninja Manager initialized and injected into Flows');
+// Plugin-System initialisieren
+const pluginsDir = path.join(__dirname, 'plugins');
+const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
+logger.info('🔌 Plugin Loader initialized');
 
 // Plugin-System initialisieren
 const pluginsDir = path.join(__dirname, 'plugins');
@@ -206,6 +205,7 @@ logger.info('🔌 Plugin Loader initialized');
 const updateChecker = new UpdateChecker(logger);
 logger.info('🔄 Update Checker initialized');
 
+logger.info('✅ All core modules initialized');
 logger.info('✅ All modules initialized');
 
 // ========== SWAGGER DOCUMENTATION ==========
@@ -504,50 +504,7 @@ app.get('/api/status', apiLimiter, (req, res) => {
 });
 
 // ========== VOICE MAPPING ROUTES ==========
-
-app.get('/api/voices', apiLimiter, (req, res) => {
-    const voices = db.getUserVoices();
-    res.json(voices);
-});
-
-app.get('/api/voices/list', apiLimiter, (req, res) => {
-    const TTSModule = require('./modules/tts');
-    const provider = req.query.provider || 'tiktok';
-    res.json(TTSModule.getVoices(provider));
-});
-
-app.get('/api/voices/all', apiLimiter, (req, res) => {
-    const TTSModule = require('./modules/tts');
-    res.json(TTSModule.getAllVoices());
-});
-
-app.post('/api/voices', apiLimiter, (req, res) => {
-    const { username, voice } = req.body;
-
-    if (!username || !voice) {
-        return res.status(400).json({ success: false, error: 'Username and voice are required' });
-    }
-
-    try {
-        db.setUserVoice(username, voice);
-        logger.info(`🎤 Voice set for user ${username}: ${voice}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error setting voice:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.delete('/api/voices/:username', apiLimiter, (req, res) => {
-    try {
-        db.deleteUserVoice(req.params.username);
-        logger.info(`🗑️ Voice deleted for user: ${req.params.username}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error deleting voice:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+// Moved to TTS Plugin (plugins/tts)
 
 // ========== SETTINGS ROUTES ==========
 
@@ -878,23 +835,7 @@ app.post('/api/alerts/test', apiLimiter, (req, res) => {
 });
 
 // ========== TTS ROUTES ==========
-
-app.post('/api/tts/test', apiLimiter, async (req, res) => {
-    const { username, text, voice } = req.body;
-
-    if (!text) {
-        return res.status(400).json({ success: false, error: 'Text is required' });
-    }
-
-    try {
-        await tts.speak(username || 'TestUser', text, voice);
-        logger.info(`🎤 TTS test: "${text}"`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error testing TTS:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+// Moved to TTS Plugin (plugins/tts)
 
 // ========== SOUNDBOARD ROUTES ==========
 
@@ -1725,314 +1666,7 @@ app.post('/api/minigames/coinflip', apiLimiter, (req, res) => {
 });
 
 // ========== PATCH: VDO.NINJA API ROUTES ==========
-
-// Get all rooms
-app.get('/api/vdoninja/rooms', apiLimiter, (req, res) => {
-    try {
-        const rooms = db.getAllVDONinjaRooms();
-        res.json({ success: true, rooms });
-    } catch (error) {
-        logger.error('Error getting VDO.Ninja rooms:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Create new room
-app.post('/api/vdoninja/rooms', apiLimiter, (req, res) => {
-    const { roomName, maxGuests } = req.body;
-
-    if (!roomName) {
-        return res.status(400).json({ success: false, error: 'roomName is required' });
-    }
-
-    try {
-        const room = vdoninja.createRoom(roomName, maxGuests || 6);
-        logger.info(`🏠 VDO.Ninja room created: ${roomName}`);
-        res.json({ success: true, room });
-    } catch (error) {
-        logger.error('Error creating VDO.Ninja room:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get room details
-app.get('/api/vdoninja/rooms/:roomId', apiLimiter, (req, res) => {
-    try {
-        const room = db.getVDONinjaRoom(req.params.roomId);
-        if (!room) {
-            return res.status(404).json({ success: false, error: 'Room not found' });
-        }
-        res.json({ success: true, room });
-    } catch (error) {
-        logger.error('Error getting VDO.Ninja room:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Load existing room
-app.post('/api/vdoninja/rooms/:roomId/load', apiLimiter, (req, res) => {
-    try {
-        const room = vdoninja.loadRoom(req.params.roomId);
-        logger.info(`📂 VDO.Ninja room loaded: ${req.params.roomId}`);
-        res.json({ success: true, room });
-    } catch (error) {
-        logger.error('Error loading VDO.Ninja room:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Delete room
-app.delete('/api/vdoninja/rooms/:roomId', apiLimiter, (req, res) => {
-    try {
-        vdoninja.deleteRoom(req.params.roomId);
-        logger.info(`🗑️ VDO.Ninja room deleted: ${req.params.roomId}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error deleting VDO.Ninja room:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get active room
-app.get('/api/vdoninja/room/active', apiLimiter, (req, res) => {
-    try {
-        const room = vdoninja.getActiveRoom();
-        if (!room) {
-            return res.status(404).json({ success: false, error: 'No active room' });
-        }
-        res.json({ success: true, room });
-    } catch (error) {
-        logger.error('Error getting active room:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Close active room
-app.post('/api/vdoninja/room/close', apiLimiter, (req, res) => {
-    try {
-        vdoninja.closeRoom();
-        logger.info('🔒 VDO.Ninja room closed');
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error closing room:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get guests in active room
-app.get('/api/vdoninja/guests', apiLimiter, (req, res) => {
-    try {
-        const guests = vdoninja.getAllGuests();
-        res.json({ success: true, guests, count: guests.length });
-    } catch (error) {
-        logger.error('Error getting guests:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Add guest to slot
-app.post('/api/vdoninja/guests', apiLimiter, (req, res) => {
-    const { slot, streamId, guestName } = req.body;
-
-    if (slot === undefined || !streamId) {
-        return res.status(400).json({
-            success: false,
-            error: 'slot and streamId are required'
-        });
-    }
-
-    try {
-        const guest = vdoninja.addGuest(parseInt(slot), streamId, guestName || `Guest ${slot}`);
-        logger.info(`👤 Guest added to slot ${slot}`);
-        res.json({ success: true, guest });
-    } catch (error) {
-        logger.error('Error adding guest:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get guest status
-app.get('/api/vdoninja/guests/:slot/status', apiLimiter, (req, res) => {
-    try {
-        const status = vdoninja.getGuestStatus(parseInt(req.params.slot));
-        if (!status) {
-            return res.status(404).json({ success: false, error: 'Guest not found' });
-        }
-        res.json({ success: true, status });
-    } catch (error) {
-        logger.error('Error getting guest status:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Remove guest from slot
-app.delete('/api/vdoninja/guests/:slot', apiLimiter, (req, res) => {
-    try {
-        vdoninja.removeGuest(parseInt(req.params.slot));
-        logger.info(`👋 Guest removed from slot ${req.params.slot}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error removing guest:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Control guest (mute, unmute, volume, kick, solo)
-app.post('/api/vdoninja/guests/:slot/control', apiLimiter, (req, res) => {
-    const { slot } = req.params;
-    const { action, value } = req.body;
-
-    if (!action) {
-        return res.status(400).json({ success: false, error: 'action is required' });
-    }
-
-    try {
-        const slotNum = parseInt(slot);
-
-        switch (action) {
-            case 'mute':
-                vdoninja.muteGuest(slotNum, value?.audio !== false, value?.video || false);
-                break;
-            case 'unmute':
-                vdoninja.unmuteGuest(slotNum, value?.audio !== false, value?.video || false);
-                break;
-            case 'volume':
-                if (value === undefined) {
-                    return res.status(400).json({ success: false, error: 'value is required for volume action' });
-                }
-                vdoninja.setGuestVolume(slotNum, parseFloat(value));
-                break;
-            case 'kick':
-                vdoninja.kickGuest(slotNum, value?.reason || 'Kicked by user');
-                break;
-            case 'solo':
-                vdoninja.soloGuest(slotNum, value?.duration || 10000);
-                break;
-            default:
-                return res.status(400).json({ success: false, error: 'Unknown action' });
-        }
-
-        logger.info(`🎮 Guest ${slot} control: ${action}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error controlling guest:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Mute all guests
-app.post('/api/vdoninja/guests/mute-all', apiLimiter, (req, res) => {
-    try {
-        vdoninja.muteAllGuests();
-        logger.info('🔇 All guests muted');
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error muting all guests:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Unmute all guests
-app.post('/api/vdoninja/guests/unmute-all', apiLimiter, (req, res) => {
-    try {
-        vdoninja.unmuteAllGuests();
-        logger.info('🔊 All guests unmuted');
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error unmuting all guests:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Change layout
-app.post('/api/vdoninja/layout', apiLimiter, (req, res) => {
-    const { layout, transition } = req.body;
-
-    if (!layout) {
-        return res.status(400).json({ success: false, error: 'layout is required' });
-    }
-
-    try {
-        vdoninja.changeLayout(layout, transition || 'fade');
-        logger.info(`🎨 Layout changed: ${layout}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error changing layout:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get all layout presets
-app.get('/api/vdoninja/layouts', apiLimiter, (req, res) => {
-    try {
-        const layouts = db.getAllLayouts();
-        res.json({ success: true, layouts });
-    } catch (error) {
-        logger.error('Error getting layouts:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Save custom layout
-app.post('/api/vdoninja/layouts', apiLimiter, (req, res) => {
-    const { name, type, config } = req.body;
-
-    if (!name || !type || !config) {
-        return res.status(400).json({
-            success: false,
-            error: 'name, type, and config are required'
-        });
-    }
-
-    try {
-        const id = vdoninja.saveCustomLayout(name, type, config);
-        logger.info(`💾 Custom layout saved: ${name}`);
-        res.json({ success: true, id });
-    } catch (error) {
-        logger.error('Error saving layout:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Delete layout
-app.delete('/api/vdoninja/layouts/:id', apiLimiter, (req, res) => {
-    try {
-        db.deleteLayout(parseInt(req.params.id));
-        logger.info(`🗑️ Layout deleted: ${req.params.id}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error deleting layout:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get VDO.Ninja status
-app.get('/api/vdoninja/status', apiLimiter, (req, res) => {
-    try {
-        const status = vdoninja.getStatus();
-        res.json({ success: true, status });
-    } catch (error) {
-        logger.error('Error getting VDO.Ninja status:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get guest event history
-app.get('/api/vdoninja/guests/:slot/history', apiLimiter, (req, res) => {
-    const { slot } = req.params;
-    const { limit } = req.query;
-
-    try {
-        const history = vdoninja.getGuestEventHistory(
-            parseInt(slot),
-            limit ? parseInt(limit) : 100
-        );
-        res.json({ success: true, history });
-    } catch (error) {
-        logger.error('Error getting guest history:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+// Moved to VDO.Ninja Plugin (plugins/vdoninja)
 
 // ========== SOCKET.IO EVENTS ==========
 
@@ -2078,104 +1712,11 @@ io.on('connection', (socket) => {
         alerts.testAlert(data.type, data.testData);
     });
 
-    socket.on('test:tts', async (data) => {
-        await tts.speak(data.username || 'TestUser', data.text, data.voice);
-    });
+    // test:tts is now handled by TTS Plugin
 
-    // PATCH: VDO.Ninja Socket.IO Events
-    socket.on('vdoninja:create-room', async (data) => {
-        try {
-            const room = vdoninja.createRoom(data.roomName, data.maxGuests);
-            socket.emit('vdoninja:room-created', { success: true, room });
-        } catch (error) {
-            socket.emit('vdoninja:error', { error: error.message });
-            logger.error('VDO.Ninja create room error:', error);
-        }
-    });
+    // VDO.Ninja Socket.IO Events are now handled by VDO.Ninja Plugin
 
-    socket.on('vdoninja:load-room', async (data) => {
-        try {
-            const room = vdoninja.loadRoom(data.roomId);
-            socket.emit('vdoninja:room-loaded', { success: true, room });
-        } catch (error) {
-            socket.emit('vdoninja:error', { error: error.message });
-            logger.error('VDO.Ninja load room error:', error);
-        }
-    });
 
-    socket.on('vdoninja:close-room', () => {
-        try {
-            vdoninja.closeRoom();
-            socket.emit('vdoninja:room-closed', { success: true });
-        } catch (error) {
-            socket.emit('vdoninja:error', { error: error.message });
-            logger.error('VDO.Ninja close room error:', error);
-        }
-    });
-
-    socket.on('vdoninja:guest-joined', (data) => {
-        try {
-            vdoninja.addGuest(data.slot, data.streamId, data.guestName);
-        } catch (error) {
-            socket.emit('vdoninja:error', { error: error.message });
-            logger.error('VDO.Ninja guest joined error:', error);
-        }
-    });
-
-    socket.on('vdoninja:guest-left', (data) => {
-        try {
-            vdoninja.removeGuest(data.slot);
-        } catch (error) {
-            socket.emit('vdoninja:error', { error: error.message });
-            logger.error('VDO.Ninja guest left error:', error);
-        }
-    });
-
-    socket.on('vdoninja:control-guest', (data) => {
-        try {
-            const { slot, action, value } = data;
-
-            switch (action) {
-                case 'mute':
-                    vdoninja.muteGuest(slot, value?.audio !== false, value?.video || false);
-                    break;
-                case 'unmute':
-                    vdoninja.unmuteGuest(slot, value?.audio !== false, value?.video || false);
-                    break;
-                case 'volume':
-                    vdoninja.setGuestVolume(slot, value);
-                    break;
-                case 'kick':
-                    vdoninja.kickGuest(slot, value?.reason);
-                    break;
-                case 'solo':
-                    vdoninja.soloGuest(slot, value?.duration);
-                    break;
-            }
-        } catch (error) {
-            socket.emit('vdoninja:error', { error: error.message });
-            logger.error('VDO.Ninja control guest error:', error);
-        }
-    });
-
-    socket.on('vdoninja:change-layout', (data) => {
-        try {
-            vdoninja.changeLayout(data.layout, data.transition);
-        } catch (error) {
-            socket.emit('vdoninja:error', { error: error.message });
-            logger.error('VDO.Ninja change layout error:', error);
-        }
-    });
-
-    socket.on('vdoninja:get-status', () => {
-        try {
-            const status = vdoninja.getStatus();
-            socket.emit('vdoninja:status', { success: true, status });
-        } catch (error) {
-            socket.emit('vdoninja:error', { error: error.message });
-            logger.error('VDO.Ninja get status error:', error);
-        }
-    });
 
     // Minigame events from client
     socket.on('minigame:request', async (data) => {
@@ -2338,19 +1879,7 @@ tiktok.on('share', async (data) => {
 
 // Chat Event
 tiktok.on('chat', async (data) => {
-    // TTS für Chat (wenn aktiviert)
-    const ttsEnabled = db.getSetting('tts_chat_enabled') === 'true';
-    if (ttsEnabled) {
-        const minCoins = parseInt(db.getSetting('tts_min_coins')) || 0;
-
-        // Optional: Nur TTS für User mit mindestens X gespendeten Coins
-        // (würde zusätzliche Tracking-Logik erfordern)
-
-        // Gebe User-Metadata weiter (inkl. teamMemberLevel)
-        await tts.speak(data.username, data.message, null, {
-            teamMemberLevel: data.teamMemberLevel || 0
-        });
-    }
+    // TTS für Chat ist jetzt im TTS-Plugin (plugins/tts)
 
     // Leaderboard: Track chat message
     await leaderboard.trackChat(data.username);
@@ -2458,6 +1987,13 @@ server.listen(PORT, async () => {
         const loadedCount = pluginLoader.plugins.size;
         if (loadedCount > 0) {
             logger.info(`✅ ${loadedCount} plugin(s) loaded successfully`);
+
+            // Plugin-Injektionen in Flows
+            const vdoninjaPlugin = pluginLoader.getPluginInstance('vdoninja');
+            if (vdoninjaPlugin && vdoninjaPlugin.getManager) {
+                flows.vdoninjaManager = vdoninjaPlugin.getManager();
+                logger.info('✅ VDO.Ninja Manager injected into Flows');
+            }
         } else {
             logger.info('ℹ️  No plugins found in /plugins directory');
         }
@@ -2511,4 +2047,4 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, tiktok, tts, alerts, flows, soundboard, goals, obs, leaderboard, subscriptionTiers, vdoninja }; // PATCH: VDO.Ninja export
+module.exports = { app, server, io, db, tiktok, alerts, flows, soundboard, goals, obs, leaderboard, subscriptionTiers };

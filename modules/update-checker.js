@@ -76,6 +76,22 @@ class UpdateChecker {
                 ...updateInfo
             };
         } catch (error) {
+            // Detaillierter Error-Log nur bei echten Fehlern (nicht 404)
+            if (error.response && error.response.status === 404) {
+                // 404 = Repository not found oder keine Releases
+                this.logger.info(`No releases found for repository ${this.githubRepo}`);
+                return {
+                    success: false,
+                    error: 'No releases available yet',
+                    currentVersion: this.currentVersion,
+                    available: false
+                };
+            }
+
+            this.logger.warn(`Failed to check for updates: ${error.message}`);
+
+            if (error.response) {
+                this.logger.warn(`GitHub API Error: ${error.response.status} - ${error.response.statusText}`);
             this.logger.error(`Failed to check for updates: ${error.message}`);
 
             // Detaillierter Error-Log
@@ -86,6 +102,8 @@ class UpdateChecker {
             return {
                 success: false,
                 error: error.message,
+                currentVersion: this.currentVersion,
+                available: false
                 currentVersion: this.currentVersion
             };
         }

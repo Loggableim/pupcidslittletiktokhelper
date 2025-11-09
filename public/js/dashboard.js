@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFlows();
     setOverlayURL();
     loadActiveProfile();
+    initializeAudioInfoBanner();
 });
 
 // ========== TABS ==========
@@ -1421,4 +1422,24 @@ async function backupProfile(username) {
         console.error('Error creating backup:', error);
         alert('❌ Fehler beim Erstellen des Backups!');
     }
+}
+
+// ========== AUDIO INFO BANNER ==========
+function initializeAudioInfoBanner() {
+    const banner = document.querySelector('.bg-yellow-600');
+    const dismissBtn = document.getElementById('dismiss-audio-info');
+
+    if (!banner || !dismissBtn) return;
+
+    // Prüfe ob Banner bereits dismissed wurde
+    const isDismissed = localStorage.getItem('audio-info-dismissed');
+    if (isDismissed === 'true') {
+        banner.style.display = 'none';
+    }
+
+    // Dismiss-Button Event
+    dismissBtn.addEventListener('click', () => {
+        banner.style.display = 'none';
+        localStorage.setItem('audio-info-dismissed', 'true');
+    });
 }
