@@ -34,7 +34,8 @@
     "swagger-ui-express": "^5.0.1",
     "tiktok-live-connector": "^2.1.0",
     "winston": "^3.18.3",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "zip-lib": "^1.1.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
