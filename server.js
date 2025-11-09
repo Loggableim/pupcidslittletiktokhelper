@@ -1009,6 +1009,28 @@ server.listen(PORT, async () => {
     console.log('\n⚠️  WICHTIG: Öffne das Overlay und klicke auf "🔊 Audio aktivieren"!');
     console.log('   Browser Autoplay Policy erfordert User-Interaktion.\n');
 
+    // Gift-Katalog automatisch beim Start aktualisieren (falls Username konfiguriert)
+    const savedUsername = db.getSetting('last_connected_username');
+    if (savedUsername) {
+        console.log(`🎁 Aktualisiere Gift-Katalog für @${savedUsername}...`);
+        setTimeout(async () => {
+            try {
+                const result = await tiktok.updateGiftCatalog({
+                    preferConnected: true,
+                    username: savedUsername
+                });
+                if (result.ok) {
+                    console.log(`✅ ${result.message}`);
+                } else {
+                    console.log(`ℹ️  Gift-Katalog-Update: ${result.message}`);
+                }
+            } catch (error) {
+                console.warn('⚠️  Gift-Katalog konnte nicht automatisch aktualisiert werden:', error.message);
+                console.log('   Dies ist normal wenn der Stream nicht live ist.');
+            }
+        }, 3000);
+    }
+
     // Browser automatisch öffnen (async)
     try {
         const open = (await import('open')).default;
