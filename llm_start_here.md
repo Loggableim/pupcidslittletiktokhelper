@@ -1,0 +1,262 @@
+# LLM Start Here - Pup Cid's Little TikTok Helper
+
+**Entwickler-Leitfaden für KI-Assistenten**
+
+Diese Datei dient als zentraler Einstiegspunkt für LLMs, die an diesem Projekt arbeiten. Sie beschreibt die Architektur, Module, Endpoints, Events und wichtige Konventionen.
+
+---
+
+## 📋 Projektübersicht
+
+**Name:** Pup Cid's Little TikTok Helper
+**Stack:** Node.js + Express + Socket.io + SQLite + TikTok LIVE Connector
+**Version:** 1.0.0
+**Zweck:** Professionelles TikTok LIVE Streaming Tool mit Overlays, Alerts, TTS, Automation und Plugin-System
+
+---
+
+## 🏗️ Architektur
+
+### Core-Module (`modules/`)
+
+- **`database.js`**: SQLite-Datenbank (WAL Mode) für Settings, Gifts, Users, Goals
+- **`tiktok.js`**: TikTok LIVE Connector Integration (Events: gift, chat, follow, share, like)
+- **`tts.js`**: Text-to-Speech Engine (TikTok TTS, Google Cloud TTS)
+- **`alerts.js`**: Alert-Manager für Gift/Follow/Subscribe-Notifications
+- **`flows.js`**: Flow-Engine für Event-basierte Automation (Trigger → Actions)
+- **`soundboard.js`**: Soundboard-Manager (MyInstants API, Custom Sounds)
+- **`goals.js`**: Goal-Tracking (Follower, Likes, Gifts, Coins)
+- **`user-profiles.js`**: Multi-User-Profile-Management
+- **`vdoninja.js`**: VDO.Ninja Integration für Multi-Guest-Streaming
+- **`obs-websocket.js`**: OBS WebSocket Integration (v5)
+- **`subscription-tiers.js`**: Subscription Tier Management
+- **`leaderboard.js`**: Leaderboard-System
+- **`logger.js`**: Winston Logger (Console + Daily Rotating Files)
+- **`rate-limiter.js`**: Express Rate Limiting
+- **`i18n.js`**: Internationalisierung (DE/EN)
+- **`plugin-loader.js`**: Plugin-System Loader mit Lifecycle-Management
+- **`update-checker.js`**: GitHub Releases API für Auto-Updates
+
+### Plugin-System (`plugins/`)
+
+Alle Plugins folgen dieser Struktur:
+
+```
+plugins/<plugin-id>/
+├── plugin.json       # Metadata (id, name, version, entry)
+├── main.js           # Plugin-Klasse mit init() und destroy()
+├── ui.html           # Optional: Admin-UI
+└── assets/           # Optional: CSS, JS, Images
+```
+
+**Aktive Plugins:**
+
+- **`topboard/`**: Top Gifters, Streaks, Donors im Overlay
+- **`tts/`**: TTS-Engine als Plugin (75+ Stimmen, Queue, Blacklist)
+- **`vdoninja/`**: VDO.Ninja Manager als Plugin
+- **`multicam/`**: Multi-Cam Switcher (OBS Szenen via Gifts/Commands)
+
+**Plugin-API (`PluginAPI` class in `plugin-loader.js`):**
+
+- `registerRoute(method, path, handler)`: Express-Route registrieren
+- `registerSocket(event, callback)`: Socket.io-Event registrieren
+- `registerTikTokEvent(event, callback)`: TikTok-Event abonnieren
+- `getConfig(key)`: Plugin-Config aus DB laden
+- `setConfig(key, value)`: Plugin-Config in DB speichern
+- `emit(event, data)`: Socket.io-Event an alle Clients senden
+- `log(message, level)`: Logger-Wrapper
+- `getSocketIO()`: Socket.io-Instanz abrufen
+- `getDatabase()`: Datenbank-Instanz abrufen
+
+### Routes (`routes/`)
+
+- **`plugin-routes.js`**: Plugin-Manager-API (Upload, Enable, Disable, Delete, Reload)
+
+### Frontend (`public/`)
+
+- **`index.html`**: Dashboard (Bootstrap 5, jQuery)
+- **`overlay.html`**: OBS Browser Source Overlay
+- **`obs-dock.html`**: OBS Custom Browser Dock
+- **`js/plugin-manager.js`**: Plugin-Manager Frontend
+- **`js/update-checker.js`**: Update-Checker Frontend
+
+---
+
+## 🔌 Plugin: Multi-Cam Switcher (`plugins/multicam/`)
+
+**Zweck:** Wechselt OBS-Szenen oder Kamerawinkel via TikTok Gifts oder Chat-Commands.
+
+**Dateien:**
+- `plugin.json`: Metadata
+- `main.js`: OBS-WebSocket v5 Client, Chat-Command-Parser, Gift-Mapping
+- `ui.html`: Admin-Panel (Connection Status, Manual Controls, Hot Buttons)
+
+**Konfiguration:** `user_configs/<profile>/multicam.json`
+
+**Features:**
+- OBS-WebSocket v5 Integration (Reconnect mit Backoff)
+- Chat-Commands: `!cam 1`, `!cam next`, `!scene Studio`, `!angle next`
+- Gift-Mapping: rose→Cam1, lion→Cam5, rocket→Macro
+- Macros: Multi-Step-Aktionen mit Waits
+- Permissions: modsOnly, broadcasterOnly, allowedUsers
+- Cooldowns: Per-User, Global
+- Safety-Limits: maxRapidSwitchesPer30s
+- Fallback: Hotkeys via robotjs (opt-in, wenn OBS-WS down)
+
+**API-Endpoints:**
+- `GET /api/multicam/config`: Config abrufen
+- `POST /api/multicam/config`: Config speichern
+- `POST /api/multicam/connect`: OBS verbinden
+- `POST /api/multicam/disconnect`: OBS trennen
+- `POST /api/multicam/action`: Manuelle Aktionen (switchScene, cycleScene)
+- `GET /api/multicam/state`: Status (connected, currentScene, scenes[], sources[])
+
+**Socket.io Events (emittiert):**
+- `multicam_state`: Status-Update (connected, currentScene, queue)
+- `multicam_switch`: Szenen-Wechsel-Event (username, action, target)
+
+**TikTok Events (subscribed):**
+- `gift`: Gift-Mapping → OBS-Actions
+- `chat`: Chat-Command-Parsing → OBS-Actions
+
+---
+
+## 📡 Socket.io Events
+
+### Core Events
+
+- `tiktok:connected`: TikTok LIVE Connection etabliert
+- `tiktok:disconnected`: TikTok LIVE Connection beendet
+- `tiktok:gift`: Gift empfangen
+- `tiktok:chat`: Chat-Message empfangen
+- `tiktok:follow`: Follow empfangen
+- `tiktok:share`: Share empfangen
+- `tiktok:like`: Like empfangen
+
+### Plugin Events
+
+- **Topboard:**
+  - `topboard:update`: Top Gifters Update
+  - `topboard:reset`: Topboard Reset
+  - `topboard:config-update`: Config geändert
+
+- **TTS:**
+  - `tts:queue-update`: TTS-Queue Update
+  - `tts:speaking`: TTS spricht gerade
+  - `tts:finished`: TTS fertig
+
+- **Multi-Cam:**
+  - `multicam_state`: Status-Update
+  - `multicam_switch`: Szenen-Wechsel
+
+---
+
+## 🗄️ Datenbank-Tabellen
+
+**Settings:**
+- `key`: STRING (PRIMARY KEY)
+- `value`: TEXT (JSON)
+
+**Users:**
+- `username`: STRING (PRIMARY KEY)
+- `first_seen`: DATETIME
+- `last_seen`: DATETIME
+- `coins_sent`: INTEGER
+- `gifts_sent`: INTEGER
+- `messages_sent`: INTEGER
+- `is_follower`: BOOLEAN
+- `team_member_level`: INTEGER
+
+**Gifts:**
+- `username`: STRING
+- `gift_name`: STRING
+- `gift_id`: INTEGER
+- `coins`: INTEGER
+- `timestamp`: DATETIME
+
+**Goals:**
+- `id`: INTEGER (PRIMARY KEY)
+- `type`: STRING (followers, likes, coins, etc.)
+- `target`: INTEGER
+- `current`: INTEGER
+- `title`: STRING
+- `created_at`: DATETIME
+
+---
+
+## 📝 Wichtige Konventionen
+
+### Code-Style
+
+- **Keine Features entfernen**: Nur ergänzen/patchen
+- **Logger nutzen**: `logger.info()`, `logger.error()`, `logger.debug()`
+- **Error-Handling**: Try-Catch für alle Async-Operationen
+- **Config-Validierung**: Immer Defaults setzen, wenn Config fehlt
+- **Atomic Writes**: Config-Dateien mit `.tmp` schreiben, dann umbenennen
+
+### Plugin-Entwicklung
+
+1. **plugin.json** anlegen mit `id`, `name`, `version`, `entry`, `enabled`
+2. **main.js** mit Klasse die `init()` und `destroy()` implementiert
+3. **Konstruktor**: `constructor(api)` mit `this.api = api`
+4. **init()**: Routes/Sockets/Events registrieren, Config laden
+5. **destroy()**: Cleanup (Connections schließen, Timers löschen)
+6. **Config**: Via `api.getConfig('config')` / `api.setConfig('config', data)`
+
+### Changelog-Updates
+
+Nach jeder Änderung:
+
+1. **CHANGELOG.md** aktualisieren:
+   - Datum/Zeit im Format `YYYY-MM-DD HH:MM:SS`
+   - Dateien auflisten
+   - Kurzbeschreibung der Änderung
+
+2. **llm_start_here.md** synchronisieren:
+   - Neue Module/Plugins im Architekturüberblick
+   - Neue Endpoints/Events dokumentieren
+
+3. **llm_info Notiz** erstellen:
+   - Vorher-Zustand
+   - Nachher-Zustand
+   - Geänderte Dateien
+
+---
+
+## 🚀 Development Workflow
+
+1. **Verstehe Anforderung**: Requirements klar erfassen
+2. **Lies llm_start_here.md**: Diese Datei zuerst lesen!
+3. **Analysiere Codebase**: Bestehende Patterns verstehen
+4. **Implementiere**: Code schreiben, keine Features entfernen
+5. **Teste**: Funktionalität prüfen
+6. **Dokumentiere**: CHANGELOG.md, llm_start_here.md, llm_info
+7. **Commit**: Klare Commit-Message, pushe zu Feature-Branch
+
+---
+
+## 🔧 Tech Stack Details
+
+- **Node.js**: >=18.0.0 <24.0.0
+- **Express**: ^4.18.2
+- **Socket.io**: ^4.6.1
+- **better-sqlite3**: ^11.9.0
+- **tiktok-live-connector**: ^2.1.0
+- **obs-websocket-js**: ^5.0.6
+- **winston**: ^3.18.3
+- **multer**: ^2.0.2
+- **axios**: ^1.6.5
+
+---
+
+## 📚 Weitere Dokumentation
+
+- **CHANGELOG.md**: Detaillierte Versionshistorie
+- **README.md**: User-facing Documentation
+- **VDONINJA_USER_GUIDE.md**: VDO.Ninja Anleitung
+- **docs/**: API-Dokumentation, Guides
+
+---
+
+**Letzte Aktualisierung:** 2025-11-09
+**Maintainer:** Pup Cid
