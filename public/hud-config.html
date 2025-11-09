@@ -409,6 +409,8 @@
         let dragOffset = { x: 0, y: 0 };
         let resizeStartSize = { width: 0, height: 0 };
         let resizeStartPos = { x: 0, y: 0 };
+        let currentDragElement = null;
+        let dragOffset = { x: 0, y: 0 };
 
         // Element definitions with default positions
         const elementDefinitions = {
@@ -549,6 +551,15 @@
                     <div class="element-label" style="color: ${def.color}">${def.name}</div>
                     <div class="element-position">${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit} | ${Math.round(width)}x${Math.round(height)}px</div>
                     ${element.enabled ? '<div class="resize-handle" style="position: absolute; bottom: 0; right: 0; width: 15px; height: 15px; background: rgba(76,175,80,0.6); cursor: nwse-resize; border-radius: 0 0 8px 0;"></div>' : ''}
+                const pos = calculatePosition(element, def);
+                el.style.left = (pos.x * scale) + 'px';
+                el.style.top = (pos.y * scale) + 'px';
+                el.style.width = (def.defaultWidth * scale) + 'px';
+                el.style.height = (def.defaultHeight * scale) + 'px';
+
+                el.innerHTML = `
+                    <div class="element-label" style="color: ${def.color}">${def.name}</div>
+                    <div class="element-position">${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit}</div>
                 `;
 
                 if (element.enabled) {
@@ -651,6 +662,8 @@
                 return;
             }
 
+        // Global mouse handlers
+        document.addEventListener('mousemove', (e) => {
             if (!isDragging || !currentDragElement) return;
 
             const overlay = document.getElementById('preview-overlay');
@@ -733,6 +746,19 @@
                                    style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: white; font-size: 0.95em;">
                         </div>
                     </div>
+                const item = document.createElement('div');
+                item.className = 'element-item';
+                item.style.borderLeft = `4px solid ${def.color}`;
+
+                item.innerHTML = `
+                    <div class="element-info">
+                        <div class="element-name">${def.name}</div>
+                        <div class="element-coords">Position: ${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit} | Anchor: ${element.anchor}</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${element.enabled ? 'checked' : ''} onchange="toggleElement('${element.element_id}', this.checked)">
+                        <span class="slider"></span>
+                    </label>
                 `;
 
                 list.appendChild(item);
@@ -797,6 +823,10 @@
                 { element_id: 'event-feed', enabled: true, position_x: 30, position_y: 120, position_unit: 'px', width: 400, height: 400, anchor: 'bottom-left' },
                 { element_id: 'chat', enabled: true, position_x: 30, position_y: 30, position_unit: 'px', width: 450, height: 600, anchor: 'bottom-right' },
                 { element_id: 'goal', enabled: true, position_x: 50, position_y: 30, position_unit: '%', width: 500, height: 80, anchor: 'top-center' }
+                { element_id: 'alert', enabled: true, position_x: 50, position_y: 50, position_unit: '%', anchor: 'center' },
+                { element_id: 'event-feed', enabled: true, position_x: 30, position_y: 120, position_unit: 'px', anchor: 'bottom-left' },
+                { element_id: 'chat', enabled: true, position_x: 30, position_y: 30, position_unit: 'px', anchor: 'bottom-right' },
+                { element_id: 'goal', enabled: true, position_x: 50, position_y: 30, position_unit: '%', anchor: 'top-center' }
             ];
 
             renderElements();

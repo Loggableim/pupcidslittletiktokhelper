@@ -239,8 +239,10 @@ class SoundboardManager extends EventEmitter {
 
     /**
      * Search MyInstants for sounds using web scraping
+     * Search MyInstants for sounds using the official API
+     * API: https://github.com/abdipr/myinstants-api
      */
-    async searchMyInstants(query, page = 1) {
+    async searchMyInstants(query, page = 1, limit = 20) {
         try {
             const response = await axios.get('https://www.myinstants.com/en/search/', {
                 params: {
@@ -270,6 +272,29 @@ class SoundboardManager extends EventEmitter {
                     });
                 }
             });
+            // Use the official MyInstants API
+            const response = await axios.get('https://myinstants-api.vercel.app/search', {
+                params: {
+                    q: query,
+                    page: page,
+                    limit: limit
+                },
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'TikTok-Soundboard/1.0'
+                }
+            });
+
+            if (response.data && response.data.data) {
+                return response.data.data.map(instant => ({
+                    id: instant.id || null,
+                    name: instant.title || instant.name || 'Unknown',
+                    url: instant.mp3 || instant.sound,
+                    description: instant.description || '',
+                    tags: instant.tags || [],
+                    color: instant.color || null
+                }));
+            }
 
             return results.slice(0, 20); // Limit to 20 results
         } catch (error) {
@@ -354,6 +379,63 @@ class SoundboardManager extends EventEmitter {
             return results;
         } catch (error) {
             console.error('MyInstants trending error:', error.message);
+     * Get trending sounds from MyInstants
+     */
+    async getTrendingSounds(limit = 20) {
+        try {
+            const response = await axios.get('https://myinstants-api.vercel.app/trending', {
+                params: { limit },
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'TikTok-Soundboard/1.0'
+                }
+            });
+
+            if (response.data && response.data.data) {
+                return response.data.data.map(instant => ({
+                    id: instant.id || null,
+                    name: instant.title || instant.name || 'Unknown',
+                    url: instant.mp3 || instant.sound,
+                    description: instant.description || '',
+                    tags: instant.tags || [],
+                    color: instant.color || null
+                }));
+            }
+
+            return [];
+        } catch (error) {
+            console.error('MyInstants trending error:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Get random sounds from MyInstants
+     */
+    async getRandomSounds(limit = 20) {
+        try {
+            const response = await axios.get('https://myinstants-api.vercel.app/random', {
+                params: { limit },
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'TikTok-Soundboard/1.0'
+                }
+            });
+
+            if (response.data && response.data.data) {
+                return response.data.data.map(instant => ({
+                    id: instant.id || null,
+                    name: instant.title || instant.name || 'Unknown',
+                    url: instant.mp3 || instant.sound,
+                    description: instant.description || '',
+                    tags: instant.tags || [],
+                    color: instant.color || null
+                }));
+            }
+
+            return [];
+        } catch (error) {
+            console.error('MyInstants random error:', error.message);
             return [];
         }
     }

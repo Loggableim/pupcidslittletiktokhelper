@@ -98,6 +98,7 @@ class DatabaseManager {
         `);
 
         // HUD-Element-Konfigurationen (Position, Größe und Sichtbarkeit)
+        // HUD-Element-Konfigurationen (Position und Sichtbarkeit)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS hud_elements (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,6 +170,15 @@ class DatabaseManager {
         const stmt = this.db.prepare(`
             INSERT OR IGNORE INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, width, height, anchor)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            { element_id: 'alert', enabled: 1, position_x: 50, position_y: 50, position_unit: '%', anchor: 'center' },
+            { element_id: 'event-feed', enabled: 1, position_x: 30, position_y: 120, position_unit: 'px', anchor: 'bottom-left' },
+            { element_id: 'chat', enabled: 1, position_x: 30, position_y: 30, position_unit: 'px', anchor: 'bottom-right' },
+            { element_id: 'goal', enabled: 1, position_x: 50, position_y: 30, position_unit: '%', anchor: 'top-center' }
+        ];
+
+        const stmt = this.db.prepare(`
+            INSERT OR IGNORE INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, anchor)
+            VALUES (?, ?, ?, ?, ?, ?)
         `);
 
         for (const element of defaultElements) {
@@ -462,6 +472,8 @@ class DatabaseManager {
         const stmt = this.db.prepare(`
             INSERT INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, width, height, anchor, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, anchor, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(element_id) DO UPDATE SET
                 enabled = excluded.enabled,
                 position_x = excluded.position_x,
