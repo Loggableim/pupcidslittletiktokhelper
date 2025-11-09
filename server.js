@@ -11,7 +11,6 @@ const TikTokConnector = require('./modules/tiktok');
 const TTSEngine = require('./modules/tts');
 const AlertManager = require('./modules/alerts');
 const FlowEngine = require('./modules/flows');
-const SoundboardManager = require('./modules/soundboard');
 const { GoalManager } = require('./modules/goals');
 const UserProfileManager = require('./modules/user-profiles');
 const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integration
@@ -152,7 +151,6 @@ logger.info(`✅ Database initialized: ${dbPath}`);
 const tiktok = new TikTokConnector(io, db, logger);
 const alerts = new AlertManager(io, db, logger);
 const flows = new FlowEngine(db, alerts, null, logger); // TTS wird später via Plugin injiziert
-const soundboard = new SoundboardManager(db, io, logger);
 const goals = new GoalManager(db, io, logger);
 
 // New Modules
@@ -820,150 +818,7 @@ app.post('/api/alerts/test', apiLimiter, (req, res) => {
 // Moved to TTS Plugin (plugins/tts)
 
 // ========== SOUNDBOARD ROUTES ==========
-
-app.get('/api/soundboard/gifts', apiLimiter, (req, res) => {
-    try {
-        const gifts = soundboard.getAllGiftSounds();
-        res.json(gifts);
-    } catch (error) {
-        logger.error('Error getting gift sounds:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/soundboard/gifts', apiLimiter, (req, res) => {
-    const { giftId, label, mp3Url, volume, animationUrl, animationType } = req.body;
-
-    if (!giftId || !label || !mp3Url) {
-        return res.status(400).json({ success: false, error: 'giftId, label and mp3Url are required' });
-    }
-
-    try {
-        const id = soundboard.setGiftSound(
-            giftId,
-            label,
-            mp3Url,
-            volume || 1.0,
-            animationUrl || null,
-            animationType || 'none'
-        );
-        logger.info(`🎵 Gift sound set: ${label} (ID: ${giftId})`);
-        res.json({ success: true, id });
-    } catch (error) {
-        logger.error('Error setting gift sound:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.delete('/api/soundboard/gifts/:giftId', apiLimiter, (req, res) => {
-    try {
-        soundboard.deleteGiftSound(req.params.giftId);
-        logger.info(`🗑️ Deleted gift sound: ${req.params.giftId}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error deleting gift sound:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/soundboard/test', apiLimiter, async (req, res) => {
-    const { url, volume } = req.body;
-
-    if (!url) {
-        return res.status(400).json({ success: false, error: 'url is required' });
-    }
-
-    try {
-        await soundboard.testSound(url, volume || 1.0);
-        logger.info(`🔊 Testing sound: ${url}`);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error testing sound:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/soundboard/queue', apiLimiter, (req, res) => {
-    try {
-        const status = soundboard.getQueueStatus();
-        res.json(status);
-    } catch (error) {
-        logger.error('Error getting queue status:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/soundboard/queue/clear', apiLimiter, (req, res) => {
-    try {
-        soundboard.clearQueue();
-        logger.info('🧹 Soundboard queue cleared');
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error clearing queue:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/myinstants/search', apiLimiter, async (req, res) => {
-    const { query, page, limit } = req.query;
-
-    if (!query) {
-        return res.status(400).json({ success: false, error: 'query is required' });
-    }
-
-    try {
-        const results = await soundboard.searchMyInstants(query, page || 1, limit || 20);
-        res.json({ success: true, results });
-    } catch (error) {
-        logger.error('Error searching MyInstants:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/myinstants/trending', apiLimiter, async (req, res) => {
-    const { limit } = req.query;
-
-    try {
-        const results = await soundboard.getTrendingSounds(limit || 20);
-        res.json({ success: true, results });
-    } catch (error) {
-        logger.error('Error getting trending sounds:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/myinstants/random', apiLimiter, async (req, res) => {
-    const { limit } = req.query;
-
-    try {
-        const results = await soundboard.getRandomSounds(limit || 20);
-        res.json({ success: true, results });
-    } catch (error) {
-        logger.error('Error getting random sounds:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/myinstants/resolve', apiLimiter, async (req, res) => {
-    const { url } = req.query;
-
-    if (!url) {
-        return res.status(400).json({ success: false, error: 'url is required' });
-    }
-
-    // Wenn es bereits eine direkte MP3-URL ist, direkt zurückgeben
-    if (url.match(/\.mp3($|\?)/i)) {
-        return res.json({ success: true, mp3: url });
-    }
-
-    try {
-        const mp3Url = await soundboard.resolveMyInstantsUrl(url);
-        return res.json({ success: true, mp3: mp3Url });
-    } catch (error) {
-        logger.error('Error resolving MyInstants URL:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+// Moved to Soundboard Plugin (plugins/soundboard)
 
 // ========== GIFT CATALOG ROUTES ==========
 
@@ -1577,12 +1432,6 @@ tiktok.on('gift', async (data) => {
         alerts.addAlert('gift', data);
     }
 
-    // Soundboard: Gift-Sound abspielen
-    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-    if (soundboardEnabled) {
-        await soundboard.playGiftSound(data);
-    }
-
     // Goals: Coins erhöhen (Event-Data enthält bereits korrekte Coins-Berechnung)
     // Der TikTok-Connector berechnet: diamondCount * 2 * repeatCount
     // und zählt nur bei Streak-Ende (bei streakable Gifts)
@@ -1599,12 +1448,6 @@ tiktok.on('gift', async (data) => {
 tiktok.on('follow', async (data) => {
     alerts.addAlert('follow', data);
 
-    // Soundboard: Follow-Sound abspielen
-    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-    if (soundboardEnabled) {
-        await soundboard.playFollowSound();
-    }
-
     // Goals: Follower erhöhen
     await goals.incrementGoal('followers', 1);
 
@@ -1617,12 +1460,6 @@ tiktok.on('follow', async (data) => {
 // Subscribe Event
 tiktok.on('subscribe', async (data) => {
     alerts.addAlert('subscribe', data);
-
-    // Soundboard: Subscribe-Sound abspielen
-    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-    if (soundboardEnabled) {
-        await soundboard.playSubscribeSound();
-    }
 
     // Goals: Subscriber erhöhen
     await goals.incrementGoal('subs', 1);
@@ -1639,12 +1476,6 @@ tiktok.on('subscribe', async (data) => {
 // Share Event
 tiktok.on('share', async (data) => {
     alerts.addAlert('share', data);
-
-    // Soundboard: Share-Sound abspielen
-    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-    if (soundboardEnabled) {
-        await soundboard.playShareSound();
-    }
 
     // Leaderboard: Track share
     await leaderboard.trackShare(data.username);
@@ -1665,12 +1496,6 @@ tiktok.on('chat', async (data) => {
 
 // Like Event
 tiktok.on('like', async (data) => {
-    // Soundboard: Like-Threshold prüfen
-    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-    if (soundboardEnabled) {
-        await soundboard.handleLikeEvent(data.likeCount || 1);
-    }
-
     // Goals: Total Likes setzen (Event-Data enthält bereits robustes totalLikes)
     // Der TikTok-Connector extrahiert totalLikes aus verschiedenen Properties
     if (data.totalLikes !== undefined && data.totalLikes !== null) {
@@ -1699,7 +1524,6 @@ server.listen(PORT, async () => {
     logger.info('='.repeat(50));
     logger.info(`\n✅ Server running on http://localhost:${PORT}`);
     logger.info(`\n📊 Dashboard:     http://localhost:${PORT}/dashboard.html`);
-    logger.info(`🎵 Soundboard:    http://localhost:${PORT}/soundboard.html`);
     logger.info(`🖼️  Overlay:      http://localhost:${PORT}/overlay.html`);
     logger.info(`📚 API Docs:      http://localhost:${PORT}/api-docs`);
     logger.info('\n' + '='.repeat(50));
@@ -1819,4 +1643,4 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, tiktok, alerts, flows, soundboard, goals, obs, leaderboard, subscriptionTiers };
+module.exports = { app, server, io, db, tiktok, alerts, flows, goals, obs, leaderboard, subscriptionTiers };
