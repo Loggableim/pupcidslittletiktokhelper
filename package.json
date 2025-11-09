@@ -1,0 +1,31 @@
+{
+  "name": "tiktok-stream-tool",
+  "version": "1.0.0",
+  "description": "Professional TikTok LIVE streaming tool with overlays, alerts, TTS and automation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "tiktok",
+    "streaming",
+    "obs",
+    "overlay",
+    "alerts",
+    "tts"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "better-sqlite3": "^9.2.2",
+    "tiktok-live-connector": "^1.1.8",
+    "axios": "^1.6.5",
+    "open": "^10.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
