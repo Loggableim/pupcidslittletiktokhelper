@@ -205,7 +205,6 @@ logger.info('🔌 Plugin Loader initialized');
 const updateManager = new UpdateManager(logger);
 logger.info('🔄 Update Manager initialized');
 
-logger.info('✅ All core modules initialized');
 logger.info('✅ All modules initialized');
 
 // ========== SWAGGER DOCUMENTATION ==========
