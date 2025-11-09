@@ -1,0 +1,12 @@
+{
+  "id": "topboard",
+  "name": "Topboard HUD",
+  "description": "Zeigt Top Gifts, Streaks und Donors im Overlay an.",
+  "version": "1.0.0",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": true,
+  "type": "overlay",
+  "dependencies": ["express", "socket.io"],
+  "permissions": ["tiktok-events", "database"]
+}

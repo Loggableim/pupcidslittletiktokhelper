@@ -119,6 +119,27 @@
             <div id="connection-info" class="mt-4 text-gray-400 text-sm"></div>
         </div>
 
+        <!-- Update Notification Banner -->
+        <div id="update-banner" class="mb-6 bg-blue-600 rounded-lg p-4 hidden">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🎉</span>
+                    <div>
+                        <div class="font-semibold">Neue Version verfügbar!</div>
+                        <div class="text-sm opacity-90" id="update-version-info"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="update-download-btn" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100 font-semibold">
+                        📥 Update installieren
+                    </button>
+                    <button id="update-dismiss-btn" class="bg-blue-700 px-4 py-2 rounded hover:bg-blue-800">
+                        Später
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Live Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-gray-800 rounded-lg p-6">
@@ -149,6 +170,7 @@
                 <button class="tab-btn" data-tab="soundboard">🔊 Soundboard</button>
                 <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
                 <button class="tab-btn" data-tab="multiGuest">👥 Multi-Guest</button>
+                <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
         </div>
@@ -834,6 +856,39 @@
             </div>
         </div>
 
+        <!-- Tab: Plugins -->
+        <div id="tab-plugins" class="tab-content">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">🔌 Plugin Manager</h2>
+                    <div class="flex gap-2">
+                        <button id="reload-plugins-btn" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                            🔄 Reload All
+                        </button>
+                        <button id="upload-plugin-btn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 text-sm">
+                            ⬆️ Upload Plugin (ZIP)
+                        </button>
+                    </div>
+                </div>
+
+                <input type="file" id="plugin-file-input" accept=".zip" style="display: none">
+
+                <div class="mb-4 p-4 bg-gray-700 rounded">
+                    <p class="text-sm text-gray-300">
+                        <strong>ℹ️ Info:</strong> Plugins erweitern die Funktionalität des Tools.
+                        Du kannst ZIP-Dateien hochladen, die ein <code>plugin.json</code> und eine <code>main.js</code> enthalten.
+                    </p>
+                </div>
+
+                <!-- Plugin-Liste -->
+                <div id="plugins-container" class="space-y-3">
+                    <div class="text-center text-gray-400 py-8">
+                        <p>Lade Plugins...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Tab: Settings -->
         <div id="tab-settings" class="tab-content">
             <div class="bg-gray-800 rounded-lg p-6">
@@ -925,5 +980,9 @@
     <script src="/js/dashboard.js"></script>
     <!-- PATCH: VDO.Ninja Dashboard Client -->
     <script src="/js/vdoninja-dashboard.js"></script>
+    <!-- Plugin Manager -->
+    <script src="/js/plugin-manager.js"></script>
+    <!-- Update Checker -->
+    <script src="/js/update-checker.js"></script>
 </body>
 </html>

@@ -24,6 +24,9 @@ const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
 const Leaderboard = require('./modules/leaderboard');
 const { setupSwagger } = require('./modules/swagger-config');
+const PluginLoader = require('./modules/plugin-loader');
+const { setupPluginRoutes } = require('./routes/plugin-routes');
+const UpdateChecker = require('./modules/update-checker');
 
 // ========== EXPRESS APP ==========
 const app = express();
@@ -194,11 +197,78 @@ const vdoninja = new VDONinjaManager(db, io, logger);
 flows.vdoninjaManager = vdoninja; // Inject VDONinja Manager into Flows
 logger.info('✅ VDO.Ninja Manager initialized and injected into Flows');
 
+// Plugin-System initialisieren
+const pluginsDir = path.join(__dirname, 'plugins');
+const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
+logger.info('🔌 Plugin Loader initialized');
+
+// Update-Checker initialisieren
+const updateChecker = new UpdateChecker(logger);
+logger.info('🔄 Update Checker initialized');
+
 logger.info('✅ All modules initialized');
 
 // ========== SWAGGER DOCUMENTATION ==========
 setupSwagger(app);
 logger.info('📚 Swagger API Documentation available at /api-docs');
+
+// ========== PLUGIN ROUTES ==========
+setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger);
+
+// ========== UPDATE ROUTES ==========
+
+/**
+ * GET /api/update/check - Prüft auf neue Versionen
+ */
+app.get('/api/update/check', apiLimiter, async (req, res) => {
+    try {
+        const updateInfo = await updateChecker.checkForUpdates();
+        res.json(updateInfo);
+    } catch (error) {
+        logger.error(`Update check failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/update/current - Gibt die aktuelle Version zurück
+ */
+app.get('/api/update/current', apiLimiter, (req, res) => {
+    res.json({
+        success: true,
+        version: updateChecker.currentVersion
+    });
+});
+
+/**
+ * POST /api/update/download - Lädt das Update herunter (git pull)
+ */
+app.post('/api/update/download', authLimiter, async (req, res) => {
+    try {
+        const result = await updateChecker.downloadUpdate();
+        res.json(result);
+    } catch (error) {
+        logger.error(`Update download failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/update/instructions - Gibt Anleitung für manuelles Update
+ */
+app.get('/api/update/instructions', apiLimiter, (req, res) => {
+    const instructions = updateChecker.getManualUpdateInstructions();
+    res.json({
+        success: true,
+        instructions
+    });
+});
 
 // ========== HELPER FUNCTIONS ==========
 
@@ -1969,6 +2039,9 @@ app.get('/api/vdoninja/guests/:slot/history', apiLimiter, (req, res) => {
 io.on('connection', (socket) => {
     logger.info(`🔌 Client connected: ${socket.id}`);
 
+    // Plugin Socket Events registrieren
+    pluginLoader.registerPluginSocketEvents(socket);
+
     // Goal Room Join
     socket.on('goal:join', (key) => {
         socket.join(`goal_${key}`);
@@ -2373,6 +2446,27 @@ server.listen(PORT, async () => {
             }
         }, 3000);
     }
+
+    // Plugins laden
+    logger.info('🔌 Loading plugins...');
+    try {
+        await pluginLoader.loadAllPlugins();
+
+        // TikTok-Events für Plugins registrieren
+        pluginLoader.registerPluginTikTokEvents(tiktok);
+
+        const loadedCount = pluginLoader.plugins.size;
+        if (loadedCount > 0) {
+            logger.info(`✅ ${loadedCount} plugin(s) loaded successfully`);
+        } else {
+            logger.info('ℹ️  No plugins found in /plugins directory');
+        }
+    } catch (error) {
+        logger.error(`⚠️  Error loading plugins: ${error.message}`);
+    }
+
+    // Auto-Update-Check starten (alle 24 Stunden)
+    updateChecker.startAutoCheck(24);
 
     // Browser automatisch öffnen (async)
     try {
