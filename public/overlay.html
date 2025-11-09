@@ -311,9 +311,53 @@
                 transform: translateY(-20px);
             }
         }
+
+        /* ========== PATCH: VDO.NINJA MULTI-GUEST CONTAINER ========== */
+        #vdoninja-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Behind all other overlay elements */
+            display: none; /* Hidden by default */
+        }
+
+        #vdoninja-container.active {
+            display: block;
+        }
+
+        #vdoninja-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+        }
+
+        /* Guest Layout Overlays (for custom positioning) */
+        .vdo-guest-frame {
+            position: absolute;
+            border: none;
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+
+        /* Transition effects */
+        .vdo-transition-fade {
+            transition: opacity 0.5s ease;
+        }
+
+        .vdo-transition-slide {
+            transition: transform 0.5s ease;
+        }
     </style>
 </head>
 <body>
+
+    <!-- PATCH: VDO.Ninja Multi-Guest Container -->
+    <div id="vdoninja-container">
+        <iframe id="vdoninja-iframe" src="" allow="camera; microphone; display-capture; autoplay; picture-in-picture" allowfullscreen></iframe>
+    </div>
 
     <!-- Alert Display -->
     <div id="alert-container">
@@ -907,6 +951,284 @@
             goalTarget = target;
             document.getElementById('goal-target').textContent = target;
         }
+
+        // ========== PATCH: VDO.NINJA MULTI-GUEST OVERLAY CONTROL ==========
+
+        const vdoOverlay = {
+            container: null,
+            iframe: null,
+            isActive: false,
+            currentLayout: 'Grid 2x2',
+            guests: new Map()
+        };
+
+        // Initialize VDO.Ninja overlay
+        function initVDONinja() {
+            vdoOverlay.container = document.getElementById('vdoninja-container');
+            vdoOverlay.iframe = document.getElementById('vdoninja-iframe');
+
+            console.log('🎥 VDO.Ninja Overlay initialized');
+        }
+
+        // Call init on load
+        initVDONinja();
+
+        // ========== SOCKET.IO LISTENERS FOR VDO.NINJA ==========
+
+        socket.on('vdoninja:room-created', (data) => {
+            console.log('🏠 VDO.Ninja room created:', data);
+            loadVDONinjaRoom(data.roomUrl);
+        });
+
+        socket.on('vdoninja:room-closed', () => {
+            console.log('🔒 VDO.Ninja room closed');
+            closeVDONinjaRoom();
+        });
+
+        socket.on('vdoninja:guest-joined', (data) => {
+            console.log('👤 Guest joined:', data);
+            vdoOverlay.guests.set(data.slot, data);
+        });
+
+        socket.on('vdoninja:guest-left', (data) => {
+            console.log('👋 Guest left:', data);
+            vdoOverlay.guests.delete(data.slot);
+        });
+
+        socket.on('vdoninja:control-guest', (data) => {
+            console.log('🎛️ Controlling guest:', data);
+            controlVDOGuest(data);
+        });
+
+        socket.on('vdoninja:solo-guest', (data) => {
+            console.log('⭐ Solo guest:', data);
+            soloVDOGuest(data);
+        });
+
+        socket.on('vdoninja:layout-changed', (data) => {
+            console.log('🎨 Layout changed:', data);
+            changeVDOLayout(data);
+        });
+
+        socket.on('vdoninja:all-guests-muted', () => {
+            console.log('🔇 All guests muted');
+            // Layout will be handled by individual control-guest events
+        });
+
+        socket.on('vdoninja:all-guests-unmuted', () => {
+            console.log('🔊 All guests unmuted');
+            // Layout will be handled by individual control-guest events
+        });
+
+        // ========== VDO.NINJA ROOM CONTROL ==========
+
+        function loadVDONinjaRoom(directorUrl) {
+            if (!directorUrl) {
+                console.error('❌ No director URL provided');
+                return;
+            }
+
+            console.log('📥 Loading VDO.Ninja room:', directorUrl);
+
+            vdoOverlay.iframe.src = directorUrl;
+            vdoOverlay.container.classList.add('active');
+            vdoOverlay.isActive = true;
+
+            console.log('✅ VDO.Ninja room loaded');
+        }
+
+        function closeVDONinjaRoom() {
+            console.log('🔒 Closing VDO.Ninja room');
+
+            vdoOverlay.iframe.src = '';
+            vdoOverlay.container.classList.remove('active');
+            vdoOverlay.isActive = false;
+            vdoOverlay.guests.clear();
+
+            console.log('✅ VDO.Ninja room closed');
+        }
+
+        // ========== VDO.NINJA GUEST CONTROL VIA POSTMESSAGE ==========
+
+        /**
+         * Control guest via VDO.Ninja postMessage API
+         * Documentation: https://github.com/steveseguin/vdo.ninja/wiki/Advanced-Settings#api
+         */
+        function controlVDOGuest(data) {
+            if (!vdoOverlay.isActive) {
+                console.warn('⚠️ VDO.Ninja not active, cannot control guest');
+                return;
+            }
+
+            const { slot, action, streamId } = data;
+
+            // Map actions to VDO.Ninja API commands
+            switch (action) {
+                case 'mute':
+                    if (data.muteAudio) {
+                        sendVDOCommand({
+                            action: 'muteGuest',
+                            value: streamId || slot
+                        });
+                    }
+                    if (data.muteVideo) {
+                        sendVDOCommand({
+                            action: 'hideGuest',
+                            value: streamId || slot
+                        });
+                    }
+                    break;
+
+                case 'unmute':
+                    if (data.unmuteAudio) {
+                        sendVDOCommand({
+                            action: 'unmuteGuest',
+                            value: streamId || slot
+                        });
+                    }
+                    if (data.unmuteVideo) {
+                        sendVDOCommand({
+                            action: 'showGuest',
+                            value: streamId || slot
+                        });
+                    }
+                    break;
+
+                case 'volume':
+                    sendVDOCommand({
+                        action: 'volume',
+                        value: data.volume,
+                        target: streamId || slot
+                    });
+                    break;
+
+                case 'kick':
+                    sendVDOCommand({
+                        action: 'hangup',
+                        target: streamId || slot
+                    });
+                    break;
+
+                default:
+                    console.warn(`Unknown VDO.Ninja action: ${action}`);
+            }
+        }
+
+        function soloVDOGuest(data) {
+            const { slot, duration } = data;
+
+            if (!vdoOverlay.isActive) {
+                console.warn('⚠️ VDO.Ninja not active, cannot solo guest');
+                return;
+            }
+
+            // Solo mode: Hide all guests except the soloed one
+            vdoOverlay.guests.forEach((guest, guestSlot) => {
+                if (guestSlot !== slot) {
+                    sendVDOCommand({
+                        action: 'hideGuest',
+                        value: guest.streamId || guestSlot
+                    });
+                }
+            });
+
+            // If duration is set, restore after timeout
+            if (duration > 0) {
+                setTimeout(() => {
+                    // Restore all guests
+                    vdoOverlay.guests.forEach((guest, guestSlot) => {
+                        if (guest.videoEnabled) {
+                            sendVDOCommand({
+                                action: 'showGuest',
+                                value: guest.streamId || guestSlot
+                            });
+                        }
+                    });
+                }, duration);
+            }
+        }
+
+        function changeVDOLayout(data) {
+            const { layout, transition } = data;
+            vdoOverlay.currentLayout = layout;
+
+            // VDO.Ninja uses CSS Grid layouts via postMessage
+            // We can send custom layout commands if needed
+            console.log(`🎨 Layout changed to: ${layout} (transition: ${transition})`);
+
+            // Apply transition class
+            if (transition === 'fade') {
+                vdoOverlay.container.classList.add('vdo-transition-fade');
+            } else if (transition === 'slide') {
+                vdoOverlay.container.classList.add('vdo-transition-slide');
+            }
+
+            // Remove transition class after animation
+            setTimeout(() => {
+                vdoOverlay.container.classList.remove('vdo-transition-fade', 'vdo-transition-slide');
+            }, 500);
+
+            // Send layout command to VDO.Ninja
+            // Note: VDO.Ninja layouts are typically controlled via URL parameters
+            // For custom layouts, you would need to implement scene switching
+            sendVDOCommand({
+                action: 'changeScene',
+                value: layout
+            });
+        }
+
+        /**
+         * Send postMessage command to VDO.Ninja iframe
+         * @param {Object} command - Command object
+         */
+        function sendVDOCommand(command) {
+            if (!vdoOverlay.iframe || !vdoOverlay.iframe.contentWindow) {
+                console.error('❌ VDO.Ninja iframe not ready');
+                return;
+            }
+
+            try {
+                vdoOverlay.iframe.contentWindow.postMessage(command, '*');
+                console.log('📤 Sent VDO command:', command);
+            } catch (error) {
+                console.error('❌ Error sending VDO command:', error);
+            }
+        }
+
+        // Listen for messages from VDO.Ninja iframe
+        window.addEventListener('message', (event) => {
+            // Only process messages from VDO.Ninja
+            if (event.origin !== 'https://vdo.ninja') {
+                return;
+            }
+
+            console.log('📥 Received message from VDO.Ninja:', event.data);
+
+            // Handle VDO.Ninja events (e.g., guest joined, guest left)
+            if (event.data.action) {
+                handleVDOEvent(event.data);
+            }
+        });
+
+        function handleVDOEvent(data) {
+            // Handle events from VDO.Ninja iframe
+            switch (data.action) {
+                case 'connected':
+                    console.log('✅ VDO.Ninja connected');
+                    break;
+                case 'streamAdded':
+                    console.log('👤 Stream added:', data);
+                    break;
+                case 'streamRemoved':
+                    console.log('👋 Stream removed:', data);
+                    break;
+                default:
+                    console.log('VDO.Ninja event:', data);
+            }
+        }
+
+        console.log('✅ VDO.Ninja Overlay Control loaded');
+
     </script>
 
 </body>

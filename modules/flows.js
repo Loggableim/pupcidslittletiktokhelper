@@ -311,6 +311,87 @@ class FlowEngine {
                     break;
                 }
 
+                // ========== PATCH: VDO.NINJA ACTIONS ==========
+                case 'vdoninja_mute_guest': {
+                    if (!this.vdoninjaManager) {
+                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        break;
+                    }
+                    const slot = parseInt(action.guest_slot || action.target);
+                    const muteAudio = action.mute_audio !== false;
+                    const muteVideo = action.mute_video || false;
+
+                    await this.vdoninjaManager.muteGuest(slot, muteAudio, muteVideo);
+                    console.log(`🔇 VDO.Ninja: Guest ${slot} muted (Flow) - audio: ${muteAudio}, video: ${muteVideo}`);
+                    break;
+                }
+
+                case 'vdoninja_unmute_guest': {
+                    if (!this.vdoninjaManager) {
+                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        break;
+                    }
+                    const slot = parseInt(action.guest_slot || action.target);
+                    const unmuteAudio = action.unmute_audio !== false;
+                    const unmuteVideo = action.unmute_video || false;
+
+                    await this.vdoninjaManager.unmuteGuest(slot, unmuteAudio, unmuteVideo);
+                    console.log(`🔊 VDO.Ninja: Guest ${slot} unmuted (Flow) - audio: ${unmuteAudio}, video: ${unmuteVideo}`);
+                    break;
+                }
+
+                case 'vdoninja_solo_guest': {
+                    if (!this.vdoninjaManager) {
+                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        break;
+                    }
+                    const slot = parseInt(action.guest_slot);
+                    const duration = action.duration || 10000;
+
+                    await this.vdoninjaManager.soloGuest(slot, duration);
+                    console.log(`⭐ VDO.Ninja: Guest ${slot} solo for ${duration}ms (Flow)`);
+                    break;
+                }
+
+                case 'vdoninja_change_layout': {
+                    if (!this.vdoninjaManager) {
+                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        break;
+                    }
+                    const layout = action.layout_name || action.layout;
+                    const transition = action.transition || 'fade';
+
+                    await this.vdoninjaManager.changeLayout(layout, transition);
+                    console.log(`🎨 VDO.Ninja: Layout changed to ${layout} (Flow)`);
+                    break;
+                }
+
+                case 'vdoninja_set_volume': {
+                    if (!this.vdoninjaManager) {
+                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        break;
+                    }
+                    const slot = parseInt(action.guest_slot);
+                    const volume = parseFloat(action.volume) || 1.0;
+
+                    await this.vdoninjaManager.setGuestVolume(slot, volume);
+                    console.log(`🔊 VDO.Ninja: Guest ${slot} volume set to ${volume} (Flow)`);
+                    break;
+                }
+
+                case 'vdoninja_kick_guest': {
+                    if (!this.vdoninjaManager) {
+                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        break;
+                    }
+                    const slot = parseInt(action.guest_slot);
+                    const reason = action.reason || 'Kicked by automation';
+
+                    await this.vdoninjaManager.kickGuest(slot, reason);
+                    console.log(`❌ VDO.Ninja: Guest ${slot} kicked (Flow) - reason: ${reason}`);
+                    break;
+                }
+
                 default:
                     console.warn(`⚠️ Unknown action type: ${action.type}`);
             }

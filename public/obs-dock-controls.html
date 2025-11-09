@@ -303,6 +303,28 @@
         <button class="btn secondary" id="btn-open-soundboard">🎹 Soundboard öffnen</button>
     </div>
 
+    <!-- PATCH: VDO.Ninja Multi-Guest Controls -->
+    <div class="control-group">
+        <h2>👥 Multi-Guest</h2>
+
+        <!-- Guest Status -->
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">Guests</div>
+                <div class="stat-value" id="vdo-guest-count">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Room</div>
+                <div class="stat-value" id="vdo-room-status" style="font-size: 12px; color: #9ca3af;">-</div>
+            </div>
+        </div>
+
+        <!-- Quick Controls -->
+        <button class="btn" id="btn-vdo-mute-all">🔇 Mute All</button>
+        <button class="btn success" id="btn-vdo-unmute-all">🔊 Unmute All</button>
+        <button class="btn secondary" id="btn-vdo-dashboard">⚙️ Dashboard öffnen</button>
+    </div>
+
     <!-- OBS Controls -->
     <div class="control-group">
         <h2>🎥 OBS Szenen</h2>
@@ -530,6 +552,119 @@
             renderScenes();
         });
 
+        // ========== PATCH: VDO.NINJA CONTROLS ==========
+
+        let vdoState = {
+            guestCount: 0,
+            roomActive: false,
+            roomName: ''
+        };
+
+        // Update VDO.Ninja status display
+        function updateVDOStatus() {
+            document.getElementById('vdo-guest-count').textContent = vdoState.guestCount;
+            const roomStatusEl = document.getElementById('vdo-room-status');
+
+            if (vdoState.roomActive) {
+                roomStatusEl.textContent = '✓';
+                roomStatusEl.style.color = '#10b981';
+            } else {
+                roomStatusEl.textContent = '-';
+                roomStatusEl.style.color = '#9ca3af';
+            }
+        }
+
+        // Mute all VDO.Ninja guests
+        async function muteAllVDOGuests() {
+            try {
+                const response = await fetch('/api/vdoninja/guests/mute-all', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showNotification('✅ All guests muted');
+                } else {
+                    showNotification('❌ Failed to mute guests', true);
+                }
+            } catch (error) {
+                showNotification('❌ Error: ' + error.message, true);
+            }
+        }
+
+        // Unmute all VDO.Ninja guests
+        async function unmuteAllVDOGuests() {
+            try {
+                const response = await fetch('/api/vdoninja/guests/unmute-all', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showNotification('✅ All guests unmuted');
+                } else {
+                    showNotification('❌ Failed to unmute guests', true);
+                }
+            } catch (error) {
+                showNotification('❌ Error: ' + error.message, true);
+            }
+        }
+
+        // Open VDO.Ninja dashboard
+        function openVDODashboard() {
+            window.open('/dashboard.html#multiGuest', '_blank');
+        }
+
+        // Get VDO.Ninja status
+        async function getVDOStatus() {
+            try {
+                const response = await fetch('/api/vdoninja/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    vdoState.roomActive = data.hasActiveRoom;
+                    vdoState.guestCount = data.guests ? data.guests.length : 0;
+                    vdoState.roomName = data.activeRoom ? data.activeRoom.roomName : '';
+                    updateVDOStatus();
+                }
+            } catch (error) {
+                console.error('Failed to get VDO status:', error);
+            }
+        }
+
+        // VDO.Ninja Socket.IO listeners
+        socket.on('vdoninja:room-created', (data) => {
+            vdoState.roomActive = true;
+            vdoState.roomName = data.roomName;
+            vdoState.guestCount = 0;
+            updateVDOStatus();
+            showNotification(`✅ Room created: ${data.roomName}`);
+        });
+
+        socket.on('vdoninja:room-closed', () => {
+            vdoState.roomActive = false;
+            vdoState.roomName = '';
+            vdoState.guestCount = 0;
+            updateVDOStatus();
+        });
+
+        socket.on('vdoninja:guest-joined', (data) => {
+            vdoState.guestCount++;
+            updateVDOStatus();
+            showNotification(`👤 Guest joined: ${data.guestName}`);
+        });
+
+        socket.on('vdoninja:guest-left', (data) => {
+            vdoState.guestCount = Math.max(0, vdoState.guestCount - 1);
+            updateVDOStatus();
+            showNotification(`👋 Guest left: ${data.guestName}`);
+        });
+
+        socket.on('vdoninja:all-guests-muted', () => {
+            showNotification('🔇 All guests muted');
+        });
+
+        socket.on('vdoninja:all-guests-unmuted', () => {
+            showNotification('🔊 All guests unmuted');
+        });
+
         // Setup button event listeners
         function setupButtonListeners() {
             document.getElementById('btn-test-tts').addEventListener('click', testTTS);
@@ -538,11 +673,17 @@
             document.getElementById('btn-refresh-scenes').addEventListener('click', refreshScenes);
             document.getElementById('btn-test-alert').addEventListener('click', testAlert);
             document.getElementById('btn-clear-all').addEventListener('click', clearAll);
+
+            // PATCH: VDO.Ninja button listeners
+            document.getElementById('btn-vdo-mute-all').addEventListener('click', muteAllVDOGuests);
+            document.getElementById('btn-vdo-unmute-all').addEventListener('click', unmuteAllVDOGuests);
+            document.getElementById('btn-vdo-dashboard').addEventListener('click', openVDODashboard);
         }
 
         // Initialization
         setupButtonListeners();
         refreshScenes();
+        getVDOStatus(); // PATCH: Load VDO.Ninja status on init
 
         console.log('✅ Quick Controls Dock initialized');
     </script>
