@@ -212,9 +212,6 @@ function generateGoalOverlay(key, config, state) {
 </html>`;
 }
 
-
-console.log('✅ All modules initialized');
-
 // ========== ROUTES ==========
 
 // Haupt-Seite
@@ -888,4 +885,3 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 module.exports = { app, server, io, db, tiktok, tts, alerts, flows, soundboard, goals };
-module.exports = { app, server, io, db, tiktok, tts, alerts, flows };
