@@ -572,6 +572,14 @@ class PluginLoader extends EventEmitter {
     }
 
     /**
+     * Gibt die Plugin-Instanz zurück (für Injektionen)
+     */
+    getPluginInstance(pluginId) {
+        const plugin = this.plugins.get(pluginId);
+        return plugin ? plugin.instance : null;
+    }
+
+    /**
      * Registriert Socket-Events für ein Plugin
      */
     registerPluginSocketEvents(socket) {

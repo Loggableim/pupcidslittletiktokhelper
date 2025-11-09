@@ -76,17 +76,29 @@ class UpdateChecker {
                 ...updateInfo
             };
         } catch (error) {
-            this.logger.error(`Failed to check for updates: ${error.message}`);
+            // Detaillierter Error-Log nur bei echten Fehlern (nicht 404)
+            if (error.response && error.response.status === 404) {
+                // 404 = Repository not found oder keine Releases
+                this.logger.info(`No releases found for repository ${this.githubRepo}`);
+                return {
+                    success: false,
+                    error: 'No releases available yet',
+                    currentVersion: this.currentVersion,
+                    available: false
+                };
+            }
 
-            // Detaillierter Error-Log
+            this.logger.warn(`Failed to check for updates: ${error.message}`);
+
             if (error.response) {
-                this.logger.error(`GitHub API Error: ${error.response.status} - ${error.response.statusText}`);
+                this.logger.warn(`GitHub API Error: ${error.response.status} - ${error.response.statusText}`);
             }
 
             return {
                 success: false,
                 error: error.message,
-                currentVersion: this.currentVersion
+                currentVersion: this.currentVersion,
+                available: false
             };
         }
     }

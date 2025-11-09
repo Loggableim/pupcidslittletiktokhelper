@@ -1,0 +1,12 @@
+{
+  "id": "tts",
+  "name": "Text-to-Speech (TTS)",
+  "description": "Text-to-Speech Engine mit TikTok und Google TTS Integration. Unterstützt 75+ Stimmen, User-spezifische Voices, Queue-Management und Auto-TTS für Chat-Nachrichten.",
+  "version": "1.0.0",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": true,
+  "type": "module",
+  "dependencies": ["axios"],
+  "permissions": ["tiktok-events", "database", "socket-emit"]
+}
