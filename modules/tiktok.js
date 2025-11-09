@@ -282,7 +282,7 @@ class TikTokConnector extends EventEmitter {
             const giftsArray = Object.values(gifts).map(gift => ({
                 id: gift.id,
                 name: gift.name || `Gift ${gift.id}`,
-                image_url: gift.image?.url || gift.image?.imageUrl || null,
+                image_url: gift.image?.url_list?.[0] || gift.image?.url || gift.image?.imageUrl || null,
                 diamond_count: gift.diamond_count || gift.diamondCount || 0
             }));
 
@@ -291,10 +291,25 @@ class TikTokConnector extends EventEmitter {
                 new Map(giftsArray.map(g => [g.id, g])).values()
             );
 
-            // In Datenbank speichern
+            // Prüfe ob Update nötig ist (vergleiche mit aktuellen Daten)
+            const currentCatalog = this.db.getGiftCatalog();
+            const needsUpdate = uniqueGifts.length !== currentCatalog.length ||
+                uniqueGifts.some((g, i) => {
+                    const existing = currentCatalog.find(c => c.id === g.id);
+                    return !existing ||
+                           existing.name !== g.name ||
+                           existing.image_url !== g.image_url ||
+                           existing.diamond_count !== g.diamond_count;
+                });
+
+            // In Datenbank speichern (immer, um sicherzustellen dass die Struktur korrekt ist)
             const count = this.db.updateGiftCatalog(uniqueGifts);
 
-            console.log(`✅ Gift-Katalog aktualisiert: ${count} Einträge`);
+            if (needsUpdate || uniqueGifts.length > currentCatalog.length) {
+                console.log(`✅ Gift-Katalog aktualisiert: ${count} Einträge (${uniqueGifts.length - currentCatalog.length} neue)`);
+            } else {
+                console.log(`✅ Gift-Katalog synchronisiert: ${count} Einträge`);
+            }
 
             // Broadcast an Frontend
             this.io.emit('gift_catalog:updated', {
@@ -302,7 +317,7 @@ class TikTokConnector extends EventEmitter {
                 timestamp: new Date().toISOString()
             });
 
-            return { ok: true, count, message: `${count} Gifts geladen` };
+            return { ok: true, count, message: `${count} Gifts geladen`, updated: needsUpdate };
 
         } catch (error) {
             console.error('❌ Fehler beim Gift-Katalog-Update:', error);
