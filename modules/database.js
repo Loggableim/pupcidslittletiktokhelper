@@ -127,9 +127,67 @@ class DatabaseManager {
             )
         `);
 
+        // PATCH: VDO.Ninja Multi-Guest Integration - Rooms
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS vdoninja_rooms (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                room_name TEXT UNIQUE NOT NULL,
+                room_id TEXT UNIQUE NOT NULL,
+                password TEXT,
+                max_guests INTEGER DEFAULT 6,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_used DATETIME
+            )
+        `);
+
+        // PATCH: VDO.Ninja Multi-Guest Integration - Guests
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS vdoninja_guests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                room_id INTEGER REFERENCES vdoninja_rooms(id) ON DELETE CASCADE,
+                slot_number INTEGER NOT NULL,
+                stream_id TEXT,
+                guest_name TEXT,
+                is_connected INTEGER DEFAULT 0,
+                audio_enabled INTEGER DEFAULT 1,
+                video_enabled INTEGER DEFAULT 1,
+                volume REAL DEFAULT 1.0,
+                layout_position_x REAL DEFAULT 0,
+                layout_position_y REAL DEFAULT 0,
+                layout_width REAL DEFAULT 100,
+                layout_height REAL DEFAULT 100,
+                joined_at DATETIME,
+                UNIQUE(room_id, slot_number)
+            )
+        `);
+
+        // PATCH: VDO.Ninja Multi-Guest Integration - Layout Presets
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS vdoninja_layouts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                layout_type TEXT NOT NULL,
+                layout_config TEXT NOT NULL,
+                thumbnail_url TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // PATCH: VDO.Ninja Multi-Guest Integration - Guest Events
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS vdoninja_guest_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guest_id INTEGER REFERENCES vdoninja_guests(id) ON DELETE CASCADE,
+                event_type TEXT NOT NULL,
+                event_data TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Default-Einstellungen setzen
         this.setDefaultSettings();
         this.initializeEmojiRainDefaults();
+        this.initializeDefaultVDONinjaLayouts(); // PATCH: VDO.Ninja Default Layouts
     }
 
     setDefaultSettings() {
@@ -631,6 +689,215 @@ class DatabaseManager {
             WHERE id = 1
         `);
         stmt.run(enabled ? 1 : 0);
+    }
+
+    // ========== PATCH: VDO.NINJA DEFAULT LAYOUTS ==========
+    initializeDefaultVDONinjaLayouts() {
+        const defaults = [
+            {
+                name: 'Grid 2x2',
+                type: 'grid',
+                config: JSON.stringify({
+                    rows: 2,
+                    cols: 2,
+                    slots: [
+                        { slot: 0, x: 0, y: 0, w: 50, h: 50 },
+                        { slot: 1, x: 50, y: 0, w: 50, h: 50 },
+                        { slot: 2, x: 0, y: 50, w: 50, h: 50 },
+                        { slot: 3, x: 50, y: 50, w: 50, h: 50 }
+                    ]
+                })
+            },
+            {
+                name: 'Grid 3x2',
+                type: 'grid',
+                config: JSON.stringify({
+                    rows: 2,
+                    cols: 3,
+                    slots: [
+                        { slot: 0, x: 0, y: 0, w: 33.33, h: 50 },
+                        { slot: 1, x: 33.33, y: 0, w: 33.33, h: 50 },
+                        { slot: 2, x: 66.66, y: 0, w: 33.33, h: 50 },
+                        { slot: 3, x: 0, y: 50, w: 33.33, h: 50 },
+                        { slot: 4, x: 33.33, y: 50, w: 33.33, h: 50 },
+                        { slot: 5, x: 66.66, y: 50, w: 33.33, h: 50 }
+                    ]
+                })
+            },
+            {
+                name: 'Solo',
+                type: 'solo',
+                config: JSON.stringify({
+                    slots: [
+                        { slot: 0, x: 0, y: 0, w: 100, h: 100 }
+                    ]
+                })
+            },
+            {
+                name: 'PIP',
+                type: 'pip',
+                config: JSON.stringify({
+                    slots: [
+                        { slot: 0, x: 0, y: 0, w: 100, h: 100 },
+                        { slot: 1, x: 75, y: 75, w: 20, h: 20 }
+                    ]
+                })
+            }
+        ];
+
+        const stmt = this.db.prepare(`
+            INSERT OR IGNORE INTO vdoninja_layouts (name, layout_type, layout_config)
+            VALUES (?, ?, ?)
+        `);
+
+        for (const layout of defaults) {
+            stmt.run(layout.name, layout.type, layout.config);
+        }
+    }
+
+    // ========== PATCH: VDO.NINJA ROOM METHODS ==========
+    createVDONinjaRoom(roomName, roomId, password, maxGuests) {
+        const stmt = this.db.prepare(`
+            INSERT INTO vdoninja_rooms (room_name, room_id, password, max_guests, last_used)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `);
+        const info = stmt.run(roomName, roomId, password, maxGuests);
+        return info.lastInsertRowid;
+    }
+
+    getVDONinjaRoom(roomId) {
+        const stmt = this.db.prepare('SELECT * FROM vdoninja_rooms WHERE room_id = ?');
+        return stmt.get(roomId);
+    }
+
+    getAllVDONinjaRooms() {
+        const stmt = this.db.prepare('SELECT * FROM vdoninja_rooms ORDER BY last_used DESC');
+        return stmt.all();
+    }
+
+    updateVDONinjaRoom(id, updates) {
+        const fields = [];
+        const values = [];
+
+        for (const [key, value] of Object.entries(updates)) {
+            fields.push(`${key} = ?`);
+            values.push(value);
+        }
+
+        values.push(id);
+
+        const stmt = this.db.prepare(`
+            UPDATE vdoninja_rooms
+            SET ${fields.join(', ')}, last_used = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `);
+        stmt.run(...values);
+    }
+
+    deleteVDONinjaRoom(id) {
+        const stmt = this.db.prepare('DELETE FROM vdoninja_rooms WHERE id = ?');
+        stmt.run(id);
+    }
+
+    // ========== PATCH: VDO.NINJA GUEST METHODS ==========
+    addGuest(roomId, slotNumber, streamId, guestName) {
+        const stmt = this.db.prepare(`
+            INSERT INTO vdoninja_guests (room_id, slot_number, stream_id, guest_name, is_connected, joined_at)
+            VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        `);
+        const info = stmt.run(roomId, slotNumber, streamId, guestName);
+        return info.lastInsertRowid;
+    }
+
+    getGuest(id) {
+        const stmt = this.db.prepare('SELECT * FROM vdoninja_guests WHERE id = ?');
+        return stmt.get(id);
+    }
+
+    getGuestsByRoom(roomId) {
+        const stmt = this.db.prepare('SELECT * FROM vdoninja_guests WHERE room_id = ? ORDER BY slot_number');
+        return stmt.all(roomId);
+    }
+
+    updateGuestStatus(id, updates) {
+        const fields = [];
+        const values = [];
+
+        for (const [key, value] of Object.entries(updates)) {
+            fields.push(`${key} = ?`);
+            values.push(value);
+        }
+
+        values.push(id);
+
+        const stmt = this.db.prepare(`
+            UPDATE vdoninja_guests
+            SET ${fields.join(', ')}
+            WHERE id = ?
+        `);
+        stmt.run(...values);
+    }
+
+    removeGuest(id) {
+        const stmt = this.db.prepare('DELETE FROM vdoninja_guests WHERE id = ?');
+        stmt.run(id);
+    }
+
+    // ========== PATCH: VDO.NINJA LAYOUT METHODS ==========
+    saveLayout(name, type, config, thumbnailUrl = null) {
+        const stmt = this.db.prepare(`
+            INSERT INTO vdoninja_layouts (name, layout_type, layout_config, thumbnail_url)
+            VALUES (?, ?, ?, ?)
+        `);
+        const info = stmt.run(name, type, JSON.stringify(config), thumbnailUrl);
+        return info.lastInsertRowid;
+    }
+
+    getLayout(id) {
+        const stmt = this.db.prepare('SELECT * FROM vdoninja_layouts WHERE id = ?');
+        const row = stmt.get(id);
+        if (!row) return null;
+        return {
+            ...row,
+            layout_config: JSON.parse(row.layout_config)
+        };
+    }
+
+    getAllLayouts() {
+        const stmt = this.db.prepare('SELECT * FROM vdoninja_layouts ORDER BY created_at DESC');
+        const rows = stmt.all();
+        return rows.map(row => ({
+            ...row,
+            layout_config: JSON.parse(row.layout_config)
+        }));
+    }
+
+    deleteLayout(id) {
+        const stmt = this.db.prepare('DELETE FROM vdoninja_layouts WHERE id = ?');
+        stmt.run(id);
+    }
+
+    // ========== PATCH: VDO.NINJA EVENT LOGGING ==========
+    logGuestEvent(guestId, eventType, eventData) {
+        const stmt = this.db.prepare(`
+            INSERT INTO vdoninja_guest_events (guest_id, event_type, event_data)
+            VALUES (?, ?, ?)
+        `);
+        stmt.run(guestId, eventType, JSON.stringify(eventData));
+    }
+
+    getGuestEventHistory(guestId, limit = 100) {
+        const stmt = this.db.prepare(`
+            SELECT * FROM vdoninja_guest_events
+            WHERE guest_id = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        `);
+        const rows = stmt.all(guestId, limit);
+        return rows.map(row => ({
+            ...row,
+            event_data: JSON.parse(row.event_data)
+        }));
     }
 
     /**
