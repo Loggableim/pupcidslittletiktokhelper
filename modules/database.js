@@ -269,6 +269,11 @@ class DatabaseManager {
         return stmt.all();
     }
 
+    // Alias für Plugin-Kompatibilität
+    getAllUserVoices() {
+        return this.getUserVoices();
+    }
+
     setUserVoice(username, voice) {
         const stmt = this.db.prepare(`
             INSERT INTO user_voices (username, voice, last_used)

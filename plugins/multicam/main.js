@@ -412,6 +412,12 @@ class MultiCamPlugin {
             if (!this.config.enabled) return;
 
             const { uniqueId: username, comment } = data;
+
+            // Prüfe ob comment existiert
+            if (!comment || typeof comment !== 'string') {
+                return;
+            }
+
             const message = comment.toLowerCase().trim();
 
             this.api.log(`Multi-Cam: Chat from ${username}: ${message}`);
