@@ -3,10 +3,40 @@ const fs = require('fs').promises;
 const path = require('path');
 
 class FlowEngine {
-    constructor(db, alertManager, ttsEngine) {
+    constructor(db, alertManager, ttsEngine, logger) {
         this.db = db;
         this.alertManager = alertManager;
         this.ttsEngine = ttsEngine;
+        this.logger = logger;
+
+        // Sicheres Verzeichnis für File-Writes
+        this.SAFE_DIR = path.join(__dirname, '..', 'user_data', 'flow_logs');
+
+        // Erlaubte Webhook-Domains
+        this.ALLOWED_WEBHOOK_DOMAINS = [
+            'webhook.site',
+            'discord.com',
+            'zapier.com',
+            'ifttt.com',
+            'make.com',
+            'integromat.com'
+        ];
+
+        // Gesperrte IP-Ranges (internal networks)
+        this.BLOCKED_IP_PATTERNS = ['127.', '10.', '192.168.', '169.254.', 'localhost'];
+
+        // SAFE_DIR erstellen falls nicht existent
+        this.initSafeDir();
+    }
+
+    async initSafeDir() {
+        try {
+            await fs.mkdir(this.SAFE_DIR, { recursive: true });
+        } catch (error) {
+            if (this.logger) {
+                this.logger.error('Failed to create SAFE_DIR for flows:', error);
+            }
+        }
     }
 
     async processEvent(eventType, eventData) {
@@ -153,18 +183,60 @@ class FlowEngine {
                     const method = action.method || 'POST';
                     const body = action.body ? this.replaceVariables(JSON.stringify(action.body), eventData) : null;
 
-                    const response = await axios({
-                        method: method,
-                        url: url,
-                        data: body ? JSON.parse(body) : eventData,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(action.headers || {})
-                        },
-                        timeout: 5000
-                    });
+                    // SSRF-Protection: URL validieren
+                    try {
+                        const urlObj = new URL(url);
 
-                    console.log(`🌐 Webhook sent to ${url}: ${response.status}`);
+                        // Prüfe erlaubte Domains
+                        const isAllowedDomain = this.ALLOWED_WEBHOOK_DOMAINS.some(domain =>
+                            urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+                        );
+
+                        if (!isAllowedDomain) {
+                            const error = `Webhook URL not in whitelist: ${urlObj.hostname}`;
+                            if (this.logger) {
+                                this.logger.warn(error);
+                            } else {
+                                console.warn(`⚠️ ${error}`);
+                            }
+                            throw new Error(error);
+                        }
+
+                        // Prüfe gesperrte IPs
+                        const isBlockedIP = this.BLOCKED_IP_PATTERNS.some(pattern =>
+                            urlObj.hostname.startsWith(pattern)
+                        );
+
+                        if (isBlockedIP) {
+                            const error = `Webhook to internal network blocked: ${urlObj.hostname}`;
+                            if (this.logger) {
+                                this.logger.warn(error);
+                            } else {
+                                console.warn(`⚠️ ${error}`);
+                            }
+                            throw new Error(error);
+                        }
+
+                        // URL ist sicher, request ausführen
+                        const response = await axios({
+                            method: method,
+                            url: url,
+                            data: body ? JSON.parse(body) : eventData,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...(action.headers || {})
+                            },
+                            timeout: 5000
+                        });
+
+                        console.log(`🌐 Webhook sent to ${url}: ${response.status}`);
+                    } catch (error) {
+                        if (this.logger) {
+                            this.logger.error('Webhook error:', error);
+                        } else {
+                            console.error(`❌ Webhook error: ${error.message}`);
+                        }
+                    }
                     break;
                 }
 
@@ -175,15 +247,39 @@ class FlowEngine {
                     const content = this.replaceVariables(action.content, eventData);
                     const append = action.append !== false; // Default: append
 
-                    const fullPath = path.resolve(filePath);
+                    // Path-Traversal-Schutz: Nur Filename extrahieren
+                    const sanitizedFilename = path.basename(filePath);
 
-                    if (append) {
-                        await fs.appendFile(fullPath, content + '\n', 'utf8');
-                    } else {
-                        await fs.writeFile(fullPath, content, 'utf8');
+                    // Sicheren Pfad erstellen (nur innerhalb SAFE_DIR)
+                    const safePath = path.join(this.SAFE_DIR, sanitizedFilename);
+
+                    // Doppelte Prüfung: safePath muss mit SAFE_DIR beginnen
+                    if (!safePath.startsWith(this.SAFE_DIR)) {
+                        const error = `Path traversal attempt detected: ${filePath}`;
+                        if (this.logger) {
+                            this.logger.warn(error);
+                        } else {
+                            console.warn(`⚠️ ${error}`);
+                        }
+                        throw new Error(error);
                     }
 
-                    console.log(`📝 Written to file: ${filePath}`);
+                    // Datei schreiben
+                    try {
+                        if (append) {
+                            await fs.appendFile(safePath, content + '\n', 'utf8');
+                        } else {
+                            await fs.writeFile(safePath, content, 'utf8');
+                        }
+
+                        console.log(`📝 Written to file: ${sanitizedFilename} (in ${this.SAFE_DIR})`);
+                    } catch (error) {
+                        if (this.logger) {
+                            this.logger.error('File write error:', error);
+                        } else {
+                            console.error(`❌ File write error: ${error.message}`);
+                        }
+                    }
                     break;
                 }
 

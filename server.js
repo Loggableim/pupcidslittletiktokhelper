@@ -31,6 +31,29 @@ const io = socketIO(server);
 
 // Middleware
 app.use(express.json());
+
+// CORS-Header für OBS-Kompatibilität
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Entferne X-Frame-Options für OBS Docks und Overlays
+    const obsRoutes = ['/overlay.html', '/obs-dock.html', '/obs-dock-controls.html', '/obs-dock-goals.html', '/goal/', '/leaderboard-overlay.html', '/minigames-overlay.html'];
+    const isOBSRoute = obsRoutes.some(route => req.path.includes(route));
+
+    if (!isOBSRoute) {
+        res.header('X-Frame-Options', 'SAMEORIGIN');
+    }
+
+    // CSP für OBS Browser Sources
+    if (isOBSRoute) {
+        res.header('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' ws: wss: http: https: data: blob:; frame-ancestors 'self' *;");
+    }
+
+    next();
+});
+
 app.use(express.static('public'));
 
 // i18n Middleware
@@ -121,17 +144,17 @@ const db = new Database(dbPath);
 logger.info(`✅ Database initialized: ${dbPath}`);
 
 // ========== MODULE INITIALISIEREN ==========
-const tiktok = new TikTokConnector(io, db);
-const tts = new TTSEngine(db, io);
-const alerts = new AlertManager(io, db);
-const flows = new FlowEngine(db, alerts, tts);
-const soundboard = new SoundboardManager(db, io);
-const goals = new GoalManager(db, io);
+const tiktok = new TikTokConnector(io, db, logger);
+const tts = new TTSEngine(db, io, logger);
+const alerts = new AlertManager(io, db, logger);
+const flows = new FlowEngine(db, alerts, tts, logger);
+const soundboard = new SoundboardManager(db, io, logger);
+const goals = new GoalManager(db, io, logger);
 
 // New Modules
-const obs = new OBSWebSocket(db, io);
-const subscriptionTiers = new SubscriptionTiers(db, io);
-const leaderboard = new Leaderboard(db, io);
+const obs = new OBSWebSocket(db, io, logger);
+const subscriptionTiers = new SubscriptionTiers(db, io, logger);
+const leaderboard = new Leaderboard(db, io, logger);
 
 logger.info('✅ All modules initialized');
 
@@ -1357,6 +1380,92 @@ app.delete('/api/animations/:filename', apiLimiter, (req, res) => {
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// ========== EMOJI RAIN ROUTES ==========
+
+app.get('/api/emoji-rain/config', apiLimiter, (req, res) => {
+    try {
+        const config = db.getEmojiRainConfig();
+        res.json({ success: true, config });
+    } catch (error) {
+        logger.error('Error getting emoji rain config:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/emoji-rain/config', apiLimiter, (req, res) => {
+    const { config, enabled } = req.body;
+
+    if (!config) {
+        return res.status(400).json({ success: false, error: 'config is required' });
+    }
+
+    try {
+        db.updateEmojiRainConfig(config, enabled !== undefined ? enabled : null);
+        logger.info('🌧️ Emoji rain configuration updated');
+
+        // Notify overlays about config change
+        io.emit('emoji-rain:config-update', { config, enabled });
+
+        res.json({ success: true, message: 'Emoji rain configuration updated' });
+    } catch (error) {
+        logger.error('Error updating emoji rain config:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/emoji-rain/toggle', apiLimiter, (req, res) => {
+    const { enabled } = req.body;
+
+    if (enabled === undefined) {
+        return res.status(400).json({ success: false, error: 'enabled is required' });
+    }
+
+    try {
+        db.toggleEmojiRain(enabled);
+        logger.info(`🌧️ Emoji rain ${enabled ? 'enabled' : 'disabled'}`);
+
+        // Notify overlays about toggle
+        io.emit('emoji-rain:toggle', { enabled });
+
+        res.json({ success: true, message: `Emoji rain ${enabled ? 'enabled' : 'disabled'}` });
+    } catch (error) {
+        logger.error('Error toggling emoji rain:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/emoji-rain/test', apiLimiter, (req, res) => {
+    const { count, emoji, x, y } = req.body;
+
+    try {
+        const config = db.getEmojiRainConfig();
+
+        if (!config.enabled) {
+            return res.status(400).json({ success: false, error: 'Emoji rain is disabled' });
+        }
+
+        // Create test spawn data
+        const testData = {
+            count: parseInt(count) || 1,
+            emoji: emoji || config.emoji_set[Math.floor(Math.random() * config.emoji_set.length)],
+            x: parseFloat(x) || Math.random(),
+            y: parseFloat(y) || 0,
+            username: 'Test User',
+            reason: 'test'
+        };
+
+        logger.info(`🧪 Testing emoji rain: ${testData.count}x ${testData.emoji}`);
+
+        // Emit to overlay
+        io.emit('emoji-rain:spawn', testData);
+
+        res.json({ success: true, message: 'Test emojis spawned', data: testData });
+    } catch (error) {
+        logger.error('Error testing emoji rain:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ========== MINIGAMES ROUTES ==========
 
 app.post('/api/minigames/roulette', apiLimiter, (req, res) => {
@@ -1499,6 +1608,61 @@ io.on('connection', (socket) => {
     });
 });
 
+// ========== EMOJI RAIN HELPER ==========
+
+/**
+ * Spawn emojis for emoji rain effect
+ * @param {string} reason - Event type (gift, like, follow, etc.)
+ * @param {object} data - Event data
+ * @param {number} count - Number of emojis to spawn
+ * @param {string} emoji - Optional specific emoji
+ */
+function spawnEmojiRain(reason, data, count, emoji = null) {
+    try {
+        const config = db.getEmojiRainConfig();
+
+        if (!config.enabled) {
+            return;
+        }
+
+        // Calculate count based on reason if not provided
+        if (!count) {
+            if (reason === 'gift' && data.coins) {
+                count = config.gift_base_emojis + Math.floor(data.coins * config.gift_coin_multiplier);
+                count = Math.min(config.gift_max_emojis, count);
+            } else if (reason === 'like' && data.likeCount) {
+                count = Math.floor(data.likeCount / config.like_count_divisor);
+                count = Math.max(config.like_min_emojis, Math.min(config.like_max_emojis, count));
+            } else {
+                count = 3; // Default for follow, share, subscribe
+            }
+        }
+
+        // Select random emoji from config if not specified
+        if (!emoji && config.emoji_set && config.emoji_set.length > 0) {
+            emoji = config.emoji_set[Math.floor(Math.random() * config.emoji_set.length)];
+        }
+
+        // Random horizontal position
+        const x = Math.random();
+        const y = 0;
+
+        // Emit to overlay
+        io.emit('emoji-rain:spawn', {
+            count: count,
+            emoji: emoji,
+            x: x,
+            y: y,
+            username: data.username || 'Unknown',
+            reason: reason
+        });
+
+        logger.debug(`🌧️ Emoji rain spawned: ${count}x ${emoji} for ${reason}`);
+    } catch (error) {
+        logger.error('Error spawning emoji rain:', error);
+    }
+}
+
 // ========== TIKTOK EVENT-HANDLER ==========
 
 // Gift Event
@@ -1523,6 +1687,9 @@ tiktok.on('gift', async (data) => {
     // Leaderboard: Update user stats
     await leaderboard.trackGift(data.username, data.giftName, data.coins);
 
+    // Emoji Rain: Spawn emojis based on gift value
+    spawnEmojiRain('gift', data);
+
     // Flows verarbeiten
     await flows.processEvent('gift', data);
 });
@@ -1542,6 +1709,9 @@ tiktok.on('follow', async (data) => {
 
     // Leaderboard: Track follow
     await leaderboard.trackFollow(data.username);
+
+    // Emoji Rain: Spawn emojis for follow
+    spawnEmojiRain('follow', data, 5, '💙');
 
     await flows.processEvent('follow', data);
 });
@@ -1565,6 +1735,9 @@ tiktok.on('subscribe', async (data) => {
     // Leaderboard: Track subscription
     await leaderboard.trackSubscription(data.username);
 
+    // Emoji Rain: Spawn emojis for subscribe
+    spawnEmojiRain('subscribe', data, 8, '⭐');
+
     await flows.processEvent('subscribe', data);
 });
 
@@ -1580,6 +1753,9 @@ tiktok.on('share', async (data) => {
 
     // Leaderboard: Track share
     await leaderboard.trackShare(data.username);
+
+    // Emoji Rain: Spawn emojis for share
+    spawnEmojiRain('share', data, 5, '🔄');
 
     await flows.processEvent('share', data);
 });
@@ -1626,6 +1802,9 @@ tiktok.on('like', async (data) => {
 
     // Leaderboard: Track likes
     await leaderboard.trackLike(data.username, data.likeCount || 1);
+
+    // Emoji Rain: Spawn emojis for likes
+    spawnEmojiRain('like', data);
 
     // Flows verarbeiten
     // Likes normalerweise nicht als Alert (zu viele)

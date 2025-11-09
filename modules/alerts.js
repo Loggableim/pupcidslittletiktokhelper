@@ -1,10 +1,13 @@
 class AlertManager {
-    constructor(io, db) {
+    constructor(io, db, logger) {
         this.io = io;
         this.db = db;
+        this.logger = logger;
         this.queue = [];
         this.isProcessing = false;
         this.currentAlert = null;
+        this.MAX_QUEUE_SIZE = 100;
+        this.QUEUE_WARNING_THRESHOLD = 80; // 80%
     }
 
     addAlert(type, data, customConfig = null) {
@@ -41,15 +44,38 @@ class AlertManager {
                 timestamp: Date.now()
             };
 
+            // Queue-Size-Limit prüfen
+            if (this.queue.length >= this.MAX_QUEUE_SIZE) {
+                const removed = this.queue.shift(); // Ältestes Element entfernen
+                if (this.logger) {
+                    this.logger.warn(`Alert queue full (${this.MAX_QUEUE_SIZE}), removed oldest alert: ${removed.type}`);
+                } else {
+                    console.warn(`⚠️ Alert queue full (${this.MAX_QUEUE_SIZE}), removed oldest alert: ${removed.type}`);
+                }
+            }
+
+            // Warning bei 80% Füllung
+            if (this.queue.length >= this.MAX_QUEUE_SIZE * (this.QUEUE_WARNING_THRESHOLD / 100)) {
+                if (this.logger) {
+                    this.logger.warn(`Alert queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity (${Math.round(this.queue.length / this.MAX_QUEUE_SIZE * 100)}%)`);
+                } else {
+                    console.warn(`⚠️ Alert queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity`);
+                }
+            }
+
             // In Queue einreihen
             this.queue.push(alert);
-            console.log(`🔔 Alert queued: ${type} - ${renderedText}`);
+            console.log(`🔔 Alert queued: ${type} - ${renderedText} (Queue: ${this.queue.length}/${this.MAX_QUEUE_SIZE})`);
 
             // Verarbeitung starten
             this.processQueue();
 
         } catch (error) {
-            console.error('❌ Alert Error:', error.message);
+            if (this.logger) {
+                this.logger.error('Alert Error:', error);
+            } else {
+                console.error('❌ Alert Error:', error.message);
+            }
         }
     }
 

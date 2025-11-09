@@ -7,11 +7,13 @@ const cheerio = require('cheerio');
  * Handles gift-specific sounds, audio queue management, and MyInstants integration
  */
 class SoundboardManager extends EventEmitter {
-    constructor(db, io) {
+    constructor(db, io, logger) {
         super();
         this.db = db;
         this.io = io;
+        this.logger = logger;
         this.likeHistory = []; // Deque for like threshold tracking
+        this.MAX_LIKE_HISTORY_SIZE = 100;
 
         console.log('✅ Soundboard Manager initialized (Queue managed in frontend)');
     }
@@ -173,6 +175,14 @@ class SoundboardManager extends EventEmitter {
         // Remove likes outside the time window
         const windowMs = windowSeconds * 1000;
         this.likeHistory = this.likeHistory.filter(like => (now - like.timestamp) <= windowMs);
+
+        // Enforce max size to prevent unbounded growth
+        if (this.likeHistory.length > this.MAX_LIKE_HISTORY_SIZE) {
+            this.likeHistory = this.likeHistory.slice(-this.MAX_LIKE_HISTORY_SIZE);
+            if (this.logger) {
+                this.logger.warn(`Like history exceeded ${this.MAX_LIKE_HISTORY_SIZE}, trimmed to most recent`);
+            }
+        }
 
         // Calculate total likes in window
         const totalLikes = this.likeHistory.reduce((sum, like) => sum + like.count, 0);

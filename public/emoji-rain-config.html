@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Rain Konfiguration - TikTok Stream Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .nav-buttons {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-button {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .toggle-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .toggle-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .config-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .config-section h2 {
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+
+        .form-group input[type="range"] {
+            padding: 0;
+        }
+
+        .range-value {
+            display: inline-block;
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .emoji-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .emoji-input textarea {
+            flex: 1;
+            min-height: 80px;
+            font-size: 1.5em;
+        }
+
+        .emoji-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            min-height: 60px;
+        }
+
+        .emoji-preview-item {
+            font-size: 2em;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .emoji-preview-item:hover {
+            transform: scale(1.3);
+        }
+
+        .help-text {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        button {
+            background: rgba(76,175,80,0.8);
+            border: 2px solid rgba(76,175,80,1);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: rgba(76,175,80,1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76,175,80,0.5);
+        }
+
+        button.secondary {
+            background: rgba(33,150,243,0.8);
+            border-color: rgba(33,150,243,1);
+        }
+
+        button.secondary:hover {
+            background: rgba(33,150,243,1);
+            box-shadow: 0 4px 12px rgba(33,150,243,0.5);
+        }
+
+        button.danger {
+            background: rgba(244,67,54,0.8);
+            border-color: rgba(244,67,54,1);
+        }
+
+        button.danger:hover {
+            background: rgba(244,67,54,1);
+            box-shadow: 0 4px 12px rgba(244,67,54,0.5);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            background: rgba(76,175,80,0.95);
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: rgba(244,67,54,0.95);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌧️ Emoji Rain Konfiguration</h1>
+        <p class="subtitle">Physik-basierte Emoji-Animationen für TikTok Events</p>
+
+        <div class="nav-buttons">
+            <a href="/dashboard.html" class="nav-button">← Zurück zum Dashboard</a>
+        </div>
+
+        <!-- Enable/Disable Toggle -->
+        <div class="toggle-section">
+            <div class="toggle-container">
+                <h2>Emoji Rain</h2>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="enabled-toggle">
+                    <span class="slider"></span>
+                </label>
+                <span id="enabled-status">Deaktiviert</span>
+            </div>
+        </div>
+
+        <!-- Canvas Settings -->
+        <div class="config-section">
+            <h2>📐 Canvas Einstellungen</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="width_px">Breite (px)</label>
+                    <input type="number" id="width_px" min="640" max="3840" step="1">
+                    <div class="help-text">Empfohlen: 1280 (720p) oder 1920 (1080p)</div>
+                </div>
+                <div class="form-group">
+                    <label for="height_px">Höhe (px)</label>
+                    <input type="number" id="height_px" min="360" max="2160" step="1">
+                    <div class="help-text">Empfohlen: 720 (720p) oder 1080 (1080p)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emoji Set Configuration -->
+        <div class="config-section">
+            <h2>😊 Emoji Set</h2>
+            <div class="form-group">
+                <label for="emoji_set">Emojis (durch Komma getrennt)</label>
+                <textarea id="emoji_set" placeholder="💧,💙,💚,💜,❤️,🩵,✨,🌟,🔥,🎉"></textarea>
+                <div class="help-text">Gib die Emojis ein, die zufällig gespawnt werden sollen</div>
+            </div>
+            <div class="emoji-preview" id="emoji-preview"></div>
+        </div>
+
+        <!-- Physics Settings -->
+        <div class="config-section">
+            <h2>⚙️ Physik Einstellungen</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="physics_gravity_y">Gravitation (Y-Achse)</label>
+                    <input type="range" id="physics_gravity_y" min="0" max="3" step="0.1">
+                    <span class="range-value" id="physics_gravity_y_value">1.0</span>
+                </div>
+                <div class="form-group">
+                    <label for="physics_air">Luftwiderstand</label>
+                    <input type="range" id="physics_air" min="0" max="0.2" step="0.01">
+                    <span class="range-value" id="physics_air_value">0.02</span>
+                </div>
+                <div class="form-group">
+                    <label for="physics_friction">Reibung</label>
+                    <input type="range" id="physics_friction" min="0" max="1" step="0.05">
+                    <span class="range-value" id="physics_friction_value">0.1</span>
+                </div>
+                <div class="form-group">
+                    <label for="physics_restitution">Elastizität (Bounce)</label>
+                    <input type="range" id="physics_restitution" min="0" max="1" step="0.05">
+                    <span class="range-value" id="physics_restitution_value">0.6</span>
+                </div>
+                <div class="form-group">
+                    <label for="physics_wind_strength">Windstärke</label>
+                    <input type="range" id="physics_wind_strength" min="0" max="0.01" step="0.0001">
+                    <span class="range-value" id="physics_wind_strength_value">0.0005</span>
+                </div>
+                <div class="form-group">
+                    <label for="physics_wind_variation">Wind-Variation</label>
+                    <input type="range" id="physics_wind_variation" min="0" max="0.01" step="0.0001">
+                    <span class="range-value" id="physics_wind_variation_value">0.0003</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appearance Settings -->
+        <div class="config-section">
+            <h2>🎨 Darstellung</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="emoji_min_size_px">Minimale Emoji-Größe (px)</label>
+                    <input type="number" id="emoji_min_size_px" min="20" max="200" step="5">
+                </div>
+                <div class="form-group">
+                    <label for="emoji_max_size_px">Maximale Emoji-Größe (px)</label>
+                    <input type="number" id="emoji_max_size_px" min="20" max="200" step="5">
+                </div>
+                <div class="form-group">
+                    <label for="emoji_rotation_speed">Rotationsgeschwindigkeit</label>
+                    <input type="range" id="emoji_rotation_speed" min="0" max="0.2" step="0.01">
+                    <span class="range-value" id="emoji_rotation_speed_value">0.05</span>
+                </div>
+                <div class="form-group">
+                    <label for="emoji_lifetime_ms">Lebensdauer (ms)</label>
+                    <input type="number" id="emoji_lifetime_ms" min="1000" max="30000" step="500">
+                    <div class="help-text">0 = unbegrenzt</div>
+                </div>
+                <div class="form-group">
+                    <label for="emoji_fade_duration_ms">Ausblenden-Dauer (ms)</label>
+                    <input type="number" id="emoji_fade_duration_ms" min="0" max="3000" step="100">
+                </div>
+                <div class="form-group">
+                    <label for="max_emojis_on_screen">Max. Emojis auf Screen</label>
+                    <input type="number" id="max_emojis_on_screen" min="10" max="500" step="10">
+                </div>
+            </div>
+        </div>
+
+        <!-- Scaling Rules -->
+        <div class="config-section">
+            <h2>📊 Skalierungs-Regeln</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="like_count_divisor">Likes Divisor</label>
+                    <input type="number" id="like_count_divisor" min="1" max="1000" step="1">
+                    <div class="help-text">Anzahl Likes / Divisor = Anzahl Emojis</div>
+                </div>
+                <div class="form-group">
+                    <label for="like_min_emojis">Min. Emojis bei Likes</label>
+                    <input type="number" id="like_min_emojis" min="0" max="50" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="like_max_emojis">Max. Emojis bei Likes</label>
+                    <input type="number" id="like_max_emojis" min="1" max="100" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="gift_base_emojis">Basis Emojis bei Gifts</label>
+                    <input type="number" id="gift_base_emojis" min="1" max="20" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="gift_coin_multiplier">Gift Coins Multiplikator</label>
+                    <input type="range" id="gift_coin_multiplier" min="0" max="1" step="0.01">
+                    <span class="range-value" id="gift_coin_multiplier_value">0.1</span>
+                    <div class="help-text">Emojis = base + (coins * multiplier)</div>
+                </div>
+                <div class="form-group">
+                    <label for="gift_max_emojis">Max. Emojis bei Gifts</label>
+                    <input type="number" id="gift_max_emojis" min="1" max="100" step="1">
+                </div>
+            </div>
+        </div>
+
+        <!-- Save & Test Buttons -->
+        <div class="button-group">
+            <button onclick="saveConfig()">💾 Konfiguration speichern</button>
+            <button class="secondary" onclick="testEmojiRain()">🧪 Emoji Rain testen</button>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let config = {};
+
+        // Load configuration on page load
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/emoji-rain/config');
+                const data = await response.json();
+
+                if (data.success) {
+                    config = data.config;
+                    updateUI();
+                }
+            } catch (error) {
+                showNotification('Fehler beim Laden der Konfiguration', true);
+                console.error(error);
+            }
+        }
+
+        // Update UI with loaded config
+        function updateUI() {
+            document.getElementById('enabled-toggle').checked = config.enabled;
+            updateEnabledStatus();
+
+            // Canvas settings
+            document.getElementById('width_px').value = config.width_px;
+            document.getElementById('height_px').value = config.height_px;
+
+            // Emoji set
+            document.getElementById('emoji_set').value = config.emoji_set.join(',');
+            updateEmojiPreview();
+
+            // Physics
+            setRangeValue('physics_gravity_y', config.physics_gravity_y);
+            setRangeValue('physics_air', config.physics_air);
+            setRangeValue('physics_friction', config.physics_friction);
+            setRangeValue('physics_restitution', config.physics_restitution);
+            setRangeValue('physics_wind_strength', config.physics_wind_strength);
+            setRangeValue('physics_wind_variation', config.physics_wind_variation);
+
+            // Appearance
+            document.getElementById('emoji_min_size_px').value = config.emoji_min_size_px;
+            document.getElementById('emoji_max_size_px').value = config.emoji_max_size_px;
+            setRangeValue('emoji_rotation_speed', config.emoji_rotation_speed);
+            document.getElementById('emoji_lifetime_ms').value = config.emoji_lifetime_ms;
+            document.getElementById('emoji_fade_duration_ms').value = config.emoji_fade_duration_ms;
+            document.getElementById('max_emojis_on_screen').value = config.max_emojis_on_screen;
+
+            // Scaling rules
+            document.getElementById('like_count_divisor').value = config.like_count_divisor;
+            document.getElementById('like_min_emojis').value = config.like_min_emojis;
+            document.getElementById('like_max_emojis').value = config.like_max_emojis;
+            document.getElementById('gift_base_emojis').value = config.gift_base_emojis;
+            setRangeValue('gift_coin_multiplier', config.gift_coin_multiplier);
+            document.getElementById('gift_max_emojis').value = config.gift_max_emojis;
+        }
+
+        function setRangeValue(id, value) {
+            const input = document.getElementById(id);
+            const valueDisplay = document.getElementById(id + '_value');
+            input.value = value;
+            valueDisplay.textContent = value;
+        }
+
+        // Save configuration
+        async function saveConfig() {
+            const newConfig = {
+                enabled: document.getElementById('enabled-toggle').checked,
+                width_px: parseInt(document.getElementById('width_px').value),
+                height_px: parseInt(document.getElementById('height_px').value),
+                emoji_set: document.getElementById('emoji_set').value.split(',').map(e => e.trim()).filter(e => e),
+                physics_gravity_y: parseFloat(document.getElementById('physics_gravity_y').value),
+                physics_air: parseFloat(document.getElementById('physics_air').value),
+                physics_friction: parseFloat(document.getElementById('physics_friction').value),
+                physics_restitution: parseFloat(document.getElementById('physics_restitution').value),
+                physics_wind_strength: parseFloat(document.getElementById('physics_wind_strength').value),
+                physics_wind_variation: parseFloat(document.getElementById('physics_wind_variation').value),
+                emoji_min_size_px: parseInt(document.getElementById('emoji_min_size_px').value),
+                emoji_max_size_px: parseInt(document.getElementById('emoji_max_size_px').value),
+                emoji_rotation_speed: parseFloat(document.getElementById('emoji_rotation_speed').value),
+                emoji_lifetime_ms: parseInt(document.getElementById('emoji_lifetime_ms').value),
+                emoji_fade_duration_ms: parseInt(document.getElementById('emoji_fade_duration_ms').value),
+                max_emojis_on_screen: parseInt(document.getElementById('max_emojis_on_screen').value),
+                like_count_divisor: parseInt(document.getElementById('like_count_divisor').value),
+                like_min_emojis: parseInt(document.getElementById('like_min_emojis').value),
+                like_max_emojis: parseInt(document.getElementById('like_max_emojis').value),
+                gift_base_emojis: parseInt(document.getElementById('gift_base_emojis').value),
+                gift_coin_multiplier: parseFloat(document.getElementById('gift_coin_multiplier').value),
+                gift_max_emojis: parseInt(document.getElementById('gift_max_emojis').value)
+            };
+
+            try {
+                const response = await fetch('/api/emoji-rain/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config: newConfig, enabled: newConfig.enabled })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    config = newConfig;
+                    showNotification('Konfiguration gespeichert!');
+                } else {
+                    showNotification('Fehler beim Speichern: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Netzwerkfehler beim Speichern', true);
+                console.error(error);
+            }
+        }
+
+        // Test emoji rain
+        async function testEmojiRain() {
+            try {
+                const response = await fetch('/api/emoji-rain/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ count: 10 })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification('Test-Emojis gespawnt!');
+                } else {
+                    showNotification('Fehler: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Netzwerkfehler beim Testen', true);
+                console.error(error);
+            }
+        }
+
+        // Toggle enabled status
+        document.getElementById('enabled-toggle').addEventListener('change', async function() {
+            const enabled = this.checked;
+
+            try {
+                const response = await fetch('/api/emoji-rain/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    config.enabled = enabled;
+                    updateEnabledStatus();
+                    showNotification(enabled ? 'Emoji Rain aktiviert!' : 'Emoji Rain deaktiviert!');
+                } else {
+                    this.checked = !enabled;
+                    showNotification('Fehler: ' + data.error, true);
+                }
+            } catch (error) {
+                this.checked = !enabled;
+                showNotification('Netzwerkfehler', true);
+                console.error(error);
+            }
+        });
+
+        function updateEnabledStatus() {
+            const status = document.getElementById('enabled-status');
+            const enabled = document.getElementById('enabled-toggle').checked;
+            status.textContent = enabled ? 'Aktiviert' : 'Deaktiviert';
+            status.style.color = enabled ? '#4CAF50' : '#ccc';
+        }
+
+        // Update emoji preview
+        document.getElementById('emoji_set').addEventListener('input', updateEmojiPreview);
+
+        function updateEmojiPreview() {
+            const input = document.getElementById('emoji_set').value;
+            const emojis = input.split(',').map(e => e.trim()).filter(e => e);
+            const preview = document.getElementById('emoji-preview');
+
+            preview.innerHTML = '';
+            emojis.forEach(emoji => {
+                const span = document.createElement('span');
+                span.className = 'emoji-preview-item';
+                span.textContent = emoji;
+                preview.appendChild(span);
+            });
+        }
+
+        // Range input value display
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const valueDisplay = document.getElementById(this.id + '_value');
+                if (valueDisplay) {
+                    valueDisplay.textContent = this.value;
+                }
+            });
+        });
+
+        // Show notification
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification' + (isError ? ' error' : '');
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize
+        loadConfig();
+    </script>
+</body>
+</html>

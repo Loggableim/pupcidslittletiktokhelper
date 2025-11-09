@@ -250,17 +250,42 @@ class GoalManager extends EventEmitter {
 
             // Wende Modus an
             if (config.mode === 'add') {
-                // Erhöhe Ziel um add_amount
-                while (s.total >= s.goal) {
-                    s.goal += Math.max(1, parseInt(config.add_amount));
+                // Erhöhe Ziel um add_amount mit Infinite-Loop-Schutz
+                const MAX_ITERATIONS = 1000;
+                const increment = Math.max(1, parseInt(config.add_amount) || 10);
+                let iterations = 0;
+
+                while (s.total >= s.goal && iterations < MAX_ITERATIONS) {
+                    s.goal += increment;
+                    iterations++;
                 }
-                console.log(`➕ Goal ${key} increased to ${s.goal}`);
+
+                if (iterations >= MAX_ITERATIONS) {
+                    if (this.logger) {
+                        this.logger.warn(`Goal ${key} auto-progression aborted after ${MAX_ITERATIONS} iterations. Setting goal to total + increment.`);
+                    }
+                    s.goal = s.total + increment;
+                }
+
+                console.log(`➕ Goal ${key} increased to ${s.goal} (iterations: ${iterations})`);
             } else if (config.mode === 'double') {
-                // Verdopple Ziel
-                while (s.total >= s.goal) {
+                // Verdopple Ziel mit Infinite-Loop-Schutz
+                const MAX_ITERATIONS = 1000;
+                let iterations = 0;
+
+                while (s.total >= s.goal && iterations < MAX_ITERATIONS) {
                     s.goal = Math.max(1, s.goal * 2);
+                    iterations++;
                 }
-                console.log(`✖️2 Goal ${key} doubled to ${s.goal}`);
+
+                if (iterations >= MAX_ITERATIONS) {
+                    if (this.logger) {
+                        this.logger.warn(`Goal ${key} doubling aborted after ${MAX_ITERATIONS} iterations. Setting goal to total * 2.`);
+                    }
+                    s.goal = Math.max(1, s.total * 2);
+                }
+
+                console.log(`✖️2 Goal ${key} doubled to ${s.goal} (iterations: ${iterations})`);
             } else if (config.mode === 'hide') {
                 // Blende Goal aus
                 s.show = false;
