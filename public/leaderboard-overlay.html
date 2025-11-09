@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaderboard Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent;
+      font-family: 'Arial', sans-serif;
+      overflow: hidden;
+    }
+    #leaderboard {
+      width: 400px;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 12px;
+      padding: 20px;
+      color: white;
+    }
+    h2 {
+      font-size: 24px;
+      margin-bottom: 15px;
+      text-align: center;
+      color: #fbbf24;
+    }
+    .tab-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .tab-btn.active {
+      background: #fbbf24;
+      color: black;
+    }
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .rank {
+      width: 30px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fbbf24;
+    }
+    .username {
+      flex: 1;
+      font-size: 16px;
+    }
+    .stat {
+      font-size: 16px;
+      font-weight: bold;
+      color: #10b981;
+    }
+    .medal {
+      font-size: 24px;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="leaderboard">
+    <h2>🏆 Leaderboard</h2>
+    <div class="tab-buttons">
+      <button class="tab-btn active" data-tab="gifters">Top Gifters</button>
+      <button class="tab-btn" data-tab="chatters">Top Chatters</button>
+    </div>
+    <div id="leaderboard-list"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let currentTab = 'gifters';
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTab = btn.dataset.tab;
+        fetchLeaderboard();
+      });
+    });
+
+    // Fetch leaderboard data
+    async function fetchLeaderboard() {
+      try {
+        const endpoint = currentTab === 'gifters' ? '/api/leaderboard/gifters' : '/api/leaderboard/chatters';
+        const response = await fetch(endpoint + '?limit=10');
+        const data = await response.json();
+        renderLeaderboard(data);
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+      }
+    }
+
+    // Render leaderboard
+    function renderLeaderboard(data) {
+      const list = document.getElementById('leaderboard-list');
+      const medals = ['🥇', '🥈', '🥉'];
+
+      list.innerHTML = data.map((item, index) => `
+        <div class="leaderboard-item">
+          ${index < 3 ? `<span class="medal">${medals[index]}</span>` : ''}
+          <span class="rank">#${index + 1}</span>
+          <span class="username">${item.username}</span>
+          <span class="stat">${currentTab === 'gifters' ? item.coins : item.message_count}</span>
+        </div>
+      `).join('');
+    }
+
+    // Listen for updates
+    socket.on('leaderboard:update', () => {
+      fetchLeaderboard();
+    });
+
+    // Initial load
+    fetchLeaderboard();
+
+    // Auto-refresh every 30 seconds
+    setInterval(fetchLeaderboard, 30000);
+  </script>
+</body>
+</html>

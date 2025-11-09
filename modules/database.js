@@ -99,7 +99,6 @@ class DatabaseManager {
             )
         `);
 
-        // HUD-Element-Konfigurationen (Position, Größe und Sichtbarkeit)
         // HUD-Element-Konfigurationen (Position und Sichtbarkeit)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS hud_elements (
@@ -512,6 +511,20 @@ class DatabaseManager {
             WHERE element_id = ?
         `);
         stmt.run(enabled ? 1 : 0, elementId);
+    }
+
+    /**
+     * Expose prepare() method for other modules (subscription-tiers, leaderboard)
+     */
+    prepare(sql) {
+        return this.db.prepare(sql);
+    }
+
+    /**
+     * Expose exec() method for other modules
+     */
+    exec(sql) {
+        return this.db.exec(sql);
     }
 
     close() {
