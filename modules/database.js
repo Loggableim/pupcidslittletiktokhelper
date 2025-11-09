@@ -131,9 +131,8 @@ class DatabaseManager {
             'theme': 'dark',
             // Soundboard Einstellungen
             'soundboard_enabled': 'true',
-            'soundboard_play_mode': 'overlap',
+            'soundboard_play_mode': 'overlap', // overlap or sequential (managed in frontend)
             'soundboard_max_queue_length': '10',
-            'soundboard_queue_delay_ms': '2000',
             'soundboard_like_threshold': '0',
             'soundboard_like_window_seconds': '10',
             'soundboard_follow_sound': '',
