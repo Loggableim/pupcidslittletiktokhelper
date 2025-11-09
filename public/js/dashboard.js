@@ -591,8 +591,19 @@ async function deleteFlow(id) {
 
 // ========== OVERLAY ==========
 function setOverlayURL() {
-    const url = `${window.location.origin}/overlay.html`;
-    document.getElementById('overlay-url').value = url;
+    const origin = window.location.origin;
+
+    // Main overlay URL
+    document.getElementById('overlay-url').value = `${origin}/overlay.html`;
+
+    // OBS Dock URLs
+    const dockMainEl = document.getElementById('dock-main-url');
+    const dockControlsEl = document.getElementById('dock-controls-url');
+    const dockGoalsEl = document.getElementById('dock-goals-url');
+
+    if (dockMainEl) dockMainEl.value = `${origin}/obs-dock.html`;
+    if (dockControlsEl) dockControlsEl.value = `${origin}/obs-dock-controls.html`;
+    if (dockGoalsEl) dockGoalsEl.value = `${origin}/obs-dock-goals.html`;
 }
 
 function copyURL(elementId) {
