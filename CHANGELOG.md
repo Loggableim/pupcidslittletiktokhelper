@@ -16,6 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Plugin-State-Persistierung in `plugins_state.json`
   - Hot-Loading ohne Server-Neustart
 
+- **Multi-Cam Switcher Plugin** (`plugins/multicam/`) - 2025-11-09
+  - OBS-Szenen wechseln via TikTok Gifts oder Chat-Commands
+  - OBS-WebSocket v5 Integration mit Auto-Reconnect (Exponential Backoff)
+  - Chat-Commands: `!cam 1-5`, `!cam next/prev`, `!scene <name>`, `!angle next`
+  - Gift-Mapping: Rose→Cam1, Lion→Cam5, konfigurierbare Coins-Schwellen
+  - Macro-System: Multi-Step-Aktionen mit Waits (z.B. Studio→Cam3 mit Delay)
+  - Permissions: modsOnly, broadcasterOnly, allowedUsers, minAccountAgeDays
+  - Cooldowns: Per-User (15s), Global (5s), Macro-Max-Duration (10s)
+  - Safety-Limits: maxRapidSwitchesPer30s (20) mit Auto-Lock
+  - Admin-UI: Connection Status, Manual Scene Switcher, Hot Buttons, Activity Log
+  - API-Routes: GET/POST `/api/multicam/config`, `/api/multicam/connect`, `/api/multicam/action`, `/api/multicam/state`
+  - Socket.io Events: `multicam_state`, `multicam_switch`
+  - Szenen-Auto-Discovery von OBS
+  - Fallback-Hotkeys (optional, opt-in)
+
 - **Update-System**: Automatische Update-Prüfung via GitHub API
   - GitHub Releases API Integration
   - Semantic Versioning Vergleich
