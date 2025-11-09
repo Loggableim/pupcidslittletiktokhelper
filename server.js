@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
-const open = require('open');
 
 // Import Modules
 const Database = require('./modules/database');
@@ -839,19 +838,25 @@ tiktok.on('like', async (data) => {
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     console.log('\n' + '='.repeat(50));
     console.log('🎥 TikTok Stream Tool');
     console.log('='.repeat(50));
     console.log(`\n✅ Server running on http://localhost:${PORT}`);
     console.log(`\n📊 Dashboard: http://localhost:${PORT}/dashboard.html`);
     console.log(`🖼️  Overlay:   http://localhost:${PORT}/overlay.html`);
-    console.log('\n' + '='.repeat(50) + '\n');
+    console.log('\n' + '='.repeat(50));
+    console.log('\n⚠️  WICHTIG: Öffne das Overlay und klicke auf "🔊 Audio aktivieren"!');
+    console.log('   Browser Autoplay Policy erfordert User-Interaktion.\n');
 
-    // Browser automatisch öffnen
-    open(`http://localhost:${PORT}/dashboard.html`).catch(() => {
-        console.log('⚠️  Could not open browser automatically');
-    });
+    // Browser automatisch öffnen (async)
+    try {
+        const open = (await import('open')).default;
+        await open(`http://localhost:${PORT}/dashboard.html`);
+    } catch (error) {
+        console.log('ℹ️  Browser konnte nicht automatisch geöffnet werden.');
+        console.log(`   Öffne manuell: http://localhost:${PORT}/dashboard.html\n`);
+    }
 });
 
 // Graceful Shutdown
