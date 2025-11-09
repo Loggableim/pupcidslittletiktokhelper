@@ -174,6 +174,7 @@ function updateConnectionStatus(status, data = {}) {
             statusEl.className = 'status-badge status-connected';
             statusEl.textContent = '🟢 Connected';
             infoEl.textContent = `Connected to @${data.username}`;
+            infoEl.className = 'mt-4 text-green-400 text-sm';
             connectBtn.disabled = true;
             disconnectBtn.disabled = false;
             break;
@@ -182,14 +183,60 @@ function updateConnectionStatus(status, data = {}) {
             statusEl.className = 'status-badge status-disconnected';
             statusEl.textContent = '⚫ Disconnected';
             infoEl.textContent = '';
+            infoEl.className = 'mt-4 text-gray-400 text-sm';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
+            break;
+
+        case 'retrying':
+            statusEl.className = 'status-badge bg-yellow-600';
+            statusEl.textContent = `🔄 Retrying (${data.attempt}/${data.maxRetries})`;
+            infoEl.innerHTML = `
+                <div class="p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded">
+                    <div class="font-semibold text-yellow-300">Verbindung wird wiederholt...</div>
+                    <div class="text-sm text-yellow-200 mt-1">${data.error}</div>
+                    <div class="text-xs text-yellow-400 mt-2">
+                        ⏳ Nächster Versuch in ${(data.delay / 1000).toFixed(0)} Sekunden (Versuch ${data.attempt}/${data.maxRetries})
+                    </div>
+                </div>
+            `;
+            infoEl.className = 'mt-4 text-sm';
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
             break;
 
         case 'error':
             statusEl.className = 'status-badge status-error';
             statusEl.textContent = '🔴 Error';
-            infoEl.textContent = `Error: ${data.error}`;
+
+            // Detaillierte Fehleranzeige mit Type und Suggestion
+            let errorHtml = `
+                <div class="p-3 bg-red-900 bg-opacity-50 border border-red-600 rounded">
+                    <div class="font-semibold text-red-300">${data.type || 'Verbindungsfehler'}</div>
+                    <div class="text-sm text-red-200 mt-1">${data.error}</div>
+            `;
+
+            if (data.suggestion) {
+                errorHtml += `
+                    <div class="mt-3 p-2 bg-gray-800 rounded text-xs text-gray-300">
+                        <div class="font-semibold text-blue-400 mb-1">💡 Lösungsvorschlag:</div>
+                        ${data.suggestion}
+                    </div>
+                `;
+            }
+
+            if (data.retryable === false) {
+                errorHtml += `
+                    <div class="mt-2 text-xs text-red-400">
+                        ⚠️ Dieser Fehler kann nicht automatisch behoben werden.
+                    </div>
+                `;
+            }
+
+            errorHtml += `</div>`;
+
+            infoEl.innerHTML = errorHtml;
+            infoEl.className = 'mt-4 text-sm';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
             break;
@@ -198,6 +245,7 @@ function updateConnectionStatus(status, data = {}) {
             statusEl.className = 'status-badge status-error';
             statusEl.textContent = '📺 Stream Ended';
             infoEl.textContent = 'The stream has ended';
+            infoEl.className = 'mt-4 text-gray-400 text-sm';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
             break;
