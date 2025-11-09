@@ -196,11 +196,6 @@ const pluginsDir = path.join(__dirname, 'plugins');
 const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
 logger.info('🔌 Plugin Loader initialized');
 
-// Plugin-System initialisieren
-const pluginsDir = path.join(__dirname, 'plugins');
-const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
-logger.info('🔌 Plugin Loader initialized');
-
 // Update-Manager initialisieren
 const updateManager = new UpdateManager(logger);
 logger.info('🔄 Update Manager initialized');
