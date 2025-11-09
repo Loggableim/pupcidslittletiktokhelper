@@ -204,6 +204,34 @@ class TikTokConnector extends EventEmitter {
         console.log('⚫ Disconnected from TikTok LIVE');
     }
 
+    // Hilfsfunktion zum Extrahieren von Benutzerdaten aus verschiedenen Event-Strukturen
+    extractUserData(data) {
+        // Unterstütze verschiedene Datenstrukturen:
+        // 1. Direkt im Event: data.uniqueId, data.nickname
+        // 2. Verschachtelt: data.user.uniqueId, data.user.nickname
+        const user = data.user || data;
+
+        const extractedData = {
+            username: user.uniqueId || user.username || null,
+            nickname: user.nickname || user.displayName || null,
+            userId: user.userId || user.id || null,
+            profilePictureUrl: user.profilePictureUrl || user.profilePicture || null
+        };
+
+        // Debug-Logging wenn keine Benutzerdaten gefunden wurden
+        if (!extractedData.username && !extractedData.nickname) {
+            console.warn('⚠️ Keine Benutzerdaten in Event gefunden. Event-Struktur:', {
+                hasUser: !!data.user,
+                hasUniqueId: !!data.uniqueId,
+                hasUsername: !!data.username,
+                hasNickname: !!data.nickname,
+                keys: Object.keys(data).slice(0, 10) // Erste 10 Keys für Debugging
+            });
+        }
+
+        return extractedData;
+    }
+
     registerEventListeners() {
         if (!this.connection) return;
 
@@ -234,12 +262,13 @@ class TikTokConnector extends EventEmitter {
 
         // ========== CHAT ==========
         this.connection.on('chat', (data) => {
+            const userData = this.extractUserData(data);
             const eventData = {
-                username: data.uniqueId,
-                nickname: data.nickname,
-                message: data.comment,
-                userId: data.userId,
-                profilePictureUrl: data.profilePictureUrl,
+                username: userData.username,
+                nickname: userData.nickname,
+                message: data.comment || data.message,
+                userId: userData.userId,
+                profilePictureUrl: userData.profilePictureUrl,
                 timestamp: new Date().toISOString()
             };
 
@@ -257,9 +286,10 @@ class TikTokConnector extends EventEmitter {
             const coins = data.diamondCount || 0;
             this.stats.totalCoins += coins;
 
+            const userData = this.extractUserData(data);
             const eventData = {
-                username: data.uniqueId,
-                nickname: data.nickname,
+                username: userData.username,
+                nickname: userData.nickname,
                 giftName: data.giftName,
                 giftId: data.giftId,
                 giftPictureUrl: data.giftPictureUrl,
@@ -278,10 +308,11 @@ class TikTokConnector extends EventEmitter {
         this.connection.on('follow', (data) => {
             this.stats.followers++;
 
+            const userData = this.extractUserData(data);
             const eventData = {
-                username: data.uniqueId,
-                nickname: data.nickname,
-                userId: data.userId,
+                username: userData.username,
+                nickname: userData.nickname,
+                userId: userData.userId,
                 timestamp: new Date().toISOString()
             };
 
@@ -294,10 +325,11 @@ class TikTokConnector extends EventEmitter {
         this.connection.on('share', (data) => {
             this.stats.shares++;
 
+            const userData = this.extractUserData(data);
             const eventData = {
-                username: data.uniqueId,
-                nickname: data.nickname,
-                userId: data.userId,
+                username: userData.username,
+                nickname: userData.nickname,
+                userId: userData.userId,
                 timestamp: new Date().toISOString()
             };
 
@@ -311,9 +343,10 @@ class TikTokConnector extends EventEmitter {
             const likeCount = data.likeCount || 1;
             this.stats.likes += likeCount;
 
+            const userData = this.extractUserData(data);
             const eventData = {
-                username: data.uniqueId,
-                nickname: data.nickname,
+                username: userData.username,
+                nickname: userData.nickname,
                 likeCount: likeCount,
                 totalLikes: this.stats.likes,
                 timestamp: new Date().toISOString()
@@ -332,10 +365,11 @@ class TikTokConnector extends EventEmitter {
 
         // ========== SUBSCRIBE ==========
         this.connection.on('subscribe', (data) => {
+            const userData = this.extractUserData(data);
             const eventData = {
-                username: data.uniqueId,
-                nickname: data.nickname,
-                userId: data.userId,
+                username: userData.username,
+                nickname: userData.nickname,
+                userId: userData.userId,
                 timestamp: new Date().toISOString()
             };
 

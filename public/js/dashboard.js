@@ -279,7 +279,7 @@ function addEventToLog(type, data) {
     row.className = 'event-row border-b border-gray-700';
 
     const time = new Date().toLocaleTimeString();
-    const username = data.username || data.uniqueId || 'Unknown';
+    const username = data.username || data.uniqueId || data.nickname || 'Viewer';
 
     let details = '';
     let typeIcon = '';

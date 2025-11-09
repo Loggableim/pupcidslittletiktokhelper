@@ -733,6 +733,11 @@
             }
         }
 
+        // Hilfsfunktion zum Extrahieren des Benutzernamens mit Fallbacks
+        function getUsername(data) {
+            return data.username || data.uniqueId || data.nickname || 'Viewer';
+        }
+
         function addEventToFeed(type, data) {
             const feed = document.getElementById('event-feed');
 
@@ -741,23 +746,24 @@
 
             let icon = '';
             let text = '';
+            const username = getUsername(data);
 
             switch (type) {
                 case 'gift':
                     icon = '🎁';
-                    text = `<span class="username">${data.username}</span> sent ${data.giftName} x${data.repeatCount}`;
+                    text = `<span class="username">${username}</span> sent ${data.giftName} x${data.repeatCount}`;
                     break;
                 case 'follow':
                     icon = '⭐';
-                    text = `<span class="username">${data.username}</span> followed!`;
+                    text = `<span class="username">${username}</span> followed!`;
                     break;
                 case 'subscribe':
                     icon = '🌟';
-                    text = `<span class="username">${data.username}</span> subscribed!`;
+                    text = `<span class="username">${username}</span> subscribed!`;
                     break;
                 case 'share':
                     icon = '🔄';
-                    text = `<span class="username">${data.username}</span> shared the stream`;
+                    text = `<span class="username">${username}</span> shared the stream`;
                     break;
             }
 
@@ -782,8 +788,9 @@
 
             const msg = document.createElement('div');
             msg.className = 'chat-message';
+            const username = getUsername(data);
             msg.innerHTML = `
-                <span class="username">${data.username}:</span>
+                <span class="username">${username}:</span>
                 <span class="message">${escapeHtml(data.message)}</span>
             `;
 
@@ -826,6 +833,7 @@
             let content = '';
             const animationType = data.type || 'none';
             const animationUrl = data.url || '';
+            const username = getUsername(data);
 
             if (animationType === 'image' || animationType === 'gif') {
                 content = `
@@ -834,7 +842,7 @@
                              style="max-width: 600px; max-height: 600px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);"
                              onerror="this.style.display='none'" />
                         <div style="margin-top: 20px; color: white; font-size: 28px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
-                            ${escapeHtml(data.username)} sent ${escapeHtml(data.giftName)}!
+                            ${escapeHtml(username)} sent ${escapeHtml(data.giftName)}!
                         </div>
                     </div>
                 `;
@@ -847,7 +855,7 @@
                             <source src="${animationUrl}" type="video/mp4">
                         </video>
                         <div style="margin-top: 20px; color: white; font-size: 28px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
-                            ${escapeHtml(data.username)} sent ${escapeHtml(data.giftName)}!
+                            ${escapeHtml(username)} sent ${escapeHtml(data.giftName)}!
                         </div>
                     </div>
                 `;
@@ -860,7 +868,7 @@
                                  style="max-width: 400px; max-height: 400px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);"
                                  onerror="this.style.display='none'" />
                             <div style="margin-top: 20px; color: white; font-size: 28px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
-                                ${escapeHtml(data.username)} sent ${escapeHtml(data.giftName)}!
+                                ${escapeHtml(username)} sent ${escapeHtml(data.giftName)}!
                             </div>
                         </div>
                     `;
