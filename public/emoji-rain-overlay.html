@@ -45,6 +45,27 @@
             opacity: 0;
         }
 
+        /* Bubble Blop Animation */
+        @keyframes bubbleBlop {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        /* Custom image support */
+        .emoji-sprite img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
         /* Debug info (optional) */
         #debug-info {
             position: fixed;
@@ -84,6 +105,9 @@
             width_px: 1280,
             height_px: 720,
             emoji_set: ["💧","💙","💚","💜","❤️","🩵","✨","🌟","🔥","🎉"],
+            use_custom_images: false,
+            image_urls: [],
+            effect: 'bounce', // 'bounce' | 'bubble' | 'none'
             physics_gravity_y: 1.0,
             physics_air: 0.02,
             physics_friction: 0.1,
@@ -110,9 +134,15 @@
         let emojis = []; // Track emoji bodies and DOM elements
         let windForce = 0;
         let debugMode = false; // Set to true to show debug info
+        let ground, leftWall, rightWall; // Store boundaries for dynamic resizing
+        let canvasWidth, canvasHeight; // Current canvas dimensions
 
         // Initialize physics engine
         function initPhysics() {
+            // Use window dimensions instead of config dimensions
+            canvasWidth = window.innerWidth;
+            canvasHeight = window.innerHeight;
+
             // Create engine
             engine = Engine.create({
                 enableSleeping: false
@@ -123,23 +153,24 @@
 
             // Create invisible boundaries
             const thickness = 100;
-            const ground = Bodies.rectangle(
-                config.width_px / 2,
-                config.height_px + thickness / 2,
-                config.width_px + thickness * 2,
+            ground = Bodies.rectangle(
+                canvasWidth / 2,
+                canvasHeight + thickness / 2,
+                canvasWidth + thickness * 2,
                 thickness,
                 {
                     isStatic: true,
                     friction: config.physics_friction,
-                    restitution: config.physics_restitution
+                    restitution: config.physics_restitution,
+                    label: 'ground'
                 }
             );
 
-            const leftWall = Bodies.rectangle(
+            leftWall = Bodies.rectangle(
                 -thickness / 2,
-                config.height_px / 2,
+                canvasHeight / 2,
                 thickness,
-                config.height_px + thickness * 2,
+                canvasHeight + thickness * 2,
                 {
                     isStatic: true,
                     friction: config.physics_friction,
@@ -147,11 +178,11 @@
                 }
             );
 
-            const rightWall = Bodies.rectangle(
-                config.width_px + thickness / 2,
-                config.height_px / 2,
+            rightWall = Bodies.rectangle(
+                canvasWidth + thickness / 2,
+                canvasHeight / 2,
                 thickness,
-                config.height_px + thickness * 2,
+                canvasHeight + thickness * 2,
                 {
                     isStatic: true,
                     friction: config.physics_friction,
@@ -161,11 +192,78 @@
 
             World.add(engine.world, [ground, leftWall, rightWall]);
 
+            // Listen for collision with ground for bubble effect
+            Events.on(engine, 'collisionStart', handleCollision);
+
             // Run the engine
             Engine.run(engine);
 
             // Update loop
             requestAnimationFrame(updateLoop);
+        }
+
+        // Handle collision events (for bubble animation)
+        function handleCollision(event) {
+            if (config.effect === 'none') return;
+
+            event.pairs.forEach(pair => {
+                // Check if one of the bodies is the ground
+                if (pair.bodyA.label === 'ground' || pair.bodyB.label === 'ground') {
+                    const emojiBody = pair.bodyA.label === 'ground' ? pair.bodyB : pair.bodyA;
+
+                    // Find emoji object
+                    const emoji = emojis.find(e => e.body === emojiBody);
+                    if (emoji && !emoji.hasBouncedEffect) {
+                        emoji.hasBouncedEffect = true;
+                        triggerBubbleEffect(emoji);
+                    }
+                }
+            });
+        }
+
+        // Trigger bubble/blop animation
+        function triggerBubbleEffect(emoji) {
+            if (!emoji.element || config.effect === 'none') return;
+
+            // Add bubble animation
+            emoji.element.style.animation = 'bubbleBlop 0.4s ease-out';
+
+            // Optional: play sound (can be added later)
+            // new Audio('/sounds/pop.mp3').play().catch(() => {});
+        }
+
+        // Resize canvas and physics world
+        function resizeCanvas() {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight;
+
+            if (newWidth === canvasWidth && newHeight === canvasHeight) return;
+
+            canvasWidth = newWidth;
+            canvasHeight = newHeight;
+
+            // Update world boundaries
+            const thickness = 100;
+
+            Body.setPosition(ground, {
+                x: canvasWidth / 2,
+                y: canvasHeight + thickness / 2
+            });
+            Body.setVertices(ground, Bodies.rectangle(0, 0, canvasWidth + thickness * 2, thickness).vertices);
+
+            Body.setPosition(leftWall, {
+                x: -thickness / 2,
+                y: canvasHeight / 2
+            });
+            Body.setVertices(leftWall, Bodies.rectangle(0, 0, thickness, canvasHeight + thickness * 2).vertices);
+
+            Body.setPosition(rightWall, {
+                x: canvasWidth + thickness / 2,
+                y: canvasHeight / 2
+            });
+            Body.setVertices(rightWall, Bodies.rectangle(0, 0, thickness, canvasHeight + thickness * 2).vertices);
+
+            console.log(`📐 Canvas resized to ${canvasWidth}x${canvasHeight}`);
         }
 
         // Main update loop
@@ -234,9 +332,9 @@
 
         // Spawn emoji
         function spawnEmoji(emoji, x, y, size) {
-            // Normalize x position (0-1 to px)
+            // Normalize x position (0-1 to px) using canvasWidth
             if (x >= 0 && x <= 1) {
-                x = x * config.width_px;
+                x = x * canvasWidth;
             }
 
             // Create physics body (circle)
@@ -260,8 +358,20 @@
             // Create DOM element
             const element = document.createElement('div');
             element.className = 'emoji-sprite';
-            element.textContent = emoji;
-            element.style.fontSize = size + 'px';
+
+            // Use custom image or emoji
+            if (config.use_custom_images && config.image_urls && config.image_urls.length > 0) {
+                const imageUrl = config.image_urls[Math.floor(Math.random() * config.image_urls.length)];
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.style.width = size + 'px';
+                img.style.height = size + 'px';
+                element.appendChild(img);
+            } else {
+                element.textContent = emoji;
+                element.style.fontSize = size + 'px';
+            }
+
             element.style.left = x + 'px';
             element.style.top = y + 'px';
             document.getElementById('canvas-container').appendChild(element);
@@ -275,7 +385,8 @@
                 rotation: 0,
                 spawnTime: Date.now(),
                 fading: false,
-                removed: false
+                removed: false,
+                hasBouncedEffect: false
             };
 
             emojis.push(emojiObj);
@@ -450,8 +561,7 @@
 
         // Handle window resize
         window.addEventListener('resize', () => {
-            // Could update canvas size here if needed
-            console.log('Window resized');
+            resizeCanvas();
         });
 
         // Enable debug mode with keyboard shortcut
