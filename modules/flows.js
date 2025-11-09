@@ -229,10 +229,10 @@ class FlowEngine {
 
         let result = text;
 
-        // Standard-Variablen
+        // Standard-Variablen mit robusteren Fallbacks
         const variables = {
-            '{username}': eventData.username || eventData.uniqueId || 'Unknown',
-            '{nickname}': eventData.nickname || eventData.username || 'Unknown',
+            '{username}': eventData.username || eventData.uniqueId || eventData.nickname || 'Viewer',
+            '{nickname}': eventData.nickname || eventData.username || eventData.uniqueId || 'Viewer',
             '{message}': eventData.message || '',
             '{gift_name}': eventData.giftName || '',
             '{coins}': eventData.coins || 0,

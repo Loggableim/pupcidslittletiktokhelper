@@ -90,10 +90,10 @@ class AlertManager {
 
         let rendered = template;
 
-        // Verfügbare Variablen
+        // Verfügbare Variablen mit robusteren Fallbacks
         const variables = {
-            '{username}': data.username || data.uniqueId || 'Unknown',
-            '{nickname}': data.nickname || data.username || 'Unknown',
+            '{username}': data.username || data.uniqueId || data.nickname || 'Viewer',
+            '{nickname}': data.nickname || data.username || data.uniqueId || 'Viewer',
             '{message}': data.message || '',
             '{gift_name}': data.giftName || '',
             '{coins}': data.coins || 0,
@@ -112,12 +112,14 @@ class AlertManager {
 
     getDefaultText(data) {
         // Default-Texte basierend auf Event-Typ
+        const username = data.username || data.uniqueId || data.nickname || 'Viewer';
+
         if (data.giftName) {
-            return `${data.username} sent ${data.giftName}${data.repeatCount > 1 ? ' x' + data.repeatCount : ''}!`;
+            return `${username} sent ${data.giftName}${data.repeatCount > 1 ? ' x' + data.repeatCount : ''}!`;
         } else if (data.message) {
-            return `${data.username}: ${data.message}`;
+            return `${username}: ${data.message}`;
         } else {
-            return `${data.username}`;
+            return `${username}`;
         }
     }
 
