@@ -214,6 +214,19 @@
                     </div>
                 </div>
 
+                <div class="mt-6 p-4 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded">
+                    <h3 class="font-bold mb-2 text-yellow-300">⚠️ WICHTIG: Audio aktivieren!</h3>
+                    <p class="text-sm text-yellow-100 mb-3">
+                        Bevor TTS und Soundboard funktionieren, MUSS der "Audio aktivieren" Button im Overlay geklickt werden!
+                        Dies ist wegen der Browser Autoplay Policy erforderlich.
+                    </p>
+                    <ol class="list-decimal list-inside space-y-1 text-sm text-yellow-100">
+                        <li>Öffne das Overlay im Browser: <span class="font-mono bg-gray-800 px-2 py-1 rounded">http://localhost:3000/overlay.html</span></li>
+                        <li>Klicke auf den großen "🔊 Audio aktivieren" Button</li>
+                        <li>Jetzt funktioniert Audio auch in OBS!</li>
+                    </ol>
+                </div>
+
                 <div class="mt-6 p-4 bg-gray-700 rounded">
                     <h3 class="font-bold mb-2">📖 OBS Setup-Anleitung:</h3>
                     <ol class="list-decimal list-inside space-y-1 text-sm text-gray-300">
@@ -223,7 +236,9 @@
                         <li>Kopiere die URL oben und füge sie ein</li>
                         <li>Setze Breite: 1920, Höhe: 1080</li>
                         <li>Entferne Häkchen bei "Shutdown source when not visible"</li>
+                        <li>Aktiviere "Control audio via OBS" (wichtig für Audio!)</li>
                         <li>Klicke OK</li>
+                        <li><strong>Wichtig:</strong> Klicke auf "Interact" in OBS und dann auf "Audio aktivieren" Button!</li>
                     </ol>
                 </div>
             </div>

@@ -20,6 +20,37 @@
             overflow: hidden;
         }
 
+        /* ========== AUDIO UNLOCK BUTTON ========== */
+        #audio-unlock {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #audio-unlock:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        #audio-unlock.hidden {
+            display: none;
+        }
+
         /* ========== ALERT CONTAINER ========== */
         #alert-container {
             position: absolute;
@@ -286,6 +317,12 @@
     <!-- Chat Display -->
     <div id="chat-container"></div>
 
+    <!-- Audio Unlock Button (für Browser Autoplay Policy) -->
+    <div id="audio-unlock" onclick="unlockAudio()">
+        <span>🔊</span>
+        <span>Audio aktivieren (Click here)</span>
+    </div>
+
     <!-- Audio Element für TTS -->
     <audio id="tts-audio"></audio>
 
@@ -299,6 +336,22 @@
         // Soundboard Audio Queue
         let soundQueue = [];
         let isPlayingSound = false;
+        let audioUnlocked = false;
+
+        // Audio Unlock (Browser Autoplay Policy umgehen)
+        function unlockAudio() {
+            if (audioUnlocked) return;
+
+            // Leeres Audio abspielen um Browser zu entsperren
+            const audio = new Audio();
+            audio.play().then(() => {
+                audioUnlocked = true;
+                document.getElementById('audio-unlock').classList.add('hidden');
+                console.log('✅ Audio unlocked!');
+            }).catch(err => {
+                console.warn('⚠️ Audio unlock failed:', err);
+            });
+        }
 
         // State
         let goalTarget = 1000;
@@ -387,23 +440,45 @@
 
         // ========== TTS FUNCTIONS ==========
         function playTTS(data) {
+            console.log('🎤 Playing TTS:', data.text);
+
+            if (!audioUnlocked) {
+                console.warn('⚠️ Audio not unlocked yet! Click the unlock button first.');
+                return;
+            }
+
             const audio = document.getElementById('tts-audio');
 
-            // Base64-Audio zu Blob konvertieren
-            const audioData = data.audioData;
-            const audioBlob = base64ToBlob(audioData, 'audio/mpeg');
-            const audioUrl = URL.createObjectURL(audioBlob);
+            try {
+                // Base64-Audio zu Blob konvertieren
+                const audioData = data.audioData;
+                const audioBlob = base64ToBlob(audioData, 'audio/mpeg');
+                const audioUrl = URL.createObjectURL(audioBlob);
 
-            audio.src = audioUrl;
-            audio.volume = (data.volume || 80) / 100;
-            audio.playbackRate = data.speed || 1.0;
+                audio.src = audioUrl;
+                audio.volume = (data.volume || 80) / 100;
+                audio.playbackRate = data.speed || 1.0;
 
-            audio.play().catch(err => console.error('TTS playback error:', err));
+                audio.play().then(() => {
+                    console.log('✅ TTS started playing');
+                }).catch(err => {
+                    console.error('❌ TTS playback error:', err);
+                });
 
-            // URL nach Abspielen freigeben
-            audio.onended = () => {
-                URL.revokeObjectURL(audioUrl);
-            };
+                // URL nach Abspielen freigeben
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    console.log('✅ TTS finished');
+                };
+
+                audio.onerror = (err) => {
+                    console.error('❌ TTS audio error:', err);
+                    URL.revokeObjectURL(audioUrl);
+                };
+
+            } catch (error) {
+                console.error('❌ Error in playTTS:', error);
+            }
         }
 
         function base64ToBlob(base64, mimeType) {
@@ -420,6 +495,11 @@
         function playSoundboardAudio(data) {
             console.log('🔊 Playing soundboard audio:', data.label);
 
+            if (!audioUnlocked) {
+                console.warn('⚠️ Audio not unlocked yet! Click the unlock button first.');
+                return;
+            }
+
             // Create new audio element
             const audio = document.createElement('audio');
             audio.src = data.url;
@@ -431,19 +511,22 @@
 
             // Remove after playback
             audio.onended = () => {
+                console.log('✅ Sound finished:', data.label);
                 audio.remove();
                 processSoundQueue();
             };
 
             audio.onerror = (e) => {
-                console.error('Error playing sound:', e);
+                console.error('❌ Error playing sound:', data.label, e);
                 audio.remove();
                 processSoundQueue();
             };
 
             // Play immediately (overlap mode)
-            audio.play().catch(err => {
-                console.error('Sound playback error:', err);
+            audio.play().then(() => {
+                console.log('✅ Sound started:', data.label);
+            }).catch(err => {
+                console.error('❌ Sound playback error:', data.label, err);
                 audio.remove();
                 processSoundQueue();
             });
