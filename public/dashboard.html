@@ -93,6 +93,9 @@
         <div class="container mx-auto flex items-center justify-between">
             <h1 class="text-2xl font-bold">🎥 TikTok Stream Tool</h1>
             <div class="flex items-center gap-4">
+                <button id="profile-btn" class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600 transition font-semibold flex items-center gap-2">
+                    👤 <span id="current-profile-name">default</span>
+                </button>
                 <span id="connection-status" class="status-badge status-disconnected">⚫ Disconnected</span>
             </div>
         </div>
@@ -586,6 +589,45 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Modal: User Profiles -->
+    <div id="profile-modal" class="modal">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold">👤 User Profile Management</h3>
+                <button id="profile-modal-close" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <!-- Current Active Profile -->
+            <div class="bg-blue-900 bg-opacity-30 border border-blue-500 rounded-lg p-4 mb-6">
+                <div class="text-sm text-gray-400 mb-1">Aktives Profil:</div>
+                <div class="text-xl font-bold" id="active-profile-display">default</div>
+                <div class="text-xs text-gray-400 mt-2">
+                    ⚠️ Ein Profilwechsel erfordert einen Neustart der Anwendung
+                </div>
+            </div>
+
+            <!-- Profile List -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold mb-3">Verfügbare Profile</h4>
+                <div id="profile-list" class="space-y-2 max-h-64 overflow-y-auto">
+                    <!-- Profile werden hier dynamisch eingefügt -->
+                </div>
+            </div>
+
+            <!-- Create New Profile -->
+            <div class="border-t border-gray-700 pt-4">
+                <h4 class="text-lg font-semibold mb-3">Neues Profil erstellen</h4>
+                <div class="flex gap-3">
+                    <input type="text" id="new-profile-username" placeholder="Profile Name (z.B. dein Username)"
+                           class="bg-gray-700 text-white px-4 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="create-profile-btn" class="bg-green-600 px-6 py-2 rounded hover:bg-green-700 transition font-semibold">
+                        ➕ Erstellen
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal: Add Voice Mapping -->

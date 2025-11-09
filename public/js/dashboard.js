@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadVoiceMapping();
     loadFlows();
     setOverlayURL();
+    loadActiveProfile();
 });
 
 // ========== TABS ==========
@@ -79,6 +80,16 @@ function initializeButtons() {
     // Modal Buttons
     document.getElementById('modal-save-btn').addEventListener('click', saveVoiceMapping);
     document.getElementById('modal-cancel-btn').addEventListener('click', hideVoiceModal);
+
+    // Profile Buttons
+    document.getElementById('profile-btn').addEventListener('click', showProfileModal);
+    document.getElementById('profile-modal-close').addEventListener('click', hideProfileModal);
+    document.getElementById('create-profile-btn').addEventListener('click', createProfile);
+
+    // Enter-Taste im Profile-Input
+    document.getElementById('new-profile-username').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') createProfile();
+    });
 
     // Save TTS Settings
     document.getElementById('save-tts-settings-btn').addEventListener('click', saveTTSSettings);
@@ -1176,5 +1187,229 @@ async function testTTS() {
     } catch (error) {
         console.error('Error testing TTS:', error);
         alert('❌ Error testing TTS!');
+    }
+}
+
+// ========== USER PROFILE MANAGEMENT ==========
+
+// Lädt das aktive Profil und zeigt es an
+async function loadActiveProfile() {
+    try {
+        const response = await fetch('/api/profiles/active');
+        const data = await response.json();
+
+        if (data.activeProfile) {
+            document.getElementById('current-profile-name').textContent = data.activeProfile;
+            document.getElementById('active-profile-display').textContent = data.activeProfile;
+        }
+    } catch (error) {
+        console.error('Error loading active profile:', error);
+    }
+}
+
+// Lädt alle verfügbaren Profile
+async function loadProfiles() {
+    try {
+        const response = await fetch('/api/profiles');
+        const data = await response.json();
+
+        const profileList = document.getElementById('profile-list');
+        profileList.innerHTML = '';
+
+        if (data.profiles.length === 0) {
+            profileList.innerHTML = '<div class="text-gray-400 text-center py-4">Keine Profile gefunden</div>';
+            return;
+        }
+
+        data.profiles.forEach(profile => {
+            const profileCard = document.createElement('div');
+            profileCard.className = `bg-gray-700 rounded-lg p-4 flex items-center justify-between ${
+                profile.isActive ? 'border-2 border-blue-500' : ''
+            }`;
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'flex-1';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'font-semibold flex items-center gap-2';
+            nameDiv.innerHTML = `
+                <span>${profile.username}</span>
+                ${profile.isActive ? '<span class="text-xs bg-blue-600 px-2 py-1 rounded">AKTIV</span>' : ''}
+            `;
+
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'text-xs text-gray-400 mt-1';
+            const modifiedDate = new Date(profile.modified).toLocaleString('de-DE');
+            const sizeKB = (profile.size / 1024).toFixed(2);
+            detailsDiv.textContent = `Zuletzt geändert: ${modifiedDate} | Größe: ${sizeKB} KB`;
+
+            infoDiv.appendChild(nameDiv);
+            infoDiv.appendChild(detailsDiv);
+
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'flex gap-2';
+
+            // Switch Button (nur wenn nicht aktiv)
+            if (!profile.isActive) {
+                const switchBtn = document.createElement('button');
+                switchBtn.className = 'bg-blue-600 px-3 py-1 rounded hover:bg-blue-700 text-sm';
+                switchBtn.textContent = '🔄 Wechseln';
+                switchBtn.onclick = () => switchProfile(profile.username);
+                buttonsDiv.appendChild(switchBtn);
+            }
+
+            // Backup Button
+            const backupBtn = document.createElement('button');
+            backupBtn.className = 'bg-gray-600 px-3 py-1 rounded hover:bg-gray-500 text-sm';
+            backupBtn.textContent = '💾';
+            backupBtn.title = 'Backup erstellen';
+            backupBtn.onclick = () => backupProfile(profile.username);
+            buttonsDiv.appendChild(backupBtn);
+
+            // Delete Button (nicht für aktives Profil)
+            if (!profile.isActive) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-sm';
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.title = 'Profil löschen';
+                deleteBtn.onclick = () => deleteProfile(profile.username);
+                buttonsDiv.appendChild(deleteBtn);
+            }
+
+            profileCard.appendChild(infoDiv);
+            profileCard.appendChild(buttonsDiv);
+            profileList.appendChild(profileCard);
+        });
+    } catch (error) {
+        console.error('Error loading profiles:', error);
+    }
+}
+
+// Zeigt das Profile Modal
+async function showProfileModal() {
+    document.getElementById('profile-modal').classList.add('active');
+    await loadProfiles();
+}
+
+// Versteckt das Profile Modal
+function hideProfileModal() {
+    document.getElementById('profile-modal').classList.remove('active');
+}
+
+// Erstellt ein neues Profil
+async function createProfile() {
+    const usernameInput = document.getElementById('new-profile-username');
+    const username = usernameInput.value.trim();
+
+    if (!username) {
+        alert('Bitte gib einen Profilnamen ein!');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✅ Profil "${username}" wurde erfolgreich erstellt!`);
+            usernameInput.value = '';
+            await loadProfiles();
+        } else {
+            alert('❌ Fehler beim Erstellen des Profils: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error creating profile:', error);
+        alert('❌ Fehler beim Erstellen des Profils!');
+    }
+}
+
+// Wechselt zu einem anderen Profil
+async function switchProfile(username) {
+    const confirmSwitch = confirm(
+        `Möchtest du zu Profil "${username}" wechseln?\n\n` +
+        `⚠️ Die Anwendung muss danach neu gestartet werden!`
+    );
+
+    if (!confirmSwitch) return;
+
+    try {
+        const response = await fetch('/api/profiles/switch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(
+                `✅ Profil gewechselt zu "${username}"!\n\n` +
+                `Bitte starte die Anwendung neu, um das neue Profil zu verwenden.`
+            );
+            hideProfileModal();
+        } else {
+            alert('❌ Fehler beim Wechseln des Profils: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error switching profile:', error);
+        alert('❌ Fehler beim Wechseln des Profils!');
+    }
+}
+
+// Löscht ein Profil
+async function deleteProfile(username) {
+    const confirmDelete = confirm(
+        `Möchtest du das Profil "${username}" wirklich löschen?\n\n` +
+        `⚠️ Diese Aktion kann nicht rückgängig gemacht werden!\n` +
+        `Alle Einstellungen, Voice-Mappings, Sounds und Konfigurationen werden gelöscht.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+        const response = await fetch(`/api/profiles/${encodeURIComponent(username)}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✅ Profil "${username}" wurde gelöscht!`);
+            await loadProfiles();
+        } else {
+            alert('❌ Fehler beim Löschen des Profils: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error deleting profile:', error);
+        alert('❌ Fehler beim Löschen des Profils!');
+    }
+}
+
+// Erstellt ein Backup eines Profils
+async function backupProfile(username) {
+    try {
+        const response = await fetch(`/api/profiles/${encodeURIComponent(username)}/backup`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(
+                `✅ Backup erstellt!\n\n` +
+                `Profil: ${username}\n` +
+                `Backup-Datei: ${result.backup.backupPath}`
+            );
+        } else {
+            alert('❌ Fehler beim Erstellen des Backups: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        alert('❌ Fehler beim Erstellen des Backups!');
     }
 }
