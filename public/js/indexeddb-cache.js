@@ -60,10 +60,14 @@ class IndexedDBCache {
    * Set cache entry
    */
   async set(storeName, data) {
-    const tx = this.db.transaction(storeName, 'readwrite');
-    const store = tx.objectStore(storeName);
-    store.put(data);
-    return tx.complete;
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const request = store.put(data);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**
@@ -98,20 +102,28 @@ class IndexedDBCache {
    * Delete cache entry
    */
   async delete(storeName, key) {
-    const tx = this.db.transaction(storeName, 'readwrite');
-    const store = tx.objectStore(storeName);
-    store.delete(key);
-    return tx.complete;
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const request = store.delete(key);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**
    * Clear all cache
    */
   async clearAll(storeName) {
-    const tx = this.db.transaction(storeName, 'readwrite');
-    const store = tx.objectStore(storeName);
-    store.clear();
-    return tx.complete;
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const request = store.clear();
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 
   /**

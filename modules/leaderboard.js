@@ -11,8 +11,9 @@
 const logger = require('./logger');
 
 class LeaderboardManager {
-  constructor(db) {
+  constructor(db, io = null) {
     this.db = db;
+    this.io = io;
     this.initDatabase();
     this.sessionStart = Date.now();
   }
@@ -138,6 +139,15 @@ class LeaderboardManager {
     );
 
     logger.debug('Leaderboard stats updated', { username, eventType });
+
+    // Emit Socket.IO event for real-time updates
+    if (this.io) {
+      this.io.to('leaderboard').emit('leaderboard:update', {
+        username,
+        eventType,
+        stats: this.getUserStats(username)
+      });
+    }
   }
 
   /**

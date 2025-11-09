@@ -10,8 +10,9 @@
 const logger = require('./logger');
 
 class SubscriptionTiersManager {
-  constructor(db) {
+  constructor(db, io = null) {
     this.db = db;
+    this.io = io;
     this.initDatabase();
     this.tiers = this.loadTiers();
   }
@@ -122,7 +123,7 @@ class SubscriptionTiersManager {
 
     const tierConfig = this.getTier(tier);
 
-    return {
+    const result = {
       username,
       tier,
       tierName: tierConfig.name,
@@ -132,6 +133,13 @@ class SubscriptionTiersManager {
       alertDuration: tierConfig.alert_duration,
       giftMultiplier: tierConfig.gift_multiplier
     };
+
+    // Emit Socket.IO event
+    if (this.io) {
+      this.io.emit('subscription:tier', result);
+    }
+
+    return result;
   }
 
   /**

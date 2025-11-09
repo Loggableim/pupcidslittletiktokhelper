@@ -99,7 +99,6 @@ class DatabaseManager {
             )
         `);
 
-        // HUD-Element-Konfigurationen (Position, Größe und Sichtbarkeit)
         // HUD-Element-Konfigurationen (Position und Sichtbarkeit)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS hud_elements (

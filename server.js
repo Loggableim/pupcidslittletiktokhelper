@@ -17,7 +17,7 @@ const UserProfileManager = require('./modules/user-profiles');
 
 // Import New Modules
 const logger = require('./modules/logger');
-const rateLimiter = require('./modules/rate-limiter');
+const { apiLimiter, authLimiter, uploadLimiter } = require('./modules/rate-limiter');
 const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
@@ -340,7 +340,7 @@ app.get('/goal/:key', (req, res) => {
 
 // ========== TIKTOK CONNECTION ROUTES ==========
 
-app.post('/api/connect', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/connect', authLimiter, async (req, res) => {
     const { username } = req.body;
 
     if (!username) {
@@ -358,13 +358,13 @@ app.post('/api/connect', rateLimiter.apiLimiter, async (req, res) => {
     }
 });
 
-app.post('/api/disconnect', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/disconnect', authLimiter, (req, res) => {
     tiktok.disconnect();
     logger.info('🔌 Disconnected from TikTok');
     res.json({ success: true });
 });
 
-app.get('/api/status', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/status', apiLimiter, (req, res) => {
     res.json({
         isConnected: tiktok.isActive(),
         username: tiktok.currentUsername,
@@ -374,23 +374,23 @@ app.get('/api/status', rateLimiter.apiLimiter, (req, res) => {
 
 // ========== VOICE MAPPING ROUTES ==========
 
-app.get('/api/voices', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/voices', apiLimiter, (req, res) => {
     const voices = db.getUserVoices();
     res.json(voices);
 });
 
-app.get('/api/voices/list', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/voices/list', apiLimiter, (req, res) => {
     const TTSModule = require('./modules/tts');
     const provider = req.query.provider || 'tiktok';
     res.json(TTSModule.getVoices(provider));
 });
 
-app.get('/api/voices/all', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/voices/all', apiLimiter, (req, res) => {
     const TTSModule = require('./modules/tts');
     res.json(TTSModule.getAllVoices());
 });
 
-app.post('/api/voices', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/voices', apiLimiter, (req, res) => {
     const { username, voice } = req.body;
 
     if (!username || !voice) {
@@ -407,7 +407,7 @@ app.post('/api/voices', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.delete('/api/voices/:username', rateLimiter.apiLimiter, (req, res) => {
+app.delete('/api/voices/:username', apiLimiter, (req, res) => {
     try {
         db.deleteUserVoice(req.params.username);
         logger.info(`🗑️ Voice deleted for user: ${req.params.username}`);
@@ -420,12 +420,12 @@ app.delete('/api/voices/:username', rateLimiter.apiLimiter, (req, res) => {
 
 // ========== SETTINGS ROUTES ==========
 
-app.get('/api/settings', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/settings', apiLimiter, (req, res) => {
     const settings = db.getAllSettings();
     res.json(settings);
 });
 
-app.post('/api/settings', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/settings', apiLimiter, (req, res) => {
     const settings = req.body;
 
     try {
@@ -443,7 +443,7 @@ app.post('/api/settings', rateLimiter.apiLimiter, (req, res) => {
 // ========== USER PROFILE ROUTES ==========
 
 // Liste aller verfügbaren Profile
-app.get('/api/profiles', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/profiles', apiLimiter, (req, res) => {
     try {
         const profiles = profileManager.listProfiles();
         const activeProfile = profileManager.getActiveProfile();
@@ -465,7 +465,7 @@ app.get('/api/profiles', rateLimiter.apiLimiter, (req, res) => {
 });
 
 // Aktuelles aktives Profil
-app.get('/api/profiles/active', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/profiles/active', apiLimiter, (req, res) => {
     try {
         const activeProfile = profileManager.getActiveProfile();
         res.json({ activeProfile });
@@ -476,7 +476,7 @@ app.get('/api/profiles/active', rateLimiter.apiLimiter, (req, res) => {
 });
 
 // Neues Profil erstellen
-app.post('/api/profiles', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/profiles', apiLimiter, (req, res) => {
     const { username } = req.body;
 
     if (!username) {
@@ -494,7 +494,7 @@ app.post('/api/profiles', rateLimiter.apiLimiter, (req, res) => {
 });
 
 // Profil löschen
-app.delete('/api/profiles/:username', rateLimiter.apiLimiter, (req, res) => {
+app.delete('/api/profiles/:username', apiLimiter, (req, res) => {
     const { username } = req.params;
 
     try {
@@ -508,7 +508,7 @@ app.delete('/api/profiles/:username', rateLimiter.apiLimiter, (req, res) => {
 });
 
 // Profil wechseln (erfordert Server-Neustart)
-app.post('/api/profiles/switch', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/profiles/switch', apiLimiter, (req, res) => {
     const { username } = req.body;
 
     if (!username) {
@@ -535,7 +535,7 @@ app.post('/api/profiles/switch', rateLimiter.apiLimiter, (req, res) => {
 });
 
 // Profil-Backup erstellen
-app.post('/api/profiles/:username/backup', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/profiles/:username/backup', apiLimiter, (req, res) => {
     const { username } = req.params;
 
     try {
@@ -550,7 +550,7 @@ app.post('/api/profiles/:username/backup', rateLimiter.apiLimiter, (req, res) =>
 
 // ========== HUD CONFIGURATION ROUTES ==========
 
-app.get('/api/hud-config', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/hud-config', apiLimiter, (req, res) => {
     try {
         const elements = db.getAllHudElements();
         const resolution = db.getSetting('hud_resolution') || '1920x1080';
@@ -568,7 +568,7 @@ app.get('/api/hud-config', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/hud-config', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/hud-config', apiLimiter, (req, res) => {
     const { elements, resolution, orientation } = req.body;
 
     try {
@@ -601,7 +601,7 @@ app.post('/api/hud-config', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/hud-config/element/:elementId', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/hud-config/element/:elementId', apiLimiter, (req, res) => {
     const { elementId } = req.params;
     const config = req.body;
 
@@ -614,7 +614,7 @@ app.post('/api/hud-config/element/:elementId', rateLimiter.apiLimiter, (req, res
     }
 });
 
-app.post('/api/hud-config/element/:elementId/toggle', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/hud-config/element/:elementId/toggle', apiLimiter, (req, res) => {
     const { elementId } = req.params;
     const { enabled } = req.body;
 
@@ -629,12 +629,12 @@ app.post('/api/hud-config/element/:elementId/toggle', rateLimiter.apiLimiter, (r
 
 // ========== FLOWS ROUTES ==========
 
-app.get('/api/flows', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/flows', apiLimiter, (req, res) => {
     const flows = db.getFlows();
     res.json(flows);
 });
 
-app.get('/api/flows/:id', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/flows/:id', apiLimiter, (req, res) => {
     const flow = db.getFlow(req.params.id);
     if (!flow) {
         return res.status(404).json({ success: false, error: 'Flow not found' });
@@ -642,7 +642,7 @@ app.get('/api/flows/:id', rateLimiter.apiLimiter, (req, res) => {
     res.json(flow);
 });
 
-app.post('/api/flows', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/flows', apiLimiter, (req, res) => {
     const flow = req.body;
 
     if (!flow.name || !flow.trigger_type || !flow.actions) {
@@ -662,7 +662,7 @@ app.post('/api/flows', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.put('/api/flows/:id', rateLimiter.apiLimiter, (req, res) => {
+app.put('/api/flows/:id', apiLimiter, (req, res) => {
     const flow = req.body;
 
     try {
@@ -675,7 +675,7 @@ app.put('/api/flows/:id', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.delete('/api/flows/:id', rateLimiter.apiLimiter, (req, res) => {
+app.delete('/api/flows/:id', apiLimiter, (req, res) => {
     try {
         db.deleteFlow(req.params.id);
         logger.info(`🗑️ Deleted flow: ${req.params.id}`);
@@ -686,7 +686,7 @@ app.delete('/api/flows/:id', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/flows/:id/toggle', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/flows/:id/toggle', apiLimiter, (req, res) => {
     const { enabled } = req.body;
 
     try {
@@ -699,7 +699,7 @@ app.post('/api/flows/:id/toggle', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/flows/:id/test', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/flows/:id/test', apiLimiter, async (req, res) => {
     const testData = req.body;
 
     try {
@@ -714,12 +714,12 @@ app.post('/api/flows/:id/test', rateLimiter.apiLimiter, async (req, res) => {
 
 // ========== ALERT ROUTES ==========
 
-app.get('/api/alerts', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/alerts', apiLimiter, (req, res) => {
     const alertConfigs = db.getAllAlertConfigs();
     res.json(alertConfigs);
 });
 
-app.post('/api/alerts/:eventType', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/alerts/:eventType', apiLimiter, (req, res) => {
     const { eventType } = req.params;
     const config = req.body;
 
@@ -733,7 +733,7 @@ app.post('/api/alerts/:eventType', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/alerts/test', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/alerts/test', apiLimiter, (req, res) => {
     const { type, data } = req.body;
 
     try {
@@ -748,7 +748,7 @@ app.post('/api/alerts/test', rateLimiter.apiLimiter, (req, res) => {
 
 // ========== TTS ROUTES ==========
 
-app.post('/api/tts/test', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/tts/test', apiLimiter, async (req, res) => {
     const { username, text, voice } = req.body;
 
     if (!text) {
@@ -767,7 +767,7 @@ app.post('/api/tts/test', rateLimiter.apiLimiter, async (req, res) => {
 
 // ========== SOUNDBOARD ROUTES ==========
 
-app.get('/api/soundboard/gifts', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/soundboard/gifts', apiLimiter, (req, res) => {
     try {
         const gifts = soundboard.getAllGiftSounds();
         res.json(gifts);
@@ -777,7 +777,7 @@ app.get('/api/soundboard/gifts', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/soundboard/gifts', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/soundboard/gifts', apiLimiter, (req, res) => {
     const { giftId, label, mp3Url, volume, animationUrl, animationType } = req.body;
 
     if (!giftId || !label || !mp3Url) {
@@ -801,7 +801,7 @@ app.post('/api/soundboard/gifts', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.delete('/api/soundboard/gifts/:giftId', rateLimiter.apiLimiter, (req, res) => {
+app.delete('/api/soundboard/gifts/:giftId', apiLimiter, (req, res) => {
     try {
         soundboard.deleteGiftSound(req.params.giftId);
         logger.info(`🗑️ Deleted gift sound: ${req.params.giftId}`);
@@ -812,7 +812,7 @@ app.delete('/api/soundboard/gifts/:giftId', rateLimiter.apiLimiter, (req, res) =
     }
 });
 
-app.post('/api/soundboard/test', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/soundboard/test', apiLimiter, async (req, res) => {
     const { url, volume } = req.body;
 
     if (!url) {
@@ -829,7 +829,7 @@ app.post('/api/soundboard/test', rateLimiter.apiLimiter, async (req, res) => {
     }
 });
 
-app.get('/api/soundboard/queue', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/soundboard/queue', apiLimiter, (req, res) => {
     try {
         const status = soundboard.getQueueStatus();
         res.json(status);
@@ -839,7 +839,7 @@ app.get('/api/soundboard/queue', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/soundboard/queue/clear', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/soundboard/queue/clear', apiLimiter, (req, res) => {
     try {
         soundboard.clearQueue();
         logger.info('🧹 Soundboard queue cleared');
@@ -850,7 +850,7 @@ app.post('/api/soundboard/queue/clear', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.get('/api/myinstants/search', rateLimiter.apiLimiter, async (req, res) => {
+app.get('/api/myinstants/search', apiLimiter, async (req, res) => {
     const { query, page, limit } = req.query;
 
     if (!query) {
@@ -866,7 +866,7 @@ app.get('/api/myinstants/search', rateLimiter.apiLimiter, async (req, res) => {
     }
 });
 
-app.get('/api/myinstants/trending', rateLimiter.apiLimiter, async (req, res) => {
+app.get('/api/myinstants/trending', apiLimiter, async (req, res) => {
     const { limit } = req.query;
 
     try {
@@ -878,7 +878,7 @@ app.get('/api/myinstants/trending', rateLimiter.apiLimiter, async (req, res) => 
     }
 });
 
-app.get('/api/myinstants/random', rateLimiter.apiLimiter, async (req, res) => {
+app.get('/api/myinstants/random', apiLimiter, async (req, res) => {
     const { limit } = req.query;
 
     try {
@@ -890,7 +890,7 @@ app.get('/api/myinstants/random', rateLimiter.apiLimiter, async (req, res) => {
     }
 });
 
-app.get('/api/myinstants/resolve', rateLimiter.apiLimiter, async (req, res) => {
+app.get('/api/myinstants/resolve', apiLimiter, async (req, res) => {
     const { url } = req.query;
 
     if (!url) {
@@ -913,7 +913,7 @@ app.get('/api/myinstants/resolve', rateLimiter.apiLimiter, async (req, res) => {
 
 // ========== GIFT CATALOG ROUTES ==========
 
-app.get('/api/gift-catalog', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/gift-catalog', apiLimiter, (req, res) => {
     try {
         const catalog = db.getGiftCatalog();
         const lastUpdate = db.getCatalogLastUpdate();
@@ -924,7 +924,7 @@ app.get('/api/gift-catalog', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/gift-catalog/update', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/gift-catalog/update', apiLimiter, async (req, res) => {
     try {
         const result = await tiktok.updateGiftCatalog();
         logger.info('🎁 Gift catalog updated');
@@ -938,7 +938,7 @@ app.post('/api/gift-catalog/update', rateLimiter.apiLimiter, async (req, res) =>
 // ========== GOALS ROUTES ==========
 
 // Get all goals
-app.get('/api/goals', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/goals', apiLimiter, (req, res) => {
     try {
         const status = goals.getStatus();
         res.json({ success: true, goals: status });
@@ -949,7 +949,7 @@ app.get('/api/goals', rateLimiter.apiLimiter, (req, res) => {
 });
 
 // Get single goal
-app.get('/api/goals/:key', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/goals/:key', apiLimiter, (req, res) => {
     try {
         const { key } = req.params;
         const config = goals.getGoalConfig(key);
@@ -974,7 +974,7 @@ app.get('/api/goals/:key', rateLimiter.apiLimiter, (req, res) => {
 });
 
 // Update goal config
-app.post('/api/goals/:key/config', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/goals/:key/config', apiLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const updates = req.body;
@@ -994,7 +994,7 @@ app.post('/api/goals/:key/config', rateLimiter.apiLimiter, async (req, res) => {
 });
 
 // Update goal style
-app.post('/api/goals/:key/style', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/goals/:key/style', apiLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { style } = req.body;
@@ -1014,7 +1014,7 @@ app.post('/api/goals/:key/style', rateLimiter.apiLimiter, async (req, res) => {
 });
 
 // Set goal total (manual)
-app.post('/api/goals/:key/set', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/goals/:key/set', apiLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { total } = req.body;
@@ -1034,7 +1034,7 @@ app.post('/api/goals/:key/set', rateLimiter.apiLimiter, async (req, res) => {
 });
 
 // Increment goal
-app.post('/api/goals/:key/increment', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/goals/:key/increment', apiLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { delta } = req.body;
@@ -1053,7 +1053,7 @@ app.post('/api/goals/:key/increment', rateLimiter.apiLimiter, async (req, res) =
 });
 
 // Reset goal
-app.post('/api/goals/:key/reset', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/goals/:key/reset', apiLimiter, async (req, res) => {
     try {
         const { key } = req.params;
 
@@ -1068,7 +1068,7 @@ app.post('/api/goals/:key/reset', rateLimiter.apiLimiter, async (req, res) => {
 });
 
 // Reset all goals
-app.post('/api/goals/reset', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/goals/reset', apiLimiter, async (req, res) => {
     try {
         await goals.resetAllGoals();
         logger.info('🔄 All goals reset');
@@ -1082,7 +1082,7 @@ app.post('/api/goals/reset', rateLimiter.apiLimiter, async (req, res) => {
 
 // ========== OBS WEBSOCKET ROUTES ==========
 
-app.get('/api/obs/status', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/obs/status', apiLimiter, (req, res) => {
     try {
         const status = obs.getStatus();
         res.json({ success: true, ...status });
@@ -1092,7 +1092,7 @@ app.get('/api/obs/status', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/obs/connect', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/obs/connect', apiLimiter, async (req, res) => {
     const { host, port, password } = req.body;
 
     try {
@@ -1105,7 +1105,7 @@ app.post('/api/obs/connect', rateLimiter.apiLimiter, async (req, res) => {
     }
 });
 
-app.post('/api/obs/disconnect', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/obs/disconnect', apiLimiter, async (req, res) => {
     try {
         await obs.disconnect();
         logger.info('🎬 Disconnected from OBS');
@@ -1116,7 +1116,7 @@ app.post('/api/obs/disconnect', rateLimiter.apiLimiter, async (req, res) => {
     }
 });
 
-app.post('/api/obs/scene/:sceneName', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/obs/scene/:sceneName', apiLimiter, async (req, res) => {
     const { sceneName } = req.params;
 
     try {
@@ -1129,7 +1129,7 @@ app.post('/api/obs/scene/:sceneName', rateLimiter.apiLimiter, async (req, res) =
     }
 });
 
-app.post('/api/obs/source/:sourceName/visibility', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/obs/source/:sourceName/visibility', apiLimiter, async (req, res) => {
     const { sourceName } = req.params;
     const { visible, sceneName } = req.body;
 
@@ -1143,7 +1143,7 @@ app.post('/api/obs/source/:sourceName/visibility', rateLimiter.apiLimiter, async
     }
 });
 
-app.post('/api/obs/filter/:sourceName/:filterName/toggle', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/obs/filter/:sourceName/:filterName/toggle', apiLimiter, async (req, res) => {
     const { sourceName, filterName } = req.params;
     const { enabled } = req.body;
 
@@ -1157,7 +1157,7 @@ app.post('/api/obs/filter/:sourceName/:filterName/toggle', rateLimiter.apiLimite
     }
 });
 
-app.get('/api/obs/scenes', rateLimiter.apiLimiter, async (req, res) => {
+app.get('/api/obs/scenes', apiLimiter, async (req, res) => {
     try {
         const scenes = await obs.getScenes();
         res.json({ success: true, scenes });
@@ -1167,7 +1167,7 @@ app.get('/api/obs/scenes', rateLimiter.apiLimiter, async (req, res) => {
     }
 });
 
-app.get('/api/obs/sources', rateLimiter.apiLimiter, async (req, res) => {
+app.get('/api/obs/sources', apiLimiter, async (req, res) => {
     const { sceneName } = req.query;
 
     try {
@@ -1181,7 +1181,7 @@ app.get('/api/obs/sources', rateLimiter.apiLimiter, async (req, res) => {
 
 // ========== LEADERBOARD ROUTES ==========
 
-app.get('/api/leaderboard/top/:category', rateLimiter.apiLimiter, async (req, res) => {
+app.get('/api/leaderboard/top/:category', apiLimiter, async (req, res) => {
     const { category } = req.params;
     const { limit } = req.query;
 
@@ -1194,7 +1194,32 @@ app.get('/api/leaderboard/top/:category', rateLimiter.apiLimiter, async (req, re
     }
 });
 
-app.get('/api/leaderboard/user/:username', rateLimiter.apiLimiter, async (req, res) => {
+// Dedicated routes for overlay compatibility
+app.get('/api/leaderboard/gifters', apiLimiter, async (req, res) => {
+    const { limit } = req.query;
+
+    try {
+        const gifters = await leaderboard.getTop('gifters', parseInt(limit) || 10);
+        res.json({ success: true, gifters });
+    } catch (error) {
+        logger.error('Error getting gifters leaderboard:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/leaderboard/chatters', apiLimiter, async (req, res) => {
+    const { limit } = req.query;
+
+    try {
+        const chatters = await leaderboard.getTop('chatters', parseInt(limit) || 10);
+        res.json({ success: true, chatters });
+    } catch (error) {
+        logger.error('Error getting chatters leaderboard:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/leaderboard/user/:username', apiLimiter, async (req, res) => {
     const { username } = req.params;
 
     try {
@@ -1206,7 +1231,7 @@ app.get('/api/leaderboard/user/:username', rateLimiter.apiLimiter, async (req, r
     }
 });
 
-app.post('/api/leaderboard/reset', rateLimiter.apiLimiter, async (req, res) => {
+app.post('/api/leaderboard/reset', apiLimiter, async (req, res) => {
     const { category } = req.body;
 
     try {
@@ -1219,7 +1244,7 @@ app.post('/api/leaderboard/reset', rateLimiter.apiLimiter, async (req, res) => {
     }
 });
 
-app.get('/api/leaderboard/all', rateLimiter.apiLimiter, async (req, res) => {
+app.get('/api/leaderboard/all', apiLimiter, async (req, res) => {
     try {
         const allStats = await leaderboard.getAllStats();
         res.json({ success: true, stats: allStats });
@@ -1231,7 +1256,7 @@ app.get('/api/leaderboard/all', rateLimiter.apiLimiter, async (req, res) => {
 
 // ========== SUBSCRIPTION TIERS ROUTES ==========
 
-app.get('/api/subscription-tiers', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/subscription-tiers', apiLimiter, (req, res) => {
     try {
         const tiers = subscriptionTiers.getAllTiers();
         res.json({ success: true, tiers });
@@ -1241,7 +1266,7 @@ app.get('/api/subscription-tiers', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/subscription-tiers', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/subscription-tiers', apiLimiter, (req, res) => {
     const { tier, config } = req.body;
 
     if (!tier || !config) {
@@ -1258,7 +1283,7 @@ app.post('/api/subscription-tiers', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.get('/api/subscription-tiers/:tier', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/subscription-tiers/:tier', apiLimiter, (req, res) => {
     const { tier } = req.params;
 
     try {
@@ -1272,7 +1297,7 @@ app.get('/api/subscription-tiers/:tier', rateLimiter.apiLimiter, (req, res) => {
 
 // ========== ANIMATION UPLOAD ROUTES ==========
 
-app.post('/api/animations/upload', rateLimiter.apiLimiter, upload.single('animation'), (req, res) => {
+app.post('/api/animations/upload', uploadLimiter, upload.single('animation'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, error: 'No file uploaded' });
@@ -1295,7 +1320,7 @@ app.post('/api/animations/upload', rateLimiter.apiLimiter, upload.single('animat
     }
 });
 
-app.get('/api/animations/list', rateLimiter.apiLimiter, (req, res) => {
+app.get('/api/animations/list', apiLimiter, (req, res) => {
     try {
         const files = fs.readdirSync(uploadDir).map(filename => ({
             filename,
@@ -1311,7 +1336,7 @@ app.get('/api/animations/list', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.delete('/api/animations/:filename', rateLimiter.apiLimiter, (req, res) => {
+app.delete('/api/animations/:filename', apiLimiter, (req, res) => {
     const { filename } = req.params;
     const filePath = path.join(uploadDir, filename);
 
@@ -1334,12 +1359,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ========== MINIGAMES ROUTES ==========
 
-app.post('/api/minigames/roulette', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/minigames/roulette', apiLimiter, (req, res) => {
     const { username, bet } = req.body;
 
     try {
         const result = Math.floor(Math.random() * 37); // 0-36
         const color = result === 0 ? 'green' : (result % 2 === 0 ? 'black' : 'red');
+        const win = bet === result.toString() || bet === color;
 
         logger.info(`🎰 Roulette: ${username} bet on ${bet}, result: ${result} (${color})`);
 
@@ -1348,7 +1374,8 @@ app.post('/api/minigames/roulette', rateLimiter.apiLimiter, (req, res) => {
             bet,
             result,
             color,
-            win: bet === result.toString() || bet === color
+            win,
+            winner: win ? username : null
         });
 
         res.json({
@@ -1356,7 +1383,8 @@ app.post('/api/minigames/roulette', rateLimiter.apiLimiter, (req, res) => {
             game: 'roulette',
             result,
             color,
-            win: bet === result.toString() || bet === color
+            win,
+            winner: win ? username : null
         });
     } catch (error) {
         logger.error('Error in roulette game:', error);
@@ -1364,7 +1392,7 @@ app.post('/api/minigames/roulette', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/minigames/dice', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/minigames/dice', apiLimiter, (req, res) => {
     const { username, sides } = req.body;
 
     try {
@@ -1391,7 +1419,7 @@ app.post('/api/minigames/dice', rateLimiter.apiLimiter, (req, res) => {
     }
 });
 
-app.post('/api/minigames/coinflip', rateLimiter.apiLimiter, (req, res) => {
+app.post('/api/minigames/coinflip', apiLimiter, (req, res) => {
     const { username, bet } = req.body;
 
     try {
@@ -1617,18 +1645,22 @@ server.listen(PORT, async () => {
     logger.info('   Browser Autoplay Policy erfordert User-Interaktion.\n');
 
     // OBS WebSocket auto-connect (if configured)
-    const obsHost = db.getSetting('obs_host');
-    const obsPort = db.getSetting('obs_port');
-    const obsPassword = db.getSetting('obs_password');
-
-    if (obsHost && obsPort) {
-        logger.info(`🎬 Connecting to OBS at ${obsHost}:${obsPort}...`);
+    const obsConfigStr = db.getSetting('obs_websocket_config');
+    if (obsConfigStr) {
         try {
-            await obs.connect(obsHost, obsPort, obsPassword);
-            logger.info('✅ OBS connected successfully');
+            const obsConfig = JSON.parse(obsConfigStr);
+            if (obsConfig.enabled && obsConfig.host && obsConfig.port) {
+                logger.info(`🎬 Connecting to OBS at ${obsConfig.host}:${obsConfig.port}...`);
+                try {
+                    await obs.connect(obsConfig.host, obsConfig.port, obsConfig.password);
+                    logger.info('✅ OBS connected successfully');
+                } catch (error) {
+                    logger.warn('⚠️  Could not connect to OBS:', error.message);
+                    logger.info('   You can configure OBS connection in settings');
+                }
+            }
         } catch (error) {
-            logger.warn('⚠️  Could not connect to OBS:', error.message);
-            logger.info('   You can configure OBS connection in settings');
+            logger.warn('⚠️  Failed to parse OBS config:', error.message);
         }
     }
 

@@ -13,8 +13,9 @@ const OBSWebSocket = require('obs-websocket-js').default;
 const logger = require('./logger');
 
 class OBSWebSocketManager {
-  constructor(db) {
+  constructor(db, io = null) {
     this.db = db;
+    this.io = io;
     this.obs = new OBSWebSocket();
     this.connected = false;
     this.config = this.loadConfig();
@@ -62,31 +63,61 @@ class OBSWebSocketManager {
 
   /**
    * Connect to OBS
+   * @param {string} host - Optional host override
+   * @param {number} port - Optional port override
+   * @param {string} password - Optional password override
    */
-  async connect() {
-    if (!this.config.enabled) {
-      logger.obs('OBS integration disabled');
-      return false;
+  async connect(host = null, port = null, password = null) {
+    // Use provided parameters or fall back to config
+    const connectHost = host || this.config.host;
+    const connectPort = port || this.config.port;
+    const connectPassword = password || this.config.password;
+
+    // Save config if parameters were provided
+    if (host || port || password) {
+      this.saveConfig({
+        host: connectHost,
+        port: connectPort,
+        password: connectPassword,
+        enabled: true
+      });
     }
 
     try {
       await this.obs.connect(
-        `ws://${this.config.host}:${this.config.port}`,
-        this.config.password
+        `ws://${connectHost}:${connectPort}`,
+        connectPassword
       );
       this.connected = true;
       logger.obs('Connected to OBS', {
-        host: this.config.host,
-        port: this.config.port
+        host: connectHost,
+        port: connectPort
       });
+
+      // Emit Socket.IO event
+      if (this.io) {
+        this.io.emit('obs:connected', {
+          host: connectHost,
+          port: connectPort
+        });
+      }
+
       return true;
     } catch (error) {
       this.connected = false;
       logger.error('Failed to connect to OBS', {
         error: error.message,
-        host: this.config.host,
-        port: this.config.port
+        host: connectHost,
+        port: connectPort
       });
+
+      // Emit Socket.IO event
+      if (this.io) {
+        this.io.emit('obs:error', {
+          error: error.message
+        });
+      }
+
       return false;
     }
   }
@@ -100,6 +131,11 @@ class OBSWebSocketManager {
         await this.obs.disconnect();
         this.connected = false;
         logger.obs('Disconnected from OBS');
+
+        // Emit Socket.IO event
+        if (this.io) {
+          this.io.emit('obs:disconnected');
+        }
       } catch (error) {
         logger.error('Failed to disconnect from OBS', { error: error.message });
       }
