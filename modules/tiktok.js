@@ -1,4 +1,4 @@
-const { WebcastPushConnection } = require('tiktok-live-connector');
+const { TikTokLiveConnection } = require('tiktok-live-connector');
 const EventEmitter = require('events');
 
 class TikTokConnector extends EventEmitter {
@@ -25,7 +25,7 @@ class TikTokConnector extends EventEmitter {
 
         try {
             this.currentUsername = username;
-            this.connection = new WebcastPushConnection(username, {
+            this.connection = new TikTokLiveConnection(username, {
                 processInitialData: true,
                 enableExtendedGiftInfo: true,
                 enableWebsocketUpgrade: true,
