@@ -298,7 +298,7 @@ class PluginLoader extends EventEmitter {
             }
 
             const entries = fs.readdirSync(this.pluginsDir, { withFileTypes: true });
-            const pluginDirs = entries.filter(entry => entry.isDirectory());
+            const pluginDirs = entries.filter(entry => entry.isDirectory() && !entry.name.startsWith('_'));
 
             this.logger.info(`Found ${pluginDirs.length} plugin directories`);
 
