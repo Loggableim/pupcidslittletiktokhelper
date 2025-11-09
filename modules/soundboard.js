@@ -238,40 +238,11 @@ class SoundboardManager extends EventEmitter {
     }
 
     /**
-     * Search MyInstants for sounds using web scraping
      * Search MyInstants for sounds using the official API
      * API: https://github.com/abdipr/myinstants-api
      */
     async searchMyInstants(query, page = 1, limit = 20) {
         try {
-            const response = await axios.get('https://www.myinstants.com/en/search/', {
-                params: {
-                    name: query
-                },
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-
-            const $ = cheerio.load(response.data);
-            const results = [];
-
-            $('.instant').each((i, elem) => {
-                const $elem = $(elem);
-                const $button = $elem.find('.small-button');
-                const name = $elem.find('.instant-link').text().trim();
-                const pageUrl = $elem.find('.instant-link').attr('href');
-                const soundPath = $button.attr('onmousedown')?.match(/play\('([^']+)'/)?.[1];
-
-                if (name && soundPath) {
-                    results.push({
-                        name: name,
-                        url: soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`,
-                        pageUrl: pageUrl ? `https://www.myinstants.com${pageUrl}` : null
-                    });
-                }
-            });
             // Use the official MyInstants API
             const response = await axios.get('https://myinstants-api.vercel.app/search', {
                 params: {
@@ -296,7 +267,7 @@ class SoundboardManager extends EventEmitter {
                 }));
             }
 
-            return results.slice(0, 20); // Limit to 20 results
+            return []; // Return empty array if no results
         } catch (error) {
             console.error('MyInstants search error:', error.message);
             return [];
@@ -346,39 +317,6 @@ class SoundboardManager extends EventEmitter {
     }
 
     /**
-     * Get trending sounds from MyInstants
-     */
-    async getTrendingMyInstants() {
-        try {
-            const response = await axios.get('https://www.myinstants.com/en/index/us/', {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-
-            const $ = cheerio.load(response.data);
-            const results = [];
-
-            $('.instant').slice(0, 20).each((i, elem) => {
-                const $elem = $(elem);
-                const $button = $elem.find('.small-button');
-                const name = $elem.find('.instant-link').text().trim();
-                const pageUrl = $elem.find('.instant-link').attr('href');
-                const soundPath = $button.attr('onmousedown')?.match(/play\('([^']+)'/)?.[1];
-
-                if (name && soundPath) {
-                    results.push({
-                        name: name,
-                        url: soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`,
-                        pageUrl: pageUrl ? `https://www.myinstants.com${pageUrl}` : null
-                    });
-                }
-            });
-
-            return results;
-        } catch (error) {
-            console.error('MyInstants trending error:', error.message);
      * Get trending sounds from MyInstants
      */
     async getTrendingSounds(limit = 20) {
