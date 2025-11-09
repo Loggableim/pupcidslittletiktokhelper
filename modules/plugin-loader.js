@@ -234,6 +234,13 @@ class PluginAPI {
     getSocketIO() {
         return this.io;
     }
+
+    /**
+     * Gibt Zugriff auf Express App
+     */
+    getApp() {
+        return this.app;
+    }
 }
 
 /**

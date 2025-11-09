@@ -95,37 +95,6 @@ const upload = multer({
     }
 });
 
-// Emoji Rain Upload Configuration
-const emojiRainUploadDir = path.join(__dirname, 'public', 'uploads', 'emoji-rain');
-if (!fs.existsSync(emojiRainUploadDir)) {
-    fs.mkdirSync(emojiRainUploadDir, { recursive: true });
-}
-
-const emojiRainStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, emojiRainUploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'emoji-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
-const emojiRainUpload = multer({
-    storage: emojiRainStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /png|jpg|jpeg|gif|webp|svg/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (mimetype && extname) {
-            return cb(null, true);
-        } else {
-            cb(new Error('Only image files (PNG, JPG, GIF, WebP, SVG) are allowed!'));
-        }
-    }
-});
 
 // ========== USER PROFILE INITIALISIEREN ==========
 const profileManager = new UserProfileManager();
@@ -1443,150 +1412,7 @@ app.delete('/api/animations/:filename', apiLimiter, (req, res) => {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ========== EMOJI RAIN ROUTES ==========
-
-app.get('/api/emoji-rain/config', apiLimiter, (req, res) => {
-    try {
-        const config = db.getEmojiRainConfig();
-        res.json({ success: true, config });
-    } catch (error) {
-        logger.error('Error getting emoji rain config:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/emoji-rain/config', apiLimiter, (req, res) => {
-    const { config, enabled } = req.body;
-
-    if (!config) {
-        return res.status(400).json({ success: false, error: 'config is required' });
-    }
-
-    try {
-        db.updateEmojiRainConfig(config, enabled !== undefined ? enabled : null);
-        logger.info('🌧️ Emoji rain configuration updated');
-
-        // Notify overlays about config change
-        io.emit('emoji-rain:config-update', { config, enabled });
-
-        res.json({ success: true, message: 'Emoji rain configuration updated' });
-    } catch (error) {
-        logger.error('Error updating emoji rain config:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/emoji-rain/toggle', apiLimiter, (req, res) => {
-    const { enabled } = req.body;
-
-    if (enabled === undefined) {
-        return res.status(400).json({ success: false, error: 'enabled is required' });
-    }
-
-    try {
-        db.toggleEmojiRain(enabled);
-        logger.info(`🌧️ Emoji rain ${enabled ? 'enabled' : 'disabled'}`);
-
-        // Notify overlays about toggle
-        io.emit('emoji-rain:toggle', { enabled });
-
-        res.json({ success: true, message: `Emoji rain ${enabled ? 'enabled' : 'disabled'}` });
-    } catch (error) {
-        logger.error('Error toggling emoji rain:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/emoji-rain/test', apiLimiter, (req, res) => {
-    const { count, emoji, x, y } = req.body;
-
-    try {
-        const config = db.getEmojiRainConfig();
-
-        if (!config.enabled) {
-            return res.status(400).json({ success: false, error: 'Emoji rain is disabled' });
-        }
-
-        // Create test spawn data
-        const testData = {
-            count: parseInt(count) || 1,
-            emoji: emoji || config.emoji_set[Math.floor(Math.random() * config.emoji_set.length)],
-            x: parseFloat(x) || Math.random(),
-            y: parseFloat(y) || 0,
-            username: 'Test User',
-            reason: 'test'
-        };
-
-        logger.info(`🧪 Testing emoji rain: ${testData.count}x ${testData.emoji}`);
-
-        // Emit to overlay
-        io.emit('emoji-rain:spawn', testData);
-
-        res.json({ success: true, message: 'Test emojis spawned', data: testData });
-    } catch (error) {
-        logger.error('Error testing emoji rain:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Upload custom emoji rain image
-app.post('/api/emoji-rain/upload', uploadLimiter, emojiRainUpload.single('image'), (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ success: false, error: 'No file uploaded' });
-        }
-
-        const fileUrl = `/uploads/emoji-rain/${req.file.filename}`;
-        logger.info(`📤 Emoji rain image uploaded: ${req.file.filename}`);
-
-        res.json({
-            success: true,
-            message: 'Image uploaded successfully',
-            url: fileUrl,
-            filename: req.file.filename,
-            size: req.file.size
-        });
-    } catch (error) {
-        logger.error('Error uploading emoji rain image:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Get list of uploaded emoji rain images
-app.get('/api/emoji-rain/images', apiLimiter, (req, res) => {
-    try {
-        const files = fs.readdirSync(emojiRainUploadDir).map(filename => ({
-            filename,
-            url: `/uploads/emoji-rain/${filename}`,
-            size: fs.statSync(path.join(emojiRainUploadDir, filename)).size,
-            created: fs.statSync(path.join(emojiRainUploadDir, filename)).birthtime
-        }));
-
-        res.json({ success: true, images: files });
-    } catch (error) {
-        logger.error('Error listing emoji rain images:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// Delete uploaded emoji rain image
-app.delete('/api/emoji-rain/images/:filename', apiLimiter, (req, res) => {
-    try {
-        const filename = req.params.filename;
-        const filePath = path.join(emojiRainUploadDir, filename);
-
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ success: false, error: 'File not found' });
-        }
-
-        fs.unlinkSync(filePath);
-        logger.info(`🗑️ Deleted emoji rain image: ${filename}`);
-
-        res.json({ success: true, message: 'Image deleted successfully' });
-    } catch (error) {
-        logger.error('Error deleting emoji rain image:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+// Moved to Emoji Rain Plugin (plugins/emoji-rain)
 
 // ========== MINIGAMES ROUTES ==========
 
@@ -1739,59 +1565,7 @@ io.on('connection', (socket) => {
 });
 
 // ========== EMOJI RAIN HELPER ==========
-
-/**
- * Spawn emojis for emoji rain effect
- * @param {string} reason - Event type (gift, like, follow, etc.)
- * @param {object} data - Event data
- * @param {number} count - Number of emojis to spawn
- * @param {string} emoji - Optional specific emoji
- */
-function spawnEmojiRain(reason, data, count, emoji = null) {
-    try {
-        const config = db.getEmojiRainConfig();
-
-        if (!config.enabled) {
-            return;
-        }
-
-        // Calculate count based on reason if not provided
-        if (!count) {
-            if (reason === 'gift' && data.coins) {
-                count = config.gift_base_emojis + Math.floor(data.coins * config.gift_coin_multiplier);
-                count = Math.min(config.gift_max_emojis, count);
-            } else if (reason === 'like' && data.likeCount) {
-                count = Math.floor(data.likeCount / config.like_count_divisor);
-                count = Math.max(config.like_min_emojis, Math.min(config.like_max_emojis, count));
-            } else {
-                count = 3; // Default for follow, share, subscribe
-            }
-        }
-
-        // Select random emoji from config if not specified
-        if (!emoji && config.emoji_set && config.emoji_set.length > 0) {
-            emoji = config.emoji_set[Math.floor(Math.random() * config.emoji_set.length)];
-        }
-
-        // Random horizontal position
-        const x = Math.random();
-        const y = 0;
-
-        // Emit to overlay
-        io.emit('emoji-rain:spawn', {
-            count: count,
-            emoji: emoji,
-            x: x,
-            y: y,
-            username: data.username || 'Unknown',
-            reason: reason
-        });
-
-        logger.debug(`🌧️ Emoji rain spawned: ${count}x ${emoji} for ${reason}`);
-    } catch (error) {
-        logger.error('Error spawning emoji rain:', error);
-    }
-}
+// Moved to Emoji Rain Plugin (plugins/emoji-rain)
 
 // ========== TIKTOK EVENT-HANDLER ==========
 
@@ -1817,9 +1591,6 @@ tiktok.on('gift', async (data) => {
     // Leaderboard: Update user stats
     await leaderboard.trackGift(data.username, data.giftName, data.coins);
 
-    // Emoji Rain: Spawn emojis based on gift value
-    spawnEmojiRain('gift', data);
-
     // Flows verarbeiten
     await flows.processEvent('gift', data);
 });
@@ -1839,9 +1610,6 @@ tiktok.on('follow', async (data) => {
 
     // Leaderboard: Track follow
     await leaderboard.trackFollow(data.username);
-
-    // Emoji Rain: Spawn emojis for follow
-    spawnEmojiRain('follow', data, 5, '💙');
 
     await flows.processEvent('follow', data);
 });
@@ -1865,9 +1633,6 @@ tiktok.on('subscribe', async (data) => {
     // Leaderboard: Track subscription
     await leaderboard.trackSubscription(data.username);
 
-    // Emoji Rain: Spawn emojis for subscribe
-    spawnEmojiRain('subscribe', data, 8, '⭐');
-
     await flows.processEvent('subscribe', data);
 });
 
@@ -1883,9 +1648,6 @@ tiktok.on('share', async (data) => {
 
     // Leaderboard: Track share
     await leaderboard.trackShare(data.username);
-
-    // Emoji Rain: Spawn emojis for share
-    spawnEmojiRain('share', data, 5, '🔄');
 
     await flows.processEvent('share', data);
 });
@@ -1920,9 +1682,6 @@ tiktok.on('like', async (data) => {
 
     // Leaderboard: Track likes
     await leaderboard.trackLike(data.username, data.likeCount || 1);
-
-    // Emoji Rain: Spawn emojis for likes
-    spawnEmojiRain('like', data);
 
     // Flows verarbeiten
     // Likes normalerweise nicht als Alert (zu viele)
