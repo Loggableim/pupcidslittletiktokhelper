@@ -292,12 +292,19 @@ class TikTokConnector extends EventEmitter {
         // ========== CHAT ==========
         this.connection.on('chat', (data) => {
             const userData = this.extractUserData(data);
+
+            // Extrahiere Team-Level (falls vorhanden)
+            const teamMemberLevel = data.teamMemberLevel ||
+                                   (data.user && data.user.teamMemberLevel) ||
+                                   0;
+
             const eventData = {
                 username: userData.username,
                 nickname: userData.nickname,
                 message: data.comment || data.message,
                 userId: userData.userId,
                 profilePictureUrl: userData.profilePictureUrl,
+                teamMemberLevel: teamMemberLevel,
                 timestamp: new Date().toISOString()
             };
 
@@ -307,36 +314,14 @@ class TikTokConnector extends EventEmitter {
 
         // ========== GIFT ==========
         this.connection.on('gift', (data) => {
+            // Extrahiere Gift-Daten
             const giftData = this.extractGiftData(data);
 
-            // Nur "streak finished" Gifts zählen (sonst werden combo gifts mehrfach gezählt)
-            if (giftData.giftType === 1 && !giftData.repeatEnd) {
-                return; // Combo gift noch nicht beendet
-            }
-
-            const coins = giftData.diamondCount;
-            this.stats.totalCoins += coins;
-
-            const userData = this.extractUserData(data);
-            const eventData = {
-                username: userData.username,
-                nickname: userData.nickname,
-                giftName: giftData.giftName,
-                giftId: giftData.giftId,
-                giftPictureUrl: giftData.giftPictureUrl,
-                repeatCount: giftData.repeatCount,
-                coins: coins,
-                totalCoins: this.stats.totalCoins,
-                timestamp: new Date().toISOString()
-            };
             // Robuste Coins-Berechnung: diamond_count * 2 * repeat_count
             // (≈2 Coins pro Diamond ist die Standard-Konvertierung)
-            const repeatCount = parseInt(data.repeatCount) || 1;
+            const repeatCount = giftData.repeatCount;
+            const diamondCount = giftData.diamondCount;
             let coins = 0;
-
-            // Methode 1: Versuche diamond_count aus verschiedenen Quellen
-            const diamondCount = data.diamondCount || data.diamond_count ||
-                                (data.gift && (data.gift.diamondCount || data.gift.diamond_count)) || 0;
 
             if (diamondCount > 0) {
                 coins = diamondCount * 2 * repeatCount;
@@ -344,9 +329,8 @@ class TikTokConnector extends EventEmitter {
 
             // Streak-Ende prüfen
             // Streakable Gifts nur zählen wenn Streak beendet ist
-            const isStreakEnd = data.repeatEnd === 1 || data.repeatEnd === true ||
-                              data.streaking === false || data.streaking === 0;
-            const isStreakable = data.giftType === 1; // giftType 1 = streakable
+            const isStreakEnd = giftData.repeatEnd;
+            const isStreakable = giftData.giftType === 1; // giftType 1 = streakable
 
             // Nur zählen wenn:
             // - Kein streakable Gift ODER
@@ -358,9 +342,9 @@ class TikTokConnector extends EventEmitter {
                 const eventData = {
                     username: userData.username,
                     nickname: userData.nickname,
-                    giftName: data.giftName,
-                    giftId: data.giftId,
-                    giftPictureUrl: data.giftPictureUrl,
+                    giftName: giftData.giftName,
+                    giftId: giftData.giftId,
+                    giftPictureUrl: giftData.giftPictureUrl,
                     repeatCount: repeatCount,
                     diamondCount: diamondCount,
                     coins: coins,
@@ -374,7 +358,7 @@ class TikTokConnector extends EventEmitter {
                 this.broadcastStats();
             } else {
                 // Streak läuft noch - nicht zählen, aber loggen für Debugging
-                console.log(`🎁 Streak läuft: ${data.giftName} x${repeatCount} (noch nicht gezählt)`);
+                console.log(`🎁 Streak läuft: ${giftData.giftName || 'Unknown Gift'} x${repeatCount} (noch nicht gezählt)`);
             }
         });
 
@@ -432,12 +416,14 @@ class TikTokConnector extends EventEmitter {
                 }
             }
 
+            // Definiere likeCount am Anfang
+            const likeCount = data.likeCount || 1;
+
             // Wenn totalLikes gefunden wurde, verwende diesen Wert direkt
             if (totalLikes !== null) {
                 this.stats.likes = totalLikes;
             } else {
                 // Fallback: Inkrementiere basierend auf likeCount
-                const likeCount = data.likeCount || 1;
                 this.stats.likes += likeCount;
             }
 
@@ -446,7 +432,6 @@ class TikTokConnector extends EventEmitter {
                 username: userData.username,
                 nickname: userData.nickname,
                 likeCount: likeCount,
-                likeCount: data.likeCount || 1,
                 totalLikes: this.stats.likes,
                 timestamp: new Date().toISOString()
             };

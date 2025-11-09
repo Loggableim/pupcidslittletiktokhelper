@@ -100,8 +100,18 @@ class TTSEngine {
         };
     }
 
-    async speak(username, text, voiceOverride = null) {
+    async speak(username, text, voiceOverride = null, userMetadata = {}) {
         try {
+            // Teamlevel-Prüfung (falls aktiviert)
+            const minTeamLevel = parseInt(this.db.getSetting('tts_min_team_level')) || 0;
+            if (minTeamLevel > 0) {
+                const userTeamLevel = userMetadata.teamMemberLevel || userMetadata.teamLevel || 0;
+                if (userTeamLevel < minTeamLevel) {
+                    console.log(`⚠️ TTS: User ${username} has teamLevel ${userTeamLevel}, but min required is ${minTeamLevel}`);
+                    return;
+                }
+            }
+
             // Text filtern
             const filteredText = this.filterText(text);
             if (!filteredText || filteredText.trim().length === 0) {
@@ -140,7 +150,7 @@ class TTSEngine {
                     timestamp: Date.now()
                 });
 
-                console.log(`🔊 TTS queued: "${filteredText}" (Voice: ${voice})`);
+                console.log(`🔊 TTS queued: "${filteredText}" (Voice: ${voice}, TeamLevel: ${userMetadata.teamMemberLevel || 0})`);
 
                 // Verarbeitung starten
                 this.processQueue();
