@@ -11,6 +11,7 @@ const TTSEngine = require('./modules/tts');
 const AlertManager = require('./modules/alerts');
 const FlowEngine = require('./modules/flows');
 const SoundboardManager = require('./modules/soundboard');
+const { GoalManager } = require('./modules/goals');
 
 // ========== EXPRESS APP ==========
 const app = express();
@@ -31,14 +32,207 @@ const tts = new TTSEngine(db, io);
 const alerts = new AlertManager(io, db);
 const flows = new FlowEngine(db, alerts, tts);
 const soundboard = new SoundboardManager(db, io);
+const goals = new GoalManager(db, io);
 
 console.log('✅ All modules initialized');
+
+// ========== HELPER FUNCTIONS ==========
+
+function generateGoalOverlay(key, config, state) {
+    const style = config.style;
+
+    return `<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${config.name} Goal</title>
+    <script src="/socket.io/socket.io.js"></script>
+    ${style.font_url ? `<link rel="stylesheet" href="${style.font_url}">` : ''}
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: transparent;
+            overflow: hidden;
+            font-family: ${style.font_family};
+        }
+        .wrap {
+            width: ${style.width_pct}%;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .panel {
+            position: relative;
+            padding: 16px;
+            border-radius: ${style.round_px}px;
+            ${style.bg_mode === 'gradient'
+                ? `background: linear-gradient(${style.bg_angle}deg, ${style.bg_color}, ${style.bg_color2});`
+                : `background: ${style.bg_color};`
+            }
+            ${style.border_enabled ? `border: ${style.border_width}px solid ${style.border_color};` : ''}
+            ${style.shadow_enabled ? `box-shadow: ${style.shadow_css};` : ''}
+        }
+        .bar {
+            position: relative;
+            height: ${style.bar_height_px}px;
+            background: ${style.bar_bg};
+            border-radius: ${style.round_px}px;
+            overflow: hidden;
+        }
+        .fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0%;
+            border-radius: ${style.round_px}px;
+            transition: width ${style.anim_duration_ms}ms ease;
+            ${style.fill_mode === 'solid' ? `background: ${style.fill_color1};` : ''}
+            ${style.fill_mode === 'gradient' ? `background: linear-gradient(${style.fill_angle}deg, ${style.fill_color1}, ${style.fill_color2});` : ''}
+        }
+        .fill.stripes {
+            background: ${style.fill_color1};
+            background-image: linear-gradient(45deg, rgba(255,255,255,${style.stripes_alpha}) 25%, transparent 25%, transparent 50%, rgba(255,255,255,${style.stripes_alpha}) 50%, rgba(255,255,255,${style.stripes_alpha}) 75%, transparent 75%, transparent);
+            background-size: 30px 30px;
+            animation: move ${style.stripes_speed_s}s linear infinite;
+        }
+        @keyframes move {
+            to { background-position: 60px 0; }
+        }
+        .label {
+            margin-top: 8px;
+            font-size: ${style.text_size_px}px;
+            color: ${style.text_color};
+            letter-spacing: ${style.letter_spacing_px}px;
+            text-align: ${style.label_align};
+            ${style.uppercase ? 'text-transform: uppercase;' : ''}
+            font-weight: 800;
+        }
+        .inside {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: ${style.text_size_px}px;
+            color: ${style.text_color};
+            letter-spacing: ${style.letter_spacing_px}px;
+            ${style.uppercase ? 'text-transform: uppercase;' : ''}
+            font-weight: 800;
+            pointer-events: none;
+        }
+        .pulse {
+            animation: pulse 0.9s ease-out 1;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.8); }
+            100% { box-shadow: 0 0 0 24px rgba(255,255,255,0); }
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="wrap" id="wrap" style="${!state.show ? 'display:none;' : ''}">
+        <div class="panel">
+            <div class="bar" id="bar">
+                <div class="fill ${style.fill_mode === 'stripes' ? 'stripes' : ''}" id="fill"></div>
+                ${style.label_pos === 'inside' ? '<div class="inside" id="label"></div>' : ''}
+            </div>
+            ${style.label_pos === 'below' ? '<div class="label" id="label"></div>' : ''}
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const key = '${key}';
+        let total = ${state.total};
+        let goal = ${state.goal};
+        let show = ${state.show ? 'true' : 'false'};
+
+        // Join goal room
+        socket.emit('goal:join', key);
+
+        // Listen for updates
+        socket.on('goal:update', (data) => {
+            total = data.total;
+            goal = data.goal;
+            show = data.show;
+            render();
+        });
+
+        socket.on('goal:style', (data) => {
+            // Reload page for style changes
+            location.reload();
+        });
+
+        socket.on('goal:reached', (data) => {
+            ${style.pulse_on_full ? `document.getElementById('bar').classList.add('pulse');
+            setTimeout(() => document.getElementById('bar').classList.remove('pulse'), 900);` : ''}
+            ${style.confetti_on_goal ? `console.log('🎉 Confetti!');` : ''}
+        });
+
+        function formatLabel(t, g, pc) {
+            let tpl = ${JSON.stringify(style.label_template)};
+            const parts = {
+                total: ${style.show_total_num} ? t.toLocaleString() : '',
+                goal: ${style.show_goal_num} ? g.toLocaleString() : '',
+                percent: ${style.show_percent} ? pc : ''
+            };
+            let out = tpl
+                .replace('{total}', parts.total)
+                .replace('{goal}', parts.goal)
+                .replace('{percent}', parts.percent);
+            ${style.prefix_text ? `out = ${JSON.stringify(style.prefix_text)} + ' ' + out;` : ''}
+            ${style.suffix_text ? `out = out + ' ' + ${JSON.stringify(style.suffix_text)};` : ''}
+            return out.trim();
+        }
+
+        function render() {
+            const wrap = document.getElementById('wrap');
+            const fill = document.getElementById('fill');
+            const label = document.getElementById('label');
+
+            // Show/hide
+            wrap.style.display = show ? 'block' : 'none';
+
+            // Calculate percent
+            const pct = goal > 0 ? Math.max(0, Math.min(100, (total / goal) * 100)) : 0;
+
+            // Update fill
+            fill.style.width = pct + '%';
+
+            // Update label
+            const text = formatLabel(total, goal, Math.round(pct));
+            label.textContent = text;
+        }
+
+        // Initial render
+        render();
+    </script>
+</body>
+</html>`;
+}
 
 // ========== ROUTES ==========
 
 // Haupt-Seite
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Goal Overlay Routes
+app.get('/goal/:key', (req, res) => {
+    const { key } = req.params;
+
+    if (!goals.state[key]) {
+        return res.status(404).send('Goal not found');
+    }
+
+    const config = goals.getGoalConfig(key);
+    const state = goals.state[key];
+
+    const html = generateGoalOverlay(key, config, state);
+    res.send(html);
 });
 
 // ========== TIKTOK CONNECTION ROUTES ==========
@@ -351,10 +545,170 @@ app.get('/api/myinstants/search', async (req, res) => {
     }
 });
 
+// ========== GOALS ROUTES ==========
+
+// Get all goals
+app.get('/api/goals', (req, res) => {
+    try {
+        const status = goals.getStatus();
+        res.json({ success: true, goals: status });
+    } catch (error) {
+        console.error('Error getting goals:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get single goal
+app.get('/api/goals/:key', (req, res) => {
+    try {
+        const { key } = req.params;
+        const config = goals.getGoalConfig(key);
+        const state = goals.state[key];
+
+        if (!config || !state) {
+            return res.status(404).json({ success: false, error: 'Goal not found' });
+        }
+
+        res.json({
+            success: true,
+            goal: {
+                ...config,
+                ...state,
+                percent: Math.round(goals.getPercent(key) * 100)
+            }
+        });
+    } catch (error) {
+        console.error('Error getting goal:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update goal config
+app.post('/api/goals/:key/config', async (req, res) => {
+    try {
+        const { key } = req.params;
+        const updates = req.body;
+
+        const config = await goals.updateGoalConfig(key, updates);
+
+        if (!config) {
+            return res.status(404).json({ success: false, error: 'Goal not found' });
+        }
+
+        res.json({ success: true, message: `Goal ${key} updated`, config });
+    } catch (error) {
+        console.error('Error updating goal config:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update goal style
+app.post('/api/goals/:key/style', async (req, res) => {
+    try {
+        const { key } = req.params;
+        const { style } = req.body;
+
+        const updatedStyle = await goals.updateStyle(key, style);
+
+        if (!updatedStyle) {
+            return res.status(404).json({ success: false, error: 'Goal not found' });
+        }
+
+        res.json({ success: true, message: `Style for ${key} updated`, style: updatedStyle });
+    } catch (error) {
+        console.error('Error updating style:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Set goal total (manual)
+app.post('/api/goals/:key/set', async (req, res) => {
+    try {
+        const { key } = req.params;
+        const { total } = req.body;
+
+        if (total === undefined) {
+            return res.status(400).json({ success: false, error: 'total is required' });
+        }
+
+        await goals.setGoal(key, total);
+
+        res.json({ success: true, message: `Goal ${key} set to ${total}` });
+    } catch (error) {
+        console.error('Error setting goal:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Increment goal
+app.post('/api/goals/:key/increment', async (req, res) => {
+    try {
+        const { key } = req.params;
+        const { delta } = req.body;
+
+        if (delta === undefined) {
+            return res.status(400).json({ success: false, error: 'delta is required' });
+        }
+
+        await goals.incrementGoal(key, delta);
+
+        res.json({ success: true, message: `Goal ${key} incremented by ${delta}` });
+    } catch (error) {
+        console.error('Error incrementing goal:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Reset goal
+app.post('/api/goals/:key/reset', async (req, res) => {
+    try {
+        const { key } = req.params;
+
+        await goals.resetGoal(key);
+
+        res.json({ success: true, message: `Goal ${key} reset` });
+    } catch (error) {
+        console.error('Error resetting goal:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Reset all goals
+app.post('/api/goals/reset', async (req, res) => {
+    try {
+        await goals.resetAllGoals();
+
+        res.json({ success: true, message: 'All goals reset' });
+    } catch (error) {
+        console.error('Error resetting all goals:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ========== SOCKET.IO EVENTS ==========
 
 io.on('connection', (socket) => {
     console.log('🔌 Client connected:', socket.id);
+
+    // Goal Room Join
+    socket.on('goal:join', (key) => {
+        socket.join(`goal_${key}`);
+        console.log(`📊 Client joined goal room: goal_${key}`);
+
+        // Send initial state
+        const s = goals.state[key];
+        const config = goals.getGoalConfig(key);
+        if (s && config) {
+            socket.emit('goal:update', {
+                type: 'goal',
+                total: s.total,
+                goal: s.goal,
+                show: s.show,
+                pct: goals.getPercent(key),
+                style: config.style
+            });
+        }
+    });
 
     // Client disconnect
     socket.on('disconnect', () => {
@@ -387,6 +741,9 @@ tiktok.on('gift', async (data) => {
         await soundboard.playGiftSound(data);
     }
 
+    // Goals: Coins erhöhen
+    await goals.incrementGoal('coins', data.coins || 0);
+
     // Flows verarbeiten
     await flows.processEvent('gift', data);
 });
@@ -401,6 +758,9 @@ tiktok.on('follow', async (data) => {
         await soundboard.playFollowSound();
     }
 
+    // Goals: Follower erhöhen
+    await goals.incrementGoal('followers', 1);
+
     await flows.processEvent('follow', data);
 });
 
@@ -413,6 +773,9 @@ tiktok.on('subscribe', async (data) => {
     if (soundboardEnabled) {
         await soundboard.playSubscribeSound();
     }
+
+    // Goals: Subscriber erhöhen
+    await goals.incrementGoal('subs', 1);
 
     await flows.processEvent('subscribe', data);
 });
@@ -453,6 +816,14 @@ tiktok.on('like', async (data) => {
     const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
     if (soundboardEnabled) {
         await soundboard.handleLikeEvent(data.likeCount || 1);
+    }
+
+    // Goals: Total Likes setzen (wenn vorhanden)
+    if (data.totalLikes !== undefined) {
+        await goals.setGoal('likes', data.totalLikes);
+    } else {
+        // Fallback: inkrementieren
+        await goals.incrementGoal('likes', data.likeCount || 1);
     }
 
     // Flows verarbeiten
@@ -506,4 +877,4 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, tiktok, tts, alerts, flows, soundboard };
+module.exports = { app, server, io, db, tiktok, tts, alerts, flows, soundboard, goals };
