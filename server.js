@@ -885,3 +885,4 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 module.exports = { app, server, io, db, tiktok, tts, alerts, flows, soundboard, goals };
+module.exports = { app, server, io, db, tiktok, tts, alerts, flows };
