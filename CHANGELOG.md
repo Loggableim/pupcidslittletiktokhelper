@@ -31,6 +31,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Szenen-Auto-Discovery von OBS
   - Fallback-Hotkeys (optional, opt-in)
 
+- **Launcher & Update-System Überarbeitung** - 2025-11-09
+  - **Platform-Agnostischer Launcher** (`launch.js`, `modules/launcher.js`):
+    - Cross-platform Unterstützung (Windows, Linux, macOS)
+    - TTY-sicheres Logging (keine "stdout is not a tty" Fehler mehr)
+    - Robuste Node.js/npm Version-Checks in JavaScript
+    - Automatische Dependency-Prüfung und Installation
+    - Browser-Auto-Start nach Launch
+    - Kein Shell-spezifischer Code mehr
+  - **TTY-Logger Modul** (`modules/tty-logger.js`):
+    - Automatische TTY-Erkennung
+    - ANSI-Farben nur bei TTY-Unterstützung
+    - UTF-8/Emoji-Unterstützung-Detection
+    - Fallback auf Plain-Text für non-TTY (OBS, Redirects)
+    - Platform-spezifische Symbole
+    - Logging-Methoden: info(), success(), error(), warn(), debug(), step()
+  - **Update-Manager Überarbeitung** (`modules/update-manager.js`):
+    - Git-basiertes Update (wenn .git vorhanden)
+    - GitHub Release ZIP Download (ohne Git)
+    - Automatisches Backup vor Update (user_data/, user_configs/)
+    - Rollback bei fehlgeschlagenen Updates
+    - Platform-unabhängige Update-Strategie
+    - Syntax-Fehler aus altem update-checker.js behoben
+  - **Minimale Launcher-Scripts**:
+    - `start.sh`: Nur Node-Check, ruft `node launch.js` auf
+    - `start.bat`: Nur Node-Check, ruft `node launch.js` auf
+    - Keine Shell-spezifische Logik mehr (echo -e, cut, etc.)
+  - **Behobene Probleme**:
+    - ✅ Keine "stdout is not a tty" Fehler mehr
+    - ✅ Keine "echo -e" Probleme unter Windows/Powershell
+    - ✅ Keine "integer expression expected" Fehler bei Version-Checks
+    - ✅ Updates funktionieren auch ohne Git-Repository
+    - ✅ Farben werden korrekt in TTY und non-TTY Umgebungen gehandhabt
+    - ✅ Node/npm Version-Checks robust und plattformunabhängig
+
 - **Update-System**: Automatische Update-Prüfung via GitHub API
   - GitHub Releases API Integration
   - Semantic Versioning Vergleich

@@ -35,6 +35,9 @@ Diese Datei dient als zentraler Einstiegspunkt für LLMs, die an diesem Projekt 
 - **`rate-limiter.js`**: Express Rate Limiting
 - **`i18n.js`**: Internationalisierung (DE/EN)
 - **`plugin-loader.js`**: Plugin-System Loader mit Lifecycle-Management
+- **`update-manager.js`**: Git-unabhängiges Update-System mit Backup/Rollback
+- **`launcher.js`**: Platform-agnostischer Launcher mit Dependency-Check
+- **`tty-logger.js`**: TTY-sicheres Logging-System
 - **`update-checker.js`**: GitHub Releases API für Auto-Updates
 
 ### Plugin-System (`plugins/`)
@@ -232,6 +235,60 @@ Nach jeder Änderung:
 5. **Teste**: Funktionalität prüfen
 6. **Dokumentiere**: CHANGELOG.md, llm_start_here.md, llm_info
 7. **Commit**: Klare Commit-Message, pushe zu Feature-Branch
+
+---
+
+## 🔧 Launcher & Update-System
+
+### Launcher-Struktur
+
+**Einstiegspunkte:**
+- `launch.js`: Haupt-Einstiegspunkt (ruft modules/launcher.js auf)
+- `start.sh`: Linux/macOS Shell-Script (minimal, nur Node-Check)
+- `start.bat`: Windows Batch-Script (minimal, nur Node-Check)
+
+**Launcher-Ablauf:**
+1. Node.js Version-Check (18-23 erforderlich)
+2. npm Version-Check
+3. Dependencies prüfen/installieren
+4. Update-Check (optional)
+5. Server starten (`server.js`)
+6. Browser öffnen (Dashboard)
+
+**TTY-sicheres Logging:**
+- Automatische TTY-Erkennung (`process.stdout.isTTY`)
+- ANSI-Farben nur bei TTY-Unterstützung
+- UTF-8/Emoji-Detection
+- Fallback auf Plain-Text für non-TTY (OBS, Redirects)
+
+### Update-System
+
+**Update-Strategien:**
+
+**Git-basiert (wenn .git/ vorhanden):**
+1. `git fetch origin`
+2. `git pull`
+3. `npm install` (wenn package.json geändert)
+4. Backup vor Update
+5. Rollback bei Fehler
+
+**GitHub Release (ohne Git):**
+1. Download ZIP von `https://api.github.com/repos/USER/REPO/releases/latest`
+2. Backup erstellen (user_data/, user_configs/)
+3. Entpacke ZIP (außer user_data/, user_configs/)
+4. `npm install`
+5. Rollback bei Fehler
+
+**API-Endpoints:**
+- `GET /api/update/check`: Prüft auf neue Versionen
+- `POST /api/update/download`: Führt Update aus
+- `GET /api/update/current`: Aktuelle Version
+- `GET /api/update/instructions`: Manuelle Update-Anleitung
+
+**Backup-Strategie:**
+- Backup-Ordner: `.backups/backup_TIMESTAMP/`
+- Gesichert: user_data/, user_configs/, package.json, package-lock.json
+- Rollback bei Fehler: Restore aus Backup
 
 ---
 

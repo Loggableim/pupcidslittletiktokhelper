@@ -26,7 +26,7 @@ const Leaderboard = require('./modules/leaderboard');
 const { setupSwagger } = require('./modules/swagger-config');
 const PluginLoader = require('./modules/plugin-loader');
 const { setupPluginRoutes } = require('./routes/plugin-routes');
-const UpdateChecker = require('./modules/update-checker');
+const UpdateManager = require('./modules/update-manager');
 
 // ========== EXPRESS APP ==========
 const app = express();
@@ -201,9 +201,9 @@ const pluginsDir = path.join(__dirname, 'plugins');
 const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
 logger.info('🔌 Plugin Loader initialized');
 
-// Update-Checker initialisieren
-const updateChecker = new UpdateChecker(logger);
-logger.info('🔄 Update Checker initialized');
+// Update-Manager initialisieren
+const updateManager = new UpdateManager(logger);
+logger.info('🔄 Update Manager initialized');
 
 logger.info('✅ All core modules initialized');
 logger.info('✅ All modules initialized');
@@ -222,7 +222,7 @@ setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger);
  */
 app.get('/api/update/check', apiLimiter, async (req, res) => {
     try {
-        const updateInfo = await updateChecker.checkForUpdates();
+        const updateInfo = await updateManager.checkForUpdates();
         res.json(updateInfo);
     } catch (error) {
         logger.error(`Update check failed: ${error.message}`);
@@ -239,7 +239,7 @@ app.get('/api/update/check', apiLimiter, async (req, res) => {
 app.get('/api/update/current', apiLimiter, (req, res) => {
     res.json({
         success: true,
-        version: updateChecker.currentVersion
+        version: updateManager.currentVersion
     });
 });
 
@@ -248,7 +248,7 @@ app.get('/api/update/current', apiLimiter, (req, res) => {
  */
 app.post('/api/update/download', authLimiter, async (req, res) => {
     try {
-        const result = await updateChecker.downloadUpdate();
+        const result = await updateManager.performUpdate();
         res.json(result);
     } catch (error) {
         logger.error(`Update download failed: ${error.message}`);
@@ -263,7 +263,26 @@ app.post('/api/update/download', authLimiter, async (req, res) => {
  * GET /api/update/instructions - Gibt Anleitung für manuelles Update
  */
 app.get('/api/update/instructions', apiLimiter, (req, res) => {
-    const instructions = updateChecker.getManualUpdateInstructions();
+    // Manual update instructions
+    const instructions = {
+        method: updateManager.isGitRepo ? 'git' : 'download',
+        steps: updateManager.isGitRepo
+            ? [
+                '1. Stoppe den Server (Ctrl+C)',
+                '2. Führe "git pull" im Projektverzeichnis aus',
+                '3. Falls package.json geändert wurde: "npm install"',
+                '4. Starte den Server neu mit "npm start" oder "node launch.js"'
+              ]
+            : [
+                '1. Lade die neueste Version von GitHub herunter',
+                `2. https://github.com/${updateManager.githubRepo}/releases/latest`,
+                '3. Entpacke das Archiv',
+                '4. Kopiere deine "user_data" und "user_configs" Ordner',
+                '5. Führe "npm install" aus',
+                '6. Starte den Server mit "npm start" oder "node launch.js"'
+              ]
+    };
+
     res.json({
         success: true,
         instructions
