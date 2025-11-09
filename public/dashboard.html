@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Stream Tool - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        .tab-btn {
+            padding: 12px 24px;
+            cursor: pointer;
+            background: transparent;
+            color: #9ca3af;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover {
+            color: #fff;
+        }
+        .tab-btn.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+        .status-connected {
+            background: #10b981;
+            color: white;
+        }
+        .status-disconnected {
+            background: #6b7280;
+            color: white;
+        }
+        .status-error {
+            background: #ef4444;
+            color: white;
+        }
+        .event-row {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <!-- Navigation -->
+    <nav class="bg-gray-800 p-4 shadow-lg">
+        <div class="container mx-auto flex items-center justify-between">
+            <h1 class="text-2xl font-bold">🎥 TikTok Stream Tool</h1>
+            <div class="flex items-center gap-4">
+                <span id="connection-status" class="status-badge status-disconnected">⚫ Disconnected</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6">
+
+        <!-- Connection Section -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl mb-4 font-semibold">TikTok Live Connection</h2>
+            <div class="flex gap-4">
+                <input type="text" id="username-input" placeholder="TikTok Username (ohne @)"
+                       class="bg-gray-700 text-white px-4 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="connect-btn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 transition font-semibold">
+                    🔗 Connect
+                </button>
+                <button id="disconnect-btn" class="bg-red-600 px-6 py-2 rounded hover:bg-red-700 transition font-semibold" disabled>
+                    ⛔ Disconnect
+                </button>
+            </div>
+            <div id="connection-info" class="mt-4 text-gray-400 text-sm"></div>
+        </div>
+
+        <!-- Live Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-gray-400 text-sm mb-2">👥 Viewers</div>
+                <div class="text-3xl font-bold" id="stat-viewers">0</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-gray-400 text-sm mb-2">❤️ Likes</div>
+                <div class="text-3xl font-bold" id="stat-likes">0</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-gray-400 text-sm mb-2">🎁 Coins</div>
+                <div class="text-3xl font-bold text-yellow-400" id="stat-coins">0</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="text-gray-400 text-sm mb-2">⭐ Followers</div>
+                <div class="text-3xl font-bold" id="stat-followers">0</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="mb-6">
+            <div class="border-b border-gray-700 flex gap-2">
+                <button class="tab-btn active" data-tab="events">📋 Events</button>
+                <button class="tab-btn" data-tab="voices">🎤 Voice Mapping</button>
+                <button class="tab-btn" data-tab="overlays">🖼️ Overlays</button>
+                <button class="tab-btn" data-tab="flows">⚡ Flows</button>
+                <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+            </div>
+        </div>
+
+        <!-- Tab: Events -->
+        <div id="tab-events" class="tab-content active">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Live Event Log</h2>
+                    <button id="clear-events-btn" class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600 text-sm">
+                        🗑️ Clear
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-400 border-b border-gray-700">
+                                <th class="pb-2 pr-4">Time</th>
+                                <th class="pb-2 pr-4">Type</th>
+                                <th class="pb-2 pr-4">User</th>
+                                <th class="pb-2">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="event-log" class="text-gray-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Voice Mapping -->
+        <div id="tab-voices" class="tab-content">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">User Voice Mapping</h2>
+                    <button id="add-voice-btn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">
+                        ➕ Add User
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <input type="text" id="voice-search" placeholder="🔍 Search users..."
+                           class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-400 border-b border-gray-700">
+                                <th class="pb-2 pr-4">Username</th>
+                                <th class="pb-2 pr-4">Voice</th>
+                                <th class="pb-2 pr-4">Last Used</th>
+                                <th class="pb-2">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="voice-mapping-list" class="text-gray-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Overlays -->
+        <div id="tab-overlays" class="tab-content">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl mb-4 font-semibold">Browser Source URLs (für OBS)</h2>
+                <div class="space-y-4">
+                    <div class="bg-gray-700 p-4 rounded">
+                        <div class="font-bold mb-2">🎬 Main Overlay (All-in-One)</div>
+                        <div class="text-sm text-gray-400 mb-2">Empfohlene Auflösung: 1920x1080</div>
+                        <div class="flex gap-2">
+                            <input type="text" readonly id="overlay-url" value=""
+                                   class="bg-gray-600 text-white px-4 py-2 rounded flex-1 font-mono text-sm">
+                            <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700" onclick="copyURL('overlay-url')">
+                                📋 Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 p-4 bg-gray-700 rounded">
+                    <h3 class="font-bold mb-2">📖 OBS Setup-Anleitung:</h3>
+                    <ol class="list-decimal list-inside space-y-1 text-sm text-gray-300">
+                        <li>Öffne OBS Studio</li>
+                        <li>Klicke auf "+" unter "Sources" (Quellen)</li>
+                        <li>Wähle "Browser Source" (Browser-Quelle)</li>
+                        <li>Kopiere die URL oben und füge sie ein</li>
+                        <li>Setze Breite: 1920, Höhe: 1080</li>
+                        <li>Entferne Häkchen bei "Shutdown source when not visible"</li>
+                        <li>Klicke OK</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Flows -->
+        <div id="tab-flows" class="tab-content">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Automation Flows</h2>
+                    <button id="add-flow-btn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">
+                        ➕ Create Flow
+                    </button>
+                </div>
+                <div id="flows-list" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Settings -->
+        <div id="tab-settings" class="tab-content">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl mb-6 font-semibold">Settings</h2>
+
+                <!-- TTS Settings -->
+                <div class="mb-8">
+                    <h3 class="font-bold text-lg mb-4">🎤 Text-to-Speech</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-400 mb-2">Default Voice</label>
+                            <select id="default-voice" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Wird dynamisch gefüllt -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-2">Volume: <span id="tts-volume-label">80</span>%</label>
+                            <input type="range" min="0" max="100" value="80"
+                                   id="tts-volume" class="w-full">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-2">Speed: <span id="tts-speed-label">1.0</span>x</label>
+                            <input type="range" min="0.5" max="2" step="0.1" value="1"
+                                   id="tts-speed" class="w-full">
+                        </div>
+                        <div>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="tts-chat-enabled" class="w-5 h-5">
+                                <span>Enable TTS for Chat Messages</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="save-settings-btn" class="bg-blue-600 px-6 py-3 rounded hover:bg-blue-700 font-semibold">
+                    💾 Save Settings
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal: Add Voice Mapping -->
+    <div id="voice-modal" class="modal">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold mb-4">Add Voice Mapping</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2">Username</label>
+                    <input type="text" id="modal-username" placeholder="TikTok Username"
+                           class="bg-gray-700 text-white px-4 py-2 rounded w-full">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Voice</label>
+                    <select id="modal-voice" class="bg-gray-700 text-white px-4 py-2 rounded w-full">
+                        <!-- Wird dynamisch gefüllt -->
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button id="modal-save-btn" class="bg-green-600 px-6 py-2 rounded hover:bg-green-700 flex-1">
+                    Save
+                </button>
+                <button id="modal-cancel-btn" class="bg-gray-600 px-6 py-2 rounded hover:bg-gray-700 flex-1">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

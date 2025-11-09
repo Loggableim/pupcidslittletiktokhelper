@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>TikTok Stream Overlay</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 1920px;
+            height: 1080px;
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        /* ========== ALERT CONTAINER ========== */
+        #alert-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            display: none;
+        }
+
+        #alert-container.show {
+            display: block;
+            animation: alertIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        #alert-container.hide {
+            animation: alertOut 0.4s ease-in;
+        }
+
+        @keyframes alertIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes alertOut {
+            from {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+        }
+
+        #alert-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            min-width: 500px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+        }
+
+        #alert-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin-bottom: 20px;
+            border: 4px solid white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+
+        #alert-image.show {
+            display: block;
+            margin: 0 auto 20px;
+        }
+
+        #alert-text {
+            color: white;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* ========== EVENT FEED ========== */
+        #event-feed {
+            position: absolute;
+            bottom: 120px;
+            left: 30px;
+            width: 400px;
+            z-index: 50;
+        }
+
+        .event-item {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            color: white;
+            font-size: 18px;
+            border-left: 4px solid #3b82f6;
+            animation: slideInLeft 0.4s ease-out;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .event-item.gift {
+            border-left-color: #fbbf24;
+        }
+
+        .event-item.follow {
+            border-left-color: #10b981;
+        }
+
+        .event-item.subscribe {
+            border-left-color: #8b5cf6;
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .event-item .icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+        .event-item .username {
+            font-weight: bold;
+            color: #3b82f6;
+        }
+
+        /* ========== CHAT DISPLAY ========== */
+        #chat-container {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 450px;
+            max-height: 600px;
+            z-index: 40;
+        }
+
+        .chat-message {
+            background: rgba(0, 0, 0, 0.75);
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            animation: slideInRight 0.3s ease-out;
+            backdrop-filter: blur(10px);
+            word-wrap: break-word;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .chat-message .username {
+            font-weight: bold;
+            color: #fbbf24;
+            margin-right: 8px;
+        }
+
+        .chat-message .message {
+            color: #e5e7eb;
+        }
+
+        /* ========== GOAL BAR ========== */
+        #goal-container {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            z-index: 30;
+            display: none;
+        }
+
+        #goal-container.show {
+            display: block;
+        }
+
+        .goal-label {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .goal-bar {
+            background: rgba(0, 0, 0, 0.7);
+            height: 40px;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .goal-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.5s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 15px;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        /* Fade-Out Animation für Chat und Events */
+        .fade-out {
+            animation: fadeOut 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Alert Display -->
+    <div id="alert-container">
+        <div id="alert-content">
+            <img id="alert-image" src="" alt="">
+            <div id="alert-text"></div>
+        </div>
+        <audio id="alert-sound"></audio>
+    </div>
+
+    <!-- Goal Bar -->
+    <div id="goal-container">
+        <div class="goal-label">
+            Coins Goal: <span id="goal-current">0</span> / <span id="goal-target">1000</span>
+        </div>
+        <div class="goal-bar">
+            <div class="goal-progress" id="goal-progress" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Event Feed -->
+    <div id="event-feed"></div>
+
+    <!-- Chat Display -->
+    <div id="chat-container"></div>
+
+    <!-- Audio Element für TTS -->
+    <audio id="tts-audio"></audio>
+
+    <script>
+        // Socket.io Verbindung
+        const socket = io();
+
+        // State
+        let goalTarget = 1000;
+        let goalCurrent = 0;
+
+        // ========== SOCKET LISTENERS ==========
+        socket.on('connect', () => {
+            console.log('✅ Overlay connected to server');
+        });
+
+        // Alert anzeigen
+        socket.on('alert:show', (data) => {
+            showAlert(data);
+        });
+
+        // Alert verstecken
+        socket.on('alert:hide', () => {
+            hideAlert();
+        });
+
+        // TTS abspielen
+        socket.on('tts:play', (data) => {
+            playTTS(data);
+        });
+
+        // TikTok Events
+        socket.on('tiktok:event', (event) => {
+            handleEvent(event.type, event.data);
+        });
+
+        // Stats für Goal-Bar
+        socket.on('tiktok:stats', (stats) => {
+            updateGoal(stats.totalCoins);
+        });
+
+        // ========== ALERT FUNCTIONS ==========
+        function showAlert(data) {
+            const container = document.getElementById('alert-container');
+            const text = document.getElementById('alert-text');
+            const image = document.getElementById('alert-image');
+            const sound = document.getElementById('alert-sound');
+
+            // Text setzen
+            text.textContent = data.text;
+
+            // Bild setzen (optional)
+            if (data.image) {
+                image.src = data.image;
+                image.classList.add('show');
+            } else {
+                image.classList.remove('show');
+            }
+
+            // Sound abspielen (optional)
+            if (data.soundFile) {
+                sound.src = `/assets/sounds/${data.soundFile}`;
+                sound.volume = (data.soundVolume || 80) / 100;
+                sound.play().catch(err => console.error('Sound playback error:', err));
+            }
+
+            // Alert anzeigen
+            container.classList.remove('hide');
+            container.classList.add('show');
+
+            // Nach Dauer ausblenden
+            setTimeout(() => {
+                hideAlert();
+            }, data.duration || 5000);
+        }
+
+        function hideAlert() {
+            const container = document.getElementById('alert-container');
+            container.classList.remove('show');
+            container.classList.add('hide');
+
+            setTimeout(() => {
+                container.style.display = 'none';
+                container.classList.remove('hide');
+            }, 400);
+        }
+
+        // ========== TTS FUNCTIONS ==========
+        function playTTS(data) {
+            const audio = document.getElementById('tts-audio');
+
+            // Base64-Audio zu Blob konvertieren
+            const audioData = data.audioData;
+            const audioBlob = base64ToBlob(audioData, 'audio/mpeg');
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            audio.src = audioUrl;
+            audio.volume = (data.volume || 80) / 100;
+            audio.playbackRate = data.speed || 1.0;
+
+            audio.play().catch(err => console.error('TTS playback error:', err));
+
+            // URL nach Abspielen freigeben
+            audio.onended = () => {
+                URL.revokeObjectURL(audioUrl);
+            };
+        }
+
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: mimeType });
+        }
+
+        // ========== EVENT FEED ==========
+        function handleEvent(type, data) {
+            // Chat anzeigen
+            if (type === 'chat') {
+                addChatMessage(data);
+            }
+
+            // Event Feed (nur wichtige Events)
+            if (['gift', 'follow', 'subscribe', 'share'].includes(type)) {
+                addEventToFeed(type, data);
+            }
+        }
+
+        function addEventToFeed(type, data) {
+            const feed = document.getElementById('event-feed');
+
+            const item = document.createElement('div');
+            item.className = `event-item ${type}`;
+
+            let icon = '';
+            let text = '';
+
+            switch (type) {
+                case 'gift':
+                    icon = '🎁';
+                    text = `<span class="username">${data.username}</span> sent ${data.giftName} x${data.repeatCount}`;
+                    break;
+                case 'follow':
+                    icon = '⭐';
+                    text = `<span class="username">${data.username}</span> followed!`;
+                    break;
+                case 'subscribe':
+                    icon = '🌟';
+                    text = `<span class="username">${data.username}</span> subscribed!`;
+                    break;
+                case 'share':
+                    icon = '🔄';
+                    text = `<span class="username">${data.username}</span> shared the stream`;
+                    break;
+            }
+
+            item.innerHTML = `<span class="icon">${icon}</span>${text}`;
+            feed.insertBefore(item, feed.firstChild);
+
+            // Nach 8 Sekunden ausblenden
+            setTimeout(() => {
+                item.classList.add('fade-out');
+                setTimeout(() => item.remove(), 500);
+            }, 8000);
+
+            // Maximal 5 Events anzeigen
+            while (feed.children.length > 5) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        // ========== CHAT ==========
+        function addChatMessage(data) {
+            const container = document.getElementById('chat-container');
+
+            const msg = document.createElement('div');
+            msg.className = 'chat-message';
+            msg.innerHTML = `
+                <span class="username">${data.username}:</span>
+                <span class="message">${escapeHtml(data.message)}</span>
+            `;
+
+            container.insertBefore(msg, container.firstChild);
+
+            // Nach 15 Sekunden ausblenden
+            setTimeout(() => {
+                msg.classList.add('fade-out');
+                setTimeout(() => msg.remove(), 500);
+            }, 15000);
+
+            // Maximal 10 Nachrichten
+            while (container.children.length > 10) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ========== GOAL BAR ==========
+        function updateGoal(current) {
+            goalCurrent = current;
+
+            document.getElementById('goal-current').textContent = current;
+            const percentage = Math.min((current / goalTarget) * 100, 100);
+            document.getElementById('goal-progress').style.width = percentage + '%';
+
+            // Goal-Bar anzeigen wenn > 0 Coins
+            const goalContainer = document.getElementById('goal-container');
+            if (current > 0) {
+                goalContainer.classList.add('show');
+            }
+        }
+
+        // Optional: Goal-Target setzen (könnte über Settings konfigurierbar sein)
+        function setGoalTarget(target) {
+            goalTarget = target;
+            document.getElementById('goal-target').textContent = target;
+        }
+    </script>
+
+</body>
+</html>
