@@ -551,14 +551,21 @@ app.get('/api/soundboard/gifts', (req, res) => {
 });
 
 app.post('/api/soundboard/gifts', (req, res) => {
-    const { giftId, label, mp3Url, volume } = req.body;
+    const { giftId, label, mp3Url, volume, animationUrl, animationType } = req.body;
 
     if (!giftId || !label || !mp3Url) {
         return res.status(400).json({ success: false, error: 'giftId, label and mp3Url are required' });
     }
 
     try {
-        const id = soundboard.setGiftSound(giftId, label, mp3Url, volume || 1.0);
+        const id = soundboard.setGiftSound(
+            giftId,
+            label,
+            mp3Url,
+            volume || 1.0,
+            animationUrl || null,
+            animationType || 'none'
+        );
         res.json({ success: true, id });
     } catch (error) {
         console.error('Error setting gift sound:', error);

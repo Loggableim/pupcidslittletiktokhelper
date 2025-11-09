@@ -534,7 +534,9 @@
             assignments[s.giftId] = {
               mp3_url: s.mp3Url || '',
               label: s.label || '',
-              volume: s.volume ?? 1.0
+              volume: s.volume ?? 1.0,
+              animation_url: s.animationUrl || '',
+              animation_type: s.animationType || 'none'
             };
           });
         }
@@ -574,6 +576,8 @@
     function giftRowTemplate(g) {
       const assigned = assignments[g.id] || {};
       const vol = assigned.volume ?? 1.0;
+      const animType = assigned.animation_type || 'none';
+      const animUrl = assigned.animation_url || '';
       const safeName = (g.name || '').replace(/"/g,'&quot;');
       const rowClass = `gift-row flex flex-col gap-2 border border-slate-800 rounded-xl p-3${assigned.mp3_url ? ' assigned' : ''}`;
 
@@ -601,6 +605,18 @@
                   onclick="openPicker('gift:${g.id}')">Picker</button>
           <button class="rounded-lg bg-rose-700/80 hover:bg-rose-600 px-3 py-1.5"
                   onclick="clearGift(${g.id})">✕</button>
+        </div>
+        <div class="flex items-center gap-2 border-t border-slate-700/50 pt-2">
+          <span class="text-xs text-slate-400 flex-shrink-0">🎬 Animation:</span>
+          <select id="anim_type_${g.id}" class="rounded-lg bg-slate-800 border border-slate-700 px-2 py-1 text-sm flex-shrink-0" onchange="updateAssignment(${g.id}, 'animation_type', this.value)">
+            <option value="none" ${animType === 'none' ? 'selected' : ''}>Keine</option>
+            <option value="image" ${animType === 'image' ? 'selected' : ''}>Bild</option>
+            <option value="gif" ${animType === 'gif' ? 'selected' : ''}>GIF</option>
+            <option value="video" ${animType === 'video' ? 'selected' : ''}>Video</option>
+          </select>
+          <input id="anim_url_${g.id}" value="${animUrl}" placeholder="Animation-URL (optional)"
+                 class="flex-1 rounded-lg bg-slate-800 border border-slate-700 px-2 py-1 text-sm"
+                 oninput="updateAssignment(${g.id}, 'animation_url', this.value.trim())" />
         </div>
       </div>`;
     }
@@ -917,7 +933,9 @@
             giftId: Number(id),
             label: data.label || `Gift ${id}`,
             mp3Url: data.mp3_url,
-            volume: data.volume ?? 1.0
+            volume: data.volume ?? 1.0,
+            animationUrl: data.animation_url || null,
+            animationType: data.animation_type || 'none'
           }));
 
         for (const gift of gifts) {
@@ -1488,7 +1506,9 @@
           giftId: Number(id),
           label: data.label || `Gift ${id}`,
           mp3Url: data.mp3_url,
-          volume: data.volume ?? 1.0
+          volume: data.volume ?? 1.0,
+          animationUrl: data.animation_url || null,
+          animationType: data.animation_type || 'none'
         }));
 
       for (const gift of gifts) {
@@ -1592,7 +1612,9 @@
               assignments[gift.giftId] = {
                 mp3_url: gift.mp3Url || '',
                 label: gift.label || '',
-                volume: gift.volume ?? 1.0
+                volume: gift.volume ?? 1.0,
+                animation_url: gift.animationUrl || '',
+                animation_type: gift.animationType || 'none'
               };
             }
           }
