@@ -82,6 +82,8 @@ class DatabaseManager {
                 label TEXT NOT NULL,
                 mp3_url TEXT NOT NULL,
                 volume REAL DEFAULT 1.0,
+                animation_url TEXT,
+                animation_type TEXT DEFAULT 'none',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);

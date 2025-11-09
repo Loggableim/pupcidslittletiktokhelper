@@ -29,7 +29,9 @@ class SoundboardManager extends EventEmitter {
             giftId: sound.gift_id,
             label: sound.label,
             mp3Url: sound.mp3_url,
-            volume: sound.volume || 1.0
+            volume: sound.volume || 1.0,
+            animationUrl: sound.animation_url || null,
+            animationType: sound.animation_type || 'none'
         } : null;
     }
 
@@ -44,24 +46,28 @@ class SoundboardManager extends EventEmitter {
             giftId: s.gift_id,
             label: s.label,
             mp3Url: s.mp3_url,
-            volume: s.volume || 1.0
+            volume: s.volume || 1.0,
+            animationUrl: s.animation_url || null,
+            animationType: s.animation_type || 'none'
         }));
     }
 
     /**
      * Add or update gift sound
      */
-    setGiftSound(giftId, label, mp3Url, volume = 1.0) {
+    setGiftSound(giftId, label, mp3Url, volume = 1.0, animationUrl = null, animationType = 'none') {
         const stmt = this.db.db.prepare(`
-            INSERT INTO gift_sounds (gift_id, label, mp3_url, volume)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO gift_sounds (gift_id, label, mp3_url, volume, animation_url, animation_type)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(gift_id) DO UPDATE SET
                 label = excluded.label,
                 mp3_url = excluded.mp3_url,
-                volume = excluded.volume
+                volume = excluded.volume,
+                animation_url = excluded.animation_url,
+                animation_type = excluded.animation_type
         `);
 
-        const result = stmt.run(giftId, label, mp3Url, volume);
+        const result = stmt.run(giftId, label, mp3Url, volume, animationUrl, animationType);
         return result.lastInsertRowid || result.changes;
     }
 
@@ -82,6 +88,11 @@ class SoundboardManager extends EventEmitter {
         if (giftSound) {
             // Use specific gift sound
             await this.playSound(giftSound.mp3Url, giftSound.volume, giftSound.label);
+
+            // Play animation if configured
+            if (giftSound.animationType && giftSound.animationType !== 'none') {
+                this.playGiftAnimation(giftData, giftSound);
+            }
         } else {
             // Use default gift sound if configured
             const defaultUrl = this.db.getSetting('soundboard_default_gift_sound');
@@ -91,6 +102,23 @@ class SoundboardManager extends EventEmitter {
                 await this.playSound(defaultUrl, defaultVolume, 'Default Gift');
             }
         }
+    }
+
+    /**
+     * Play animation for gift event
+     */
+    playGiftAnimation(giftData, giftSound) {
+        const animationData = {
+            type: giftSound.animationType,
+            url: giftSound.animationUrl,
+            giftName: giftData.giftName || giftSound.label,
+            username: giftData.username || 'Anonymous',
+            giftImage: giftData.giftPictureUrl || null,
+            timestamp: Date.now()
+        };
+
+        console.log(`🎬 Playing gift animation: ${animationData.type} for ${animationData.giftName}`);
+        this.io.emit('gift:animation', animationData);
     }
 
     /**

@@ -228,6 +228,29 @@
             color: #e5e7eb;
         }
 
+        /* ========== GIFT ANIMATIONS ========== */
+        @keyframes giftAnimIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes giftAnimOut {
+            from {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+        }
+
         /* ========== GOAL BAR ========== */
         #goal-container {
             position: absolute;
@@ -537,6 +560,11 @@
             updateGoal(stats.totalCoins);
         });
 
+        // Gift Animation anzeigen
+        socket.on('gift:animation', (data) => {
+            showGiftAnimation(data);
+        });
+
         // ========== ALERT FUNCTIONS ==========
         function showAlert(data) {
             const container = document.getElementById('alert-container');
@@ -777,6 +805,78 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // ========== GIFT ANIMATIONS ==========
+        function showGiftAnimation(data) {
+            console.log('🎬 Showing gift animation:', data);
+
+            // Erstelle Animation-Container
+            const container = document.createElement('div');
+            container.id = 'gift-animation-' + Date.now();
+            container.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 200;
+                animation: giftAnimIn 0.5s ease-out;
+            `;
+
+            let content = '';
+            const animationType = data.type || 'none';
+            const animationUrl = data.url || '';
+
+            if (animationType === 'image' || animationType === 'gif') {
+                content = `
+                    <div style="text-align: center;">
+                        <img src="${animationUrl}"
+                             style="max-width: 600px; max-height: 600px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);"
+                             onerror="this.style.display='none'" />
+                        <div style="margin-top: 20px; color: white; font-size: 28px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+                            ${escapeHtml(data.username)} sent ${escapeHtml(data.giftName)}!
+                        </div>
+                    </div>
+                `;
+            } else if (animationType === 'video') {
+                content = `
+                    <div style="text-align: center;">
+                        <video autoplay muted
+                               style="max-width: 600px; max-height: 600px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);"
+                               onended="this.parentElement.parentElement.remove()">
+                            <source src="${animationUrl}" type="video/mp4">
+                        </video>
+                        <div style="margin-top: 20px; color: white; font-size: 28px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+                            ${escapeHtml(data.username)} sent ${escapeHtml(data.giftName)}!
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Fallback: Show gift image from TikTok
+                if (data.giftImage) {
+                    content = `
+                        <div style="text-align: center;">
+                            <img src="${data.giftImage}"
+                                 style="max-width: 400px; max-height: 400px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);"
+                                 onerror="this.style.display='none'" />
+                            <div style="margin-top: 20px; color: white; font-size: 28px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+                                ${escapeHtml(data.username)} sent ${escapeHtml(data.giftName)}!
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            if (content) {
+                container.innerHTML = content;
+                document.body.appendChild(container);
+
+                // Animation ausblenden und entfernen
+                setTimeout(() => {
+                    container.style.animation = 'giftAnimOut 0.5s ease-in';
+                    setTimeout(() => container.remove(), 500);
+                }, 4000); // 4 Sekunden anzeigen
+            }
         }
 
         // ========== GOAL BAR ==========
