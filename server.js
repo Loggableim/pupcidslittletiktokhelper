@@ -613,17 +613,41 @@ app.post('/api/soundboard/queue/clear', (req, res) => {
 });
 
 app.get('/api/myinstants/search', async (req, res) => {
-    const { query, page } = req.query;
+    const { query, page, limit } = req.query;
 
     if (!query) {
         return res.status(400).json({ success: false, error: 'query is required' });
     }
 
     try {
-        const results = await soundboard.searchMyInstants(query, page || 1);
+        const results = await soundboard.searchMyInstants(query, page || 1, limit || 20);
         res.json({ success: true, results });
     } catch (error) {
         console.error('Error searching MyInstants:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/myinstants/trending', async (req, res) => {
+    const { limit } = req.query;
+
+    try {
+        const results = await soundboard.getTrendingSounds(limit || 20);
+        res.json({ success: true, results });
+    } catch (error) {
+        console.error('Error getting trending sounds:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/myinstants/random', async (req, res) => {
+    const { limit } = req.query;
+
+    try {
+        const results = await soundboard.getRandomSounds(limit || 20);
+        res.json({ success: true, results });
+    } catch (error) {
+        console.error('Error getting random sounds:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

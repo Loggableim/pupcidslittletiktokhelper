@@ -162,6 +162,19 @@
             </div>
           </div>
 
+          <!-- Default Gift Sound -->
+          <div class="border-t border-slate-800 pt-4">
+            <label class="block text-sm mb-1">Standard-Gift-Sound (für nicht zugeordnete Gifts)</label>
+            <div class="flex gap-2 items-center">
+              <input id="default_gift_sound" placeholder="MP3-URL"
+                     class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+              <input id="default_gift_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
+              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" onclick="previewSound('default_gift_sound', 'default_gift_volume', 'Default Gift')">▶</button>
+              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" onclick="openPicker('default_gift_sound')">Picker</button>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Dieser Sound wird für alle Gifts abgespielt, die keine spezielle Zuordnung haben.</p>
+          </div>
+
           <!-- Playback Settings -->
           <div class="grid sm:grid-cols-3 gap-2 border-t border-slate-800 pt-4">
             <div>
@@ -178,6 +191,9 @@
           </div>
 
           <div class="flex justify-end gap-2">
+            <button id="btnReset" class="rounded-xl bg-slate-700 hover:bg-slate-600 px-4 py-2 font-medium" title="Änderungen verwerfen">Reset</button>
+            <label for="importFile" class="rounded-xl bg-purple-700 hover:bg-purple-600 px-4 py-2 font-medium cursor-pointer">Import</label>
+            <input type="file" id="importFile" accept="application/json" class="hidden" />
             <button id="btnExport" class="rounded-xl bg-sky-700 hover:bg-sky-600 px-4 py-2 font-medium">Export</button>
             <button id="btnSaveAll" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 font-medium">Alles speichern</button>
           </div>
@@ -224,9 +240,11 @@
   <div id="picker" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50">
     <div class="bg-slate-900 w-full max-w-5xl h-[80vh] rounded-2xl border border-slate-800 p-4 flex flex-col">
       <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="true" onclick="switchTab('browse')">MyInstants-Browser</button>
-          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('api')">MyInstants-Suche</button>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="true" onclick="switchTab('browse')">Browser</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('search')">Suche</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('trending')">🔥 Trending</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('random')">🎲 Zufall</button>
         </div>
         <button onclick="closePicker()" class="text-slate-300 hover:text-white text-xl">✕</button>
       </div>
@@ -242,14 +260,32 @@
         <iframe id="miFrame" src="https://www.myinstants.com" class="w-full h-full rounded-xl border border-slate-700"></iframe>
       </div>
 
-      <!-- API Search Tab -->
-      <div class="flex-1 flex-col gap-3 hidden" id="tab-api">
+      <!-- Search Tab -->
+      <div class="flex-1 flex-col gap-3 hidden" id="tab-search">
         <div class="flex gap-2 mb-3">
-          <input id="apiQuery" placeholder="Suchbegriff"
+          <input id="searchQuery" placeholder="Suchbegriff eingeben..."
                  class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
-          <button id="btnApiSearch" class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2">Suchen</button>
+          <button id="btnSearch" class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2">🔍 Suchen</button>
         </div>
-        <div id="apiResults" class="overflow-y-auto flex-1 space-y-2"></div>
+        <div id="searchResults" class="overflow-y-auto flex-1 space-y-2"></div>
+      </div>
+
+      <!-- Trending Tab -->
+      <div class="flex-1 flex-col gap-3 hidden" id="tab-trending">
+        <div class="flex gap-2 mb-3 justify-between items-center">
+          <h3 class="text-lg font-semibold">🔥 Trending Sounds</h3>
+          <button id="btnLoadTrending" class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2">Aktualisieren</button>
+        </div>
+        <div id="trendingResults" class="overflow-y-auto flex-1 space-y-2"></div>
+      </div>
+
+      <!-- Random Tab -->
+      <div class="flex-1 flex-col gap-3 hidden" id="tab-random">
+        <div class="flex gap-2 mb-3 justify-between items-center">
+          <h3 class="text-lg font-semibold">🎲 Zufällige Sounds</h3>
+          <button id="btnLoadRandom" class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2">Neu laden</button>
+        </div>
+        <div id="randomResults" class="overflow-y-auto flex-1 space-y-2"></div>
       </div>
     </div>
   </div>
@@ -515,6 +551,12 @@
       document.getElementById('picker').classList.add('flex');
       document.getElementById('miUrl').value = '';
       switchTab('browse');
+
+      // Auto-load trending sounds if not already loaded
+      const trendingEl = document.getElementById('trendingResults');
+      if (!trendingEl.children.length || trendingEl.textContent.includes('Keine')) {
+        // Will be loaded when user switches to trending tab
+      }
     }
 
     function closePicker() {
@@ -556,29 +598,85 @@
       closePicker();
     };
 
-    document.getElementById('btnApiSearch').onclick = async () => {
-      const query = document.getElementById('apiQuery').value.trim();
-      if (!query) return;
+    // ========== MyInstants API Functions ==========
 
-      const resultsEl = document.getElementById('apiResults');
-      resultsEl.innerHTML = '<div class="text-sm text-slate-400">Suche…</div>';
+    function renderSoundResults(items, targetElement) {
+      if (!items || items.length === 0) {
+        targetElement.innerHTML = `<div class="text-sm text-slate-400">Keine Ergebnisse gefunden</div>`;
+        return;
+      }
+
+      targetElement.innerHTML = items.map(item => {
+        const mp3 = String(item.url || '').replace(/'/g, "&#39;");
+        const title = String(item.name || '').replace(/'/g, "&#39;");
+        const description = String(item.description || '').replace(/'/g, "&#39;");
+        const tags = (item.tags || []).slice(0, 3).join(', ');
+
+        return `<div class="flex flex-col gap-2 border border-slate-700 rounded-xl p-3 hover:border-sky-500 transition-colors">
+          <div class="flex items-start gap-2">
+            <div class="flex-1">
+              <div class="font-medium text-sm mb-1">${title}</div>
+              ${description ? `<div class="text-xs text-slate-400 mb-1">${description}</div>` : ''}
+              ${tags ? `<div class="text-xs text-slate-500">🏷️ ${tags}</div>` : ''}
+            </div>
+            <div class="flex gap-1">
+              <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-2 py-1 text-sm"
+                      onclick="playSound('${mp3}', 1.0, '${title}')">▶</button>
+              <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-2 py-1 text-sm"
+                      onclick="assignToTarget('${mp3}'); closePicker();">Wählen</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    document.getElementById('btnSearch').onclick = async () => {
+      const query = document.getElementById('searchQuery').value.trim();
+      if (!query) return showToast('Bitte Suchbegriff eingeben');
+
+      const resultsEl = document.getElementById('searchResults');
+      resultsEl.innerHTML = '<div class="text-sm text-slate-400">🔍 Suche...</div>';
 
       const result = await apiCall('/api/myinstants/search?query=' + encodeURIComponent(query));
 
-      if (result.success && result.results.length) {
-        resultsEl.innerHTML = result.results.map(item => {
-          const mp3 = String(item.url || '').replace(/'/g, "&#39;");
-          const title = String(item.name || '').replace(/'/g, "&#39;");
-          return `<div class="flex items-center gap-2 border border-slate-700 rounded-xl p-2">
-            <div class="flex-1 text-sm truncate" title="${title}">${title}</div>
-            <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-2 py-1"
-                    onclick="playSound('${mp3}', 1.0, 'API Preview')">▶</button>
-            <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-2 py-1"
-                    onclick="assignToTarget('${mp3}'); closePicker();">Wählen</button>
-          </div>`;
-        }).join('');
+      if (result.success) {
+        renderSoundResults(result.results, resultsEl);
+        if (result.results.length > 0) {
+          showToast(`${result.results.length} Sounds gefunden`);
+        }
       } else {
-        resultsEl.innerHTML = `<div class="text-sm text-rose-400">Fehler oder keine Ergebnisse</div>`;
+        resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
+      }
+    };
+
+    // Enter key für Suche
+    document.getElementById('searchQuery').onkeypress = (e) => {
+      if (e.key === 'Enter') document.getElementById('btnSearch').click();
+    };
+
+    document.getElementById('btnLoadTrending').onclick = async () => {
+      const resultsEl = document.getElementById('trendingResults');
+      resultsEl.innerHTML = '<div class="text-sm text-slate-400">🔥 Lade Trending Sounds...</div>';
+
+      const result = await apiCall('/api/myinstants/trending?limit=30');
+
+      if (result.success) {
+        renderSoundResults(result.results, resultsEl);
+      } else {
+        resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
+      }
+    };
+
+    document.getElementById('btnLoadRandom').onclick = async () => {
+      const resultsEl = document.getElementById('randomResults');
+      resultsEl.innerHTML = '<div class="text-sm text-slate-400">🎲 Lade zufällige Sounds...</div>';
+
+      const result = await apiCall('/api/myinstants/random?limit=30');
+
+      if (result.success) {
+        renderSoundResults(result.results, resultsEl);
+      } else {
+        resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
       }
     };
 
@@ -616,7 +714,9 @@
         soundboard_like_sound: document.getElementById('like_sound').value.trim(),
         soundboard_like_volume: document.getElementById('like_volume').value,
         soundboard_like_threshold: document.getElementById('like_threshold').value,
-        soundboard_like_window_seconds: document.getElementById('like_window_seconds').value
+        soundboard_like_window_seconds: document.getElementById('like_window_seconds').value,
+        soundboard_default_gift_sound: document.getElementById('default_gift_sound').value.trim(),
+        soundboard_gift_volume: document.getElementById('default_gift_volume').value
       };
 
       await apiCall('/api/settings', 'POST', settings);
@@ -638,7 +738,7 @@
       showToast(`✅ Gespeichert! (${gifts.length} Gifts)`);
     };
 
-    // ========== Export ==========
+    // ========== Export / Import / Reset ==========
     document.getElementById('btnExport').onclick = async () => {
       const settings = await apiCall('/api/settings');
       const gifts = await apiCall('/api/soundboard/gifts');
@@ -646,17 +746,115 @@
       const exportData = {
         settings,
         gifts,
-        exportedAt: new Date().toISOString()
+        exportedAt: new Date().toISOString(),
+        version: '1.0'
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = 'soundboard_config.json';
+      link.download = `soundboard_config_${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       URL.revokeObjectURL(link.href);
 
-      showToast('Konfiguration exportiert!');
+      showToast('✅ Konfiguration exportiert!');
+    };
+
+    document.getElementById('importFile').onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (!data.settings && !data.gifts) {
+          showToast('❌ Ungültiges Format');
+          return;
+        }
+
+        // Import settings
+        if (data.settings) {
+          await apiCall('/api/settings', 'POST', data.settings);
+
+          // Update UI
+          if (data.settings.soundboard_play_mode) {
+            document.getElementById('play_mode').value = data.settings.soundboard_play_mode;
+          }
+          if (data.settings.soundboard_max_queue_length) {
+            document.getElementById('queue_length').value = data.settings.soundboard_max_queue_length;
+          }
+          if (data.settings.soundboard_follow_sound) {
+            document.getElementById('follow_sound').value = data.settings.soundboard_follow_sound;
+          }
+          if (data.settings.soundboard_follow_volume) {
+            document.getElementById('follow_volume').value = data.settings.soundboard_follow_volume;
+          }
+          if (data.settings.soundboard_subscribe_sound) {
+            document.getElementById('subscribe_sound').value = data.settings.soundboard_subscribe_sound;
+          }
+          if (data.settings.soundboard_subscribe_volume) {
+            document.getElementById('subscribe_volume').value = data.settings.soundboard_subscribe_volume;
+          }
+          if (data.settings.soundboard_share_sound) {
+            document.getElementById('share_sound').value = data.settings.soundboard_share_sound;
+          }
+          if (data.settings.soundboard_share_volume) {
+            document.getElementById('share_volume').value = data.settings.soundboard_share_volume;
+          }
+          if (data.settings.soundboard_like_sound) {
+            document.getElementById('like_sound').value = data.settings.soundboard_like_sound;
+          }
+          if (data.settings.soundboard_like_volume) {
+            document.getElementById('like_volume').value = data.settings.soundboard_like_volume;
+          }
+          if (data.settings.soundboard_like_threshold) {
+            document.getElementById('like_threshold').value = data.settings.soundboard_like_threshold;
+          }
+          if (data.settings.soundboard_like_window_seconds) {
+            document.getElementById('like_window_seconds').value = data.settings.soundboard_like_window_seconds;
+          }
+          if (data.settings.soundboard_default_gift_sound) {
+            document.getElementById('default_gift_sound').value = data.settings.soundboard_default_gift_sound;
+          }
+          if (data.settings.soundboard_gift_volume) {
+            document.getElementById('default_gift_volume').value = data.settings.soundboard_gift_volume;
+          }
+        }
+
+        // Import gift sounds
+        if (data.gifts && Array.isArray(data.gifts)) {
+          for (const gift of data.gifts) {
+            await apiCall('/api/soundboard/gifts', 'POST', gift);
+
+            // Update local assignments
+            if (gift.giftId) {
+              assignments[gift.giftId] = {
+                mp3_url: gift.mp3Url || '',
+                label: gift.label || '',
+                volume: gift.volume ?? 1.0
+              };
+            }
+          }
+
+          // Refresh gift list
+          renderGiftList();
+        }
+
+        showToast(`✅ Import erfolgreich! (${data.gifts?.length || 0} Gifts)`);
+
+        // Reset file input
+        e.target.value = '';
+      } catch (error) {
+        console.error('Import error:', error);
+        showToast('❌ Import fehlgeschlagen: ' + error.message);
+      }
+    };
+
+    document.getElementById('btnReset').onclick = () => {
+      if (confirm('Nicht gespeicherte Änderungen verwerfen und neu laden?')) {
+        location.reload();
+      }
     };
 
     // ========== Theme Toggle ==========
@@ -685,6 +883,8 @@
       document.getElementById('like_volume').value = settings.soundboard_like_volume || 1.0;
       document.getElementById('like_threshold').value = settings.soundboard_like_threshold || 0;
       document.getElementById('like_window_seconds').value = settings.soundboard_like_window_seconds || 10;
+      document.getElementById('default_gift_sound').value = settings.soundboard_default_gift_sound || '';
+      document.getElementById('default_gift_volume').value = settings.soundboard_gift_volume || 1.0;
     }
 
     // ========== Initialize ==========
