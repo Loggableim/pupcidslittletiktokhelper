@@ -47,6 +47,13 @@ class TikTokConnector extends EventEmitter {
 
             console.log(`✅ Connected to TikTok LIVE: @${username}`);
 
+            // Gift-Katalog automatisch aktualisieren
+            setTimeout(() => {
+                this.updateGiftCatalog().catch(err => {
+                    console.warn('⚠️ Automatisches Gift-Katalog-Update fehlgeschlagen:', err.message);
+                });
+            }, 2000);
+
         } catch (error) {
             this.isConnected = false;
             this.broadcastStatus('error', { error: error.message });
@@ -254,6 +261,57 @@ class TikTokConnector extends EventEmitter {
 
     isActive() {
         return this.isConnected;
+    }
+
+    async updateGiftCatalog() {
+        if (!this.connection || !this.isConnected) {
+            throw new Error('Nicht verbunden. Bitte zuerst mit einem Stream verbinden.');
+        }
+
+        try {
+            // TikTok-live-connector speichert verfügbare Gifts in connection.availableGifts
+            // nach dem Connect mit enableExtendedGiftInfo: true
+            const gifts = this.connection.availableGifts || {};
+
+            if (!gifts || Object.keys(gifts).length === 0) {
+                console.warn('⚠️ Keine Gift-Informationen verfügbar. Stream evtl. nicht live.');
+                return { ok: false, message: 'Keine Gift-Daten verfügbar', count: 0 };
+            }
+
+            // Gifts in Array mit benötigten Feldern umwandeln
+            const giftsArray = Object.values(gifts).map(gift => ({
+                id: gift.id,
+                name: gift.name || `Gift ${gift.id}`,
+                image_url: gift.image?.url || gift.image?.imageUrl || null,
+                diamond_count: gift.diamond_count || gift.diamondCount || 0
+            }));
+
+            // Duplikate entfernen (nach ID)
+            const uniqueGifts = Array.from(
+                new Map(giftsArray.map(g => [g.id, g])).values()
+            );
+
+            // In Datenbank speichern
+            const count = this.db.updateGiftCatalog(uniqueGifts);
+
+            console.log(`✅ Gift-Katalog aktualisiert: ${count} Einträge`);
+
+            // Broadcast an Frontend
+            this.io.emit('gift_catalog:updated', {
+                count,
+                timestamp: new Date().toISOString()
+            });
+
+            return { ok: true, count, message: `${count} Gifts geladen` };
+
+        } catch (error) {
+            console.error('❌ Fehler beim Gift-Katalog-Update:', error);
+            throw error;
+        }
+    }
+
+    getGiftCatalog() {
+        return this.db.getGiftCatalog();
     }
 }
 

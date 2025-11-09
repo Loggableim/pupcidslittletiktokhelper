@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TikTok LIVE Soundboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    /* Apple-inspired Design */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 9999px; }
+    .scroll-shadow { box-shadow: inset 0 -12px 12px -12px rgba(0,0,0,0.15); }
+    .tab-btn { transition: all 0.2s; }
+    .tab-btn[aria-selected="true"]{ background:#0ea5e9; color: white; }
+    .gift-row:hover { background: rgba(148,163,184,.08); }
+    .gift-row.assigned { background: rgba(14, 165, 233, 0.1); border-color: rgba(14, 165, 233, 0.3); }
+
+    /* Light Mode */
+    .light-mode {
+      background: #f5f5f7;
+      color: #1d1d1f;
+    }
+    .light-mode .bg-slate-950 { background: #ffffff !important; }
+    .light-mode .bg-slate-900 { background: #f5f5f7 !important; }
+    .light-mode .bg-slate-800 { background: #e8e8ed !important; }
+    .light-mode .bg-slate-700 { background: #d2d2d7 !important; }
+    .light-mode .text-slate-100 { color: #1d1d1f !important; }
+    .light-mode .text-slate-300 { color: #6e6e73 !important; }
+    .light-mode .text-slate-400 { color: #86868b !important; }
+    .light-mode .border-slate-800 { border-color: #d2d2d7 !important; }
+    .light-mode .border-slate-700 { border-color: #d2d2d7 !important; }
+
+    /* Toast Notifications */
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #1f2937;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      z-index: 9999;
+      animation: slideInRight 0.3s ease-out;
+    }
+    .light-mode .toast {
+      background: #ffffff;
+      color: #1d1d1f;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <div class="max-w-7xl mx-auto p-4 md:p-8">
+    <header class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl md:text-3xl font-semibold">🎵 TikTok LIVE Soundboard</h1>
+      <div class="flex items-center gap-3">
+        <div id="statusDot" class="dot bg-red-500"></div>
+        <span id="statusText" class="text-sm text-slate-300">offline</span>
+        <button id="themeToggle" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm" title="Tag/Nacht umschalten">🌗</button>
+      </div>
+    </header>
+
+    <!-- Connection Section -->
+    <section class="mt-6 grid md:grid-cols-3 gap-4">
+      <div class="col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+        <h2 class="font-semibold mb-3">Verbindung</h2>
+        <form class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm mb-1">TikTok @user</label>
+            <input id="tiktok_user" placeholder="@deinname"
+                   class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+          </div>
+          <div class="flex items-end gap-2">
+            <button id="btnConnect" type="button" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 font-medium">Verbinden</button>
+            <button id="btnDisconnect" type="button" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 font-medium">Trennen</button>
+            <button id="btnUpdateGifts" type="button" class="rounded-xl bg-sky-600 hover:bg-sky-500 px-4 py-2 font-medium">Gifts aktualisieren</button>
+          </div>
+        </form>
+        <div class="mt-2">
+          <span id="giftStatus" class="text-sm text-slate-400"></span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+        <h2 class="font-semibold mb-3">Audio-Test</h2>
+        <div class="space-y-2">
+          <input id="test_url" placeholder="MP3-URL zum Testen" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+          <button id="btnTest" class="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 font-medium">Abspielen</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Event Sounds & Playback Settings -->
+    <section class="mt-6 grid lg:grid-cols-2 gap-4">
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+        <h3 class="font-semibold mb-3">Event-Sounds & Wiedergabe</h3>
+        <div class="space-y-4">
+          <!-- Follow Sound -->
+          <div>
+            <label class="block text-sm mb-1">Follow-Sound</label>
+            <div class="flex gap-2 items-center">
+              <input id="follow_sound" placeholder="MP3-URL"
+                     class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+              <input id="follow_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
+              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" onclick="previewSound('follow_sound', 'follow_volume', 'Follow')">▶</button>
+              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" onclick="openPicker('follow_sound')">Picker</button>
+            </div>
+          </div>
+
+          <!-- Subscribe Sound -->
+          <div>
+            <label class="block text-sm mb-1">Subscribe-Sound</label>
+            <div class="flex gap-2 items-center">
+              <input id="subscribe_sound" placeholder="MP3-URL"
+                     class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+              <input id="subscribe_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
+              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" onclick="previewSound('subscribe_sound', 'subscribe_volume', 'Subscribe')">▶</button>
+              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" onclick="openPicker('subscribe_sound')">Picker</button>
+            </div>
+          </div>
+
+          <!-- Share Sound -->
+          <div>
+            <label class="block text-sm mb-1">Share-Sound</label>
+            <div class="flex gap-2 items-center">
+              <input id="share_sound" placeholder="MP3-URL"
+                     class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+              <input id="share_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
+              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" onclick="previewSound('share_sound', 'share_volume', 'Share')">▶</button>
+              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" onclick="openPicker('share_sound')">Picker</button>
+            </div>
+          </div>
+
+          <!-- Like Settings -->
+          <div class="grid sm:grid-cols-3 gap-2">
+            <div>
+              <label class="block text-sm mb-1">Like-Schwelle</label>
+              <input id="like_threshold" type="number" min="0" value="20" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm mb-1">Zeitraum (Sek.)</label>
+              <input id="like_window_seconds" type="number" min="1" value="10" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="block text-sm mb-1">Like-Sound</label>
+              <div class="flex gap-2 items-center">
+                <input id="like_sound" placeholder="MP3-URL" class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+                <input id="like_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
+              </div>
+              <div class="flex gap-2">
+                <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-3 py-1.5" onclick="previewSound('like_sound', 'like_volume', 'Like')">▶</button>
+                <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-3 py-1.5" onclick="openPicker('like_sound')">Picker</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Playback Settings -->
+          <div class="grid sm:grid-cols-3 gap-2 border-t border-slate-800 pt-4">
+            <div>
+              <label class="block text-sm mb-1">Queue‑Länge</label>
+              <input id="queue_length" type="number" min="1" value="10" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm mb-1">Wiedergabe-Modus</label>
+              <select id="play_mode" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2">
+                <option value="overlap">Überlappend</option>
+                <option value="sequential">Nacheinander</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button id="btnExport" class="rounded-xl bg-sky-700 hover:bg-sky-600 px-4 py-2 font-medium">Export</button>
+            <button id="btnSaveAll" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 font-medium">Alles speichern</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gifts → Audio -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+        <h3 class="font-semibold mb-3">Geschenke → Audio</h3>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <input id="giftSearch" placeholder="Geschenk suchen … (Name oder ID)"
+                 class="rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 flex-1 min-w-[220px]" />
+          <label class="text-sm text-slate-300">Sortierung:</label>
+          <select id="giftSort" class="rounded-xl bg-slate-800 border border-slate-700 px-3 py-2">
+            <option value="desc">Preis absteigend</option>
+            <option value="asc">Preis aufsteigend</option>
+          </select>
+        </div>
+        <div id="giftList" class="max-h-[32rem] overflow-y-auto pr-1 scroll-shadow space-y-2"></div>
+        <p class="text-xs text-slate-400 mt-2">Nur Gifts mit gesetzter MP3 werden gespeichert.</p>
+      </div>
+    </section>
+
+    <!-- Live Log & Info -->
+    <section class="mt-6 grid lg:grid-cols-2 gap-4">
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+        <h3 class="font-semibold mb-3">Live-Log</h3>
+        <pre id="log" class="h-72 overflow-y-auto bg-black/40 rounded-xl p-3 text-xs"></pre>
+      </div>
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+        <h3 class="font-semibold mb-3">Hinweise</h3>
+        <ul class="text-sm list-disc pl-5 space-y-2 text-slate-300">
+          <li>OBS: Diese Seite als Browserquelle einbinden für Audioausgabe.</li>
+          <li>Gift-Liste ist nach Diamond-Preis sortierbar und per Text filterbar.</li>
+          <li>Audio-Auswahl per Picker-Dialog. Alternativ direkte MP3-URL einfügen.</li>
+          <li>Live-Updates via WebSocket für Echtzeit-Synchronisation.</li>
+          <li><a href="/dashboard.html" class="text-sky-400 hover:underline">Zum Dashboard →</a></li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <!-- Picker Modal -->
+  <div id="picker" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 w-full max-w-5xl h-[80vh] rounded-2xl border border-slate-800 p-4 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="true" onclick="switchTab('browse')">MyInstants-Browser</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('api')">MyInstants-Suche</button>
+        </div>
+        <button onclick="closePicker()" class="text-slate-300 hover:text-white text-xl">✕</button>
+      </div>
+
+      <!-- Browser Tab -->
+      <div class="flex-1 flex flex-col gap-3" id="tab-browse">
+        <div class="flex gap-2">
+          <input id="miUrl" placeholder="MyInstants-URL einfügen & auflösen"
+                 class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+          <button id="btnResolve" class="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-2">Seite → MP3</button>
+          <button id="btnUse" class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2">Übernehmen</button>
+        </div>
+        <iframe id="miFrame" src="https://www.myinstants.com" class="w-full h-full rounded-xl border border-slate-700"></iframe>
+      </div>
+
+      <!-- API Search Tab -->
+      <div class="flex-1 flex-col gap-3 hidden" id="tab-api">
+        <div class="flex gap-2 mb-3">
+          <input id="apiQuery" placeholder="Suchbegriff"
+                 class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
+          <button id="btnApiSearch" class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2">Suchen</button>
+        </div>
+        <div id="apiResults" class="overflow-y-auto flex-1 space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== WebSocket & State ==========
+    const socket = io();
+    let catalog = [];
+    let assignments = {};
+    let pickerTarget = null;
+
+    // ========== Connection & Status ==========
+    socket.on('tiktok:status', (data) => {
+      const connected = data.status === 'connected';
+      setStatus(connected);
+      if (connected) {
+        showToast(`Verbunden mit @${data.username}`);
+      }
+    });
+
+    socket.on('gift_catalog:updated', (data) => {
+      showToast(`Gift-Katalog aktualisiert: ${data.count} Einträge`);
+      loadCatalog();
+    });
+
+    socket.on('soundboard:play', (data) => {
+      playSound(data.url, data.volume, data.label);
+    });
+
+    function setStatus(ok) {
+      document.getElementById('statusDot').classList.toggle('bg-emerald-500', ok);
+      document.getElementById('statusDot').classList.toggle('bg-red-500', !ok);
+      document.getElementById('statusText').textContent = ok ? 'online' : 'offline';
+    }
+
+    // ========== Logging ==========
+    const logEl = document.getElementById('log');
+    function pushLog(line) {
+      const atBottom = Math.abs(logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight) < 5;
+      logEl.textContent += line + "\n";
+      if (atBottom) logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // ========== Toast Notifications ==========
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+      pushLog(message);
+    }
+
+    // ========== Audio Playback ==========
+    let audioQueue = [];
+    let activeAudio = [];
+
+    function playSound(url, vol, label) {
+      pushLog(`🎵 PLAY ▶ ${label || ''} | ${url}`);
+      const mode = document.getElementById('play_mode')?.value || 'overlap';
+      const maxLen = Number(document.getElementById('queue_length')?.value || 10);
+
+      if (mode === 'sequential') {
+        audioQueue.push({ url, vol: Number(vol) });
+        while (audioQueue.length > maxLen) audioQueue.shift();
+        processQueue();
+      } else {
+        // Overlap mode
+        const duplicateActive = activeAudio.some(a => a.src === url && !a.paused);
+        if (duplicateActive) {
+          audioQueue.push({ url, vol: Number(vol) });
+          while (audioQueue.length > maxLen) audioQueue.shift();
+          processQueue();
+          return;
+        }
+        const a = new Audio(url);
+        a.volume = Number(vol || 1);
+        a.play().catch(e => pushLog('❌ Audio Error: ' + e));
+        activeAudio.push(a);
+        a.onended = () => {
+          activeAudio = activeAudio.filter(aud => aud !== a);
+          processQueue();
+        };
+        while (activeAudio.length > maxLen) {
+          const old = activeAudio.shift();
+          if (old) old.pause();
+        }
+      }
+    }
+
+    let isProcessingQueue = false;
+    async function processQueue() {
+      if (isProcessingQueue || audioQueue.length === 0) return;
+      isProcessingQueue = true;
+      const item = audioQueue.shift();
+      const a = new Audio(item.url);
+      a.volume = item.vol;
+      a.onended = () => { isProcessingQueue = false; processQueue(); };
+      a.onerror = () => { isProcessingQueue = false; processQueue(); pushLog('❌ Audio Error'); };
+      try {
+        await a.play();
+      } catch (e) {
+        pushLog('❌ Audio Error: ' + e);
+        isProcessingQueue = false;
+        processQueue();
+      }
+    }
+
+    // ========== API Calls ==========
+    async function apiCall(url, method = 'GET', body = null) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(url, opts);
+      return await res.json();
+    }
+
+    document.getElementById('btnConnect').onclick = async () => {
+      const username = document.getElementById('tiktok_user').value.trim();
+      if (!username) return showToast('Bitte TikTok-Username eingeben');
+      const result = await apiCall('/api/connect', 'POST', { username });
+      if (result.success) {
+        showToast('Verbinde...');
+      } else {
+        showToast('Fehler: ' + result.error);
+      }
+    };
+
+    document.getElementById('btnDisconnect').onclick = async () => {
+      await apiCall('/api/disconnect', 'POST');
+      showToast('Verbindung getrennt');
+    };
+
+    document.getElementById('btnUpdateGifts').onclick = async () => {
+      document.getElementById('giftStatus').textContent = 'Aktualisiere…';
+      const result = await apiCall('/api/gift-catalog/update', 'POST');
+      document.getElementById('giftStatus').textContent = result.message || (result.ok ? 'OK' : 'Fehler');
+      if (result.ok) loadCatalog();
+    };
+
+    document.getElementById('btnTest').onclick = () => {
+      const url = document.getElementById('test_url').value.trim();
+      if (url) playSound(url, 1.0, 'Test');
+    };
+
+    // ========== Gift Catalog & Assignments ==========
+    async function loadCatalog() {
+      const result = await apiCall('/api/gift-catalog');
+      if (result.success) {
+        catalog = result.catalog;
+        document.getElementById('giftStatus').textContent = `${catalog.length} Gifts verfügbar`;
+
+        // Lade gespeicherte Gift-Sounds
+        const soundsResult = await apiCall('/api/soundboard/gifts');
+        if (soundsResult) {
+          soundsResult.forEach(s => {
+            assignments[s.giftId] = {
+              mp3_url: s.mp3Url || '',
+              label: s.label || '',
+              volume: s.volume ?? 1.0
+            };
+          });
+        }
+
+        renderGiftList();
+      }
+    }
+
+    function renderGiftList() {
+      const q = document.getElementById('giftSearch').value.toLowerCase().trim();
+      const dir = document.getElementById('giftSort').value;
+
+      let list = catalog.slice().sort((a, b) => {
+        const av = a.diamond_count ?? (dir === 'asc' ? Infinity : -Infinity);
+        const bv = b.diamond_count ?? (dir === 'asc' ? Infinity : -Infinity);
+        return dir === 'asc' ? av - bv : bv - av;
+      });
+
+      if (q) {
+        list = list.filter(g =>
+          String(g.id).includes(q) ||
+          (g.name||'').toLowerCase().includes(q)
+        );
+      }
+
+      document.getElementById('giftList').innerHTML = list.map(giftRowTemplate).join('');
+
+      // Attach event listeners
+      list.forEach(g => {
+        const mp3Input = document.getElementById(`mp3_${g.id}`);
+        const volInput = document.getElementById(`vol_${g.id}`);
+        if (mp3Input) mp3Input.oninput = (e) => updateAssignment(g.id, 'mp3_url', e.target.value.trim());
+        if (volInput) volInput.oninput = (e) => updateAssignment(g.id, 'volume', Number(e.target.value));
+      });
+    }
+
+    function giftRowTemplate(g) {
+      const assigned = assignments[g.id] || {};
+      const vol = assigned.volume ?? 1.0;
+      const safeName = (g.name || '').replace(/"/g,'&quot;');
+      const rowClass = `gift-row flex flex-col gap-2 border border-slate-800 rounded-xl p-3${assigned.mp3_url ? ' assigned' : ''}`;
+
+      return `<div class="${rowClass}" data-gift-id="${g.id}">
+        <div class="flex items-center gap-3">
+          <img src="${g.image_url || ''}" alt="" class="w-12 h-12 rounded-lg object-cover bg-black/30" onerror="this.style.display='none'"/>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-sm">${safeName}</div>
+            <div class="text-xs text-slate-400">ID: ${g.id} · 💎 ${g.diamond_count ?? '—'}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="mp3_${g.id}" value="${assigned.mp3_url || ''}" placeholder="MP3-URL"
+                 class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-sm" />
+          <input id="vol_${g.id}" type="range" min="0" max="1" step="0.05" value="${vol}"
+                 class="w-24 flex-shrink-0" title="Lautstärke" />
+          <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-3 py-1.5"
+                  onclick="previewGift(${g.id})">▶</button>
+          <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-3 py-1.5"
+                  onclick="openPicker('gift:${g.id}')">Picker</button>
+          <button class="rounded-lg bg-rose-700/80 hover:bg-rose-600 px-3 py-1.5"
+                  onclick="clearGift(${g.id})">✕</button>
+        </div>
+      </div>`;
+    }
+
+    function updateAssignment(id, key, value) {
+      const g = catalog.find(x => x.id === id);
+      if (!assignments[id]) assignments[id] = { label: g?.name || '' };
+      assignments[id][key] = value;
+
+      // Update visual state
+      const row = document.querySelector(`.gift-row[data-gift-id='${id}']`);
+      if (row) {
+        row.classList.toggle('assigned', !!assignments[id].mp3_url);
+      }
+    }
+
+    function clearGift(id) {
+      document.getElementById(`mp3_${id}`).value = '';
+      document.getElementById(`vol_${id}`).value = 1;
+      updateAssignment(id, 'mp3_url', '');
+      updateAssignment(id, 'volume', 1.0);
+    }
+
+    function previewGift(id) {
+      const url = document.getElementById(`mp3_${id}`).value.trim();
+      const vol = document.getElementById(`vol_${id}`).value;
+      if (url) playSound(url, vol, `Gift #${id} Preview`);
+    }
+
+    function previewSound(urlId, volId, label) {
+      const url = document.getElementById(urlId).value.trim();
+      const vol = document.getElementById(volId)?.value || 1.0;
+      if (url) playSound(url, vol, label + ' Preview');
+    }
+
+    document.getElementById('giftSearch').oninput = renderGiftList;
+    document.getElementById('giftSort').onchange = renderGiftList;
+
+    // ========== Picker Dialog ==========
+    function openPicker(targetId) {
+      pickerTarget = targetId;
+      document.getElementById('picker').classList.remove('hidden');
+      document.getElementById('picker').classList.add('flex');
+      document.getElementById('miUrl').value = '';
+      switchTab('browse');
+    }
+
+    function closePicker() {
+      document.getElementById('picker').classList.add('hidden');
+      document.getElementById('picker').classList.remove('flex');
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.setAttribute('aria-selected','false'));
+      document.querySelectorAll('[id^="tab-"]').forEach(p => p.classList.add('hidden'));
+
+      const btn = document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`);
+      if (btn) btn.setAttribute('aria-selected','true');
+
+      const panel = document.getElementById('tab-' + tab);
+      if (panel) {
+        panel.classList.remove('hidden');
+        panel.classList.add('flex');
+      }
+    }
+
+    document.getElementById('btnResolve').onclick = async () => {
+      const url = document.getElementById('miUrl').value.trim();
+      if (!url) return;
+
+      showToast('Löse URL auf...');
+      const result = await apiCall('/api/myinstants/resolve?url=' + encodeURIComponent(url));
+
+      if (result.success && result.mp3) {
+        document.getElementById('miUrl').value = result.mp3;
+        showToast('MP3-URL extrahiert!');
+      } else {
+        showToast('Fehler: ' + (result.error || 'Unbekannt'));
+      }
+    };
+
+    document.getElementById('btnUse').onclick = () => {
+      assignToTarget(document.getElementById('miUrl').value.trim());
+      closePicker();
+    };
+
+    document.getElementById('btnApiSearch').onclick = async () => {
+      const query = document.getElementById('apiQuery').value.trim();
+      if (!query) return;
+
+      const resultsEl = document.getElementById('apiResults');
+      resultsEl.innerHTML = '<div class="text-sm text-slate-400">Suche…</div>';
+
+      const result = await apiCall('/api/myinstants/search?query=' + encodeURIComponent(query));
+
+      if (result.success && result.results.length) {
+        resultsEl.innerHTML = result.results.map(item => {
+          const mp3 = String(item.url || '').replace(/'/g, "&#39;");
+          const title = String(item.name || '').replace(/'/g, "&#39;");
+          return `<div class="flex items-center gap-2 border border-slate-700 rounded-xl p-2">
+            <div class="flex-1 text-sm truncate" title="${title}">${title}</div>
+            <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-2 py-1"
+                    onclick="playSound('${mp3}', 1.0, 'API Preview')">▶</button>
+            <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-2 py-1"
+                    onclick="assignToTarget('${mp3}'); closePicker();">Wählen</button>
+          </div>`;
+        }).join('');
+      } else {
+        resultsEl.innerHTML = `<div class="text-sm text-rose-400">Fehler oder keine Ergebnisse</div>`;
+      }
+    };
+
+    function assignToTarget(url) {
+      if (!pickerTarget || !url) return;
+
+      const cleanUrl = (url.match(/https?:\/\/[^\s"'<>]+?\.mp3[^\s"'<>]*/i) || [url])[0];
+
+      if (pickerTarget.startsWith('gift:')) {
+        const id = Number(pickerTarget.split(':')[1]);
+        document.getElementById(`mp3_${id}`).value = cleanUrl;
+        updateAssignment(id, 'mp3_url', cleanUrl);
+      } else {
+        document.getElementById(pickerTarget).value = cleanUrl;
+      }
+
+      showToast('Sound zugewiesen!');
+    }
+
+    // ========== Save Settings ==========
+    document.getElementById('btnSaveAll').onclick = async () => {
+      showToast('Speichere...');
+
+      // Save event sounds settings
+      const settings = {
+        soundboard_enabled: 'true',
+        soundboard_play_mode: document.getElementById('play_mode').value,
+        soundboard_max_queue_length: document.getElementById('queue_length').value,
+        soundboard_follow_sound: document.getElementById('follow_sound').value.trim(),
+        soundboard_follow_volume: document.getElementById('follow_volume').value,
+        soundboard_subscribe_sound: document.getElementById('subscribe_sound').value.trim(),
+        soundboard_subscribe_volume: document.getElementById('subscribe_volume').value,
+        soundboard_share_sound: document.getElementById('share_sound').value.trim(),
+        soundboard_share_volume: document.getElementById('share_volume').value,
+        soundboard_like_sound: document.getElementById('like_sound').value.trim(),
+        soundboard_like_volume: document.getElementById('like_volume').value,
+        soundboard_like_threshold: document.getElementById('like_threshold').value,
+        soundboard_like_window_seconds: document.getElementById('like_window_seconds').value
+      };
+
+      await apiCall('/api/settings', 'POST', settings);
+
+      // Save gift sound assignments
+      const gifts = Object.entries(assignments)
+        .filter(([id, data]) => data.mp3_url)
+        .map(([id, data]) => ({
+          giftId: Number(id),
+          label: data.label || `Gift ${id}`,
+          mp3Url: data.mp3_url,
+          volume: data.volume ?? 1.0
+        }));
+
+      for (const gift of gifts) {
+        await apiCall('/api/soundboard/gifts', 'POST', gift);
+      }
+
+      showToast(`✅ Gespeichert! (${gifts.length} Gifts)`);
+    };
+
+    // ========== Export ==========
+    document.getElementById('btnExport').onclick = async () => {
+      const settings = await apiCall('/api/settings');
+      const gifts = await apiCall('/api/soundboard/gifts');
+
+      const exportData = {
+        settings,
+        gifts,
+        exportedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'soundboard_config.json';
+      link.click();
+      URL.revokeObjectURL(link.href);
+
+      showToast('Konfiguration exportiert!');
+    };
+
+    // ========== Theme Toggle ==========
+    document.getElementById('themeToggle').onclick = () => {
+      document.body.classList.toggle('light-mode');
+      localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+    };
+
+    if (localStorage.getItem('theme') === 'light') {
+      document.body.classList.add('light-mode');
+    }
+
+    // ========== Load Settings on Start ==========
+    async function loadSettings() {
+      const settings = await apiCall('/api/settings');
+
+      document.getElementById('play_mode').value = settings.soundboard_play_mode || 'overlap';
+      document.getElementById('queue_length').value = settings.soundboard_max_queue_length || 10;
+      document.getElementById('follow_sound').value = settings.soundboard_follow_sound || '';
+      document.getElementById('follow_volume').value = settings.soundboard_follow_volume || 1.0;
+      document.getElementById('subscribe_sound').value = settings.soundboard_subscribe_sound || '';
+      document.getElementById('subscribe_volume').value = settings.soundboard_subscribe_volume || 1.0;
+      document.getElementById('share_sound').value = settings.soundboard_share_sound || '';
+      document.getElementById('share_volume').value = settings.soundboard_share_volume || 1.0;
+      document.getElementById('like_sound').value = settings.soundboard_like_sound || '';
+      document.getElementById('like_volume').value = settings.soundboard_like_volume || 1.0;
+      document.getElementById('like_threshold').value = settings.soundboard_like_threshold || 0;
+      document.getElementById('like_window_seconds').value = settings.soundboard_like_window_seconds || 10;
+    }
+
+    // ========== Initialize ==========
+    loadSettings();
+    loadCatalog();
+
+    // Check connection status
+    apiCall('/api/status').then(data => {
+      setStatus(data.isConnected);
+      if (data.isConnected) {
+        showToast(`Bereits verbunden mit @${data.username}`);
+      }
+    });
+  </script>
+</body>
+</html>
