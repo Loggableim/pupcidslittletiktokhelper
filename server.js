@@ -213,6 +213,9 @@ function generateGoalOverlay(key, config, state) {
 </html>`;
 }
 
+
+console.log('✅ All modules initialized');
+
 // ========== ROUTES ==========
 
 // Haupt-Seite
@@ -827,6 +830,8 @@ tiktok.on('like', async (data) => {
     }
 
     // Flows verarbeiten
+    // Likes normalerweise nicht als Alert (zu viele)
+    // Aber Flows könnten darauf reagieren
     await flows.processEvent('like', data);
 });
 
@@ -878,3 +883,4 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 module.exports = { app, server, io, db, tiktok, tts, alerts, flows, soundboard, goals };
+module.exports = { app, server, io, db, tiktok, tts, alerts, flows };
