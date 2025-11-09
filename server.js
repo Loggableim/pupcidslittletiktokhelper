@@ -1594,7 +1594,10 @@ tiktok.on('chat', async (data) => {
         // Optional: Nur TTS für User mit mindestens X gespendeten Coins
         // (würde zusätzliche Tracking-Logik erfordern)
 
-        await tts.speak(data.username, data.message);
+        // Gebe User-Metadata weiter (inkl. teamMemberLevel)
+        await tts.speak(data.username, data.message, null, {
+            teamMemberLevel: data.teamMemberLevel || 0
+        });
     }
 
     // Leaderboard: Track chat message

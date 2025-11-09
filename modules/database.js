@@ -127,6 +127,7 @@ class DatabaseManager {
             'tts_volume': '80',
             'tts_chat_enabled': 'false',
             'tts_min_coins': '0',
+            'tts_min_team_level': '0',
             'alert_gift_min_coins': '100',
             'theme': 'dark',
             // Soundboard Einstellungen

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=400, height=800">
+    <title>TikTok Stream - OBS Dock</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 400px;
+            min-height: 100vh;
+            background: #1f2937;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .dock-header {
+            background: #111827;
+            padding: 12px 16px;
+            border-bottom: 2px solid #3b82f6;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .dock-header h1 {
+            font-size: 18px;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+
+        .dock-header .status {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+
+        .dock-header .status.connected {
+            color: #10b981;
+        }
+
+        /* Section */
+        .section {
+            margin: 16px;
+            background: #374151;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #4b5563;
+            padding: 10px 12px;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-content {
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* Chat Messages */
+        .chat-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #1f2937;
+            border-radius: 6px;
+            border-left: 3px solid #3b82f6;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .chat-username {
+            font-weight: bold;
+            color: #fbbf24;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .chat-message {
+            color: #e5e7eb;
+            font-size: 12px;
+            word-wrap: break-word;
+        }
+
+        /* Gift Items */
+        .gift-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #1f2937;
+            border-radius: 6px;
+            border-left: 3px solid #fbbf24;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .gift-icon {
+            font-size: 24px;
+        }
+
+        .gift-info {
+            flex: 1;
+        }
+
+        .gift-username {
+            font-weight: bold;
+            color: #fbbf24;
+            font-size: 13px;
+        }
+
+        .gift-details {
+            color: #9ca3af;
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .gift-coins {
+            font-weight: bold;
+            color: #fbbf24;
+            font-size: 14px;
+        }
+
+        /* Follow/Join Items */
+        .event-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #1f2937;
+            border-radius: 6px;
+            border-left: 3px solid #10b981;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .event-icon {
+            font-size: 20px;
+        }
+
+        .event-info {
+            flex: 1;
+        }
+
+        .event-username {
+            font-weight: bold;
+            color: #10b981;
+            font-size: 13px;
+        }
+
+        .event-type {
+            color: #9ca3af;
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .event-time {
+            color: #6b7280;
+            font-size: 10px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            color: #6b7280;
+            font-size: 12px;
+            padding: 20px;
+        }
+
+        /* Scrollbar */
+        .section-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .section-content::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        .section-content::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+
+        .section-content::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Toggle Buttons */
+        .toggle-section {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .section.collapsed .section-content {
+            display: none;
+        }
+
+        .toggle-icon {
+            transition: transform 0.2s;
+        }
+
+        .section.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        /* Config Panel */
+        .config-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #111827;
+            border-top: 2px solid #3b82f6;
+            padding: 12px 16px;
+        }
+
+        .config-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .config-row label {
+            font-size: 11px;
+            color: #9ca3af;
+            flex: 1;
+        }
+
+        .config-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="dock-header">
+        <h1>🎥 TikTok Stream Dock</h1>
+        <div class="status" id="connection-status">⚫ Disconnected</div>
+    </div>
+
+    <!-- Chat Section -->
+    <div class="section" id="chat-section">
+        <div class="section-header toggle-section" onclick="toggleSection('chat')">
+            <span class="toggle-icon">▼</span>
+            💬 Chat
+        </div>
+        <div class="section-content" id="chat-content">
+            <div class="empty-state">Warte auf Chat-Nachrichten...</div>
+        </div>
+    </div>
+
+    <!-- Gifts Section -->
+    <div class="section" id="gifts-section">
+        <div class="section-header toggle-section" onclick="toggleSection('gifts')">
+            <span class="toggle-icon">▼</span>
+            🎁 Geschenke
+        </div>
+        <div class="section-content" id="gifts-content">
+            <div class="empty-state">Warte auf Geschenke...</div>
+        </div>
+    </div>
+
+    <!-- Events Section (Follows, Joins) -->
+    <div class="section" id="events-section">
+        <div class="section-header toggle-section" onclick="toggleSection('events')">
+            <span class="toggle-icon">▼</span>
+            ⭐ Events (Follows, Joins)
+        </div>
+        <div class="section-content" id="events-content">
+            <div class="empty-state">Warte auf Events...</div>
+        </div>
+    </div>
+
+    <!-- Config Panel -->
+    <div class="config-panel">
+        <div class="config-row">
+            <label><input type="checkbox" id="show-chat" checked onchange="saveConfig()"> Chat anzeigen</label>
+            <label><input type="checkbox" id="show-gifts" checked onchange="saveConfig()"> Geschenke anzeigen</label>
+        </div>
+        <div class="config-row">
+            <label><input type="checkbox" id="show-events" checked onchange="saveConfig()"> Events anzeigen</label>
+            <label><input type="checkbox" id="auto-clear" checked onchange="saveConfig()"> Auto-Clear (30s)</label>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        // State
+        let config = {
+            showChat: true,
+            showGifts: true,
+            showEvents: true,
+            autoClear: true
+        };
+
+        const MAX_ITEMS = 50; // Maximum Anzahl an Items pro Sektion
+        const AUTO_CLEAR_DELAY = 30000; // 30 Sekunden
+
+        // Load Config from LocalStorage
+        function loadConfig() {
+            const saved = localStorage.getItem('obs-dock-config');
+            if (saved) {
+                config = { ...config, ...JSON.parse(saved) };
+                document.getElementById('show-chat').checked = config.showChat;
+                document.getElementById('show-gifts').checked = config.showGifts;
+                document.getElementById('show-events').checked = config.showEvents;
+                document.getElementById('auto-clear').checked = config.autoClear;
+            }
+        }
+
+        // Save Config to LocalStorage
+        function saveConfig() {
+            config.showChat = document.getElementById('show-chat').checked;
+            config.showGifts = document.getElementById('show-gifts').checked;
+            config.showEvents = document.getElementById('show-events').checked;
+            config.autoClear = document.getElementById('auto-clear').checked;
+            localStorage.setItem('obs-dock-config', JSON.stringify(config));
+
+            // Toggle Sections
+            document.getElementById('chat-section').style.display = config.showChat ? 'block' : 'none';
+            document.getElementById('gifts-section').style.display = config.showGifts ? 'block' : 'none';
+            document.getElementById('events-section').style.display = config.showEvents ? 'block' : 'none';
+        }
+
+        // Toggle Section Collapse
+        function toggleSection(section) {
+            const sectionEl = document.getElementById(`${section}-section`);
+            sectionEl.classList.toggle('collapsed');
+        }
+
+        // Add Chat Message
+        function addChat(data) {
+            if (!config.showChat) return;
+
+            const container = document.getElementById('chat-content');
+
+            // Remove empty state
+            if (container.querySelector('.empty-state')) {
+                container.innerHTML = '';
+            }
+
+            const item = document.createElement('div');
+            item.className = 'chat-item';
+            item.innerHTML = `
+                <div class="chat-username">${escapeHtml(data.nickname || data.username || 'Viewer')}</div>
+                <div class="chat-message">${escapeHtml(data.message || '')}</div>
+            `;
+
+            container.insertBefore(item, container.firstChild);
+
+            // Limit Items
+            while (container.children.length > MAX_ITEMS) {
+                container.removeChild(container.lastChild);
+            }
+
+            // Auto Clear
+            if (config.autoClear) {
+                setTimeout(() => {
+                    if (item.parentNode) {
+                        item.remove();
+                    }
+                }, AUTO_CLEAR_DELAY);
+            }
+        }
+
+        // Add Gift
+        function addGift(data) {
+            if (!config.showGifts) return;
+
+            const container = document.getElementById('gifts-content');
+
+            // Remove empty state
+            if (container.querySelector('.empty-state')) {
+                container.innerHTML = '';
+            }
+
+            const item = document.createElement('div');
+            item.className = 'gift-item';
+            item.innerHTML = `
+                <div class="gift-icon">🎁</div>
+                <div class="gift-info">
+                    <div class="gift-username">${escapeHtml(data.nickname || data.username || 'Viewer')}</div>
+                    <div class="gift-details">${escapeHtml(data.giftName || 'Gift')} ${data.repeatCount > 1 ? 'x' + data.repeatCount : ''}</div>
+                </div>
+                <div class="gift-coins">${data.coins || 0} 💰</div>
+            `;
+
+            container.insertBefore(item, container.firstChild);
+
+            // Limit Items
+            while (container.children.length > MAX_ITEMS) {
+                container.removeChild(container.lastChild);
+            }
+
+            // Auto Clear
+            if (config.autoClear) {
+                setTimeout(() => {
+                    if (item.parentNode) {
+                        item.remove();
+                    }
+                }, AUTO_CLEAR_DELAY);
+            }
+        }
+
+        // Add Event (Follow, Subscribe, Share, Join)
+        function addEvent(type, data) {
+            if (!config.showEvents) return;
+
+            const container = document.getElementById('events-content');
+
+            // Remove empty state
+            if (container.querySelector('.empty-state')) {
+                container.innerHTML = '';
+            }
+
+            const icons = {
+                follow: '⭐',
+                subscribe: '💎',
+                share: '🔗',
+                join: '👋'
+            };
+
+            const labels = {
+                follow: 'Folgt jetzt',
+                subscribe: 'Hat abonniert',
+                share: 'Hat geteilt',
+                join: 'Ist beigetreten'
+            };
+
+            const item = document.createElement('div');
+            item.className = 'event-item';
+            item.innerHTML = `
+                <div class="event-icon">${icons[type] || '⭐'}</div>
+                <div class="event-info">
+                    <div class="event-username">${escapeHtml(data.nickname || data.username || 'Viewer')}</div>
+                    <div class="event-type">${labels[type] || 'Event'}</div>
+                </div>
+                <div class="event-time">${new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</div>
+            `;
+
+            container.insertBefore(item, container.firstChild);
+
+            // Limit Items
+            while (container.children.length > MAX_ITEMS) {
+                container.removeChild(container.lastChild);
+            }
+
+            // Auto Clear
+            if (config.autoClear) {
+                setTimeout(() => {
+                    if (item.parentNode) {
+                        item.remove();
+                    }
+                }, AUTO_CLEAR_DELAY);
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Socket.IO Listeners
+        socket.on('tiktok:status', (data) => {
+            const statusEl = document.getElementById('connection-status');
+            if (data.status === 'connected') {
+                statusEl.textContent = `🟢 Connected: @${data.username || ''}`;
+                statusEl.classList.add('connected');
+            } else {
+                statusEl.textContent = '⚫ Disconnected';
+                statusEl.classList.remove('connected');
+            }
+        });
+
+        socket.on('tiktok:event', (event) => {
+            const { type, data } = event;
+
+            switch (type) {
+                case 'chat':
+                    addChat(data);
+                    break;
+                case 'gift':
+                    addGift(data);
+                    break;
+                case 'follow':
+                    addEvent('follow', data);
+                    break;
+                case 'subscribe':
+                    addEvent('subscribe', data);
+                    break;
+                case 'share':
+                    addEvent('share', data);
+                    break;
+            }
+        });
+
+        // Initialization
+        loadConfig();
+        saveConfig(); // Apply initial config
+
+        console.log('✅ OBS Dock initialized');
+    </script>
+</body>
+</html>
