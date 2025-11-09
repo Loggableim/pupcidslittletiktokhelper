@@ -10,6 +10,7 @@ const TikTokConnector = require('./modules/tiktok');
 const TTSEngine = require('./modules/tts');
 const AlertManager = require('./modules/alerts');
 const FlowEngine = require('./modules/flows');
+const SoundboardManager = require('./modules/soundboard');
 
 // ========== EXPRESS APP ==========
 const app = express();
@@ -29,6 +30,7 @@ const tiktok = new TikTokConnector(io, db);
 const tts = new TTSEngine(db, io);
 const alerts = new AlertManager(io, db);
 const flows = new FlowEngine(db, alerts, tts);
+const soundboard = new SoundboardManager(db, io);
 
 console.log('✅ All modules initialized');
 
@@ -259,6 +261,96 @@ app.post('/api/tts/test', async (req, res) => {
     }
 });
 
+// ========== SOUNDBOARD ROUTES ==========
+
+app.get('/api/soundboard/gifts', (req, res) => {
+    try {
+        const gifts = soundboard.getAllGiftSounds();
+        res.json(gifts);
+    } catch (error) {
+        console.error('Error getting gift sounds:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/soundboard/gifts', (req, res) => {
+    const { giftId, label, mp3Url, volume } = req.body;
+
+    if (!giftId || !label || !mp3Url) {
+        return res.status(400).json({ success: false, error: 'giftId, label and mp3Url are required' });
+    }
+
+    try {
+        const id = soundboard.setGiftSound(giftId, label, mp3Url, volume || 1.0);
+        res.json({ success: true, id });
+    } catch (error) {
+        console.error('Error setting gift sound:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/soundboard/gifts/:giftId', (req, res) => {
+    try {
+        soundboard.deleteGiftSound(req.params.giftId);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting gift sound:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/soundboard/test', async (req, res) => {
+    const { url, volume } = req.body;
+
+    if (!url) {
+        return res.status(400).json({ success: false, error: 'url is required' });
+    }
+
+    try {
+        await soundboard.testSound(url, volume || 1.0);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error testing sound:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/soundboard/queue', (req, res) => {
+    try {
+        const status = soundboard.getQueueStatus();
+        res.json(status);
+    } catch (error) {
+        console.error('Error getting queue status:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/soundboard/queue/clear', (req, res) => {
+    try {
+        soundboard.clearQueue();
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error clearing queue:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/myinstants/search', async (req, res) => {
+    const { query, page } = req.query;
+
+    if (!query) {
+        return res.status(400).json({ success: false, error: 'query is required' });
+    }
+
+    try {
+        const results = await soundboard.searchMyInstants(query, page || 1);
+        res.json({ success: true, results });
+    } catch (error) {
+        console.error('Error searching MyInstants:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ========== SOCKET.IO EVENTS ==========
 
 io.on('connection', (socket) => {
@@ -289,6 +381,12 @@ tiktok.on('gift', async (data) => {
         alerts.addAlert('gift', data);
     }
 
+    // Soundboard: Gift-Sound abspielen
+    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
+    if (soundboardEnabled) {
+        await soundboard.playGiftSound(data);
+    }
+
     // Flows verarbeiten
     await flows.processEvent('gift', data);
 });
@@ -296,18 +394,39 @@ tiktok.on('gift', async (data) => {
 // Follow Event
 tiktok.on('follow', async (data) => {
     alerts.addAlert('follow', data);
+
+    // Soundboard: Follow-Sound abspielen
+    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
+    if (soundboardEnabled) {
+        await soundboard.playFollowSound();
+    }
+
     await flows.processEvent('follow', data);
 });
 
 // Subscribe Event
 tiktok.on('subscribe', async (data) => {
     alerts.addAlert('subscribe', data);
+
+    // Soundboard: Subscribe-Sound abspielen
+    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
+    if (soundboardEnabled) {
+        await soundboard.playSubscribeSound();
+    }
+
     await flows.processEvent('subscribe', data);
 });
 
 // Share Event
 tiktok.on('share', async (data) => {
     alerts.addAlert('share', data);
+
+    // Soundboard: Share-Sound abspielen
+    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
+    if (soundboardEnabled) {
+        await soundboard.playShareSound();
+    }
+
     await flows.processEvent('share', data);
 });
 
@@ -330,8 +449,13 @@ tiktok.on('chat', async (data) => {
 
 // Like Event
 tiktok.on('like', async (data) => {
-    // Likes normalerweise nicht als Alert (zu viele)
-    // Aber Flows könnten darauf reagieren
+    // Soundboard: Like-Threshold prüfen
+    const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
+    if (soundboardEnabled) {
+        await soundboard.handleLikeEvent(data.likeCount || 1);
+    }
+
+    // Flows verarbeiten
     await flows.processEvent('like', data);
 });
 
@@ -382,4 +506,4 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, tiktok, tts, alerts, flows };
+module.exports = { app, server, io, db, tiktok, tts, alerts, flows, soundboard };

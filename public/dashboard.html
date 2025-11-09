@@ -135,6 +135,7 @@
                 <button class="tab-btn" data-tab="voices">🎤 Voice Mapping</button>
                 <button class="tab-btn" data-tab="overlays">🖼️ Overlays</button>
                 <button class="tab-btn" data-tab="flows">⚡ Flows</button>
+                <button class="tab-btn" data-tab="soundboard">🔊 Soundboard</button>
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
         </div>
@@ -238,6 +239,185 @@
                     </button>
                 </div>
                 <div id="flows-list" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Soundboard -->
+        <div id="tab-soundboard" class="tab-content">
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl mb-6 font-semibold">🔊 Soundboard Configuration</h2>
+
+                <!-- Playback Settings -->
+                <div class="mb-8">
+                    <h3 class="font-bold text-lg mb-4">⚙️ Playback Settings</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-400 mb-2">Play Mode</label>
+                            <select id="soundboard-play-mode" class="bg-gray-700 text-white px-4 py-2 rounded w-full">
+                                <option value="overlap">Overlap (play immediately)</option>
+                                <option value="sequential">Sequential (queue)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-2">Max Queue Length</label>
+                            <input type="number" id="soundboard-max-queue" min="1" max="50" value="10"
+                                   class="bg-gray-700 text-white px-4 py-2 rounded w-full">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-2">Queue Delay (ms)</label>
+                            <input type="number" id="soundboard-queue-delay" min="500" max="10000" step="500" value="2000"
+                                   class="bg-gray-700 text-white px-4 py-2 rounded w-full">
+                        </div>
+                        <div>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="soundboard-enabled" class="w-5 h-5" checked>
+                                <span>Enable Soundboard</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Sounds -->
+                <div class="mb-8">
+                    <h3 class="font-bold text-lg mb-4">🎵 Event Sounds</h3>
+                    <div class="space-y-4">
+                        <!-- Follow Sound -->
+                        <div class="bg-gray-700 p-4 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold">⭐ Follow Sound</span>
+                                <button onclick="testEventSound('follow')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <input type="text" id="soundboard-follow-url" placeholder="Sound URL"
+                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
+                                <input type="number" id="soundboard-follow-volume" min="0" max="1" step="0.1" value="1.0"
+                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
+                            </div>
+                        </div>
+
+                        <!-- Subscribe Sound -->
+                        <div class="bg-gray-700 p-4 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold">🌟 Subscribe Sound</span>
+                                <button onclick="testEventSound('subscribe')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <input type="text" id="soundboard-subscribe-url" placeholder="Sound URL"
+                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
+                                <input type="number" id="soundboard-subscribe-volume" min="0" max="1" step="0.1" value="1.0"
+                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
+                            </div>
+                        </div>
+
+                        <!-- Share Sound -->
+                        <div class="bg-gray-700 p-4 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold">🔄 Share Sound</span>
+                                <button onclick="testEventSound('share')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <input type="text" id="soundboard-share-url" placeholder="Sound URL"
+                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
+                                <input type="number" id="soundboard-share-volume" min="0" max="1" step="0.1" value="1.0"
+                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
+                            </div>
+                        </div>
+
+                        <!-- Default Gift Sound -->
+                        <div class="bg-gray-700 p-4 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold">🎁 Default Gift Sound</span>
+                                <button onclick="testEventSound('gift')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <input type="text" id="soundboard-gift-url" placeholder="Sound URL"
+                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
+                                <input type="number" id="soundboard-gift-volume" min="0" max="1" step="0.1" value="1.0"
+                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
+                            </div>
+                        </div>
+
+                        <!-- Like Threshold Sound -->
+                        <div class="bg-gray-700 p-4 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold">❤️ Like Threshold Sound</span>
+                                <button onclick="testEventSound('like')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                <input type="text" id="soundboard-like-url" placeholder="Sound URL"
+                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
+                                <input type="number" id="soundboard-like-volume" min="0" max="1" step="0.1" value="1.0"
+                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <div>
+                                    <label class="text-gray-400 text-sm">Threshold (0 = disabled)</label>
+                                    <input type="number" id="soundboard-like-threshold" min="0" value="0"
+                                           class="bg-gray-600 text-white px-3 py-2 rounded w-full">
+                                </div>
+                                <div>
+                                    <label class="text-gray-400 text-sm">Time Window (seconds)</label>
+                                    <input type="number" id="soundboard-like-window" min="1" value="10"
+                                           class="bg-gray-600 text-white px-3 py-2 rounded w-full">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gift-Specific Sounds -->
+                <div class="mb-8">
+                    <h3 class="font-bold text-lg mb-4">🎁 Gift-Specific Sounds</h3>
+
+                    <!-- MyInstants Search -->
+                    <div class="mb-4 bg-gray-700 p-4 rounded">
+                        <h4 class="font-semibold mb-2">🔍 Search MyInstants</h4>
+                        <div class="flex gap-2">
+                            <input type="text" id="myinstants-search-input" placeholder="Search sounds..."
+                                   class="bg-gray-600 text-white px-4 py-2 rounded flex-1">
+                            <button onclick="searchMyInstants()" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700">Search</button>
+                        </div>
+                        <div id="myinstants-results" class="mt-3 space-y-2 max-h-60 overflow-y-auto"></div>
+                    </div>
+
+                    <!-- Add Gift Sound -->
+                    <div class="mb-4 bg-gray-700 p-4 rounded">
+                        <h4 class="font-semibold mb-2">➕ Add Gift Sound</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                            <input type="number" id="new-gift-id" placeholder="Gift ID"
+                                   class="bg-gray-600 text-white px-3 py-2 rounded">
+                            <input type="text" id="new-gift-label" placeholder="Label (e.g., Rose)"
+                                   class="bg-gray-600 text-white px-3 py-2 rounded">
+                            <input type="text" id="new-gift-url" placeholder="MP3 URL"
+                                   class="bg-gray-600 text-white px-3 py-2 rounded">
+                            <input type="number" id="new-gift-volume" min="0" max="1" step="0.1" value="1.0"
+                                   placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
+                        </div>
+                        <button onclick="addGiftSound()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 mt-2">
+                            ➕ Add Gift Sound
+                        </button>
+                    </div>
+
+                    <!-- Gift Sounds List -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-gray-400 border-b border-gray-700">
+                                    <th class="pb-2 pr-4">Gift ID</th>
+                                    <th class="pb-2 pr-4">Label</th>
+                                    <th class="pb-2 pr-4">URL</th>
+                                    <th class="pb-2 pr-4">Volume</th>
+                                    <th class="pb-2">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gift-sounds-list" class="text-gray-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <button onclick="saveSoundboardSettings()" class="bg-blue-600 px-6 py-3 rounded hover:bg-blue-700 font-semibold">
+                    💾 Save Soundboard Settings
+                </button>
             </div>
         </div>
 

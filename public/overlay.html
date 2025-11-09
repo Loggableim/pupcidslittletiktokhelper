@@ -289,9 +289,16 @@
     <!-- Audio Element für TTS -->
     <audio id="tts-audio"></audio>
 
+    <!-- Audio Pool für Soundboard -->
+    <div id="soundboard-audio-pool"></div>
+
     <script>
         // Socket.io Verbindung
         const socket = io();
+
+        // Soundboard Audio Queue
+        let soundQueue = [];
+        let isPlayingSound = false;
 
         // State
         let goalTarget = 1000;
@@ -315,6 +322,11 @@
         // TTS abspielen
         socket.on('tts:play', (data) => {
             playTTS(data);
+        });
+
+        // Soundboard abspielen
+        socket.on('soundboard:play', (data) => {
+            playSoundboardAudio(data);
         });
 
         // TikTok Events
@@ -402,6 +414,54 @@
             }
             const byteArray = new Uint8Array(byteNumbers);
             return new Blob([byteArray], { type: mimeType });
+        }
+
+        // ========== SOUNDBOARD AUDIO ==========
+        function playSoundboardAudio(data) {
+            console.log('🔊 Playing soundboard audio:', data.label);
+
+            // Create new audio element
+            const audio = document.createElement('audio');
+            audio.src = data.url;
+            audio.volume = data.volume || 1.0;
+
+            // Add to pool
+            const pool = document.getElementById('soundboard-audio-pool');
+            pool.appendChild(audio);
+
+            // Remove after playback
+            audio.onended = () => {
+                audio.remove();
+                processSoundQueue();
+            };
+
+            audio.onerror = (e) => {
+                console.error('Error playing sound:', e);
+                audio.remove();
+                processSoundQueue();
+            };
+
+            // Play immediately (overlap mode)
+            audio.play().catch(err => {
+                console.error('Sound playback error:', err);
+                audio.remove();
+                processSoundQueue();
+            });
+        }
+
+        function processSoundQueue() {
+            if (soundQueue.length === 0) {
+                isPlayingSound = false;
+                return;
+            }
+
+            if (isPlayingSound) {
+                return; // Still processing
+            }
+
+            isPlayingSound = true;
+            const soundData = soundQueue.shift();
+            playSoundboardAudio(soundData);
         }
 
         // ========== EVENT FEED ==========
