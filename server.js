@@ -330,6 +330,84 @@ app.post('/api/settings', (req, res) => {
     }
 });
 
+// ========== HUD CONFIGURATION ROUTES ==========
+
+app.get('/api/hud-config', (req, res) => {
+    try {
+        const elements = db.getAllHudElements();
+        const resolution = db.getSetting('hud_resolution') || '1920x1080';
+        const orientation = db.getSetting('hud_orientation') || 'landscape';
+
+        res.json({
+            success: true,
+            elements,
+            resolution,
+            orientation
+        });
+    } catch (error) {
+        console.error('Error getting HUD config:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/hud-config', (req, res) => {
+    const { elements, resolution, orientation } = req.body;
+
+    try {
+        // Update resolution and orientation if provided
+        if (resolution) {
+            db.setSetting('hud_resolution', resolution);
+        }
+        if (orientation) {
+            db.setSetting('hud_orientation', orientation);
+        }
+
+        // Update each element's configuration
+        if (elements && Array.isArray(elements)) {
+            elements.forEach(element => {
+                db.setHudElement(element.element_id, {
+                    enabled: element.enabled,
+                    position_x: element.position_x,
+                    position_y: element.position_y,
+                    position_unit: element.position_unit || 'px',
+                    anchor: element.anchor || 'top-left'
+                });
+            });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving HUD config:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/hud-config/element/:elementId', (req, res) => {
+    const { elementId } = req.params;
+    const config = req.body;
+
+    try {
+        db.setHudElement(elementId, config);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating HUD element:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/hud-config/element/:elementId/toggle', (req, res) => {
+    const { elementId } = req.params;
+    const { enabled } = req.body;
+
+    try {
+        db.toggleHudElement(elementId, enabled);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error toggling HUD element:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ========== FLOWS ROUTES ==========
 
 app.get('/api/flows', (req, res) => {

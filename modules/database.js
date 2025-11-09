@@ -97,6 +97,21 @@ class DatabaseManager {
             )
         `);
 
+        // HUD-Element-Konfigurationen (Position und Sichtbarkeit)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS hud_elements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                element_id TEXT UNIQUE NOT NULL,
+                enabled INTEGER DEFAULT 1,
+                position_x REAL DEFAULT 0,
+                position_y REAL DEFAULT 0,
+                position_unit TEXT DEFAULT 'px',
+                anchor TEXT DEFAULT 'top-left',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Default-Einstellungen setzen
         this.setDefaultSettings();
     }
@@ -126,12 +141,43 @@ class DatabaseManager {
             'soundboard_like_sound': '',
             'soundboard_like_volume': '1.0',
             'soundboard_default_gift_sound': '',
-            'soundboard_gift_volume': '1.0'
+            'soundboard_gift_volume': '1.0',
+            // HUD/Overlay Einstellungen
+            'hud_resolution': '1920x1080',
+            'hud_orientation': 'landscape'
         };
 
         const stmt = this.db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
         for (const [key, value] of Object.entries(defaults)) {
             stmt.run(key, value);
+        }
+
+        // Standard HUD-Element Positionen initialisieren
+        this.initializeDefaultHudElements();
+    }
+
+    initializeDefaultHudElements() {
+        const defaultElements = [
+            { element_id: 'alert', enabled: 1, position_x: 50, position_y: 50, position_unit: '%', anchor: 'center' },
+            { element_id: 'event-feed', enabled: 1, position_x: 30, position_y: 120, position_unit: 'px', anchor: 'bottom-left' },
+            { element_id: 'chat', enabled: 1, position_x: 30, position_y: 30, position_unit: 'px', anchor: 'bottom-right' },
+            { element_id: 'goal', enabled: 1, position_x: 50, position_y: 30, position_unit: '%', anchor: 'top-center' }
+        ];
+
+        const stmt = this.db.prepare(`
+            INSERT OR IGNORE INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, anchor)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const element of defaultElements) {
+            stmt.run(
+                element.element_id,
+                element.enabled,
+                element.position_x,
+                element.position_y,
+                element.position_unit,
+                element.anchor
+            );
         }
     }
 
@@ -393,6 +439,59 @@ class DatabaseManager {
         const stmt = this.db.prepare('SELECT MAX(last_updated) as last_update FROM gift_catalog');
         const result = stmt.get();
         return result ? result.last_update : null;
+    }
+
+    // ========== HUD ELEMENTS ==========
+    getHudElement(elementId) {
+        const stmt = this.db.prepare('SELECT * FROM hud_elements WHERE element_id = ?');
+        const row = stmt.get(elementId);
+        return row ? { ...row, enabled: Boolean(row.enabled) } : null;
+    }
+
+    getAllHudElements() {
+        const stmt = this.db.prepare('SELECT * FROM hud_elements ORDER BY element_id');
+        const rows = stmt.all();
+        return rows.map(row => ({ ...row, enabled: Boolean(row.enabled) }));
+    }
+
+    setHudElement(elementId, config) {
+        const stmt = this.db.prepare(`
+            INSERT INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, anchor, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(element_id) DO UPDATE SET
+                enabled = excluded.enabled,
+                position_x = excluded.position_x,
+                position_y = excluded.position_y,
+                position_unit = excluded.position_unit,
+                anchor = excluded.anchor,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+        stmt.run(
+            elementId,
+            config.enabled ? 1 : 0,
+            config.position_x,
+            config.position_y,
+            config.position_unit || 'px',
+            config.anchor || 'top-left'
+        );
+    }
+
+    updateHudElementPosition(elementId, positionX, positionY, unit = 'px', anchor = 'top-left') {
+        const stmt = this.db.prepare(`
+            UPDATE hud_elements
+            SET position_x = ?, position_y = ?, position_unit = ?, anchor = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE element_id = ?
+        `);
+        stmt.run(positionX, positionY, unit, anchor, elementId);
+    }
+
+    toggleHudElement(elementId, enabled) {
+        const stmt = this.db.prepare(`
+            UPDATE hud_elements
+            SET enabled = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE element_id = ?
+        `);
+        stmt.run(enabled ? 1 : 0, elementId);
     }
 
     close() {
