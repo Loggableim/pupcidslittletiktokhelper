@@ -38,6 +38,7 @@ Diese Datei dient als zentraler Einstiegspunkt für LLMs, die an diesem Projekt 
 - **`update-manager.js`**: Git-unabhängiges Update-System mit Backup/Rollback
 - **`launcher.js`**: Platform-agnostischer Launcher mit Dependency-Check
 - **`tty-logger.js`**: TTY-sicheres Logging-System
+- **`update-checker.js`**: GitHub Releases API für Auto-Updates
 
 ### Plugin-System (`plugins/`)
 
