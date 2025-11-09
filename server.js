@@ -544,6 +544,63 @@ app.get('/api/myinstants/search', async (req, res) => {
     }
 });
 
+app.get('/api/myinstants/resolve', async (req, res) => {
+    const { url } = req.query;
+
+    if (!url) {
+        return res.status(400).json({ success: false, error: 'url is required' });
+    }
+
+    // Wenn es bereits eine direkte MP3-URL ist, direkt zurückgeben
+    if (url.match(/\.mp3($|\?)/i)) {
+        return res.json({ success: true, mp3: url });
+    }
+
+    try {
+        const axios = require('axios');
+        const response = await axios.get(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            timeout: 10000
+        });
+
+        // MP3-Link aus HTML extrahieren
+        const mp3Match = response.data.match(/href="(https?:\/\/[^"]+\.mp3[^"]*)"/i);
+
+        if (mp3Match) {
+            return res.json({ success: true, mp3: mp3Match[1] });
+        }
+
+        return res.json({ success: false, error: 'Kein MP3-Link gefunden' });
+
+    } catch (error) {
+        console.error('Error resolving MyInstants URL:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ========== GIFT CATALOG ROUTES ==========
+
+app.get('/api/gift-catalog', (req, res) => {
+    try {
+        const catalog = db.getGiftCatalog();
+        const lastUpdate = db.getCatalogLastUpdate();
+        res.json({ success: true, catalog, lastUpdate, count: catalog.length });
+    } catch (error) {
+        console.error('Error getting gift catalog:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/gift-catalog/update', async (req, res) => {
+    try {
+        const result = await tiktok.updateGiftCatalog();
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Error updating gift catalog:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ========== GOALS ROUTES ==========
 
 // Get all goals
@@ -840,8 +897,9 @@ server.listen(PORT, async () => {
     console.log('🎥 TikTok Stream Tool');
     console.log('='.repeat(50));
     console.log(`\n✅ Server running on http://localhost:${PORT}`);
-    console.log(`\n📊 Dashboard: http://localhost:${PORT}/dashboard.html`);
-    console.log(`🖼️  Overlay:   http://localhost:${PORT}/overlay.html`);
+    console.log(`\n📊 Dashboard:   http://localhost:${PORT}/dashboard.html`);
+    console.log(`🎵 Soundboard:  http://localhost:${PORT}/soundboard.html`);
+    console.log(`🖼️  Overlay:    http://localhost:${PORT}/overlay.html`);
     console.log('\n' + '='.repeat(50));
     console.log('\n⚠️  WICHTIG: Öffne das Overlay und klicke auf "🔊 Audio aktivieren"!');
     console.log('   Browser Autoplay Policy erfordert User-Interaktion.\n');

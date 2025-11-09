@@ -86,6 +86,17 @@ class DatabaseManager {
             )
         `);
 
+        // Gift-Katalog (Cache der verfügbaren TikTok Gifts)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS gift_catalog (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                image_url TEXT,
+                diamond_count INTEGER DEFAULT 0,
+                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Default-Einstellungen setzen
         this.setDefaultSettings();
     }
@@ -344,6 +355,44 @@ class DatabaseManager {
     deleteProfile(id) {
         const stmt = this.db.prepare('DELETE FROM profiles WHERE id = ?');
         stmt.run(id);
+    }
+
+    // ========== GIFT CATALOG ==========
+    getGiftCatalog() {
+        const stmt = this.db.prepare('SELECT * FROM gift_catalog ORDER BY diamond_count DESC');
+        return stmt.all();
+    }
+
+    getGift(id) {
+        const stmt = this.db.prepare('SELECT * FROM gift_catalog WHERE id = ?');
+        return stmt.get(id);
+    }
+
+    updateGiftCatalog(gifts) {
+        const stmt = this.db.prepare(`
+            INSERT OR REPLACE INTO gift_catalog (id, name, image_url, diamond_count, last_updated)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `);
+
+        const transaction = this.db.transaction((giftsArray) => {
+            for (const gift of giftsArray) {
+                stmt.run(gift.id, gift.name, gift.image_url || null, gift.diamond_count || 0);
+            }
+        });
+
+        transaction(gifts);
+        return gifts.length;
+    }
+
+    clearGiftCatalog() {
+        const stmt = this.db.prepare('DELETE FROM gift_catalog');
+        stmt.run();
+    }
+
+    getCatalogLastUpdate() {
+        const stmt = this.db.prepare('SELECT MAX(last_updated) as last_update FROM gift_catalog');
+        const result = stmt.get();
+        return result ? result.last_update : null;
     }
 
     close() {
