@@ -274,7 +274,13 @@ app.get('/api/voices', (req, res) => {
 
 app.get('/api/voices/list', (req, res) => {
     const TTSModule = require('./modules/tts');
-    res.json(TTSModule.getVoices());
+    const provider = req.query.provider || 'tiktok';
+    res.json(TTSModule.getVoices(provider));
+});
+
+app.get('/api/voices/all', (req, res) => {
+    const TTSModule = require('./modules/tts');
+    res.json(TTSModule.getAllVoices());
 });
 
 app.post('/api/voices', (req, res) => {

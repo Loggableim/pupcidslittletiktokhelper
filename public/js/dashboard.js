@@ -43,8 +43,9 @@ function switchTab(tabName) {
     currentTab = tabName;
 
     // Tab-spezifische Aktionen
-    if (tabName === 'voices') {
+    if (tabName === 'tts') {
         loadVoiceMapping();
+        loadTTSSettings();
     } else if (tabName === 'flows') {
         loadFlows();
     } else if (tabName === 'soundboard') {
@@ -78,8 +79,14 @@ function initializeButtons() {
     document.getElementById('modal-save-btn').addEventListener('click', saveVoiceMapping);
     document.getElementById('modal-cancel-btn').addEventListener('click', hideVoiceModal);
 
-    // Save Settings
-    document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+    // Save TTS Settings
+    document.getElementById('save-tts-settings-btn').addEventListener('click', saveTTSSettings);
+
+    // Test TTS
+    document.getElementById('tts-test-btn').addEventListener('click', testTTS);
+
+    // TTS Provider Change
+    document.getElementById('tts-provider').addEventListener('change', onTTSProviderChange);
 
     // Settings Range Inputs (Live-Update der Labels)
     document.getElementById('tts-volume').addEventListener('input', (e) => {
@@ -309,9 +316,14 @@ async function saveSettings() {
 }
 
 // ========== VOICES ==========
-async function loadVoices() {
+async function loadVoices(provider = null) {
     try {
-        const response = await fetch('/api/voices/list');
+        // Wenn kein Provider angegeben, aus Settings laden
+        if (!provider) {
+            provider = settings.tts_provider || 'tiktok';
+        }
+
+        const response = await fetch(`/api/voices/list?provider=${provider}`);
         voices = await response.json();
 
         // Voice-Dropdowns füllen
@@ -321,13 +333,22 @@ async function loadVoices() {
         ];
 
         voiceSelects.forEach(select => {
+            if (!select) return;
+
+            const currentValue = select.value;
             select.innerHTML = '';
+
             Object.entries(voices).forEach(([id, name]) => {
                 const option = document.createElement('option');
                 option.value = id;
                 option.textContent = name;
                 select.appendChild(option);
             });
+
+            // Versuche den vorherigen Wert wiederherzustellen
+            if (currentValue && voices[currentValue]) {
+                select.value = currentValue;
+            }
         });
 
     } catch (error) {
@@ -798,4 +819,148 @@ async function searchMyInstants() {
 function useMyInstantsSound(name, url) {
     document.getElementById('new-gift-label').value = name;
     document.getElementById('new-gift-url').value = url;
+}
+
+// ========== TTS SETTINGS ==========
+async function loadTTSSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        settings = await response.json();
+
+        // TTS Provider
+        const providerSelect = document.getElementById('tts-provider');
+        if (providerSelect) {
+            providerSelect.value = settings.tts_provider || 'tiktok';
+            onTTSProviderChange(); // Update UI basierend auf Provider
+        }
+
+        // Google API Key
+        const apiKeyInput = document.getElementById('google-api-key');
+        if (apiKeyInput) {
+            apiKeyInput.value = settings.google_tts_api_key || '';
+        }
+
+        // General Settings
+        const defaultVoice = document.getElementById('default-voice');
+        if (defaultVoice) {
+            defaultVoice.value = settings.default_voice || 'en_us_ghostface';
+        }
+
+        const ttsVolume = document.getElementById('tts-volume');
+        if (ttsVolume) {
+            ttsVolume.value = settings.tts_volume || 80;
+            document.getElementById('tts-volume-label').textContent = settings.tts_volume || 80;
+        }
+
+        const ttsSpeed = document.getElementById('tts-speed');
+        if (ttsSpeed) {
+            ttsSpeed.value = settings.tts_speed || 1.0;
+            document.getElementById('tts-speed-label').textContent = settings.tts_speed || 1.0;
+        }
+
+        const ttsChatEnabled = document.getElementById('tts-chat-enabled');
+        if (ttsChatEnabled) {
+            ttsChatEnabled.checked = settings.tts_chat_enabled === 'true';
+        }
+
+        const ttsMinCoins = document.getElementById('tts-min-coins');
+        if (ttsMinCoins) {
+            ttsMinCoins.value = settings.tts_min_coins || 0;
+        }
+
+        // Voices laden basierend auf Provider
+        await loadVoices(settings.tts_provider || 'tiktok');
+
+    } catch (error) {
+        console.error('Error loading TTS settings:', error);
+    }
+}
+
+async function saveTTSSettings() {
+    const provider = document.getElementById('tts-provider').value;
+    const googleApiKey = document.getElementById('google-api-key').value;
+    const defaultVoice = document.getElementById('default-voice').value;
+    const ttsVolume = document.getElementById('tts-volume').value;
+    const ttsSpeed = document.getElementById('tts-speed').value;
+    const ttsChatEnabled = document.getElementById('tts-chat-enabled').checked;
+    const ttsMinCoins = document.getElementById('tts-min-coins').value;
+
+    // Validierung: Google API Key erforderlich wenn Google ausgewählt
+    if (provider === 'google' && !googleApiKey) {
+        alert('❌ Please enter your Google Cloud TTS API key!');
+        return;
+    }
+
+    const newSettings = {
+        tts_provider: provider,
+        google_tts_api_key: googleApiKey,
+        default_voice: defaultVoice,
+        tts_volume: ttsVolume,
+        tts_speed: ttsSpeed,
+        tts_chat_enabled: ttsChatEnabled ? 'true' : 'false',
+        tts_min_coins: ttsMinCoins
+    };
+
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newSettings)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ TTS Settings saved!');
+            settings = { ...settings, ...newSettings };
+        }
+    } catch (error) {
+        console.error('Error saving TTS settings:', error);
+        alert('❌ Error saving TTS settings!');
+    }
+}
+
+function onTTSProviderChange() {
+    const provider = document.getElementById('tts-provider').value;
+    const googleApiKeyContainer = document.getElementById('google-api-key-container');
+
+    // Google API Key Container ein/ausblenden
+    if (provider === 'google') {
+        googleApiKeyContainer.classList.remove('hidden');
+    } else {
+        googleApiKeyContainer.classList.add('hidden');
+    }
+
+    // Voices neu laden für den gewählten Provider
+    loadVoices(provider);
+}
+
+async function testTTS() {
+    const testText = document.getElementById('tts-test-text').value;
+
+    if (!testText || testText.trim().length === 0) {
+        alert('⚠️ Please enter some text to test!');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/tts/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: 'TestUser',
+                text: testText,
+                voice: document.getElementById('default-voice').value
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ TTS test sent! Listen in your overlay.');
+        } else {
+            alert('❌ TTS test failed: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error testing TTS:', error);
+        alert('❌ Error testing TTS!');
+    }
 }

@@ -1,5 +1,41 @@
 const axios = require('axios');
 
+// Verfügbare Google TTS Stimmen (Auswahl der beliebtesten)
+const GOOGLE_VOICES = {
+    // Deutsch
+    'de-DE-Wavenet-A': 'Deutsch (Weiblich, Wavenet A)',
+    'de-DE-Wavenet-B': 'Deutsch (Männlich, Wavenet B)',
+    'de-DE-Wavenet-C': 'Deutsch (Weiblich, Wavenet C)',
+    'de-DE-Wavenet-D': 'Deutsch (Männlich, Wavenet D)',
+    'de-DE-Standard-A': 'Deutsch (Weiblich, Standard A)',
+    'de-DE-Standard-B': 'Deutsch (Männlich, Standard B)',
+
+    // Englisch (US)
+    'en-US-Wavenet-A': 'English US (Männlich, Wavenet A)',
+    'en-US-Wavenet-B': 'English US (Männlich, Wavenet B)',
+    'en-US-Wavenet-C': 'English US (Weiblich, Wavenet C)',
+    'en-US-Wavenet-D': 'English US (Männlich, Wavenet D)',
+    'en-US-Wavenet-E': 'English US (Weiblich, Wavenet E)',
+    'en-US-Wavenet-F': 'English US (Weiblich, Wavenet F)',
+    'en-US-Standard-A': 'English US (Männlich, Standard A)',
+    'en-US-Standard-B': 'English US (Männlich, Standard B)',
+    'en-US-Standard-C': 'English US (Weiblich, Standard C)',
+    'en-US-Standard-D': 'English US (Männlich, Standard D)',
+
+    // Englisch (GB)
+    'en-GB-Wavenet-A': 'English GB (Weiblich, Wavenet A)',
+    'en-GB-Wavenet-B': 'English GB (Männlich, Wavenet B)',
+    'en-GB-Wavenet-C': 'English GB (Weiblich, Wavenet C)',
+    'en-GB-Wavenet-D': 'English GB (Männlich, Wavenet D)',
+
+    // Weitere Sprachen
+    'es-ES-Wavenet-A': 'Español (Weiblich)',
+    'fr-FR-Wavenet-A': 'Français (Weiblich)',
+    'it-IT-Wavenet-A': 'Italiano (Weiblich)',
+    'ja-JP-Wavenet-A': 'Japanese (Weiblich)',
+    'ko-KR-Wavenet-A': 'Korean (Weiblich)',
+};
+
 // Verfügbare TikTok TTS Stimmen
 const TIKTOK_VOICES = {
     // Englisch - Disney/Characters
@@ -50,8 +86,18 @@ class TTSEngine {
         this.maxTextLength = 300;
     }
 
-    static getVoices() {
+    static getVoices(provider = 'tiktok') {
+        if (provider === 'google') {
+            return GOOGLE_VOICES;
+        }
         return TIKTOK_VOICES;
+    }
+
+    static getAllVoices() {
+        return {
+            tiktok: TIKTOK_VOICES,
+            google: GOOGLE_VOICES
+        };
     }
 
     async speak(username, text, voiceOverride = null) {
@@ -78,8 +124,11 @@ class TTSEngine {
                 voice = this.db.getSetting('default_voice') || 'en_us_ghostface';
             }
 
+            // TTS Provider bestimmen
+            const provider = this.db.getSetting('tts_provider') || 'tiktok';
+
             // Audio generieren
-            const audioData = await this.generateTTS(filteredText, voice);
+            const audioData = await this.generateTTS(filteredText, voice, provider);
 
             if (audioData) {
                 // In Queue einreihen
@@ -127,7 +176,15 @@ class TTSEngine {
         return filtered.trim();
     }
 
-    async generateTTS(text, voice) {
+    async generateTTS(text, voice, provider = 'tiktok') {
+        if (provider === 'google') {
+            return await this.generateGoogleTTS(text, voice);
+        } else {
+            return await this.generateTikTokTTS(text, voice);
+        }
+    }
+
+    async generateTikTokTTS(text, voice) {
         try {
             const response = await axios.post(
                 this.ttsApiUrl,
@@ -147,16 +204,58 @@ class TTSEngine {
                 // Base64-encoded Audio zurückgeben
                 return response.data.data;
             } else {
-                console.error('❌ TTS API: Invalid response format');
+                console.error('❌ TikTok TTS API: Invalid response format');
                 return null;
             }
 
         } catch (error) {
-            console.error('❌ TTS API Error:', error.message);
+            console.error('❌ TikTok TTS API Error:', error.message);
+            return null;
+        }
+    }
 
-            // Fallback: Web Speech API könnte hier verwendet werden
-            // aber das funktioniert nur im Browser, nicht auf Server-Seite
+    async generateGoogleTTS(text, voice) {
+        try {
+            const apiKey = this.db.getSetting('google_tts_api_key');
 
+            if (!apiKey) {
+                console.error('❌ Google TTS: No API key configured');
+                return null;
+            }
+
+            // Parse language code from voice (e.g., "de-DE-Wavenet-A" -> "de-DE")
+            const languageCode = voice.substring(0, 5);
+
+            const response = await axios.post(
+                `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+                {
+                    input: { text: text },
+                    voice: {
+                        languageCode: languageCode,
+                        name: voice
+                    },
+                    audioConfig: {
+                        audioEncoding: 'MP3'
+                    }
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 10000
+                }
+            );
+
+            if (response.data && response.data.audioContent) {
+                // Base64-encoded Audio zurückgeben
+                return response.data.audioContent;
+            } else {
+                console.error('❌ Google TTS API: Invalid response format');
+                return null;
+            }
+
+        } catch (error) {
+            console.error('❌ Google TTS API Error:', error.response?.data?.error?.message || error.message);
             return null;
         }
     }
