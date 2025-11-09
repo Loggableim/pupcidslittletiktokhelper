@@ -384,9 +384,9 @@
 
         <!-- Action Buttons -->
         <div class="action-buttons">
-            <button class="btn btn-save" onclick="saveConfiguration()">💾 Speichern</button>
-            <button class="btn btn-reset" onclick="resetToDefaults()">🔄 Zurücksetzen</button>
-            <button class="btn btn-back" onclick="window.location.href='/'">← Zurück zum Dashboard</button>
+            <button class="btn btn-save" id="btn-save">💾 Speichern</button>
+            <button class="btn btn-reset" id="btn-reset">🔄 Zurücksetzen</button>
+            <button class="btn btn-back" id="btn-back">← Zurück zum Dashboard</button>
         </div>
     </div>
 
@@ -409,8 +409,6 @@
         let dragOffset = { x: 0, y: 0 };
         let resizeStartSize = { width: 0, height: 0 };
         let resizeStartPos = { x: 0, y: 0 };
-        let currentDragElement = null;
-        let dragOffset = { x: 0, y: 0 };
 
         // Element definitions with default positions
         const elementDefinitions = {
@@ -444,9 +442,37 @@
         async function init() {
             await loadConfiguration();
             setupResolutionSelector();
+            setupButtonHandlers();
             updatePreviewSize();
             renderElements();
             renderElementList();
+        }
+
+        // Setup button event handlers
+        function setupButtonHandlers() {
+            document.getElementById('btn-save').addEventListener('click', saveConfiguration);
+            document.getElementById('btn-reset').addEventListener('click', resetToDefaults);
+            document.getElementById('btn-back').addEventListener('click', () => {
+                window.location.href = '/';
+            });
+
+            // Event delegation for element toggles and size inputs
+            document.getElementById('element-list').addEventListener('change', (e) => {
+                if (e.target.classList.contains('element-toggle')) {
+                    const elementId = e.target.dataset.elementId;
+                    toggleElement(elementId, e.target.checked);
+                } else if (e.target.classList.contains('element-size-input')) {
+                    const elementId = e.target.dataset.elementId;
+                    const dimension = e.target.dataset.dimension;
+                    const value = parseInt(e.target.value);
+
+                    if (dimension === 'width') {
+                        updateElementSize(elementId, value, null);
+                    } else if (dimension === 'height') {
+                        updateElementSize(elementId, null, value);
+                    }
+                }
+            });
         }
 
         // Load configuration from server
@@ -551,15 +577,6 @@
                     <div class="element-label" style="color: ${def.color}">${def.name}</div>
                     <div class="element-position">${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit} | ${Math.round(width)}x${Math.round(height)}px</div>
                     ${element.enabled ? '<div class="resize-handle" style="position: absolute; bottom: 0; right: 0; width: 15px; height: 15px; background: rgba(76,175,80,0.6); cursor: nwse-resize; border-radius: 0 0 8px 0;"></div>' : ''}
-                const pos = calculatePosition(element, def);
-                el.style.left = (pos.x * scale) + 'px';
-                el.style.top = (pos.y * scale) + 'px';
-                el.style.width = (def.defaultWidth * scale) + 'px';
-                el.style.height = (def.defaultHeight * scale) + 'px';
-
-                el.innerHTML = `
-                    <div class="element-label" style="color: ${def.color}">${def.name}</div>
-                    <div class="element-position">${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit}</div>
                 `;
 
                 if (element.enabled) {
@@ -662,8 +679,6 @@
                 return;
             }
 
-        // Global mouse handlers
-        document.addEventListener('mousemove', (e) => {
             if (!isDragging || !currentDragElement) return;
 
             const overlay = document.getElementById('preview-overlay');
@@ -728,37 +743,22 @@
                             </div>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" ${element.enabled ? 'checked' : ''} onchange="toggleElement('${element.element_id}', this.checked)">
+                            <input type="checkbox" ${element.enabled ? 'checked' : ''} data-element-id="${element.element_id}" class="element-toggle">
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                         <div>
                             <label style="display: block; font-size: 0.85em; margin-bottom: 5px; opacity: 0.9;">Breite (px)</label>
-                            <input type="number" value="${Math.round(width)}" min="50" max="2000"
-                                   onchange="updateElementSize('${element.element_id}', this.value, null)"
+                            <input type="number" value="${Math.round(width)}" min="50" max="2000" data-element-id="${element.element_id}" data-dimension="width" class="element-size-input"
                                    style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: white; font-size: 0.95em;">
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.85em; margin-bottom: 5px; opacity: 0.9;">Höhe (px)</label>
-                            <input type="number" value="${Math.round(height)}" min="30" max="2000"
-                                   onchange="updateElementSize('${element.element_id}', null, this.value)"
+                            <input type="number" value="${Math.round(height)}" min="30" max="2000" data-element-id="${element.element_id}" data-dimension="height" class="element-size-input"
                                    style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: white; font-size: 0.95em;">
                         </div>
                     </div>
-                const item = document.createElement('div');
-                item.className = 'element-item';
-                item.style.borderLeft = `4px solid ${def.color}`;
-
-                item.innerHTML = `
-                    <div class="element-info">
-                        <div class="element-name">${def.name}</div>
-                        <div class="element-coords">Position: ${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit} | Anchor: ${element.anchor}</div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" ${element.enabled ? 'checked' : ''} onchange="toggleElement('${element.element_id}', this.checked)">
-                        <span class="slider"></span>
-                    </label>
                 `;
 
                 list.appendChild(item);
@@ -823,10 +823,6 @@
                 { element_id: 'event-feed', enabled: true, position_x: 30, position_y: 120, position_unit: 'px', width: 400, height: 400, anchor: 'bottom-left' },
                 { element_id: 'chat', enabled: true, position_x: 30, position_y: 30, position_unit: 'px', width: 450, height: 600, anchor: 'bottom-right' },
                 { element_id: 'goal', enabled: true, position_x: 50, position_y: 30, position_unit: '%', width: 500, height: 80, anchor: 'top-center' }
-                { element_id: 'alert', enabled: true, position_x: 50, position_y: 50, position_unit: '%', anchor: 'center' },
-                { element_id: 'event-feed', enabled: true, position_x: 30, position_y: 120, position_unit: 'px', anchor: 'bottom-left' },
-                { element_id: 'chat', enabled: true, position_x: 30, position_y: 30, position_unit: 'px', anchor: 'bottom-right' },
-                { element_id: 'goal', enabled: true, position_x: 50, position_y: 30, position_unit: '%', anchor: 'top-center' }
             ];
 
             renderElements();

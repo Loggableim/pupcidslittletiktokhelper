@@ -557,7 +557,10 @@
                 for (const key of keys) {
                     const response = await fetch(`/api/goals/${key}`);
                     if (response.ok) {
-                        goalsData[key] = await response.json();
+                        const data = await response.json();
+                        if (data.success && data.goal) {
+                            goalsData[key] = data.goal;
+                        }
                     }
                 }
 
@@ -581,18 +584,34 @@
         });
 
         socket.on('goal:update', (data) => {
-            const { key, goal } = data;
+            const { type, key, total, goal: goalValue, show_goal } = data;
             if (goalsData[key]) {
-                goalsData[key] = { ...goalsData[key], ...goal };
+                // Update goal data with new values
+                if (total !== undefined) goalsData[key].total = total;
+                if (goalValue !== undefined) goalsData[key].goal = goalValue;
+                if (show_goal !== undefined) goalsData[key].show_goal = show_goal;
                 renderGoals();
             }
         });
 
+        socket.on('goal:reached', (data) => {
+            showNotification(`🎉 ${goalConfig[data.key]?.label || data.key} Goal erreicht!`);
+        });
+
+        // Join all goal rooms to receive real-time updates
+        function joinGoalRooms() {
+            const keys = ['likes', 'followers', 'subs', 'coins'];
+            keys.forEach(key => {
+                socket.emit('goal:join', key);
+            });
+        }
+
         // Initialization
         fetchGoals();
+        joinGoalRooms();
 
-        // Refresh goals every 10 seconds
-        setInterval(fetchGoals, 10000);
+        // Refresh goals every 30 seconds (reduced from 10s since we have WebSocket updates)
+        setInterval(fetchGoals, 30000);
 
         console.log('✅ Goals Overview Dock initialized');
     </script>
