@@ -403,8 +403,12 @@
 
         let currentResolution = { width: 1920, height: 1080 };
         let isDragging = false;
+        let isResizing = false;
         let currentDragElement = null;
+        let currentResizeElement = null;
         let dragOffset = { x: 0, y: 0 };
+        let resizeStartSize = { width: 0, height: 0 };
+        let resizeStartPos = { x: 0, y: 0 };
 
         // Element definitions with default positions
         const elementDefinitions = {
@@ -522,6 +526,10 @@
                 const def = elementDefinitions[element.element_id];
                 if (!def) return;
 
+                // Use configured width/height or defaults
+                const width = element.width || def.defaultWidth;
+                const height = element.height || def.defaultHeight;
+
                 const el = document.createElement('div');
                 el.className = 'hud-element';
                 el.dataset.elementId = element.element_id;
@@ -531,19 +539,21 @@
                 }
 
                 // Calculate position based on anchor
-                const pos = calculatePosition(element, def);
+                const pos = calculatePosition(element, { defaultWidth: width, defaultHeight: height });
                 el.style.left = (pos.x * scale) + 'px';
                 el.style.top = (pos.y * scale) + 'px';
-                el.style.width = (def.defaultWidth * scale) + 'px';
-                el.style.height = (def.defaultHeight * scale) + 'px';
+                el.style.width = (width * scale) + 'px';
+                el.style.height = (height * scale) + 'px';
 
                 el.innerHTML = `
                     <div class="element-label" style="color: ${def.color}">${def.name}</div>
-                    <div class="element-position">${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit}</div>
+                    <div class="element-position">${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit} | ${Math.round(width)}x${Math.round(height)}px</div>
+                    ${element.enabled ? '<div class="resize-handle" style="position: absolute; bottom: 0; right: 0; width: 15px; height: 15px; background: rgba(76,175,80,0.6); cursor: nwse-resize; border-radius: 0 0 8px 0;"></div>' : ''}
                 `;
 
                 if (element.enabled) {
                     setupDragHandlers(el, element);
+                    setupResizeHandlers(el, element);
                 }
 
                 overlay.appendChild(el);
@@ -581,6 +591,11 @@
         // Setup drag handlers
         function setupDragHandlers(el, element) {
             el.addEventListener('mousedown', (e) => {
+                // Don't drag if clicking on resize handle
+                if (e.target.classList.contains('resize-handle')) {
+                    return;
+                }
+
                 isDragging = true;
                 currentDragElement = element;
                 el.classList.add('dragging');
@@ -596,8 +611,46 @@
             });
         }
 
+        // Setup resize handlers
+        function setupResizeHandlers(el, element) {
+            const resizeHandle = el.querySelector('.resize-handle');
+            if (!resizeHandle) return;
+
+            resizeHandle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                currentResizeElement = element;
+
+                const width = element.width || elementDefinitions[element.element_id].defaultWidth;
+                const height = element.height || elementDefinitions[element.element_id].defaultHeight;
+
+                resizeStartSize.width = width;
+                resizeStartSize.height = height;
+                resizeStartPos.x = e.clientX;
+                resizeStartPos.y = e.clientY;
+
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        }
+
         // Global mouse handlers
         document.addEventListener('mousemove', (e) => {
+            if (isResizing && currentResizeElement) {
+                const scale = parseFloat(document.getElementById('preview-wrapper').dataset.scale);
+                const deltaX = (e.clientX - resizeStartPos.x) / scale;
+                const deltaY = (e.clientY - resizeStartPos.y) / scale;
+
+                const newWidth = Math.max(50, Math.round(resizeStartSize.width + deltaX));
+                const newHeight = Math.max(30, Math.round(resizeStartSize.height + deltaY));
+
+                currentResizeElement.width = newWidth;
+                currentResizeElement.height = newHeight;
+
+                renderElements();
+                renderElementList();
+                return;
+            }
+
             if (!isDragging || !currentDragElement) return;
 
             const overlay = document.getElementById('preview-overlay');
@@ -629,6 +682,10 @@
                     el.classList.remove('dragging');
                 });
             }
+            if (isResizing) {
+                isResizing = false;
+                currentResizeElement = null;
+            }
         });
 
         // Render element list with toggles
@@ -640,23 +697,61 @@
                 const def = elementDefinitions[element.element_id];
                 if (!def) return;
 
+                const width = element.width || def.defaultWidth;
+                const height = element.height || def.defaultHeight;
+
                 const item = document.createElement('div');
                 item.className = 'element-item';
                 item.style.borderLeft = `4px solid ${def.color}`;
+                item.style.display = 'block';
+                item.style.padding = '20px';
 
                 item.innerHTML = `
-                    <div class="element-info">
-                        <div class="element-name">${def.name}</div>
-                        <div class="element-coords">Position: ${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit} | Anchor: ${element.anchor}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div class="element-info" style="flex: 1;">
+                            <div class="element-name" style="font-size: 1.2em; margin-bottom: 5px;">${def.name}</div>
+                            <div class="element-coords" style="font-size: 0.85em; opacity: 0.8;">
+                                Position: ${Math.round(element.position_x)}${element.position_unit}, ${Math.round(element.position_y)}${element.position_unit}
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${element.enabled ? 'checked' : ''} onchange="toggleElement('${element.element_id}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
                     </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" ${element.enabled ? 'checked' : ''} onchange="toggleElement('${element.element_id}', this.checked)">
-                        <span class="slider"></span>
-                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div>
+                            <label style="display: block; font-size: 0.85em; margin-bottom: 5px; opacity: 0.9;">Breite (px)</label>
+                            <input type="number" value="${Math.round(width)}" min="50" max="2000"
+                                   onchange="updateElementSize('${element.element_id}', this.value, null)"
+                                   style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: white; font-size: 0.95em;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.85em; margin-bottom: 5px; opacity: 0.9;">Höhe (px)</label>
+                            <input type="number" value="${Math.round(height)}" min="30" max="2000"
+                                   onchange="updateElementSize('${element.element_id}', null, this.value)"
+                                   style="width: 100%; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: white; font-size: 0.95em;">
+                        </div>
+                    </div>
                 `;
 
                 list.appendChild(item);
             });
+        }
+
+        // Update element size from input fields
+        function updateElementSize(elementId, width, height) {
+            const element = hudConfig.elements.find(el => el.element_id === elementId);
+            if (!element) return;
+
+            if (width !== null) {
+                element.width = parseInt(width);
+            }
+            if (height !== null) {
+                element.height = parseInt(height);
+            }
+
+            renderElements();
         }
 
         // Toggle element visibility
@@ -698,10 +793,10 @@
 
             // Reset to default values
             hudConfig.elements = [
-                { element_id: 'alert', enabled: true, position_x: 50, position_y: 50, position_unit: '%', anchor: 'center' },
-                { element_id: 'event-feed', enabled: true, position_x: 30, position_y: 120, position_unit: 'px', anchor: 'bottom-left' },
-                { element_id: 'chat', enabled: true, position_x: 30, position_y: 30, position_unit: 'px', anchor: 'bottom-right' },
-                { element_id: 'goal', enabled: true, position_x: 50, position_y: 30, position_unit: '%', anchor: 'top-center' }
+                { element_id: 'alert', enabled: true, position_x: 50, position_y: 50, position_unit: '%', width: 400, height: 200, anchor: 'center' },
+                { element_id: 'event-feed', enabled: true, position_x: 30, position_y: 120, position_unit: 'px', width: 400, height: 400, anchor: 'bottom-left' },
+                { element_id: 'chat', enabled: true, position_x: 30, position_y: 30, position_unit: 'px', width: 450, height: 600, anchor: 'bottom-right' },
+                { element_id: 'goal', enabled: true, position_x: 50, position_y: 30, position_unit: '%', width: 500, height: 80, anchor: 'top-center' }
             ];
 
             renderElements();

@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
 const axios = require('axios');
+const cheerio = require('cheerio');
 
 /**
  * Soundboard Module
@@ -237,29 +238,122 @@ class SoundboardManager extends EventEmitter {
     }
 
     /**
-     * Search MyInstants for sounds
+     * Search MyInstants for sounds using web scraping
      */
     async searchMyInstants(query, page = 1) {
         try {
-            const response = await axios.get('https://www.myinstants.com/api/v1/instants/', {
+            const response = await axios.get('https://www.myinstants.com/en/search/', {
                 params: {
-                    search: query,
-                    page: page
+                    name: query
                 },
-                timeout: 5000
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
             });
 
-            if (response.data && response.data.results) {
-                return response.data.results.map(instant => ({
-                    name: instant.name,
-                    url: `https://www.myinstants.com${instant.sound}`,
-                    id: instant.id
-                }));
-            }
+            const $ = cheerio.load(response.data);
+            const results = [];
 
-            return [];
+            $('.instant').each((i, elem) => {
+                const $elem = $(elem);
+                const $button = $elem.find('.small-button');
+                const name = $elem.find('.instant-link').text().trim();
+                const pageUrl = $elem.find('.instant-link').attr('href');
+                const soundPath = $button.attr('onmousedown')?.match(/play\('([^']+)'/)?.[1];
+
+                if (name && soundPath) {
+                    results.push({
+                        name: name,
+                        url: soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`,
+                        pageUrl: pageUrl ? `https://www.myinstants.com${pageUrl}` : null
+                    });
+                }
+            });
+
+            return results.slice(0, 20); // Limit to 20 results
         } catch (error) {
             console.error('MyInstants search error:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Resolve MyInstants page URL to MP3 URL
+     */
+    async resolveMyInstantsUrl(pageUrl) {
+        try {
+            const response = await axios.get(pageUrl, {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+
+            const $ = cheerio.load(response.data);
+
+            // Try different methods to find the MP3 URL
+            // Method 1: From play button
+            const playButton = $('.small-button, .instant-play').first();
+            let soundPath = playButton.attr('onmousedown')?.match(/play\('([^']+)'/)?.[1];
+
+            if (soundPath) {
+                return soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`;
+            }
+
+            // Method 2: From data attributes
+            soundPath = playButton.attr('data-sound') || playButton.attr('data-url');
+            if (soundPath) {
+                return soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`;
+            }
+
+            // Method 3: Find any .mp3 link in the page
+            const mp3Match = response.data.match(/https?:\/\/[^\s"'<>]+?\.mp3[^\s"'<>]*/i);
+            if (mp3Match) {
+                return mp3Match[0];
+            }
+
+            throw new Error('Could not find MP3 URL');
+        } catch (error) {
+            console.error('MyInstants resolve error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Get trending sounds from MyInstants
+     */
+    async getTrendingMyInstants() {
+        try {
+            const response = await axios.get('https://www.myinstants.com/en/index/us/', {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+
+            const $ = cheerio.load(response.data);
+            const results = [];
+
+            $('.instant').slice(0, 20).each((i, elem) => {
+                const $elem = $(elem);
+                const $button = $elem.find('.small-button');
+                const name = $elem.find('.instant-link').text().trim();
+                const pageUrl = $elem.find('.instant-link').attr('href');
+                const soundPath = $button.attr('onmousedown')?.match(/play\('([^']+)'/)?.[1];
+
+                if (name && soundPath) {
+                    results.push({
+                        name: name,
+                        url: soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`,
+                        pageUrl: pageUrl ? `https://www.myinstants.com${pageUrl}` : null
+                    });
+                }
+            });
+
+            return results;
+        } catch (error) {
+            console.error('MyInstants trending error:', error.message);
             return [];
         }
     }

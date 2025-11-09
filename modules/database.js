@@ -97,7 +97,7 @@ class DatabaseManager {
             )
         `);
 
-        // HUD-Element-Konfigurationen (Position und Sichtbarkeit)
+        // HUD-Element-Konfigurationen (Position, Größe und Sichtbarkeit)
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS hud_elements (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,6 +106,8 @@ class DatabaseManager {
                 position_x REAL DEFAULT 0,
                 position_y REAL DEFAULT 0,
                 position_unit TEXT DEFAULT 'px',
+                width REAL DEFAULT 0,
+                height REAL DEFAULT 0,
                 anchor TEXT DEFAULT 'top-left',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -158,15 +160,15 @@ class DatabaseManager {
 
     initializeDefaultHudElements() {
         const defaultElements = [
-            { element_id: 'alert', enabled: 1, position_x: 50, position_y: 50, position_unit: '%', anchor: 'center' },
-            { element_id: 'event-feed', enabled: 1, position_x: 30, position_y: 120, position_unit: 'px', anchor: 'bottom-left' },
-            { element_id: 'chat', enabled: 1, position_x: 30, position_y: 30, position_unit: 'px', anchor: 'bottom-right' },
-            { element_id: 'goal', enabled: 1, position_x: 50, position_y: 30, position_unit: '%', anchor: 'top-center' }
+            { element_id: 'alert', enabled: 1, position_x: 50, position_y: 50, position_unit: '%', width: 400, height: 200, anchor: 'center' },
+            { element_id: 'event-feed', enabled: 1, position_x: 30, position_y: 120, position_unit: 'px', width: 400, height: 400, anchor: 'bottom-left' },
+            { element_id: 'chat', enabled: 1, position_x: 30, position_y: 30, position_unit: 'px', width: 450, height: 600, anchor: 'bottom-right' },
+            { element_id: 'goal', enabled: 1, position_x: 50, position_y: 30, position_unit: '%', width: 500, height: 80, anchor: 'top-center' }
         ];
 
         const stmt = this.db.prepare(`
-            INSERT OR IGNORE INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, anchor)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, width, height, anchor)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         for (const element of defaultElements) {
@@ -176,6 +178,8 @@ class DatabaseManager {
                 element.position_x,
                 element.position_y,
                 element.position_unit,
+                element.width,
+                element.height,
                 element.anchor
             );
         }
@@ -456,13 +460,15 @@ class DatabaseManager {
 
     setHudElement(elementId, config) {
         const stmt = this.db.prepare(`
-            INSERT INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, anchor, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, width, height, anchor, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(element_id) DO UPDATE SET
                 enabled = excluded.enabled,
                 position_x = excluded.position_x,
                 position_y = excluded.position_y,
                 position_unit = excluded.position_unit,
+                width = excluded.width,
+                height = excluded.height,
                 anchor = excluded.anchor,
                 updated_at = CURRENT_TIMESTAMP
         `);
@@ -472,6 +478,8 @@ class DatabaseManager {
             config.position_x,
             config.position_y,
             config.position_unit || 'px',
+            config.width || 0,
+            config.height || 0,
             config.anchor || 'top-left'
         );
     }
@@ -483,6 +491,15 @@ class DatabaseManager {
             WHERE element_id = ?
         `);
         stmt.run(positionX, positionY, unit, anchor, elementId);
+    }
+
+    updateHudElementSize(elementId, width, height) {
+        const stmt = this.db.prepare(`
+            UPDATE hud_elements
+            SET width = ?, height = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE element_id = ?
+        `);
+        stmt.run(width, height, elementId);
     }
 
     toggleHudElement(elementId, enabled) {

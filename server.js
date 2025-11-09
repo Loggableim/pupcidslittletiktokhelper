@@ -641,23 +641,20 @@ app.get('/api/myinstants/resolve', async (req, res) => {
     }
 
     try {
-        const axios = require('axios');
-        const response = await axios.get(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            timeout: 10000
-        });
-
-        // MP3-Link aus HTML extrahieren
-        const mp3Match = response.data.match(/href="(https?:\/\/[^"]+\.mp3[^"]*)"/i);
-
-        if (mp3Match) {
-            return res.json({ success: true, mp3: mp3Match[1] });
-        }
-
-        return res.json({ success: false, error: 'Kein MP3-Link gefunden' });
-
+        const mp3Url = await soundboard.resolveMyInstantsUrl(url);
+        return res.json({ success: true, mp3: mp3Url });
     } catch (error) {
         console.error('Error resolving MyInstants URL:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/myinstants/trending', async (req, res) => {
+    try {
+        const results = await soundboard.getTrendingMyInstants();
+        res.json({ success: true, results });
+    } catch (error) {
+        console.error('Error getting trending sounds:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
