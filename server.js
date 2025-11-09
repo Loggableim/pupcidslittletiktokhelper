@@ -2015,7 +2015,7 @@ server.listen(PORT, async () => {
     }
 
     // Auto-Update-Check starten (alle 24 Stunden)
-    updateChecker.startAutoCheck(24);
+    updateManager.startAutoCheck(24);
 
     // Browser automatisch öffnen (async)
     try {
