@@ -291,6 +291,59 @@
         .notification.error {
             background: rgba(244,67,54,0.95);
         }
+
+        /* Uploaded Images Grid */
+        .image-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .image-item:hover {
+            transform: scale(1.05);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-item .delete-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(244,67,54,0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .image-item:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .image-item .delete-btn:hover {
+            background: rgba(244,67,54,1);
+        }
     </style>
 </head>
 <body>
@@ -352,6 +405,30 @@
                 </label>
                 <div class="help-text">Wenn aktiviert, werden Bilder statt Emojis verwendet</div>
             </div>
+
+            <!-- Upload Section -->
+            <div class="form-group">
+                <label>Bilder hochladen</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="image-upload" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml" multiple style="flex: 1;">
+                    <button type="button" onclick="uploadImages()" class="secondary">📤 Upload</button>
+                </div>
+                <div class="help-text">PNG, JPG, GIF, WebP, SVG (max. 5MB pro Datei)</div>
+                <div id="upload-progress" style="display: none; margin-top: 10px; color: #4CAF50; font-weight: bold;"></div>
+            </div>
+
+            <!-- Uploaded Images Grid -->
+            <div class="form-group">
+                <label>Hochgeladene Bilder</label>
+                <div id="uploaded-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; min-height: 100px;">
+                    <div style="text-align: center; color: #9ca3af; grid-column: 1 / -1;">Keine Bilder hochgeladen</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="image_urls">Manuelle Bild-URLs (eine pro Zeile)</label>
+                <textarea id="image_urls" rows="3" placeholder="/images/coin.png&#10;/images/heart.png&#10;https://example.com/star.png"></textarea>
+                <div class="help-text">Optional: Externe URLs hinzufügen</div>
             <div class="form-group">
                 <label for="image_urls">Bild-URLs (eine pro Zeile)</label>
                 <textarea id="image_urls" rows="5" placeholder="/images/coin.png&#10;/images/heart.png&#10;https://example.com/star.png"></textarea>
@@ -709,8 +786,138 @@
             }, 3000);
         }
 
+        // Upload images
+        async function uploadImages() {
+            const fileInput = document.getElementById('image-upload');
+            const files = fileInput.files;
+
+            if (files.length === 0) {
+                showNotification('Bitte wähle mindestens eine Datei aus', true);
+                return;
+            }
+
+            const progressEl = document.getElementById('upload-progress');
+            progressEl.style.display = 'block';
+            progressEl.textContent = `Uploading ${files.length} file(s)...`;
+
+            let uploaded = 0;
+            let failed = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const formData = new FormData();
+                formData.append('image', files[i]);
+
+                try {
+                    const response = await fetch('/api/emoji-rain/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        uploaded++;
+                        progressEl.textContent = `Uploaded ${uploaded}/${files.length}...`;
+                    } else {
+                        failed++;
+                        console.error('Upload failed:', data.error);
+                    }
+                } catch (error) {
+                    failed++;
+                    console.error('Upload error:', error);
+                }
+            }
+
+            // Clear file input
+            fileInput.value = '';
+
+            // Hide progress
+            setTimeout(() => {
+                progressEl.style.display = 'none';
+            }, 2000);
+
+            // Show result
+            if (failed > 0) {
+                showNotification(`${uploaded} hochgeladen, ${failed} fehlgeschlagen`, failed > uploaded);
+            } else {
+                showNotification(`${uploaded} Bild(er) erfolgreich hochgeladen!`);
+            }
+
+            // Refresh image list
+            await loadUploadedImages();
+        }
+
+        // Load uploaded images
+        async function loadUploadedImages() {
+            try {
+                const response = await fetch('/api/emoji-rain/images');
+                const data = await response.json();
+
+                const grid = document.getElementById('uploaded-images-grid');
+
+                if (data.success && data.images.length > 0) {
+                    grid.innerHTML = '';
+
+                    // Update image URLs in textarea
+                    const currentUrls = document.getElementById('image_urls').value.split('\n').map(u => u.trim()).filter(u => u);
+                    const uploadedUrls = data.images.map(img => img.url);
+                    const allUrls = [...new Set([...uploadedUrls, ...currentUrls])];
+                    document.getElementById('image_urls').value = allUrls.join('\n');
+
+                    // Render image grid
+                    data.images.forEach(img => {
+                        const item = document.createElement('div');
+                        item.className = 'image-item';
+                        item.innerHTML = `
+                            <img src="${img.url}" alt="${img.filename}" title="${img.filename}">
+                            <button class="delete-btn" onclick="deleteImage('${img.filename}')" title="Löschen">×</button>
+                        `;
+                        grid.appendChild(item);
+                    });
+                } else {
+                    grid.innerHTML = '<div style="text-align: center; color: #9ca3af; grid-column: 1 / -1;">Keine Bilder hochgeladen</div>';
+                }
+            } catch (error) {
+                console.error('Error loading images:', error);
+            }
+        }
+
+        // Delete image
+        async function deleteImage(filename) {
+            if (!confirm(`Bild "${filename}" wirklich löschen?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/emoji-rain/images/${filename}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification('Bild gelöscht!');
+
+                    // Remove URL from textarea
+                    const currentUrls = document.getElementById('image_urls').value.split('\n');
+                    const urlToRemove = `/uploads/emoji-rain/${filename}`;
+                    const newUrls = currentUrls.filter(url => url.trim() !== urlToRemove);
+                    document.getElementById('image_urls').value = newUrls.join('\n');
+
+                    // Reload image list
+                    await loadUploadedImages();
+                } else {
+                    showNotification('Fehler beim Löschen: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Netzwerkfehler beim Löschen', true);
+                console.error(error);
+            }
+        }
+
         // Initialize
         loadConfig();
+        loadUploadedImages();
     </script>
 </body>
 </html>

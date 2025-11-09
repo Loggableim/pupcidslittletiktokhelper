@@ -92,6 +92,38 @@ const upload = multer({
     }
 });
 
+// Emoji Rain Upload Configuration
+const emojiRainUploadDir = path.join(__dirname, 'public', 'uploads', 'emoji-rain');
+if (!fs.existsSync(emojiRainUploadDir)) {
+    fs.mkdirSync(emojiRainUploadDir, { recursive: true });
+}
+
+const emojiRainStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, emojiRainUploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'emoji-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const emojiRainUpload = multer({
+    storage: emojiRainStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /png|jpg|jpeg|gif|webp|svg/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only image files (PNG, JPG, GIF, WebP, SVG) are allowed!'));
+        }
+    }
+});
+
 // ========== USER PROFILE INITIALISIEREN ==========
 const profileManager = new UserProfileManager();
 
@@ -1468,6 +1500,66 @@ app.post('/api/emoji-rain/test', apiLimiter, (req, res) => {
         res.json({ success: true, message: 'Test emojis spawned', data: testData });
     } catch (error) {
         logger.error('Error testing emoji rain:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Upload custom emoji rain image
+app.post('/api/emoji-rain/upload', uploadLimiter, emojiRainUpload.single('image'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+
+        const fileUrl = `/uploads/emoji-rain/${req.file.filename}`;
+        logger.info(`📤 Emoji rain image uploaded: ${req.file.filename}`);
+
+        res.json({
+            success: true,
+            message: 'Image uploaded successfully',
+            url: fileUrl,
+            filename: req.file.filename,
+            size: req.file.size
+        });
+    } catch (error) {
+        logger.error('Error uploading emoji rain image:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get list of uploaded emoji rain images
+app.get('/api/emoji-rain/images', apiLimiter, (req, res) => {
+    try {
+        const files = fs.readdirSync(emojiRainUploadDir).map(filename => ({
+            filename,
+            url: `/uploads/emoji-rain/${filename}`,
+            size: fs.statSync(path.join(emojiRainUploadDir, filename)).size,
+            created: fs.statSync(path.join(emojiRainUploadDir, filename)).birthtime
+        }));
+
+        res.json({ success: true, images: files });
+    } catch (error) {
+        logger.error('Error listing emoji rain images:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Delete uploaded emoji rain image
+app.delete('/api/emoji-rain/images/:filename', apiLimiter, (req, res) => {
+    try {
+        const filename = req.params.filename;
+        const filePath = path.join(emojiRainUploadDir, filename);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, error: 'File not found' });
+        }
+
+        fs.unlinkSync(filePath);
+        logger.info(`🗑️ Deleted emoji rain image: ${filename}`);
+
+        res.json({ success: true, message: 'Image deleted successfully' });
+    } catch (error) {
+        logger.error('Error deleting emoji rain image:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
