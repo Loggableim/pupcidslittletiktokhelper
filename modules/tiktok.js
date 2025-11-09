@@ -45,11 +45,14 @@ class TikTokConnector extends EventEmitter {
                 roomInfo: state.roomInfo
             });
 
+            // Speichere letzten verbundenen Username für automatisches Gift-Katalog-Update beim Neustart
+            this.db.setSetting('last_connected_username', username);
+
             console.log(`✅ Connected to TikTok LIVE: @${username}`);
 
-            // Gift-Katalog automatisch aktualisieren
+            // Gift-Katalog automatisch aktualisieren (ohne preferConnected, da bereits verbunden)
             setTimeout(() => {
-                this.updateGiftCatalog().catch(err => {
+                this.updateGiftCatalog({ preferConnected: false }).catch(err => {
                     console.warn('⚠️ Automatisches Gift-Katalog-Update fehlgeschlagen:', err.message);
                 });
             }, 2000);
@@ -263,15 +266,49 @@ class TikTokConnector extends EventEmitter {
         return this.isConnected;
     }
 
-    async updateGiftCatalog() {
-        if (!this.connection || !this.isConnected) {
-            throw new Error('Nicht verbunden. Bitte zuerst mit einem Stream verbinden.');
-        }
+    async updateGiftCatalog(options = {}) {
+        const { preferConnected = false, username = null } = options;
+
+        let clientToUse = null;
+        let tempClient = null;
 
         try {
-            // TikTok-live-connector speichert verfügbare Gifts in connection.availableGifts
-            // nach dem Connect mit enableExtendedGiftInfo: true
-            const gifts = this.connection.availableGifts || {};
+            // Verwende bestehende Verbindung falls vorhanden
+            if (this.connection && this.isConnected) {
+                clientToUse = this.connection;
+            }
+            // Oder erstelle temporären Client wenn preferConnected aktiviert ist
+            else if (preferConnected) {
+                const targetUsername = username || this.currentUsername;
+
+                if (!targetUsername) {
+                    console.warn('⚠️ Kein TikTok-Username verfügbar für Gift-Katalog-Update');
+                    return { ok: false, message: 'Kein Username konfiguriert', count: 0 };
+                }
+
+                console.log(`🔄 Erstelle temporären Client für Gift-Update (@${targetUsername})...`);
+
+                tempClient = new TikTokLiveConnection(targetUsername, {
+                    processInitialData: true,
+                    enableExtendedGiftInfo: true,
+                    enableWebsocketUpgrade: false,
+                    requestPollingIntervalMs: 1000
+                });
+
+                // Verbinde temporären Client
+                await tempClient.connect();
+
+                // Warte kurz damit Gift-Daten geladen werden
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                clientToUse = tempClient;
+            }
+            else {
+                throw new Error('Nicht verbunden. Bitte zuerst mit einem Stream verbinden.');
+            }
+
+            // Hole Gift-Daten vom Client
+            const gifts = clientToUse.availableGifts || {};
 
             if (!gifts || Object.keys(gifts).length === 0) {
                 console.warn('⚠️ Keine Gift-Informationen verfügbar. Stream evtl. nicht live.');
@@ -321,7 +358,17 @@ class TikTokConnector extends EventEmitter {
 
         } catch (error) {
             console.error('❌ Fehler beim Gift-Katalog-Update:', error);
-            throw error;
+            return { ok: false, error: error.message, count: 0 };
+        } finally {
+            // Temporären Client immer disconnecten
+            if (tempClient) {
+                try {
+                    tempClient.disconnect();
+                    console.log('✅ Temporärer Client getrennt');
+                } catch (err) {
+                    console.warn('⚠️ Fehler beim Trennen des temporären Clients:', err.message);
+                }
+            }
         }
     }
 
