@@ -9,6 +9,9 @@ class TikTokConnector extends EventEmitter {
         this.connection = null;
         this.isConnected = false;
         this.currentUsername = null;
+        this.retryCount = 0;
+        this.maxRetries = 3;
+        this.retryDelays = [2000, 5000, 10000]; // Exponential backoff: 2s, 5s, 10s
         this.stats = {
             viewers: 0,
             likes: 0,
@@ -18,27 +21,47 @@ class TikTokConnector extends EventEmitter {
         };
     }
 
-    async connect(username) {
+    async connect(username, options = {}) {
         if (this.isConnected) {
             await this.disconnect();
         }
 
+        // Reset retry counter bei neuem Verbindungsversuch
+        if (!options.isRetry) {
+            this.retryCount = 0;
+        }
+
         try {
             this.currentUsername = username;
-            this.connection = new TikTokLiveConnection(username, {
+
+            // Erweiterte Verbindungsoptionen
+            const connectionOptions = {
                 processInitialData: true,
                 enableExtendedGiftInfo: true,
                 enableWebsocketUpgrade: true,
-                requestPollingIntervalMs: 1000
-            });
+                requestPollingIntervalMs: 1000,
+                // Session-Keys Support (falls vorhanden)
+                ...(options.sessionId && { sessionId: options.sessionId })
+            };
+
+            console.log(`🔄 Verbinde mit TikTok LIVE: @${username}${this.retryCount > 0 ? ` (Versuch ${this.retryCount + 1}/${this.maxRetries + 1})` : ''}...`);
+
+            this.connection = new TikTokLiveConnection(username, connectionOptions);
 
             // Event-Listener registrieren
             this.registerEventListeners();
 
-            // Verbindung herstellen
-            const state = await this.connection.connect();
+            // Verbindung herstellen mit Timeout
+            const state = await Promise.race([
+                this.connection.connect(),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Verbindungs-Timeout nach 30 Sekunden')), 30000)
+                )
+            ]);
 
             this.isConnected = true;
+            this.retryCount = 0; // Reset bei erfolgreicher Verbindung
+
             this.broadcastStatus('connected', {
                 username,
                 roomId: state.roomId,
@@ -59,10 +82,113 @@ class TikTokConnector extends EventEmitter {
 
         } catch (error) {
             this.isConnected = false;
-            this.broadcastStatus('error', { error: error.message });
-            console.error('❌ TikTok connection error:', error);
-            throw error;
+
+            // Detaillierte Fehleranalyse
+            const errorInfo = this.analyzeConnectionError(error);
+
+            console.error(`❌ TikTok Verbindungsfehler (${errorInfo.type}):`, errorInfo.message);
+
+            // Retry-Logik bei bestimmten Fehlern
+            if (errorInfo.retryable && this.retryCount < this.maxRetries) {
+                const delay = this.retryDelays[this.retryCount];
+                this.retryCount++;
+
+                console.log(`⏳ Wiederhole Verbindung in ${delay / 1000} Sekunden...`);
+
+                this.broadcastStatus('retrying', {
+                    attempt: this.retryCount,
+                    maxRetries: this.maxRetries,
+                    delay: delay,
+                    error: errorInfo.message
+                });
+
+                // Warte und versuche erneut
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return this.connect(username, { ...options, isRetry: true });
+            }
+
+            // Broadcast detaillierter Fehler
+            this.broadcastStatus('error', {
+                error: errorInfo.message,
+                type: errorInfo.type,
+                suggestion: errorInfo.suggestion,
+                retryable: errorInfo.retryable
+            });
+
+            throw new Error(errorInfo.message);
         }
+    }
+
+    analyzeConnectionError(error) {
+        const errorMessage = error.message || '';
+        const errorString = error.toString();
+
+        // Sign API Fehler (häufigster Fehler)
+        if (errorMessage.includes('Sign Error') || errorMessage.includes('sign server')) {
+            if (errorMessage.includes('504') || errorMessage.includes('Gateway')) {
+                return {
+                    type: 'SIGN_API_GATEWAY_TIMEOUT',
+                    message: 'TikTok Sign-Server antwortet nicht (Gateway Timeout). Dies kann an überlasteten Servern oder TikTok-Blockierungen liegen.',
+                    suggestion: 'Bitte versuche es in einigen Minuten erneut. Falls das Problem weiterhin besteht, könnte TikTok temporär den Zugriff blockieren.',
+                    retryable: true
+                };
+            }
+            return {
+                type: 'SIGN_API_ERROR',
+                message: 'Fehler beim TikTok Sign-Server. Der externe Dienst ist möglicherweise nicht verfügbar.',
+                suggestion: 'Versuche es später erneut oder verwende Session-Keys falls verfügbar.',
+                retryable: true
+            };
+        }
+
+        // SIGI_STATE Fehler (Blockierung)
+        if (errorMessage.includes('SIGI_STATE') || errorMessage.includes('blocked by TikTok')) {
+            return {
+                type: 'BLOCKED_BY_TIKTOK',
+                message: 'TikTok blockiert den Zugriff. Möglicherweise hat TikTok deine IP temporär blockiert.',
+                suggestion: 'Warte einige Minuten und versuche es erneut. Bei wiederholten Problemen: VPN verwenden oder Session-Keys nutzen.',
+                retryable: false
+            };
+        }
+
+        // Room ID Fehler
+        if (errorMessage.includes('Room ID') || errorMessage.includes('LIVE')) {
+            return {
+                type: 'ROOM_NOT_FOUND',
+                message: 'Stream nicht gefunden. Der Stream ist möglicherweise nicht live oder der Username ist falsch.',
+                suggestion: 'Überprüfe den Username und stelle sicher, dass der Stream live ist.',
+                retryable: false
+            };
+        }
+
+        // Timeout
+        if (errorMessage.includes('Timeout') || errorMessage.includes('timeout')) {
+            return {
+                type: 'CONNECTION_TIMEOUT',
+                message: 'Verbindungs-Timeout. Die Verbindung zu TikTok dauerte zu lange.',
+                suggestion: 'Überprüfe deine Internetverbindung und versuche es erneut.',
+                retryable: true
+            };
+        }
+
+        // Network Fehler
+        if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND') ||
+            errorMessage.includes('network') || errorMessage.includes('Network')) {
+            return {
+                type: 'NETWORK_ERROR',
+                message: 'Netzwerkfehler. Keine Verbindung zu TikTok möglich.',
+                suggestion: 'Überprüfe deine Internetverbindung.',
+                retryable: true
+            };
+        }
+
+        // Unbekannter Fehler
+        return {
+            type: 'UNKNOWN_ERROR',
+            message: errorMessage || errorString || 'Unbekannter Verbindungsfehler',
+            suggestion: 'Bitte überprüfe die Logs für weitere Details.',
+            retryable: true
+        };
     }
 
     disconnect() {
@@ -72,6 +198,7 @@ class TikTokConnector extends EventEmitter {
         }
         this.isConnected = false;
         this.currentUsername = null;
+        this.retryCount = 0; // Reset retry counter
         this.resetStats();
         this.broadcastStatus('disconnected');
         console.log('⚫ Disconnected from TikTok LIVE');
