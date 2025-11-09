@@ -1,0 +1,192 @@
+{
+  "app": {
+    "name": "Pup Cid's Little TikTok Helper",
+    "tagline": "Kostenlose Open-Source-Alternative zu Tikfinity und Tiktory"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "connect": "Verbinden",
+    "disconnect": "Trennen",
+    "connection_status": "Verbindungsstatus",
+    "connected": "Verbunden",
+    "disconnected": "Getrennt",
+    "connecting": "Verbinde",
+    "username_placeholder": "TikTok-Benutzername eingeben",
+    "stats": {
+      "viewers": "Zuschauer",
+      "likes": "Likes",
+      "coins": "Münzen",
+      "followers": "Follower"
+    }
+  },
+  "tabs": {
+    "events": "Ereignisse",
+    "tts": "TTS",
+    "overlays": "Overlays",
+    "flows": "Flows",
+    "soundboard": "Soundboard",
+    "settings": "Einstellungen",
+    "leaderboard": "Bestenliste",
+    "minigames": "Mini-Spiele"
+  },
+  "events": {
+    "gift": "{username} hat {giftName} x{repeatCount} gesendet ({coins} Münzen)",
+    "follow": "{username} folgt dir!",
+    "subscribe": "{username} hat abonniert!",
+    "share": "{username} hat den Stream geteilt!",
+    "chat": "{username}: {message}",
+    "like": "{username} hat geliked! (Gesamt: {likeCount})",
+    "no_events": "Noch keine Ereignisse. Verbinde dich, um Live-Events zu sehen!"
+  },
+  "tts": {
+    "title": "Text-to-Speech",
+    "provider": "TTS-Anbieter",
+    "default_voice": "Standard-Stimme",
+    "volume": "Lautstärke",
+    "speed": "Geschwindigkeit",
+    "enable_chat_tts": "TTS für Chat-Nachrichten aktivieren",
+    "min_coins": "Mindest-Münzen für Chat-TTS",
+    "test": "TTS testen",
+    "voice_mapping": "Stimmen-Zuordnung",
+    "add_user": "Benutzer hinzufügen",
+    "username": "Benutzername",
+    "voice": "Stimme",
+    "save": "Speichern",
+    "delete": "Löschen"
+  },
+  "flows": {
+    "title": "Event-Automatisierung (Flows)",
+    "create": "Flow erstellen",
+    "edit": "Flow bearbeiten",
+    "delete": "Flow löschen",
+    "enable": "Aktivieren",
+    "disable": "Deaktivieren",
+    "test": "Testen",
+    "name": "Flow-Name",
+    "trigger": "Auslöser",
+    "conditions": "Bedingungen",
+    "actions": "Aktionen",
+    "add_action": "Aktion hinzufügen",
+    "drag_to_reorder": "Ziehen, um Aktionen neu zu ordnen",
+    "action_types": {
+      "tts": "Text-to-Speech",
+      "alert": "Alert anzeigen",
+      "sound": "Sound abspielen",
+      "webhook": "Webhook senden",
+      "write_file": "In Datei schreiben",
+      "delay": "Verzögerung",
+      "obs": "OBS-Aktion"
+    }
+  },
+  "soundboard": {
+    "title": "Soundboard-Konfiguration",
+    "search_gifts": "Geschenke suchen",
+    "set_sound": "Sound setzen",
+    "remove_sound": "Sound entfernen",
+    "bulk_actions": "Massenaktionen",
+    "play_mode": "Abspiel-Modus",
+    "overlap": "Überlappend",
+    "sequential": "Sequenziell",
+    "clear_queue": "Warteschlange leeren"
+  },
+  "leaderboard": {
+    "title": "Bestenliste",
+    "top_gifters": "Top-Schenker",
+    "top_chatters": "Top-Chatter",
+    "rank": "Rang",
+    "username": "Benutzername",
+    "total_coins": "Gesamt-Münzen",
+    "message_count": "Nachrichten",
+    "reset": "Zurücksetzen",
+    "period": {
+      "all_time": "Alle Zeit",
+      "session": "Diese Sitzung",
+      "today": "Heute",
+      "week": "Diese Woche"
+    }
+  },
+  "minigames": {
+    "title": "Mini-Spiele",
+    "roulette": {
+      "title": "Roulette",
+      "spin": "Drehen",
+      "winner": "Gewinner: {username}!"
+    },
+    "dice": {
+      "title": "Würfelwurf",
+      "roll": "Würfeln",
+      "result": "{username} hat {number} gewürfelt"
+    },
+    "coinflip": {
+      "title": "Münzwurf",
+      "flip": "Werfen",
+      "heads": "Kopf",
+      "tails": "Zahl",
+      "result": "{username} hat {result} bekommen!"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "general": "Allgemeine Einstellungen",
+    "obs": "OBS-Integration",
+    "theme": "Theme",
+    "language": "Sprache",
+    "save": "Einstellungen speichern",
+    "saved": "Einstellungen erfolgreich gespeichert!"
+  },
+  "obs": {
+    "title": "OBS-WebSocket-Integration",
+    "enable": "OBS-Integration aktivieren",
+    "host": "Host",
+    "port": "Port",
+    "password": "Passwort",
+    "connect": "Mit OBS verbinden",
+    "disconnect": "Von OBS trennen",
+    "status": "Status",
+    "event_mappings": "Event-Zuordnungen",
+    "add_mapping": "Zuordnung hinzufügen",
+    "scene": "Szene",
+    "source": "Quelle",
+    "action": "Aktion",
+    "actions": {
+      "switch_scene": "Szene wechseln",
+      "toggle_source": "Quelle umschalten",
+      "set_filter": "Filter setzen"
+    }
+  },
+  "theme": {
+    "light": "Hell-Modus",
+    "dark": "Dunkel-Modus",
+    "auto": "Auto (System)"
+  },
+  "common": {
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "save": "Speichern",
+    "reset": "Zurücksetzen",
+    "search": "Suchen",
+    "filter": "Filter",
+    "sort": "Sortieren",
+    "upload": "Hochladen",
+    "download": "Herunterladen",
+    "copy": "Kopieren",
+    "paste": "Einfügen",
+    "undo": "Rückgängig",
+    "redo": "Wiederholen"
+  },
+  "errors": {
+    "connection_failed": "Verbindung fehlgeschlagen. Stelle sicher, dass du LIVE auf TikTok bist!",
+    "invalid_username": "Ungültiger Benutzername",
+    "network_error": "Netzwerkfehler. Überprüfe deine Internetverbindung.",
+    "server_error": "Serverfehler. Bitte versuche es später erneut.",
+    "not_found": "Nicht gefunden",
+    "unauthorized": "Nicht autorisiert",
+    "rate_limit": "Zu viele Anfragen. Bitte warte einen Moment."
+  }
+}

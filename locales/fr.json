@@ -1,0 +1,35 @@
+{
+  "app": {
+    "name": "Pup Cid's Little TikTok Helper",
+    "tagline": "Alternative gratuite open source à Tikfinity et Tiktory"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "connect": "Connecter",
+    "disconnect": "Déconnecter",
+    "connection_status": "État de la connexion",
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "connecting": "Connexion",
+    "username_placeholder": "Entrez le nom d'utilisateur TikTok"
+  },
+  "tabs": {
+    "events": "Événements",
+    "tts": "TTS",
+    "overlays": "Superpositions",
+    "flows": "Flux",
+    "soundboard": "Table de mixage",
+    "settings": "Paramètres",
+    "leaderboard": "Classement",
+    "minigames": "Mini-jeux"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "save": "Enregistrer"
+  }
+}

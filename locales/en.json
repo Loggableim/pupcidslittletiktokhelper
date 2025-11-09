@@ -1,0 +1,192 @@
+{
+  "app": {
+    "name": "Pup Cid's Little TikTok Helper",
+    "tagline": "Free Open-Source Alternative to Tikfinity and Tiktory"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "connection_status": "Connection Status",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "connecting": "Connecting",
+    "username_placeholder": "Enter TikTok username",
+    "stats": {
+      "viewers": "Viewers",
+      "likes": "Likes",
+      "coins": "Coins",
+      "followers": "Followers"
+    }
+  },
+  "tabs": {
+    "events": "Events",
+    "tts": "TTS",
+    "overlays": "Overlays",
+    "flows": "Flows",
+    "soundboard": "Soundboard",
+    "settings": "Settings",
+    "leaderboard": "Leaderboard",
+    "minigames": "Mini Games"
+  },
+  "events": {
+    "gift": "{username} sent {giftName} x{repeatCount} ({coins} coins)",
+    "follow": "{username} followed!",
+    "subscribe": "{username} subscribed!",
+    "share": "{username} shared the stream!",
+    "chat": "{username}: {message}",
+    "like": "{username} liked! (Total: {likeCount})",
+    "no_events": "No events yet. Connect to see live events!"
+  },
+  "tts": {
+    "title": "Text-to-Speech",
+    "provider": "TTS Provider",
+    "default_voice": "Default Voice",
+    "volume": "Volume",
+    "speed": "Speed",
+    "enable_chat_tts": "Enable TTS for Chat Messages",
+    "min_coins": "Minimum Coins for Chat TTS",
+    "test": "Test TTS",
+    "voice_mapping": "Voice Mapping",
+    "add_user": "Add User",
+    "username": "Username",
+    "voice": "Voice",
+    "save": "Save",
+    "delete": "Delete"
+  },
+  "flows": {
+    "title": "Event Automation (Flows)",
+    "create": "Create Flow",
+    "edit": "Edit Flow",
+    "delete": "Delete Flow",
+    "enable": "Enable",
+    "disable": "Disable",
+    "test": "Test",
+    "name": "Flow Name",
+    "trigger": "Trigger",
+    "conditions": "Conditions",
+    "actions": "Actions",
+    "add_action": "Add Action",
+    "drag_to_reorder": "Drag to reorder actions",
+    "action_types": {
+      "tts": "Text-to-Speech",
+      "alert": "Show Alert",
+      "sound": "Play Sound",
+      "webhook": "Send Webhook",
+      "write_file": "Write to File",
+      "delay": "Delay",
+      "obs": "OBS Action"
+    }
+  },
+  "soundboard": {
+    "title": "Soundboard Configuration",
+    "search_gifts": "Search Gifts",
+    "set_sound": "Set Sound",
+    "remove_sound": "Remove Sound",
+    "bulk_actions": "Bulk Actions",
+    "play_mode": "Play Mode",
+    "overlap": "Overlap",
+    "sequential": "Sequential",
+    "clear_queue": "Clear Queue"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "top_gifters": "Top Gifters",
+    "top_chatters": "Top Chatters",
+    "rank": "Rank",
+    "username": "Username",
+    "total_coins": "Total Coins",
+    "message_count": "Messages",
+    "reset": "Reset",
+    "period": {
+      "all_time": "All Time",
+      "session": "This Session",
+      "today": "Today",
+      "week": "This Week"
+    }
+  },
+  "minigames": {
+    "title": "Mini Games",
+    "roulette": {
+      "title": "Roulette",
+      "spin": "Spin",
+      "winner": "Winner: {username}!"
+    },
+    "dice": {
+      "title": "Dice Roll",
+      "roll": "Roll",
+      "result": "{username} rolled {number}"
+    },
+    "coinflip": {
+      "title": "Coin Flip",
+      "flip": "Flip",
+      "heads": "Heads",
+      "tails": "Tails",
+      "result": "{username} got {result}!"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General Settings",
+    "obs": "OBS Integration",
+    "theme": "Theme",
+    "language": "Language",
+    "save": "Save Settings",
+    "saved": "Settings saved successfully!"
+  },
+  "obs": {
+    "title": "OBS WebSocket Integration",
+    "enable": "Enable OBS Integration",
+    "host": "Host",
+    "port": "Port",
+    "password": "Password",
+    "connect": "Connect to OBS",
+    "disconnect": "Disconnect from OBS",
+    "status": "Status",
+    "event_mappings": "Event Mappings",
+    "add_mapping": "Add Mapping",
+    "scene": "Scene",
+    "source": "Source",
+    "action": "Action",
+    "actions": {
+      "switch_scene": "Switch Scene",
+      "toggle_source": "Toggle Source",
+      "set_filter": "Set Filter"
+    }
+  },
+  "theme": {
+    "light": "Light Mode",
+    "dark": "Dark Mode",
+    "auto": "Auto (System)"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "reset": "Reset",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "upload": "Upload",
+    "download": "Download",
+    "copy": "Copy",
+    "paste": "Paste",
+    "undo": "Undo",
+    "redo": "Redo"
+  },
+  "errors": {
+    "connection_failed": "Connection failed. Make sure you are LIVE on TikTok!",
+    "invalid_username": "Invalid username",
+    "network_error": "Network error. Check your internet connection.",
+    "server_error": "Server error. Please try again later.",
+    "not_found": "Not found",
+    "unauthorized": "Unauthorized",
+    "rate_limit": "Too many requests. Please wait a moment."
+  }
+}
