@@ -232,6 +232,35 @@ class TikTokConnector extends EventEmitter {
         return extractedData;
     }
 
+    // Hilfsfunktion zum Extrahieren von Gift-Daten aus verschiedenen Event-Strukturen
+    extractGiftData(data) {
+        // Gift-Daten können verschachtelt sein: data.gift.* oder direkt data.*
+        const gift = data.gift || data;
+
+        const extractedData = {
+            giftName: gift.name || gift.giftName || gift.gift_name || null,
+            giftId: gift.id || gift.giftId || gift.gift_id || null,
+            giftPictureUrl: gift.image?.url_list?.[0] || gift.image?.url || gift.giftPictureUrl || gift.picture_url || null,
+            diamondCount: gift.diamond_count || gift.diamondCount || gift.diamonds || gift.coins || 0,
+            repeatCount: data.repeatCount || data.repeat_count || 1,
+            giftType: data.giftType || data.gift_type || 0,
+            repeatEnd: data.repeatEnd || data.repeat_end || false
+        };
+
+        // Debug-Logging wenn keine Gift-Daten gefunden wurden
+        if (!extractedData.giftName && !extractedData.giftId) {
+            console.warn('⚠️ Keine Gift-Daten in Event gefunden. Event-Struktur:', {
+                hasGift: !!data.gift,
+                hasGiftName: !!(data.giftName || data.name),
+                hasGiftId: !!(data.giftId || data.id),
+                hasDiamondCount: !!(data.diamondCount || data.diamond_count),
+                keys: Object.keys(data).slice(0, 15) // Erste 15 Keys für Debugging
+            });
+        }
+
+        return extractedData;
+    }
+
     registerEventListeners() {
         if (!this.connection) return;
 
@@ -278,22 +307,24 @@ class TikTokConnector extends EventEmitter {
 
         // ========== GIFT ==========
         this.connection.on('gift', (data) => {
+            const giftData = this.extractGiftData(data);
+
             // Nur "streak finished" Gifts zählen (sonst werden combo gifts mehrfach gezählt)
-            if (data.giftType === 1 && !data.repeatEnd) {
+            if (giftData.giftType === 1 && !giftData.repeatEnd) {
                 return; // Combo gift noch nicht beendet
             }
 
-            const coins = data.diamondCount || 0;
+            const coins = giftData.diamondCount;
             this.stats.totalCoins += coins;
 
             const userData = this.extractUserData(data);
             const eventData = {
                 username: userData.username,
                 nickname: userData.nickname,
-                giftName: data.giftName,
-                giftId: data.giftId,
-                giftPictureUrl: data.giftPictureUrl,
-                repeatCount: data.repeatCount,
+                giftName: giftData.giftName,
+                giftId: giftData.giftId,
+                giftPictureUrl: giftData.giftPictureUrl,
+                repeatCount: giftData.repeatCount,
                 coins: coins,
                 totalCoins: this.stats.totalCoins,
                 timestamp: new Date().toISOString()
