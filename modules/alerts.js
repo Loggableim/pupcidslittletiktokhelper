@@ -31,16 +31,16 @@ class AlertManager {
                 config = this.getDefaultConfig(type);
             }
 
-            // Alert nur hinzufügen wenn enabled
+            // Alert nur hinzufuegen wenn enabled
             if (!config.enabled) {
-                console.log(`⚠️ Alert für ${type} ist deaktiviert`);
+                console.log(`Alert fuer ${type} ist deaktiviert`);
                 return;
             }
 
             // Text-Template mit Daten rendern
             const renderedText = this.renderTemplate(config.text_template || '', data);
 
-            // Prüfe, ob Soundboard-Plugin für dieses Event den Sound übernimmt
+            // Pruefe, ob Soundboard-Plugin fuer dieses Event den Sound uebernimmt
             let soundFile = config.sound_file;
             let soundVolume = config.sound_volume || 80;
 
@@ -55,7 +55,7 @@ class AlertManager {
                         if (soundboardEnabled) {
                             let soundboardHasSound = false;
 
-                            // Prüfe je nach Event-Typ, ob Soundboard einen Sound konfiguriert hat
+                            // Pruefe je nach Event-Typ, ob Soundboard einen Sound konfiguriert hat
                             if (type === 'gift' && data.giftId) {
                                 const giftSound = soundboardPlugin.soundboard.getGiftSound(data.giftId);
                                 soundboardHasSound = !!giftSound;
@@ -70,12 +70,12 @@ class AlertManager {
                                 soundboardHasSound = !!shareSound;
                             }
 
-                            // Wenn Soundboard Sound übernimmt, Alert ohne Sound
+                            // Wenn Soundboard Sound uebernimmt, Alert ohne Sound
                             if (soundboardHasSound) {
                                 soundFile = null;
                                 soundVolume = 0;
                                 if (this.logger) {
-                                    this.logger.info(`Alert für ${type} (${data.giftName || data.username}): Sound durch Soundboard-Plugin übernommen`);
+                                    this.logger.info(`Alert fuer ${type} (${data.giftName || data.username}): Sound durch Soundboard-Plugin uebernommen`);
                                 }
                             }
                         }
@@ -134,28 +134,28 @@ class AlertManager {
                 timestamp: Date.now()
             };
 
-            // Queue-Size-Limit prüfen
+            // Queue-Size-Limit pruefen
             if (this.queue.length >= this.MAX_QUEUE_SIZE) {
-                const removed = this.queue.shift(); // Ältestes Element entfernen
+                const removed = this.queue.shift(); // Aeltestes Element entfernen
                 if (this.logger) {
                     this.logger.warn(`Alert queue full (${this.MAX_QUEUE_SIZE}), removed oldest alert: ${removed.type}`);
                 } else {
-                    console.warn(`⚠️ Alert queue full (${this.MAX_QUEUE_SIZE}), removed oldest alert: ${removed.type}`);
+                    console.warn(`[!] Alert queue full (${this.MAX_QUEUE_SIZE}), removed oldest alert: ${removed.type}`);
                 }
             }
 
-            // Warning bei 80% Füllung
+            // Warning bei 80% Fuellung
             if (this.queue.length >= this.MAX_QUEUE_SIZE * (this.QUEUE_WARNING_THRESHOLD / 100)) {
                 if (this.logger) {
                     this.logger.warn(`Alert queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity (${Math.round(this.queue.length / this.MAX_QUEUE_SIZE * 100)}%)`);
                 } else {
-                    console.warn(`⚠️ Alert queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity`);
+                    console.warn(`[!] Alert queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity`);
                 }
             }
 
             // In Queue einreihen
             this.queue.push(alert);
-            console.log(`🔔 Alert queued: ${type} - ${renderedText} (Queue: ${this.queue.length}/${this.MAX_QUEUE_SIZE})`);
+            console.log(`[ALERT] Alert queued: ${type} - ${renderedText} (Queue: ${this.queue.length}/${this.MAX_QUEUE_SIZE})`);
 
             // Verarbeitung starten
             this.processQueue();
@@ -164,7 +164,7 @@ class AlertManager {
             if (this.logger) {
                 this.logger.error('Alert Error:', error);
             } else {
-                console.error('❌ Alert Error:', error.message);
+                console.error('[X] Alert Error:', error.message);
             }
         }
     }
@@ -189,13 +189,13 @@ class AlertManager {
             data: this.currentAlert.data
         });
 
-        console.log(`🔔 Alert showing: ${this.currentAlert.type}`);
+        console.log(`[ALERT] Alert showing: ${this.currentAlert.type}`);
 
-        // Nach Alert-Dauer nächsten Alert anzeigen
+        // Nach Alert-Dauer naechsten Alert anzeigen
         setTimeout(() => {
             this.isProcessing = false;
             this.currentAlert = null;
-            this.processQueue(); // Rekursiv nächsten Alert
+            this.processQueue(); // Rekursiv naechsten Alert
         }, this.currentAlert.duration + 500); // +500ms Puffer zwischen Alerts
     }
 
@@ -206,7 +206,7 @@ class AlertManager {
 
         let rendered = template;
 
-        // Verfügbare Variablen mit robusteren Fallbacks
+        // Verfuegbare Variablen mit robusteren Fallbacks
         const variables = {
             '{username}': data.username || data.uniqueId || data.nickname || 'Viewer',
             '{nickname}': data.nickname || data.username || data.uniqueId || 'Viewer',
@@ -297,12 +297,12 @@ class AlertManager {
         this.queue = [];
         this.currentAlert = null;
         this.isProcessing = false;
-        console.log('🗑️ Alert queue cleared');
+        console.log('[CLEAR] Alert queue cleared');
     }
 
     skipCurrent() {
         if (this.currentAlert) {
-            console.log('⏭️ Skipping current alert');
+            console.log('[SKIP] Skipping current alert');
             this.io.emit('alert:hide');
             this.isProcessing = false;
             this.currentAlert = null;
@@ -315,7 +315,7 @@ class AlertManager {
     }
 
     testAlert(type, testData = {}) {
-        // Test-Daten für verschiedene Alert-Typen
+        // Test-Daten fuer verschiedene Alert-Typen
         const testDataDefaults = {
             gift: {
                 username: 'TestUser',
