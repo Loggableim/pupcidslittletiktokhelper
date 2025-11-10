@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2025-11-09
+
+### Added
+- **OSC-Bridge Plugin** (`plugins/osc-bridge/`) - VRChat-Integration via OSC
+  - Dauerhafte OSC-Brücke (kein Auto-Shutdown)
+  - Bidirektionale Kommunikation (Senden & Empfangen)
+  - VRChat-Standard-Parameter (/avatar/parameters/*, /world/*)
+  - Standardports: 9000 (Send), 9001 (Receive), konfigurier bar
+  - Sicherheit: Nur lokale IPs erlaubt (127.0.0.1, ::1)
+  - Vollständiges Logging (oscBridge.log) mit Verbose-Modus
+  - Latenz < 50 ms
+  - **VRChat Helper-Methoden**: wave(), celebrate(), dance(), hearts(), confetti(), triggerEmote()
+  - **API-Endpoints**:
+    - `GET /api/osc/status`: Status und Statistiken
+    - `POST /api/osc/start`: Bridge starten
+    - `POST /api/osc/stop`: Bridge stoppen
+    - `POST /api/osc/send`: Beliebige OSC-Nachricht senden
+    - `POST /api/osc/test`: Test-Signal senden
+    - `GET /api/osc/config`: Konfiguration abrufen
+    - `POST /api/osc/config`: Konfiguration aktualisieren
+    - `POST /api/osc/vrchat/wave|celebrate|dance|hearts|confetti`: VRChat-Actions
+  - **Socket.io Events**:
+    - `osc:status`: Status-Updates (isRunning, stats, config)
+    - `osc:sent`: OSC-Nachricht gesendet
+    - `osc:received`: OSC-Nachricht empfangen
+  - **Flow-System-Integration**:
+    - `osc_send`: Beliebige OSC-Nachricht senden
+    - `osc_vrchat_wave`: Wave-Geste triggern
+    - `osc_vrchat_celebrate`: Celebrate-Animation triggern
+    - `osc_vrchat_dance`: Dance triggern
+    - `osc_vrchat_hearts`: Hearts-Effekt triggern
+    - `osc_vrchat_confetti`: Confetti-Effekt triggern
+    - `osc_vrchat_emote`: Emote-Slot triggern (0-7)
+    - `osc_vrchat_parameter`: Custom Avatar-Parameter triggern
+  - **Admin-UI** (`ui.html`):
+    - Live-Status-Anzeige (Running/Stopped mit Puls-Animation)
+    - Statistiken (Nachrichten gesendet/empfangen, Fehler, Uptime)
+    - Konfiguration (Host, Ports, Verbose-Modus)
+    - VRChat Parameter Tester (8 Buttons für schnelle Tests)
+    - Live-Log-Viewer (optional, nur wenn Verbose-Modus aktiv)
+  - **Auto-Retry**: Bei Port-Kollision automatisch nächsten Port versuchen
+  - **Plugin-Injection**: OSC-Bridge wird automatisch in Flow-Engine injiziert
+  - **NPM Dependency**: `osc@^2.4.5` hinzugefügt
+
+### Changed
+- **Flow-System erweitert**: 8 neue OSC-Actions für VRChat-Integration
+- **Plugin-Loader**: OSC-Bridge wird automatisch in Flows injiziert (wie VDO.Ninja)
+- **Version**: 1.0.1 → 1.0.2
+- **Dependencies**: `osc@^2.4.5` hinzugefügt für OSC-Kommunikation
+
 ### Added
 - **Plugin System**: Vollständiges Plugin-System für modulare Erweiterungen
   - Plugin-Loader mit Lifecycle-Management (init, destroy)

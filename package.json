@@ -1,6 +1,6 @@
 {
   "name": "tiktok-stream-tool",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Professional TikTok LIVE streaming tool with overlays, alerts, TTS and automation",
   "main": "server.js",
   "scripts": {
@@ -29,6 +29,7 @@
     "multer": "^2.0.2",
     "obs-websocket-js": "^5.0.6",
     "open": "^10.0.3",
+    "osc": "^2.4.5",
     "socket.io": "^4.6.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
