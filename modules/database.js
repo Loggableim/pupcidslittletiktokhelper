@@ -5,6 +5,26 @@ class DatabaseManager {
         this.db = new Database(dbPath);
         this.db.pragma('journal_mode = WAL'); // Performance-Optimierung
         this.initializeTables();
+
+        // Batching-System für Event-Logs
+        this.eventBatchQueue = [];
+        this.eventBatchSize = 100;
+        this.eventBatchTimeout = 5000; // 5 Sekunden
+        this.eventBatchTimer = null;
+
+        // Graceful shutdown handler
+        this.setupShutdownHandler();
+    }
+
+    setupShutdownHandler() {
+        const gracefulShutdown = () => {
+            this.flushEventBatch();
+            this.db.close();
+        };
+
+        process.on('SIGINT', gracefulShutdown);
+        process.on('SIGTERM', gracefulShutdown);
+        process.on('exit', gracefulShutdown);
     }
 
     initializeTables() {
@@ -432,11 +452,58 @@ class DatabaseManager {
 
     // ========== EVENT LOGS ==========
     logEvent(eventType, username, data) {
+        // Add to batch queue
+        this.eventBatchQueue.push({
+            eventType,
+            username,
+            data: JSON.stringify(data)
+        });
+
+        // Check if batch is full
+        if (this.eventBatchQueue.length >= this.eventBatchSize) {
+            this.flushEventBatch();
+        } else {
+            // Reset timer
+            if (this.eventBatchTimer) {
+                clearTimeout(this.eventBatchTimer);
+            }
+            this.eventBatchTimer = setTimeout(() => {
+                this.flushEventBatch();
+            }, this.eventBatchTimeout);
+        }
+    }
+
+    flushEventBatch() {
+        if (this.eventBatchQueue.length === 0) {
+            return;
+        }
+
+        // Clear timer
+        if (this.eventBatchTimer) {
+            clearTimeout(this.eventBatchTimer);
+            this.eventBatchTimer = null;
+        }
+
+        // Prepare batch insert
         const stmt = this.db.prepare(`
             INSERT INTO event_logs (event_type, username, data)
             VALUES (?, ?, ?)
         `);
-        stmt.run(eventType, username, JSON.stringify(data));
+
+        // Use transaction for batch insert
+        const insertMany = this.db.transaction((events) => {
+            for (const event of events) {
+                stmt.run(event.eventType, event.username, event.data);
+            }
+        });
+
+        try {
+            insertMany(this.eventBatchQueue);
+            this.eventBatchQueue = [];
+        } catch (error) {
+            console.error('Error flushing event batch:', error);
+            // Don't clear queue on error, will retry
+        }
     }
 
     getEventLogs(limit = 100) {

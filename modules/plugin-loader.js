@@ -212,8 +212,20 @@ class PluginAPI {
      * Entfernt alle registrierten Routes und Events
      */
     unregisterAll() {
-        // Socket-Events können nicht direkt deregistriert werden in Socket.io
-        // Sie werden beim Neustart des Servers entfernt
+        // Socket-Events deregistrieren
+        this.registeredSocketEvents.forEach(({ event, callback }) => {
+            try {
+                // Remove listener from all connected sockets
+                this.io.sockets.sockets.forEach(socket => {
+                    socket.removeListener(event, callback);
+                });
+                this.log(`Unregistered socket event: ${event}`);
+            } catch (error) {
+                this.log(`Failed to unregister socket event ${event}: ${error.message}`, 'error');
+            }
+        });
+
+        // Routes können nicht direkt entfernt werden, aber wir tracken sie
         this.registeredRoutes = [];
         this.registeredSocketEvents = [];
         this.registeredTikTokEvents = [];

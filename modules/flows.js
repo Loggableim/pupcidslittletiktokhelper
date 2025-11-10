@@ -1,6 +1,8 @@
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
+const dns = require('dns').promises;
+const templateEngine = require('./template-engine');
 
 class FlowEngine {
     constructor(db, alertManager, ttsEngine, logger) {
@@ -22,8 +24,26 @@ class FlowEngine {
             'integromat.com'
         ];
 
-        // Gesperrte IP-Ranges (internal networks)
-        this.BLOCKED_IP_PATTERNS = ['127.', '10.', '192.168.', '169.254.', 'localhost'];
+        // Gesperrte IP-Ranges (internal networks, RFC1918, Loopback, Link-Local, Private IPv6)
+        this.BLOCKED_IP_PATTERNS = [
+            '127.',           // Loopback IPv4
+            '10.',            // Private Class A (RFC1918)
+            '172.16.',        // Private Class B (RFC1918)
+            '172.17.', '172.18.', '172.19.',
+            '172.20.', '172.21.', '172.22.', '172.23.',
+            '172.24.', '172.25.', '172.26.', '172.27.',
+            '172.28.', '172.29.', '172.30.', '172.31.',
+            '192.168.',       // Private Class C (RFC1918)
+            '169.254.',       // Link-Local
+            '0.',             // Current network
+            '224.', '225.', '226.', '227.', '228.', '229.', '230.', '231.',
+            '232.', '233.', '234.', '235.', '236.', '237.', '238.', '239.', // Multicast
+            'localhost',
+            '::1',            // IPv6 Loopback
+            'fe80:',          // IPv6 Link-Local
+            'fc00:',          // IPv6 Unique Local
+            'fd00:'           // IPv6 Unique Local
+        ];
 
         // SAFE_DIR erstellen falls nicht existent
         this.initSafeDir();
@@ -62,7 +82,9 @@ class FlowEngine {
             }
 
         } catch (error) {
-            console.error('❌ Flow processing error:', error.message);
+            if (this.logger) {
+                this.logger.error('❌ Flow processing error:', error.message);
+            }
         }
     }
 
@@ -172,7 +194,9 @@ class FlowEngine {
                     const volume = action.volume || 80;
                     // Hier könnte man die Sound-Datei laden und als Base64 senden
                     // Für jetzt senden wir nur den Dateinamen
-                    console.log(`🔊 Playing sound: ${soundFile} (${volume}%)`);
+                    if (this.logger) {
+                        this.logger.info(`🔊 Playing sound: ${soundFile} (${volume}%)`);
+                    }
                     break;
                 }
 
@@ -187,10 +211,23 @@ class FlowEngine {
                     try {
                         const urlObj = new URL(url);
 
-                        // Prüfe erlaubte Domains
-                        const isAllowedDomain = this.ALLOWED_WEBHOOK_DOMAINS.some(domain =>
-                            urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
-                        );
+                        // Prüfe erlaubte Domains (strikte Subdomain-Validierung)
+                        let isAllowedDomain = false;
+                        for (const domain of this.ALLOWED_WEBHOOK_DOMAINS) {
+                            if (urlObj.hostname === domain) {
+                                isAllowedDomain = true;
+                                break;
+                            }
+                            // Erlaube nur direkte Subdomains von vertrauenswürdigen Domains
+                            // webhook.site erlaubt, evil.webhook.site NICHT
+                            const parts = urlObj.hostname.split('.');
+                            const domainParts = domain.split('.');
+                            if (parts.length === domainParts.length + 1 &&
+                                urlObj.hostname.endsWith('.' + domain)) {
+                                isAllowedDomain = true;
+                                break;
+                            }
+                        }
 
                         if (!isAllowedDomain) {
                             const error = `Webhook URL not in whitelist: ${urlObj.hostname}`;
@@ -202,12 +239,41 @@ class FlowEngine {
                             throw new Error(error);
                         }
 
-                        // Prüfe gesperrte IPs
-                        const isBlockedIP = this.BLOCKED_IP_PATTERNS.some(pattern =>
+                        // DNS-Auflösung und IP-Validierung
+                        try {
+                            const addresses = await dns.resolve4(urlObj.hostname).catch(() => []);
+                            const addresses6 = await dns.resolve6(urlObj.hostname).catch(() => []);
+                            const allAddresses = [...addresses, ...addresses6];
+
+                            // Prüfe jede aufgelöste IP gegen Blacklist
+                            for (const ip of allAddresses) {
+                                const isBlocked = this.BLOCKED_IP_PATTERNS.some(pattern =>
+                                    ip.toLowerCase().startsWith(pattern.toLowerCase())
+                                );
+
+                                if (isBlocked) {
+                                    const error = `Webhook resolves to blocked IP: ${ip} (${urlObj.hostname})`;
+                                    if (this.logger) {
+                                        this.logger.warn(error);
+                                    } else {
+                                        console.warn(`⚠️ ${error}`);
+                                    }
+                                    throw new Error(error);
+                                }
+                            }
+                        } catch (dnsError) {
+                            // DNS-Fehler loggen, aber Request erlauben wenn Domain whitelisted ist
+                            if (this.logger) {
+                                this.logger.warn(`DNS resolution failed for ${urlObj.hostname}: ${dnsError.message}`);
+                            }
+                        }
+
+                        // Prüfe auch direkt IP-basierte URLs
+                        const isDirectIP = this.BLOCKED_IP_PATTERNS.some(pattern =>
                             urlObj.hostname.startsWith(pattern)
                         );
 
-                        if (isBlockedIP) {
+                        if (isDirectIP) {
                             const error = `Webhook to internal network blocked: ${urlObj.hostname}`;
                             if (this.logger) {
                                 this.logger.warn(error);
@@ -229,12 +295,16 @@ class FlowEngine {
                             timeout: 5000
                         });
 
-                        console.log(`🌐 Webhook sent to ${url}: ${response.status}`);
+                        if (this.logger) {
+                            this.logger.info(`🌐 Webhook sent to ${url}: ${response.status}`);
+                        }
                     } catch (error) {
                         if (this.logger) {
                             this.logger.error('Webhook error:', error);
                         } else {
-                            console.error(`❌ Webhook error: ${error.message}`);
+                            if (this.logger) {
+                                this.logger.error(`❌ Webhook error: ${error.message}`);
+                            }
                         }
                     }
                     break;
@@ -272,12 +342,16 @@ class FlowEngine {
                             await fs.writeFile(safePath, content, 'utf8');
                         }
 
-                        console.log(`📝 Written to file: ${sanitizedFilename} (in ${this.SAFE_DIR})`);
+                        if (this.logger) {
+                            this.logger.info(`📝 Written to file: ${sanitizedFilename} (in ${this.SAFE_DIR})`);
+                        }
                     } catch (error) {
                         if (this.logger) {
                             this.logger.error('File write error:', error);
                         } else {
-                            console.error(`❌ File write error: ${error.message}`);
+                            if (this.logger) {
+                                this.logger.error(`❌ File write error: ${error.message}`);
+                            }
                         }
                     }
                     break;
@@ -288,7 +362,9 @@ class FlowEngine {
                 case 'wait': {
                     const duration = action.duration || 1000;
                     await new Promise(resolve => setTimeout(resolve, duration));
-                    console.log(`⏱️ Delayed ${duration}ms`);
+                    if (this.logger) {
+                        this.logger.info(`⏱️ Delayed ${duration}ms`);
+                    }
                     break;
                 }
 
@@ -296,7 +372,9 @@ class FlowEngine {
                 case 'command':
                 case 'run_command': {
                     // Sicherheitswarnung: Befehle ausführen kann gefährlich sein
-                    console.warn('⚠️ Command execution is disabled for security reasons');
+                    if (this.logger) {
+                        this.logger.warn('⚠️ Command execution is disabled for security reasons');
+                    }
                     // const { exec } = require('child_process');
                     // exec(action.command, (error, stdout, stderr) => {
                     //     if (error) console.error(`Command error: ${error}`);
@@ -306,7 +384,9 @@ class FlowEngine {
 
                 // ========== CUSTOM ==========
                 case 'custom': {
-                    console.log(`⚙️ Custom action: ${action.name || 'unnamed'}`);
+                    if (this.logger) {
+                        this.logger.info(`⚙️ Custom action: ${action.name || 'unnamed'}`);
+                    }
                     // Hier könnten Custom-Actions implementiert werden
                     break;
                 }
@@ -314,7 +394,9 @@ class FlowEngine {
                 // ========== PATCH: VDO.NINJA ACTIONS ==========
                 case 'vdoninja_mute_guest': {
                     if (!this.vdoninjaManager) {
-                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        if (this.logger) {
+                            this.logger.warn('⚠️ VDO.Ninja Manager not available');
+                        }
                         break;
                     }
                     const slot = parseInt(action.guest_slot || action.target);
@@ -322,13 +404,17 @@ class FlowEngine {
                     const muteVideo = action.mute_video || false;
 
                     await this.vdoninjaManager.muteGuest(slot, muteAudio, muteVideo);
-                    console.log(`🔇 VDO.Ninja: Guest ${slot} muted (Flow) - audio: ${muteAudio}, video: ${muteVideo}`);
+                    if (this.logger) {
+                        this.logger.info(`🔇 VDO.Ninja: Guest ${slot} muted (Flow) - audio: ${muteAudio}, video: ${muteVideo}`);
+                    }
                     break;
                 }
 
                 case 'vdoninja_unmute_guest': {
                     if (!this.vdoninjaManager) {
-                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        if (this.logger) {
+                            this.logger.warn('⚠️ VDO.Ninja Manager not available');
+                        }
                         break;
                     }
                     const slot = parseInt(action.guest_slot || action.target);
@@ -342,7 +428,9 @@ class FlowEngine {
 
                 case 'vdoninja_solo_guest': {
                     if (!this.vdoninjaManager) {
-                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        if (this.logger) {
+                            this.logger.warn('⚠️ VDO.Ninja Manager not available');
+                        }
                         break;
                     }
                     const slot = parseInt(action.guest_slot);
@@ -355,7 +443,9 @@ class FlowEngine {
 
                 case 'vdoninja_change_layout': {
                     if (!this.vdoninjaManager) {
-                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        if (this.logger) {
+                            this.logger.warn('⚠️ VDO.Ninja Manager not available');
+                        }
                         break;
                     }
                     const layout = action.layout_name || action.layout;
@@ -368,7 +458,9 @@ class FlowEngine {
 
                 case 'vdoninja_set_volume': {
                     if (!this.vdoninjaManager) {
-                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        if (this.logger) {
+                            this.logger.warn('⚠️ VDO.Ninja Manager not available');
+                        }
                         break;
                     }
                     const slot = parseInt(action.guest_slot);
@@ -381,7 +473,9 @@ class FlowEngine {
 
                 case 'vdoninja_kick_guest': {
                     if (!this.vdoninjaManager) {
-                        console.warn('⚠️ VDO.Ninja Manager not available');
+                        if (this.logger) {
+                            this.logger.warn('⚠️ VDO.Ninja Manager not available');
+                        }
                         break;
                     }
                     const slot = parseInt(action.guest_slot);
@@ -510,29 +604,27 @@ class FlowEngine {
     replaceVariables(text, eventData) {
         if (!text) return '';
 
-        let result = text;
-
-        // Standard-Variablen mit robusteren Fallbacks
+        // Build variables object with fallbacks
         const variables = {
-            '{username}': eventData.username || eventData.uniqueId || eventData.nickname || 'Viewer',
-            '{nickname}': eventData.nickname || eventData.username || eventData.uniqueId || 'Viewer',
-            '{message}': eventData.message || '',
-            '{gift_name}': eventData.giftName || '',
-            '{coins}': eventData.coins || 0,
-            '{repeat_count}': eventData.repeatCount || 1,
-            '{like_count}': eventData.likeCount || 1,
-            '{total_coins}': eventData.totalCoins || 0,
-            '{timestamp}': new Date().toISOString(),
-            '{date}': new Date().toLocaleDateString(),
-            '{time}': new Date().toLocaleTimeString()
+            username: eventData.username || eventData.uniqueId || eventData.nickname || 'Viewer',
+            nickname: eventData.nickname || eventData.username || eventData.uniqueId || 'Viewer',
+            message: eventData.message || '',
+            gift_name: eventData.giftName || '',
+            giftName: eventData.giftName || '',
+            coins: eventData.coins || 0,
+            repeat_count: eventData.repeatCount || 1,
+            repeatCount: eventData.repeatCount || 1,
+            like_count: eventData.likeCount || 1,
+            likeCount: eventData.likeCount || 1,
+            total_coins: eventData.totalCoins || 0,
+            totalCoins: eventData.totalCoins || 0,
+            timestamp: new Date().toISOString(),
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString()
         };
 
-        // Variablen ersetzen
-        Object.entries(variables).forEach(([key, value]) => {
-            result = result.replace(new RegExp(key, 'g'), value);
-        });
-
-        return result;
+        // Use template engine with RegExp caching
+        return templateEngine.render(text, variables);
     }
 
     // Test-Funktion
