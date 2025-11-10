@@ -200,6 +200,9 @@ const pluginsDir = path.join(__dirname, 'plugins');
 const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
 logger.info('🔌 Plugin Loader initialized');
 
+// PluginLoader an AlertManager übergeben (um doppelte Sounds zu vermeiden)
+alerts.setPluginLoader(pluginLoader);
+
 // Update-Manager initialisieren
 const updateManager = new UpdateManager(logger);
 logger.info('🔄 Update Manager initialized');

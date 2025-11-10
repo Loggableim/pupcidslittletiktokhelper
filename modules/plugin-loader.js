@@ -599,6 +599,17 @@ class PluginLoader extends EventEmitter {
     }
 
     /**
+     * Check if a plugin is enabled
+     */
+    isPluginEnabled(pluginId) {
+        const state = this.state[pluginId];
+        if (!state) {
+            return false;
+        }
+        return state.enabled === true;
+    }
+
+    /**
      * Registriert Socket-Events für ein Plugin
      */
     registerPluginSocketEvents(socket) {

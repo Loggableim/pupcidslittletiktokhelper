@@ -1,13 +1,21 @@
 class AlertManager {
-    constructor(io, db, logger) {
+    constructor(io, db, logger, pluginLoader = null) {
         this.io = io;
         this.db = db;
         this.logger = logger;
+        this.pluginLoader = pluginLoader;
         this.queue = [];
         this.isProcessing = false;
         this.currentAlert = null;
         this.MAX_QUEUE_SIZE = 100;
         this.QUEUE_WARNING_THRESHOLD = 80; // 80%
+    }
+
+    /**
+     * Set plugin loader reference (called after plugin system is initialized)
+     */
+    setPluginLoader(pluginLoader) {
+        this.pluginLoader = pluginLoader;
     }
 
     addAlert(type, data, customConfig = null) {
@@ -32,13 +40,54 @@ class AlertManager {
             // Text-Template mit Daten rendern
             const renderedText = this.renderTemplate(config.text_template || '', data);
 
+            // Prüfe, ob Soundboard-Plugin für dieses Event den Sound übernimmt
+            let soundFile = config.sound_file;
+            let soundVolume = config.sound_volume || 80;
+
+            // Verhindere doppelte Sound-Wiedergabe wenn Soundboard-Plugin aktiv ist
+            if (this.pluginLoader && this.pluginLoader.isPluginEnabled('soundboard')) {
+                const soundboardPlugin = this.pluginLoader.getPluginInstance('soundboard');
+                if (soundboardPlugin && soundboardPlugin.soundboard) {
+                    const soundboardDb = this.db;
+                    const soundboardEnabled = soundboardDb.getSetting('soundboard_enabled') === 'true';
+
+                    if (soundboardEnabled) {
+                        let soundboardHasSound = false;
+
+                        // Prüfe je nach Event-Typ, ob Soundboard einen Sound konfiguriert hat
+                        if (type === 'gift' && data.giftId) {
+                            const giftSound = soundboardPlugin.soundboard.getGiftSound(data.giftId);
+                            soundboardHasSound = !!giftSound;
+                        } else if (type === 'follow') {
+                            const followSound = soundboardDb.getSetting('soundboard_follow_sound');
+                            soundboardHasSound = !!followSound;
+                        } else if (type === 'subscribe') {
+                            const subscribeSound = soundboardDb.getSetting('soundboard_subscribe_sound');
+                            soundboardHasSound = !!subscribeSound;
+                        } else if (type === 'share') {
+                            const shareSound = soundboardDb.getSetting('soundboard_share_sound');
+                            soundboardHasSound = !!shareSound;
+                        }
+
+                        // Wenn Soundboard Sound übernimmt, Alert ohne Sound
+                        if (soundboardHasSound) {
+                            soundFile = null;
+                            soundVolume = 0;
+                            if (this.logger) {
+                                this.logger.info(`Alert für ${type} (${data.giftName || data.username}): Sound durch Soundboard-Plugin übernommen`);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Alert-Objekt erstellen
             const alert = {
                 type: type,
                 data: data,
                 text: renderedText,
-                soundFile: config.sound_file,
-                soundVolume: config.sound_volume || 80,
+                soundFile: soundFile,
+                soundVolume: soundVolume,
                 duration: (config.duration || 5) * 1000, // in Millisekunden
                 image: data.giftPictureUrl || data.profilePictureUrl || null,
                 timestamp: Date.now()
