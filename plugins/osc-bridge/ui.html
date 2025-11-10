@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSC-Bridge Settings</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #252525;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #333;
+        }
+
+        .card-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .status-indicator.running {
+            background: #1a4d1a;
+            color: #4ade80;
+            border: 1px solid #2d662d;
+        }
+
+        .status-indicator.stopped {
+            background: #4a1a1a;
+            color: #f87171;
+            border: 1px solid #662d2d;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.running .status-dot {
+            background: #4ade80;
+        }
+
+        .status-indicator.stopped .status-dot {
+            background: #f87171;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #b0b0b0;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: #1a1a1a;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 600;
+            color: #3b82f6;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        .info-box {
+            background: #1a2332;
+            border: 1px solid #2d3748;
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h4 {
+            margin: 0 0 8px 0;
+            color: #3b82f6;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #a0aec0;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .vrchat-params {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .param-btn {
+            padding: 8px 12px;
+            background: #2d3748;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            color: #e0e0e0;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+
+        .param-btn:hover {
+            background: #374151;
+            border-color: #3b82f6;
+        }
+
+        .param-btn:active {
+            transform: scale(0.98);
+        }
+
+        .log-viewer {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+
+        .log-entry.send {
+            color: #4ade80;
+        }
+
+        .log-entry.recv {
+            color: #3b82f6;
+        }
+
+        .log-entry.error {
+            color: #f87171;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Status Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">OSC-Bridge Status</h2>
+                <div class="status-indicator" id="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="status-text">Gestoppt</span>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-sent">0</div>
+                    <div class="stat-label">Nachrichten gesendet</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-received">0</div>
+                    <div class="stat-label">Nachrichten empfangen</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-errors">0</div>
+                    <div class="stat-label">Fehler</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-uptime">0s</div>
+                    <div class="stat-label">Laufzeit</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Konfiguration -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Konfiguration</h2>
+            </div>
+
+            <div class="info-box">
+                <h4>VRChat OSC-Integration</h4>
+                <p>Diese Bridge ermöglicht die direkte Kommunikation mit VRChat-Avataren über OSC (Open Sound Control).
+                   Aktivieren Sie die Bridge, um TikTok-Events automatisch an VRChat zu senden.</p>
+            </div>
+
+            <form id="config-form">
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enabled" name="enabled">
+                        <label for="enabled">OSC-Bridge aktivieren (VRChat-Integration)</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="sendHost">Ziel-Host (VRChat IP)</label>
+                    <input type="text" class="form-control" id="sendHost" name="sendHost" value="127.0.0.1" placeholder="127.0.0.1">
+                </div>
+
+                <div class="form-group">
+                    <label for="sendPort">Sende-Port (VRChat empfängt)</label>
+                    <input type="number" class="form-control" id="sendPort" name="sendPort" value="9000" placeholder="9000">
+                </div>
+
+                <div class="form-group">
+                    <label for="receivePort">Empfangs-Port (lokaler Port)</label>
+                    <input type="number" class="form-control" id="receivePort" name="receivePort" value="9001" placeholder="9001">
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="verboseMode" name="verboseMode">
+                        <label for="verboseMode">Verbose-Modus (alle OSC-Pakete live anzeigen)</label>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">Konfiguration speichern</button>
+                    <button type="button" class="btn btn-success" id="btn-start">Bridge starten</button>
+                    <button type="button" class="btn btn-danger" id="btn-stop">Bridge stoppen</button>
+                    <button type="button" class="btn btn-secondary" id="btn-test">Test-Signal senden</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- VRChat Parameter Tester -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">VRChat Parameter Tester</h2>
+            </div>
+
+            <p style="margin-bottom: 16px; color: #888;">
+                Klicken Sie auf einen Button, um den entsprechenden VRChat-Parameter zu triggern:
+            </p>
+
+            <div class="vrchat-params">
+                <button class="param-btn" onclick="sendVRChatParam('wave')">👋 Wave</button>
+                <button class="param-btn" onclick="sendVRChatParam('celebrate')">🎉 Celebrate</button>
+                <button class="param-btn" onclick="sendVRChatParam('dance')">💃 Dance</button>
+                <button class="param-btn" onclick="sendVRChatParam('hearts')">❤️ Hearts</button>
+                <button class="param-btn" onclick="sendVRChatParam('confetti')">🎊 Confetti</button>
+                <button class="param-btn" onclick="sendVRChatParam('emote', 0)">😀 Emote 0</button>
+                <button class="param-btn" onclick="sendVRChatParam('emote', 1)">😎 Emote 1</button>
+                <button class="param-btn" onclick="sendVRChatParam('emote', 2)">😂 Emote 2</button>
+            </div>
+        </div>
+
+        <!-- Live Log (optional, nur wenn verbose) -->
+        <div class="card" id="log-card" style="display: none;">
+            <div class="card-header">
+                <h2 class="card-title">Live-Log</h2>
+            </div>
+            <div class="log-viewer" id="log-viewer"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentConfig = {};
+
+        // Status-Updates empfangen
+        socket.on('osc:status', (status) => {
+            updateStatus(status);
+        });
+
+        // OSC-Nachrichten loggen (wenn verbose)
+        socket.on('osc:sent', (data) => {
+            if (currentConfig.verboseMode) {
+                addLog('send', `${data.address} → ${JSON.stringify(data.args)}`);
+            }
+        });
+
+        socket.on('osc:received', (data) => {
+            if (currentConfig.verboseMode) {
+                addLog('recv', `${data.address} ← ${JSON.stringify(data.args)} from ${data.source}`);
+            }
+        });
+
+        // Config laden
+        async function loadConfig() {
+            const response = await fetch('/api/osc/config');
+            const data = await response.json();
+
+            if (data.success) {
+                currentConfig = data.config;
+                populateForm(currentConfig);
+                toggleLogViewer(currentConfig.verboseMode);
+            }
+        }
+
+        function populateForm(config) {
+            document.getElementById('enabled').checked = config.enabled || false;
+            document.getElementById('sendHost').value = config.sendHost || '127.0.0.1';
+            document.getElementById('sendPort').value = config.sendPort || 9000;
+            document.getElementById('receivePort').value = config.receivePort || 9001;
+            document.getElementById('verboseMode').checked = config.verboseMode || false;
+        }
+
+        function toggleLogViewer(show) {
+            document.getElementById('log-card').style.display = show ? 'block' : 'none';
+        }
+
+        // Status aktualisieren
+        function updateStatus(status) {
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+
+            if (status.isRunning) {
+                indicator.className = 'status-indicator running';
+                statusText.textContent = 'Aktiv';
+            } else {
+                indicator.className = 'status-indicator stopped';
+                statusText.textContent = 'Gestoppt';
+            }
+
+            // Statistiken
+            document.getElementById('stat-sent').textContent = status.stats.messagesSent || 0;
+            document.getElementById('stat-received').textContent = status.stats.messagesReceived || 0;
+            document.getElementById('stat-errors').textContent = status.stats.errors || 0;
+            document.getElementById('stat-uptime').textContent = formatUptime(status.uptime || 0);
+        }
+
+        function formatUptime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            if (seconds < 60) return `${seconds}s`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ${minutes % 60}m`;
+        }
+
+        // Config speichern
+        document.getElementById('config-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const config = {
+                enabled: document.getElementById('enabled').checked,
+                sendHost: document.getElementById('sendHost').value,
+                sendPort: parseInt(document.getElementById('sendPort').value),
+                receivePort: parseInt(document.getElementById('receivePort').value),
+                verboseMode: document.getElementById('verboseMode').checked
+            };
+
+            const response = await fetch('/api/osc/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Konfiguration gespeichert!');
+                currentConfig = data.config;
+                toggleLogViewer(currentConfig.verboseMode);
+            } else {
+                alert('Fehler beim Speichern: ' + data.error);
+            }
+        });
+
+        // Bridge starten/stoppen
+        document.getElementById('btn-start').addEventListener('click', async () => {
+            const response = await fetch('/api/osc/start', { method: 'POST' });
+            const data = await response.json();
+
+            if (!data.success) {
+                alert('Fehler beim Starten: ' + data.error);
+            }
+        });
+
+        document.getElementById('btn-stop').addEventListener('click', async () => {
+            const response = await fetch('/api/osc/stop', { method: 'POST' });
+            const data = await response.json();
+
+            if (!data.success) {
+                alert('Fehler beim Stoppen: ' + data.error);
+            }
+        });
+
+        // Test-Signal
+        document.getElementById('btn-test').addEventListener('click', async () => {
+            const response = await fetch('/api/osc/test', { method: 'POST' });
+            const data = await response.json();
+
+            if (data.success) {
+                alert(`Test-Signal gesendet: ${data.address} = ${data.value}`);
+            } else {
+                alert('Fehler: ' + data.error);
+            }
+        });
+
+        // VRChat Parameter senden
+        async function sendVRChatParam(action, slot) {
+            let endpoint = `/api/osc/vrchat/${action}`;
+
+            const body = {};
+            if (action === 'emote') {
+                body.slot = slot;
+            }
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                alert('Fehler: OSC-Bridge nicht aktiv');
+            }
+        }
+
+        // Log-Einträge hinzufügen
+        function addLog(type, message) {
+            const logViewer = document.getElementById('log-viewer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logViewer.insertBefore(entry, logViewer.firstChild);
+
+            // Limit: 100 Einträge
+            while (logViewer.children.length > 100) {
+                logViewer.removeChild(logViewer.lastChild);
+            }
+        }
+
+        // Initial laden
+        loadConfig();
+
+        // Status alle 2 Sekunden aktualisieren
+        socket.emit('osc:get-status');
+        setInterval(() => {
+            socket.emit('osc:get-status');
+        }, 2000);
+    </script>
+</body>
+</html>

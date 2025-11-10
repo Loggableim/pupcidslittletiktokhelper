@@ -392,6 +392,112 @@ class FlowEngine {
                     break;
                 }
 
+                // ========== OSC-BRIDGE ACTIONS ==========
+                case 'osc_send': {
+                    if (!this.oscBridge) {
+                        console.warn('⚠️ OSC-Bridge not available (Plugin disabled or not installed)');
+                        break;
+                    }
+                    const address = action.address || action.osc_address;
+                    const args = action.args || action.osc_args || [];
+
+                    // Variablen in Adresse und Args ersetzen
+                    const resolvedAddress = this.replaceVariables(address, eventData);
+                    const resolvedArgs = Array.isArray(args)
+                        ? args.map(arg => {
+                            if (typeof arg === 'string') {
+                                return this.replaceVariables(arg, eventData);
+                            }
+                            return arg;
+                        })
+                        : [args];
+
+                    this.oscBridge.send(resolvedAddress, ...resolvedArgs);
+                    console.log(`📡 OSC: Sent ${resolvedAddress} ${JSON.stringify(resolvedArgs)} (Flow)`);
+                    break;
+                }
+
+                case 'osc_vrchat_wave': {
+                    if (!this.oscBridge) {
+                        console.warn('⚠️ OSC-Bridge not available');
+                        break;
+                    }
+                    const duration = action.duration || 2000;
+                    this.oscBridge.wave(duration);
+                    console.log(`📡 OSC VRChat: Wave triggered (Flow)`);
+                    break;
+                }
+
+                case 'osc_vrchat_celebrate': {
+                    if (!this.oscBridge) {
+                        console.warn('⚠️ OSC-Bridge not available');
+                        break;
+                    }
+                    const duration = action.duration || 3000;
+                    this.oscBridge.celebrate(duration);
+                    console.log(`📡 OSC VRChat: Celebrate triggered (Flow)`);
+                    break;
+                }
+
+                case 'osc_vrchat_dance': {
+                    if (!this.oscBridge) {
+                        console.warn('⚠️ OSC-Bridge not available');
+                        break;
+                    }
+                    const duration = action.duration || 5000;
+                    this.oscBridge.dance(duration);
+                    console.log(`📡 OSC VRChat: Dance triggered (Flow)`);
+                    break;
+                }
+
+                case 'osc_vrchat_hearts': {
+                    if (!this.oscBridge) {
+                        console.warn('⚠️ OSC-Bridge not available');
+                        break;
+                    }
+                    const duration = action.duration || 2000;
+                    this.oscBridge.hearts(duration);
+                    console.log(`📡 OSC VRChat: Hearts triggered (Flow)`);
+                    break;
+                }
+
+                case 'osc_vrchat_confetti': {
+                    if (!this.oscBridge) {
+                        console.warn('⚠️ OSC-Bridge not available');
+                        break;
+                    }
+                    const duration = action.duration || 3000;
+                    this.oscBridge.confetti(duration);
+                    console.log(`📡 OSC VRChat: Confetti triggered (Flow)`);
+                    break;
+                }
+
+                case 'osc_vrchat_emote': {
+                    if (!this.oscBridge) {
+                        console.warn('⚠️ OSC-Bridge not available');
+                        break;
+                    }
+                    const slot = parseInt(action.emote_slot || action.slot || 0);
+                    const duration = action.duration || 2000;
+                    this.oscBridge.triggerEmote(slot, duration);
+                    console.log(`📡 OSC VRChat: Emote ${slot} triggered (Flow)`);
+                    break;
+                }
+
+                case 'osc_vrchat_parameter': {
+                    if (!this.oscBridge) {
+                        console.warn('⚠️ OSC-Bridge not available');
+                        break;
+                    }
+                    const paramName = action.parameter_name || action.param;
+                    const value = action.value !== undefined ? action.value : 1;
+                    const duration = action.duration || 1000;
+
+                    this.oscBridge.triggerAvatarParameter(paramName, value, duration);
+                    console.log(`📡 OSC VRChat: Parameter ${paramName}=${value} triggered (Flow)`);
+                    break;
+                }
+
                 default:
                     console.warn(`⚠️ Unknown action type: ${action.type}`);
             }

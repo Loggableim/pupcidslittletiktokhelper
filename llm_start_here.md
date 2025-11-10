@@ -10,7 +10,7 @@ Diese Datei dient als zentraler Einstiegspunkt für LLMs, die an diesem Projekt 
 
 **Name:** Pup Cid's Little TikTok Helper
 **Stack:** Node.js + Express + Socket.io + SQLite + TikTok LIVE Connector
-**Version:** 1.0.0
+**Version:** 1.0.2
 **Zweck:** Professionelles TikTok LIVE Streaming Tool mit Overlays, Alerts, TTS, Automation und Plugin-System
 
 ---
@@ -58,6 +58,7 @@ plugins/<plugin-id>/
 - **`tts/`**: TTS-Engine als Plugin (75+ Stimmen, Queue, Blacklist)
 - **`vdoninja/`**: VDO.Ninja Manager als Plugin
 - **`multicam/`**: Multi-Cam Switcher (OBS Szenen via Gifts/Commands)
+- **`osc-bridge/`**: OSC-Bridge für VRChat-Integration (bidirektionale Kommunikation)
 
 **Plugin-API (`PluginAPI` class in `plugin-loader.js`):**
 
@@ -121,6 +122,97 @@ plugins/<plugin-id>/
 **TikTok Events (subscribed):**
 - `gift`: Gift-Mapping → OBS-Actions
 - `chat`: Chat-Command-Parsing → OBS-Actions
+
+---
+
+## 🌉 Plugin: OSC-Bridge (`plugins/osc-bridge/`)
+
+**Zweck:** Dauerhafte OSC-Brücke für VRChat-Integration. Ermöglicht bidirektionale Kommunikation zwischen TikTok-Events und VRChat-Avataren.
+
+**Dateien:**
+- `plugin.json`: Metadata
+- `main.js`: OSC UDP-Server/Client, VRChat-Parameter-Handler, Flow-Integration
+- `ui.html`: Admin-Panel (Status, Config, Parameter-Tester)
+
+**Konfiguration:** Plugin-Settings im Dashboard
+
+**Features:**
+- Dauerhaft aktiv (kein Auto-Shutdown)
+- VRChat-Standard-Parameter (/avatar/parameters/*, /world/*)
+- Bidirektionale Kommunikation (Senden & Empfangen)
+- Standardports: 9000 (Send), 9001 (Receive)
+- Nur lokale IPs erlaubt (Sicherheit)
+- Vollständiges Logging (oscBridge.log)
+- Verbose-Modus für Live-Debug
+- Latenz < 50 ms
+
+**VRChat Parameter:**
+- `/avatar/parameters/Wave`: Wave-Geste
+- `/avatar/parameters/Celebrate`: Celebrate-Animation
+- `/avatar/parameters/DanceTrigger`: Dance-Trigger
+- `/avatar/parameters/Hearts`: Hearts-Effekt
+- `/avatar/parameters/Confetti`: Confetti-Effekt
+- `/avatar/parameters/EmoteSlot0-7`: Emote-Slots
+
+**API-Endpoints:**
+- `GET /api/osc/status`: Status abrufen
+- `POST /api/osc/start`: Bridge starten
+- `POST /api/osc/stop`: Bridge stoppen
+- `POST /api/osc/send`: OSC-Nachricht senden
+- `POST /api/osc/test`: Test-Signal senden
+- `GET /api/osc/config`: Config abrufen
+- `POST /api/osc/config`: Config speichern
+- `POST /api/osc/vrchat/wave`: Wave triggern
+- `POST /api/osc/vrchat/celebrate`: Celebrate triggern
+- `POST /api/osc/vrchat/dance`: Dance triggern
+- `POST /api/osc/vrchat/hearts`: Hearts triggern
+- `POST /api/osc/vrchat/confetti`: Confetti triggern
+- `POST /api/osc/vrchat/emote`: Emote triggern
+
+**Socket.io Events (emittiert):**
+- `osc:status`: Status-Update (isRunning, stats, config)
+- `osc:sent`: OSC-Nachricht gesendet
+- `osc:received`: OSC-Nachricht empfangen
+
+**Flow-Actions:**
+- `osc_send`: Beliebige OSC-Nachricht senden
+- `osc_vrchat_wave`: Wave-Geste triggern
+- `osc_vrchat_celebrate`: Celebrate-Animation triggern
+- `osc_vrchat_dance`: Dance triggern
+- `osc_vrchat_hearts`: Hearts-Effekt triggern
+- `osc_vrchat_confetti`: Confetti-Effekt triggern
+- `osc_vrchat_emote`: Emote-Slot triggern
+- `osc_vrchat_parameter`: Custom Avatar-Parameter triggern
+
+**Beispiel-Flows:**
+```json
+{
+  "trigger_type": "gift",
+  "trigger_condition": { "operator": ">=", "field": "coins", "value": 5000 },
+  "actions": [
+    { "type": "osc_vrchat_celebrate", "duration": 3000 }
+  ]
+}
+```
+
+```json
+{
+  "trigger_type": "chat",
+  "trigger_condition": { "operator": "contains", "field": "message", "value": "/wave" },
+  "actions": [
+    { "type": "osc_vrchat_wave", "duration": 2000 }
+  ]
+}
+```
+
+```json
+{
+  "trigger_type": "follow",
+  "actions": [
+    { "type": "osc_vrchat_hearts", "duration": 2000 }
+  ]
+}
+```
 
 ---
 
@@ -300,6 +392,7 @@ Nach jeder Änderung:
 - **better-sqlite3**: ^11.9.0
 - **tiktok-live-connector**: ^2.1.0
 - **obs-websocket-js**: ^5.0.6
+- **osc**: ^2.4.5
 - **winston**: ^3.18.3
 - **multer**: ^2.0.2
 - **axios**: ^1.6.5
@@ -315,5 +408,5 @@ Nach jeder Änderung:
 
 ---
 
-**Letzte Aktualisierung:** 2025-11-09
+**Letzte Aktualisierung:** 2025-11-09 (OSC-Bridge Plugin v1.0.2)
 **Maintainer:** Pup Cid

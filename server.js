@@ -1590,6 +1590,13 @@ server.listen(PORT, async () => {
                 flows.vdoninjaManager = vdoninjaPlugin.getManager();
                 logger.info('✅ VDO.Ninja Manager injected into Flows');
             }
+
+            // OSC-Bridge Plugin Injektion
+            const oscBridgePlugin = pluginLoader.getPluginInstance('osc-bridge');
+            if (oscBridgePlugin && oscBridgePlugin.getOSCBridge) {
+                flows.oscBridge = oscBridgePlugin.getOSCBridge();
+                logger.info('✅ OSC-Bridge injected into Flows');
+            }
         } else {
             logger.info('ℹ️  No plugins found in /plugins directory');
         }
