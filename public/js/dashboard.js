@@ -8,17 +8,20 @@ let voices = {};
 
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    await checkPluginsAndUpdateUI(); // Prüfe Plugins ZUERST
+    // Initialize UI first, dann Plugins checken (non-blocking)
     initializeTabs();
     initializeButtons();
     initializeSocketListeners();
-    loadSettings();
-    loadVoices();
-    loadVoiceMapping();
-    loadFlows();
     setOverlayURL();
-    loadActiveProfile();
     initializeAudioInfoBanner();
+
+    // Dann asynchron (ohne await) laden - blockiert nicht die UI
+    checkPluginsAndUpdateUI().catch(err => console.error('Plugin check failed:', err));
+    loadSettings().catch(err => console.error('Settings load failed:', err));
+    loadVoices().catch(err => console.error('Voices load failed:', err));
+    loadVoiceMapping().catch(err => console.error('Voice mapping load failed:', err));
+    loadFlows().catch(err => console.error('Flows load failed:', err));
+    loadActiveProfile().catch(err => console.error('Profile load failed:', err));
 });
 
 // ========== TABS ==========
@@ -1448,8 +1451,18 @@ function initializeAudioInfoBanner() {
 // ========== PLUGIN-BASED UI VISIBILITY ==========
 async function checkPluginsAndUpdateUI() {
     try {
-        // Lade Plugin-Liste vom Server
-        const response = await fetch('/api/plugins');
+        // Lade Plugin-Liste vom Server (mit Timeout)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+        const response = await fetch('/api/plugins', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            console.warn(`Failed to load plugins: ${response.status} ${response.statusText}`);
+            return;
+        }
+
         const data = await response.json();
 
         if (!data.success) {
