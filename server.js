@@ -531,6 +531,9 @@ app.get('/api/status', apiLimiter, (req, res) => {
 // ========== VOICE MAPPING ROUTES ==========
 // Moved to TTS Plugin (plugins/tts)
 
+// ========== PLUGIN ROUTES ==========
+// Plugin routes are set up in routes/plugin-routes.js (setupPluginRoutes)
+
 // ========== SETTINGS ROUTES ==========
 
 app.get('/api/settings', apiLimiter, (req, res) => {
@@ -1613,19 +1616,54 @@ tiktok.on('like', async (data) => {
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, async () => {
-    logger.info('\n' + '='.repeat(50));
-    logger.info('🎥 TikTok Stream Tool');
-    logger.info('='.repeat(50));
-    logger.info(`\n✅ Server running on http://localhost:${PORT}`);
-    logger.info(`\n📊 Dashboard:     http://localhost:${PORT}/dashboard.html`);
-    logger.info(`🖼️  Overlay:      http://localhost:${PORT}/overlay.html`);
-    logger.info(`📚 API Docs:      http://localhost:${PORT}/api-docs`);
-    logger.info('\n' + '='.repeat(50));
-    logger.info('\n⚠️  WICHTIG: Öffne das Overlay und klicke auf "🔊 Audio aktivieren"!');
-    logger.info('   Browser Autoplay Policy erfordert User-Interaktion.\n');
+// Async Initialisierung vor Server-Start
+(async () => {
+    // Plugins laden VOR Server-Start, damit alle Routen verfügbar sind
+    logger.info('🔌 Loading plugins...');
+    try {
+        await pluginLoader.loadAllPlugins();
 
-    // OBS WebSocket auto-connect (if configured)
+        // TikTok-Events für Plugins registrieren
+        pluginLoader.registerPluginTikTokEvents(tiktok);
+
+        const loadedCount = pluginLoader.plugins.size;
+        if (loadedCount > 0) {
+            logger.info(`✅ ${loadedCount} plugin(s) loaded successfully`);
+
+            // Plugin-Injektionen in Flows
+            const vdoninjaPlugin = pluginLoader.getPluginInstance('vdoninja');
+            if (vdoninjaPlugin && vdoninjaPlugin.getManager) {
+                flows.vdoninjaManager = vdoninjaPlugin.getManager();
+                logger.info('✅ VDO.Ninja Manager injected into Flows');
+            }
+
+            // OSC-Bridge Plugin Injektion
+            const oscBridgePlugin = pluginLoader.getPluginInstance('osc-bridge');
+            if (oscBridgePlugin && oscBridgePlugin.getOSCBridge) {
+                flows.oscBridge = oscBridgePlugin.getOSCBridge();
+                logger.info('✅ OSC-Bridge injected into Flows');
+            }
+        } else {
+            logger.info('ℹ️  No plugins found in /plugins directory');
+        }
+    } catch (error) {
+        logger.error(`⚠️  Error loading plugins: ${error.message}`);
+    }
+
+    // Jetzt Server starten
+    server.listen(PORT, async () => {
+        logger.info('\n' + '='.repeat(50));
+        logger.info('🎥 TikTok Stream Tool');
+        logger.info('='.repeat(50));
+        logger.info(`\n✅ Server running on http://localhost:${PORT}`);
+        logger.info(`\n📊 Dashboard:     http://localhost:${PORT}/dashboard.html`);
+        logger.info(`🖼️  Overlay:      http://localhost:${PORT}/overlay.html`);
+        logger.info(`📚 API Docs:      http://localhost:${PORT}/api-docs`);
+        logger.info('\n' + '='.repeat(50));
+        logger.info('\n⚠️  WICHTIG: Öffne das Overlay und klicke auf "🔊 Audio aktivieren"!');
+        logger.info('   Browser Autoplay Policy erfordert User-Interaktion.\n');
+
+        // OBS WebSocket auto-connect (if configured)
     const obsConfigStr = db.getSetting('obs_websocket_config');
     if (obsConfigStr) {
         try {
@@ -1667,50 +1705,19 @@ server.listen(PORT, async () => {
         }, 3000);
     }
 
-    // Plugins laden
-    logger.info('🔌 Loading plugins...');
-    try {
-        await pluginLoader.loadAllPlugins();
+        // Auto-Update-Check starten (alle 24 Stunden)
+        updateManager.startAutoCheck(24);
 
-        // TikTok-Events für Plugins registrieren
-        pluginLoader.registerPluginTikTokEvents(tiktok);
-
-        const loadedCount = pluginLoader.plugins.size;
-        if (loadedCount > 0) {
-            logger.info(`✅ ${loadedCount} plugin(s) loaded successfully`);
-
-            // Plugin-Injektionen in Flows
-            const vdoninjaPlugin = pluginLoader.getPluginInstance('vdoninja');
-            if (vdoninjaPlugin && vdoninjaPlugin.getManager) {
-                flows.vdoninjaManager = vdoninjaPlugin.getManager();
-                logger.info('✅ VDO.Ninja Manager injected into Flows');
-            }
-
-            // OSC-Bridge Plugin Injektion
-            const oscBridgePlugin = pluginLoader.getPluginInstance('osc-bridge');
-            if (oscBridgePlugin && oscBridgePlugin.getOSCBridge) {
-                flows.oscBridge = oscBridgePlugin.getOSCBridge();
-                logger.info('✅ OSC-Bridge injected into Flows');
-            }
-        } else {
-            logger.info('ℹ️  No plugins found in /plugins directory');
+        // Browser automatisch öffnen (async)
+        try {
+            const open = (await import('open')).default;
+            await open(`http://localhost:${PORT}/dashboard.html`);
+        } catch (error) {
+            logger.info('ℹ️  Browser konnte nicht automatisch geöffnet werden.');
+            logger.info(`   Öffne manuell: http://localhost:${PORT}/dashboard.html\n`);
         }
-    } catch (error) {
-        logger.error(`⚠️  Error loading plugins: ${error.message}`);
-    }
-
-    // Auto-Update-Check starten (alle 24 Stunden)
-    updateManager.startAutoCheck(24);
-
-    // Browser automatisch öffnen (async)
-    try {
-        const open = (await import('open')).default;
-        await open(`http://localhost:${PORT}/dashboard.html`);
-    } catch (error) {
-        logger.info('ℹ️  Browser konnte nicht automatisch geöffnet werden.');
-        logger.info(`   Öffne manuell: http://localhost:${PORT}/dashboard.html\n`);
-    }
-});
+    });
+})(); // Schließe async IIFE
 
 // Graceful Shutdown
 process.on('SIGINT', async () => {
