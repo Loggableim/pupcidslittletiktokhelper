@@ -89,40 +89,6 @@ class AlertManager {
                 if (this.logger) {
                     this.logger.warn(`Soundboard-Check fehlgeschlagen: ${err.message}`);
                 }
-            if (this.pluginLoader && this.pluginLoader.isPluginEnabled('soundboard')) {
-                const soundboardPlugin = this.pluginLoader.getPluginInstance('soundboard');
-                if (soundboardPlugin && soundboardPlugin.soundboard) {
-                    const soundboardDb = this.db;
-                    const soundboardEnabled = soundboardDb.getSetting('soundboard_enabled') === 'true';
-
-                    if (soundboardEnabled) {
-                        let soundboardHasSound = false;
-
-                        // Prüfe je nach Event-Typ, ob Soundboard einen Sound konfiguriert hat
-                        if (type === 'gift' && data.giftId) {
-                            const giftSound = soundboardPlugin.soundboard.getGiftSound(data.giftId);
-                            soundboardHasSound = !!giftSound;
-                        } else if (type === 'follow') {
-                            const followSound = soundboardDb.getSetting('soundboard_follow_sound');
-                            soundboardHasSound = !!followSound;
-                        } else if (type === 'subscribe') {
-                            const subscribeSound = soundboardDb.getSetting('soundboard_subscribe_sound');
-                            soundboardHasSound = !!subscribeSound;
-                        } else if (type === 'share') {
-                            const shareSound = soundboardDb.getSetting('soundboard_share_sound');
-                            soundboardHasSound = !!shareSound;
-                        }
-
-                        // Wenn Soundboard Sound übernimmt, Alert ohne Sound
-                        if (soundboardHasSound) {
-                            soundFile = null;
-                            soundVolume = 0;
-                            if (this.logger) {
-                                this.logger.info(`Alert für ${type} (${data.giftName || data.username}): Sound durch Soundboard-Plugin übernommen`);
-                            }
-                        }
-                    }
-                }
             }
 
             // Alert-Objekt erstellen
