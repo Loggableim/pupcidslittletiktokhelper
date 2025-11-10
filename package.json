@@ -1,6 +1,7 @@
 {
   "name": "tiktok-stream-tool",
   "version": "1.0.3",
+  "version": "1.0.2",
   "description": "Professional TikTok LIVE streaming tool with overlays, alerts, TTS and automation",
   "main": "server.js",
   "scripts": {
