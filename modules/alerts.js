@@ -56,7 +56,6 @@ class AlertManager {
                             let soundboardHasSound = false;
 
                             // Pruefe je nach Event-Typ, ob Soundboard einen Sound konfiguriert hat
-                            // Prüfe je nach Event-Typ, ob Soundboard einen Sound konfiguriert hat
                             if (type === 'gift' && data.giftId) {
                                 const giftSound = soundboardPlugin.soundboard.getGiftSound(data.giftId);
                                 soundboardHasSound = !!giftSound;
@@ -72,13 +71,11 @@ class AlertManager {
                             }
 
                             // Wenn Soundboard Sound uebernimmt, Alert ohne Sound
-                            // Wenn Soundboard Sound übernimmt, Alert ohne Sound
                             if (soundboardHasSound) {
                                 soundFile = null;
                                 soundVolume = 0;
                                 if (this.logger) {
                                     this.logger.info(`Alert fuer ${type} (${data.giftName || data.username}): Sound durch Soundboard-Plugin uebernommen`);
-                                    this.logger.info(`Alert für ${type} (${data.giftName || data.username}): Sound durch Soundboard-Plugin übernommen`);
                                 }
                             }
                         }
