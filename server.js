@@ -4,6 +4,7 @@ const socketIO = require('socket.io');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Import Core Modules
 const Database = require('./modules/database');
@@ -26,6 +27,7 @@ const { setupSwagger } = require('./modules/swagger-config');
 const PluginLoader = require('./modules/plugin-loader');
 const { setupPluginRoutes } = require('./routes/plugin-routes');
 const UpdateManager = require('./modules/update-manager');
+const { Validators, ValidationError } = require('./modules/validators');
 
 // ========== EXPRESS APP ==========
 const app = express();
@@ -35,11 +37,34 @@ const io = socketIO(server);
 // Middleware
 app.use(express.json());
 
-// CORS-Header für OBS-Kompatibilität
+// CORS-Header für OBS-Kompatibilität mit Whitelist
+const ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+    // OBS Browser Source läuft oft ohne Origin-Header
+    'null'
+];
+
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+
+    // Whitelist-basiertes CORS
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+    } else if (!origin) {
+        // Requests ohne Origin (z.B. OBS Browser Source, Server-to-Server)
+        res.header('Access-Control-Allow-Origin', 'null');
+    }
+
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Generiere CSP Nonce für jeden Request
+    const nonce = crypto.randomBytes(16).toString('base64');
+    res.locals.cspNonce = nonce;
 
     // Entferne X-Frame-Options für OBS Docks und Overlays
     const obsRoutes = ['/overlay.html', '/obs-dock.html', '/obs-dock-controls.html', '/obs-dock-goals.html', '/goal/', '/leaderboard-overlay.html', '/minigames-overlay.html'];
@@ -47,10 +72,22 @@ app.use((req, res, next) => {
 
     if (!isOBSRoute) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
-    }
-
-    // CSP für OBS Browser Sources
-    if (isOBSRoute) {
+        // Strikte CSP für normale Admin-Routes
+        res.header('Content-Security-Policy',
+            `default-src 'self'; ` +
+            `script-src 'self' 'nonce-${nonce}'; ` +
+            `style-src 'self' 'nonce-${nonce}'; ` +
+            `img-src 'self' data: blob: https:; ` +
+            `font-src 'self' data:; ` +
+            `connect-src 'self' ws: wss:; ` +
+            `media-src 'self' blob: data:; ` +
+            `object-src 'none'; ` +
+            `base-uri 'self'; ` +
+            `form-action 'self'; ` +
+            `frame-ancestors 'self';`
+        );
+    } else {
+        // CSP für OBS Browser Sources (muss permissiv bleiben)
         res.header('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' ws: wss: http: https: data: blob:; frame-ancestors 'self' *;");
     }
 
@@ -162,6 +199,9 @@ const leaderboard = new Leaderboard(db, io, logger);
 const pluginsDir = path.join(__dirname, 'plugins');
 const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
 logger.info('🔌 Plugin Loader initialized');
+
+// PluginLoader an AlertManager übergeben (um doppelte Sounds zu vermeiden)
+alerts.setPluginLoader(pluginLoader);
 
 // Update-Manager initialisieren
 const updateManager = new UpdateManager(logger);
@@ -452,18 +492,23 @@ app.get('/goal/:key', (req, res) => {
 // ========== TIKTOK CONNECTION ROUTES ==========
 
 app.post('/api/connect', authLimiter, async (req, res) => {
-    const { username } = req.body;
-
-    if (!username) {
-        logger.warn('Connection attempt without username');
-        return res.status(400).json({ success: false, error: 'Username is required' });
-    }
-
     try {
+        const username = Validators.string(req.body.username, {
+            required: true,
+            minLength: 1,
+            maxLength: 100,
+            pattern: /^[a-zA-Z0-9._-]+$/,
+            fieldName: 'username'
+        });
+
         await tiktok.connect(username);
         logger.info(`✅ Connected to TikTok user: ${username}`);
         res.json({ success: true });
     } catch (error) {
+        if (error instanceof ValidationError) {
+            logger.warn(`Invalid connection attempt: ${error.message}`);
+            return res.status(400).json({ success: false, error: error.message });
+        }
         logger.error('Connection error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
@@ -494,15 +539,43 @@ app.get('/api/settings', apiLimiter, (req, res) => {
 });
 
 app.post('/api/settings', apiLimiter, (req, res) => {
-    const settings = req.body;
-
     try {
-        Object.entries(settings).forEach(([key, value]) => {
-            db.setSetting(key, value);
+        const settings = Validators.object(req.body, {
+            required: true,
+            fieldName: 'settings'
         });
+
+        // Validate settings object is not too large
+        const keys = Object.keys(settings);
+        if (keys.length > 200) {
+            throw new ValidationError('Too many settings (max 200)', 'settings');
+        }
+
+        // Validate each key and value
+        Object.entries(settings).forEach(([key, value]) => {
+            // Validate key format
+            const validKey = Validators.string(key, {
+                required: true,
+                maxLength: 100,
+                pattern: /^[a-zA-Z0-9._-]+$/,
+                fieldName: 'setting key'
+            });
+
+            // Validate value is not too large (prevent memory issues)
+            if (typeof value === 'string' && value.length > 50000) {
+                throw new ValidationError(`Setting ${validKey} value too large (max 50000 chars)`, validKey);
+            }
+
+            db.setSetting(validKey, value);
+        });
+
         logger.info('⚙️ Settings updated');
         res.json({ success: true });
     } catch (error) {
+        if (error instanceof ValidationError) {
+            logger.warn(`Invalid settings update: ${error.message}`);
+            return res.status(400).json({ success: false, error: error.message });
+        }
         logger.error('Error saving settings:', error);
         res.status(500).json({ success: false, error: error.message });
     }
@@ -545,17 +618,23 @@ app.get('/api/profiles/active', apiLimiter, (req, res) => {
 
 // Neues Profil erstellen
 app.post('/api/profiles', apiLimiter, (req, res) => {
-    const { username } = req.body;
-
-    if (!username) {
-        return res.status(400).json({ success: false, error: 'Username is required' });
-    }
-
     try {
+        const username = Validators.string(req.body.username, {
+            required: true,
+            minLength: 1,
+            maxLength: 50,
+            pattern: /^[a-zA-Z0-9_-]+$/,
+            fieldName: 'username'
+        });
+
         const profile = profileManager.createProfile(username);
         logger.info(`👤 Created new profile: ${username}`);
         res.json({ success: true, profile });
     } catch (error) {
+        if (error instanceof ValidationError) {
+            logger.warn(`Invalid profile creation: ${error.message}`);
+            return res.status(400).json({ success: false, error: error.message });
+        }
         logger.error('Error creating profile:', error);
         res.status(500).json({ success: false, error: error.message });
     }
@@ -563,13 +642,23 @@ app.post('/api/profiles', apiLimiter, (req, res) => {
 
 // Profil löschen
 app.delete('/api/profiles/:username', apiLimiter, (req, res) => {
-    const { username } = req.params;
-
     try {
+        const username = Validators.string(req.params.username, {
+            required: true,
+            minLength: 1,
+            maxLength: 50,
+            pattern: /^[a-zA-Z0-9_-]+$/,
+            fieldName: 'username'
+        });
+
         profileManager.deleteProfile(username);
         logger.info(`🗑️ Deleted profile: ${username}`);
         res.json({ success: true });
     } catch (error) {
+        if (error instanceof ValidationError) {
+            logger.warn(`Invalid profile deletion: ${error.message}`);
+            return res.status(400).json({ success: false, error: error.message });
+        }
         logger.error('Error deleting profile:', error);
         res.status(500).json({ success: false, error: error.message });
     }
@@ -577,13 +666,15 @@ app.delete('/api/profiles/:username', apiLimiter, (req, res) => {
 
 // Profil wechseln (erfordert Server-Neustart)
 app.post('/api/profiles/switch', apiLimiter, (req, res) => {
-    const { username } = req.body;
-
-    if (!username) {
-        return res.status(400).json({ success: false, error: 'Username is required' });
-    }
-
     try {
+        const username = Validators.string(req.body.username, {
+            required: true,
+            minLength: 1,
+            maxLength: 50,
+            pattern: /^[a-zA-Z0-9_-]+$/,
+            fieldName: 'username'
+        });
+
         if (!profileManager.profileExists(username)) {
             return res.status(404).json({ success: false, error: 'Profile not found' });
         }
@@ -597,6 +688,10 @@ app.post('/api/profiles/switch', apiLimiter, (req, res) => {
             requiresRestart: true
         });
     } catch (error) {
+        if (error instanceof ValidationError) {
+            logger.warn(`Invalid profile switch: ${error.message}`);
+            return res.status(400).json({ success: false, error: error.message });
+        }
         logger.error('Error switching profile:', error);
         res.status(500).json({ success: false, error: error.message });
     }
