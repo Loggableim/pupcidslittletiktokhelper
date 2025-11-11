@@ -522,47 +522,119 @@
             }
         }
 
+        // ========== AUDIO ENGINE (OBS-KOMPATIBEL) ==========
+        let audioUnlocked = false;
+        let audioContext = null;
+        let masterGainNode = null;
+
+        // Audio-Engine initialisieren (automatisch beim Laden)
+        function initAudioEngine() {
+            try {
+                // AudioContext erstellen (funktioniert in OBS mit "Control audio via OBS")
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioContext = new AudioContextClass();
+
+                // Master Gain Node für Lautstärke-Kontrolle
+                masterGainNode = audioContext.createGain();
+                masterGainNode.connect(audioContext.destination);
+                masterGainNode.gain.value = 1.0;
+
+                console.log('🎵 Audio Engine initialized:', {
+                    state: audioContext.state,
+                    sampleRate: audioContext.sampleRate
+                });
+
+                // Versuche AudioContext zu starten (funktioniert in OBS automatisch)
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        console.log('✅ AudioContext resumed automatically');
+                        audioUnlocked = true;
+                        hideAudioButton();
+                    }).catch(err => {
+                        console.warn('⚠️ AudioContext resume failed, user interaction needed:', err);
+                        showAudioButton();
+                    });
+                } else {
+                    audioUnlocked = true;
+                    hideAudioButton();
+                }
+
+                // Stille Audio abspielen um Autoplay zu entsperren (OBS-Fallback)
+                const silentBuffer = audioContext.createBuffer(1, 1, 22050);
+                const source = audioContext.createBufferSource();
+                source.buffer = silentBuffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+
+                return true;
+            } catch (error) {
+                console.error('❌ Audio Engine initialization failed:', error);
+                showAudioButton();
+                return false;
+            }
+        }
+
+        // Audio Unlock Button verstecken
+        function hideAudioButton() {
+            const button = document.getElementById('audio-unlock');
+            if (button) {
+                button.classList.add('hidden');
+            }
+        }
+
+        // Audio Unlock Button anzeigen
+        function showAudioButton() {
+            const button = document.getElementById('audio-unlock');
+            if (button) {
+                button.classList.remove('hidden');
+            }
+        }
+
         // Load configuration on page load
         loadHudConfiguration();
 
-        // Audio Unlock (Browser Autoplay Policy umgehen)
+        // Audio Engine SOFORT beim Laden initialisieren
+        initAudioEngine();
+
+        // Audio Unlock (Browser Autoplay Policy umgehen) - nur für manuelle Browser
         function unlockAudio() {
             if (audioUnlocked) return;
 
-            // Create a very short silent audio to unlock browser autoplay policy
-            const silentMp3 = 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+            if (!audioContext) {
+                initAudioEngine();
+            }
 
-            const audio = new Audio(silentMp3);
-            audio.volume = 0.01; // Very low volume
+            // AudioContext wieder aufnehmen
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume().then(() => {
+                    audioUnlocked = true;
+                    const button = document.getElementById('audio-unlock');
 
-            audio.play().then(() => {
-                audioUnlocked = true;
-                const button = document.getElementById('audio-unlock');
+                    // Show success feedback
+                    button.innerHTML = '<span>✅</span><span>Audio aktiviert!</span>';
+                    button.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
 
-                // Show success feedback
-                button.innerHTML = '<span>✅</span><span>Audio aktiviert!</span>';
-                button.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    console.log('✅ Audio unlocked manually!');
 
-                console.log('✅ Audio unlocked!');
+                    // Hide button after 1 second
+                    setTimeout(() => {
+                        button.classList.add('hidden');
+                    }, 1000);
+                }).catch(err => {
+                    console.warn('⚠️ Audio unlock failed:', err);
 
-                // Hide button after 1 second
-                setTimeout(() => {
-                    button.classList.add('hidden');
-                }, 1000);
-            }).catch(err => {
-                console.warn('⚠️ Audio unlock failed:', err);
+                    // Show error feedback
+                    const button = document.getElementById('audio-unlock');
+                    button.innerHTML = '<span>❌</span><span>Fehler! Bitte erneut versuchen</span>';
+                    button.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
 
-                // Show error feedback
-                const button = document.getElementById('audio-unlock');
-                button.innerHTML = '<span>❌</span><span>Fehler! Bitte erneut versuchen</span>';
-                button.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-
-                // Reset button after 2 seconds
-                setTimeout(() => {
-                    button.innerHTML = '<span>🔊</span><span>Audio aktivieren (Click here)</span>';
-                    button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                }, 2000);
-            });
+                    // Reset button after 2 seconds
+                    setTimeout(() => {
+                        button.innerHTML = '<span>🔊</span><span>Audio aktivieren (Click here)</span>';
+                        button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    }, 2000);
+                });
+            }
         }
 
         // State
@@ -659,9 +731,17 @@
         function playTTS(data) {
             console.log('🎤 Playing TTS:', data.text);
 
+            // Versuche Audio zu starten (funktioniert in OBS automatisch)
+            if (!audioUnlocked && audioContext) {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                audioUnlocked = true;
+            }
+
             if (!audioUnlocked) {
-                console.warn('⚠️ Audio not unlocked yet! Click the unlock button first.');
-                return;
+                console.warn('⚠️ Audio engine not ready. Trying to initialize...');
+                initAudioEngine();
             }
 
             const audio = document.getElementById('tts-audio');
@@ -712,9 +792,17 @@
         function playSoundboardAudio(data) {
             console.log('🔊 Playing soundboard audio:', data.label);
 
+            // Versuche Audio zu starten (funktioniert in OBS automatisch)
+            if (!audioUnlocked && audioContext) {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                audioUnlocked = true;
+            }
+
             if (!audioUnlocked) {
-                console.warn('⚠️ Audio not unlocked yet! Click the unlock button first.');
-                return;
+                console.warn('⚠️ Audio engine not ready. Trying to initialize...');
+                initAudioEngine();
             }
 
             // Create new audio element
