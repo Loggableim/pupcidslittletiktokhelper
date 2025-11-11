@@ -9,7 +9,7 @@ const crypto = require('crypto');
 // Import Core Modules
 const Database = require('./modules/database');
 const TikTokConnector = require('./modules/tiktok');
-const TTSEngine = require('./modules/tts');
+// const TTSEngine = require('./modules/tts'); // DEPRECATED: Now using tts_core_v2 plugin
 const AlertManager = require('./modules/alerts');
 const FlowEngine = require('./modules/flows');
 const { GoalManager } = require('./modules/goals');
@@ -1661,6 +1661,13 @@ const PORT = process.env.PORT || 3000;
             if (oscBridgePlugin && oscBridgePlugin.getOSCBridge) {
                 flows.oscBridge = oscBridgePlugin.getOSCBridge();
                 logger.info('✅ OSC-Bridge injected into Flows');
+            }
+
+            // TTS Core V2 Plugin Injektion
+            const ttsPlugin = pluginLoader.getPluginInstance('tts_core_v2');
+            if (ttsPlugin) {
+                flows.ttsEngine = ttsPlugin;
+                logger.info('✅ TTS Core V2 injected into Flows');
             }
         } else {
             logger.info('ℹ️  No plugins found in /plugins directory');

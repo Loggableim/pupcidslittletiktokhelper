@@ -173,26 +173,6 @@ class TTSCoreV2Plugin {
             this.api.log(`TTS Core V2 initialization failed: ${error.message}`, 'error');
             throw error;
         }
-        this.api.log('TTS Core V2 Plugin initializing...');
-
-        // Ensure config files exist
-        this.ensureConfigFiles();
-
-        // Register API Routes
-        this.registerRoutes();
-
-        // Register TikTok Event Hooks
-        this.registerTikTokEvents();
-
-        // Register Socket Events
-        this.registerSocketEvents();
-
-        // Start cleanup timer for expired mutes
-        this.startMuteCleanupTimer();
-
-        this.api.log('TTS Core V2 Plugin initialized successfully');
-        this.api.log(`Loaded ${this.bannedWords.length} banned words`);
-        this.api.log(`Loaded ${this.mutedUsers.size} muted users`);
     }
 
     // ============================================
@@ -202,8 +182,6 @@ class TTSCoreV2Plugin {
     ensureConfigFiles() {
         logDebug(`Checking config files in: ${this.pluginDir}`);
 
-        // banned_words.json
-        logDebug(`Checking: ${this.bannedWordsFile}`);
         // banned_words.json
         if (!fs.existsSync(this.bannedWordsFile)) {
             const defaultBannedWords = [
@@ -324,8 +302,6 @@ class TTSCoreV2Plugin {
     registerRoutes() {
         logDebug('Registering routes...');
 
-        // GET /api/tts-v2/config - Get configuration
-        logDebug('Registering: GET /api/tts-v2/config');
         // GET /api/tts-v2/config - Get configuration
         this.api.registerRoute('GET', '/api/tts-v2/config', (req, res) => {
             res.json({
@@ -556,6 +532,74 @@ class TTSCoreV2Plugin {
                 res.status(500).json({ success: false, error: error.message });
             }
         });
+
+        // GET /api/tts-v2/user-voices - Get all user voice selections
+        this.api.registerRoute('GET', '/api/tts-v2/user-voices', (req, res) => {
+            try {
+                const userVoices = [];
+                for (const [username, voiceId] of this.userSelectedVoices.entries()) {
+                    userVoices.push({
+                        username,
+                        voice: voiceId,
+                        voiceName: TIKTOK_VOICES[voiceId]?.name || voiceId
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    mappings: userVoices
+                });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // POST /api/tts-v2/user-voice - Set user-specific voice
+        this.api.registerRoute('POST', '/api/tts-v2/user-voice', (req, res) => {
+            try {
+                const { username, voice } = req.body;
+
+                if (!username || !voice) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Username and voice are required'
+                    });
+                }
+
+                this.userSelectedVoices.set(username, voice);
+                this.api.log(`User ${username} voice set to ${voice}`);
+
+                res.json({
+                    success: true,
+                    message: `Voice ${voice} set for user ${username}`
+                });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // DELETE /api/tts-v2/user-voice/:username - Remove user voice selection
+        this.api.registerRoute('DELETE', '/api/tts-v2/user-voice/:username', (req, res) => {
+            try {
+                const { username } = req.params;
+                const deleted = this.userSelectedVoices.delete(username);
+
+                if (deleted) {
+                    this.api.log(`User ${username} voice mapping deleted`);
+                    res.json({
+                        success: true,
+                        message: `Voice mapping for ${username} deleted`
+                    });
+                } else {
+                    res.status(404).json({
+                        success: false,
+                        error: 'Voice mapping not found'
+                    });
+                }
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
     }
 
     // ============================================
@@ -565,8 +609,6 @@ class TTSCoreV2Plugin {
     registerTikTokEvents() {
         logDebug('Registering TikTok event hooks...');
 
-        // Chat Event - Main TTS Trigger
-        logDebug('Registering: chat event');
         // Chat Event - Main TTS Trigger
         this.api.registerTikTokEvent('chat', async (data) => {
             if (!data.message) return;

@@ -142,7 +142,7 @@ function initializeSocketListeners() {
 
     // ========== AUDIO PLAYBACK (Dashboard) ==========
     // TTS Playback im Dashboard
-    socket.on('tts:play', (data) => {
+    socket.on('tts-v2:play', (data) => {
         playDashboardTTS(data);
     });
 
@@ -399,8 +399,9 @@ async function loadVoices(provider = null) {
             provider = settings.tts_provider || 'tiktok';
         }
 
-        const response = await fetch(`/api/voices/list?provider=${provider}`);
-        voices = await response.json();
+        const response = await fetch('/api/tts-v2/voices');
+        const data = await response.json();
+        voices = data.voices || {};
 
         // Voice-Dropdowns füllen
         const voiceSelects = [
@@ -435,8 +436,9 @@ async function loadVoices(provider = null) {
 // ========== VOICE MAPPING ==========
 async function loadVoiceMapping() {
     try {
-        const response = await fetch('/api/voices');
-        const mappings = await response.json();
+        const response = await fetch('/api/tts-v2/user-voices');
+        const data = await response.json();
+        const mappings = data.mappings || [];
 
         const tbody = document.getElementById('voice-mapping-list');
         tbody.innerHTML = '';
@@ -492,7 +494,7 @@ async function saveVoiceMapping() {
     }
 
     try {
-        const response = await fetch('/api/voices', {
+        const response = await fetch('/api/tts-v2/user-voice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, voice })
@@ -513,7 +515,7 @@ async function deleteVoiceMapping(username) {
     if (!confirm(`Delete voice mapping for ${username}?`)) return;
 
     try {
-        const response = await fetch(`/api/voices/${username}`, {
+        const response = await fetch(`/api/tts-v2/user-voice/${username}`, {
             method: 'DELETE'
         });
 
@@ -1090,36 +1092,36 @@ async function loadTTSSettings() {
             apiKeyInput.value = settings.google_tts_api_key || '';
         }
 
+        // Load TTS Core V2 Config
+        const ttsResponse = await fetch('/api/tts-v2/config');
+        const ttsData = await ttsResponse.json();
+        const ttsConfig = ttsData.config || {};
+
         // General Settings
         const defaultVoice = document.getElementById('default-voice');
         if (defaultVoice) {
-            defaultVoice.value = settings.default_voice || 'en_us_ghostface';
+            defaultVoice.value = ttsConfig.default_voice || 'en_us_001';
         }
 
         const ttsVolume = document.getElementById('tts-volume');
         if (ttsVolume) {
-            ttsVolume.value = settings.tts_volume || 80;
-            document.getElementById('tts-volume-label').textContent = settings.tts_volume || 80;
+            ttsVolume.value = ttsConfig.volume || 80;
+            document.getElementById('tts-volume-label').textContent = ttsConfig.volume || 80;
         }
 
         const ttsSpeed = document.getElementById('tts-speed');
         if (ttsSpeed) {
-            ttsSpeed.value = settings.tts_speed || 1.0;
-            document.getElementById('tts-speed-label').textContent = settings.tts_speed || 1.0;
+            ttsSpeed.value = ttsConfig.speed || 1.0;
+            document.getElementById('tts-speed-label').textContent = ttsConfig.speed || 1.0;
         }
 
-        const ttsChatEnabled = document.getElementById('tts-chat-enabled');
-        if (ttsChatEnabled) {
-            ttsChatEnabled.checked = settings.tts_chat_enabled === 'true';
+        const ttsMinTeamLevel = document.getElementById('tts-min-team-level');
+        if (ttsMinTeamLevel) {
+            ttsMinTeamLevel.value = ttsConfig.min_team_level || 0;
         }
 
-        const ttsMinCoins = document.getElementById('tts-min-coins');
-        if (ttsMinCoins) {
-            ttsMinCoins.value = settings.tts_min_coins || 0;
-        }
-
-        // Voices laden basierend auf Provider
-        await loadVoices(settings.tts_provider || 'tiktok');
+        // Voices laden
+        await loadVoices();
 
     } catch (error) {
         console.error('Error loading TTS settings:', error);
@@ -1133,7 +1135,7 @@ async function saveTTSSettings() {
     const ttsVolume = document.getElementById('tts-volume').value;
     const ttsSpeed = document.getElementById('tts-speed').value;
     const ttsChatEnabled = document.getElementById('tts-chat-enabled').checked;
-    const ttsMinCoins = document.getElementById('tts-min-coins').value;
+    const ttsMinTeamLevel = document.getElementById('tts-min-team-level').value;
 
     // Validierung: Google API Key erforderlich wenn Google ausgewählt
     if (provider === 'google' && !googleApiKey) {
@@ -1141,21 +1143,19 @@ async function saveTTSSettings() {
         return;
     }
 
-    const newSettings = {
-        tts_provider: provider,
-        google_tts_api_key: googleApiKey,
+    // TTS Core V2 Config (uses /api/tts-v2/config)
+    const ttsConfig = {
         default_voice: defaultVoice,
-        tts_volume: ttsVolume,
-        tts_speed: ttsSpeed,
-        tts_chat_enabled: ttsChatEnabled ? 'true' : 'false',
-        tts_min_coins: ttsMinCoins
+        volume: parseInt(ttsVolume),
+        speed: parseFloat(ttsSpeed),
+        min_team_level: parseInt(ttsMinTeamLevel)
     };
 
     try {
-        const response = await fetch('/api/settings', {
+        const response = await fetch('/api/tts-v2/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newSettings)
+            body: JSON.stringify(ttsConfig)
         });
 
         const result = await response.json();
@@ -1193,11 +1193,10 @@ async function testTTS() {
     }
 
     try {
-        const response = await fetch('/api/tts/test', {
+        const response = await fetch('/api/tts-v2/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                username: 'TestUser',
                 text: testText,
                 voice: document.getElementById('default-voice').value
             })
