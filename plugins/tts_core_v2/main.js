@@ -21,7 +21,6 @@ try {
     francAll = () => [['eng', 1]]; // Default to English
     logDebug('franc-min not available, using fallback');
 }
-const { francAll } = require('franc-min');
 
 // TikTok TTS Voice Mapping mit Sprachzuordnung
 const TIKTOK_VOICES = {

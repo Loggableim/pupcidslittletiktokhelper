@@ -768,13 +768,6 @@ Format (JSON):
 Gib NUR das JSON-Array zurück, ohne zusätzlichen Text.`;
 
         try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.config.openai.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
             const response = await axios.post(
                 'https://api.openai.com/v1/chat/completions',
                 {
@@ -791,11 +784,6 @@ Gib NUR das JSON-Array zurück, ohne zusätzlichen Text.`;
                     ],
                     temperature: this.config.openai.temperature,
                     max_tokens: 2000
-                })
-            });
-
-            const data = await response.json();
-            const content = data.choices[0].message.content.trim();
                 },
                 {
                     headers: {
