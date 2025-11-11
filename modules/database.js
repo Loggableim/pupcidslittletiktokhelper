@@ -12,19 +12,43 @@ class DatabaseManager {
         this.eventBatchTimeout = 5000; // 5 Sekunden
         this.eventBatchTimer = null;
 
-        // Graceful shutdown handler
+        // Flag für Shutdown-Handler (verhindert doppelte Registrierung)
+        this.shutdownHandlersRegistered = false;
+
+        // Graceful shutdown handler (nur einmal registrieren)
         this.setupShutdownHandler();
     }
 
     setupShutdownHandler() {
-        const gracefulShutdown = () => {
-            this.flushEventBatch();
-            this.db.close();
+        // Verhindere doppelte Handler-Registrierung
+        if (DatabaseManager.shutdownHandlersRegistered) {
+            return;
+        }
+
+        const gracefulShutdown = async () => {
+            // Verhindere mehrfache Ausführung
+            if (this._isShuttingDown) {
+                return;
+            }
+            this._isShuttingDown = true;
+
+            try {
+                // Flush mit Timeout-Schutz
+                await Promise.race([
+                    this.flushEventBatch(),
+                    new Promise(resolve => setTimeout(resolve, 3000))
+                ]);
+                this.db.close();
+            } catch (error) {
+                console.error('Error during graceful shutdown:', error);
+            }
         };
 
-        process.on('SIGINT', gracefulShutdown);
-        process.on('SIGTERM', gracefulShutdown);
-        process.on('exit', gracefulShutdown);
+        process.once('SIGINT', gracefulShutdown);
+        process.once('SIGTERM', gracefulShutdown);
+        process.once('exit', gracefulShutdown);
+
+        DatabaseManager.shutdownHandlersRegistered = true;
     }
 
     initializeTables() {
@@ -475,7 +499,7 @@ class DatabaseManager {
 
     flushEventBatch() {
         if (this.eventBatchQueue.length === 0) {
-            return;
+            return Promise.resolve();
         }
 
         // Clear timer
@@ -484,26 +508,34 @@ class DatabaseManager {
             this.eventBatchTimer = null;
         }
 
-        // Prepare batch insert
-        const stmt = this.db.prepare(`
-            INSERT INTO event_logs (event_type, username, data)
-            VALUES (?, ?, ?)
-        `);
+        // Snapshot der Queue (verhindert Race Conditions)
+        const eventsToFlush = [...this.eventBatchQueue];
+        this.eventBatchQueue = [];
 
-        // Use transaction for batch insert
-        const insertMany = this.db.transaction((events) => {
-            for (const event of events) {
-                stmt.run(event.eventType, event.username, event.data);
+        return new Promise((resolve, reject) => {
+            try {
+                // Prepare batch insert
+                const stmt = this.db.prepare(`
+                    INSERT INTO event_logs (event_type, username, data)
+                    VALUES (?, ?, ?)
+                `);
+
+                // Use transaction for batch insert
+                const insertMany = this.db.transaction((events) => {
+                    for (const event of events) {
+                        stmt.run(event.eventType, event.username, event.data);
+                    }
+                });
+
+                insertMany(eventsToFlush);
+                resolve();
+            } catch (error) {
+                console.error('Error flushing event batch:', error);
+                // Bei Fehler zurück in Queue
+                this.eventBatchQueue.unshift(...eventsToFlush);
+                reject(error);
             }
         });
-
-        try {
-            insertMany(this.eventBatchQueue);
-            this.eventBatchQueue = [];
-        } catch (error) {
-            console.error('Error flushing event batch:', error);
-            // Don't clear queue on error, will retry
-        }
     }
 
     getEventLogs(limit = 100) {

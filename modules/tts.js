@@ -144,14 +144,25 @@ class TTSEngine {
             const audioData = await this.generateTTS(filteredText, voice, provider);
 
             if (audioData) {
-                // Queue-Size-Limit prüfen
+                // Queue-Size-Limit prüfen - REJECT statt löschen
                 if (this.queue.length >= this.MAX_QUEUE_SIZE) {
-                    const removed = this.queue.shift(); // Ältestes Element entfernen
+                    const errorMsg = `TTS queue full (${this.MAX_QUEUE_SIZE}), message rejected: "${filteredText}"`;
                     if (this.logger) {
-                        this.logger.warn(`TTS queue full (${this.MAX_QUEUE_SIZE}), removed oldest item: "${removed.text}"`);
+                        this.logger.error(errorMsg);
                     } else {
-                        console.warn(`⚠️ TTS queue full (${this.MAX_QUEUE_SIZE}), removed oldest item: "${removed.text}"`);
+                        console.error(`❌ ${errorMsg}`);
                     }
+
+                    // Emittiere Backpressure-Event (statt Datenverlust)
+                    this.io.emit('tts:queue-full', {
+                        username,
+                        text: filteredText,
+                        queueSize: this.queue.length,
+                        maxSize: this.MAX_QUEUE_SIZE,
+                        rejectedMessage: { username, text: filteredText }
+                    });
+
+                    return; // TTS NICHT hinzufügen
                 }
 
                 // Warning bei 80% Füllung
@@ -161,6 +172,13 @@ class TTSEngine {
                     } else {
                         console.warn(`⚠️ TTS queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity`);
                     }
+
+                    // Emittiere Warning-Event
+                    this.io.emit('tts:queue-warning', {
+                        queueSize: this.queue.length,
+                        maxSize: this.MAX_QUEUE_SIZE,
+                        percentFull: Math.round(this.queue.length / this.MAX_QUEUE_SIZE * 100)
+                    });
                 }
 
                 // In Queue einreihen

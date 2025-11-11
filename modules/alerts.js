@@ -100,14 +100,24 @@ class AlertManager {
                 timestamp: Date.now()
             };
 
-            // Queue-Size-Limit pruefen
+            // Queue-Size-Limit pruefen - REJECT statt löschen
             if (this.queue.length >= this.MAX_QUEUE_SIZE) {
-                const removed = this.queue.shift(); // Aeltestes Element entfernen
+                const errorMsg = `Alert queue full (${this.MAX_QUEUE_SIZE}), alert rejected: ${type}`;
                 if (this.logger) {
-                    this.logger.warn(`Alert queue full (${this.MAX_QUEUE_SIZE}), removed oldest alert: ${removed.type}`);
+                    this.logger.error(errorMsg);
                 } else {
-                    console.warn(`[!] Alert queue full (${this.MAX_QUEUE_SIZE}), removed oldest alert: ${removed.type}`);
+                    console.error(`[X] ${errorMsg}`);
                 }
+
+                // Emittiere Backpressure-Event (statt Datenverlust)
+                this.io.emit('alert:queue-full', {
+                    type,
+                    queueSize: this.queue.length,
+                    maxSize: this.MAX_QUEUE_SIZE,
+                    rejectedAlert: { type, text: renderedText }
+                });
+
+                return; // Alert NICHT hinzufügen
             }
 
             // Warning bei 80% Fuellung
@@ -117,6 +127,13 @@ class AlertManager {
                 } else {
                     console.warn(`[!] Alert queue at ${this.queue.length}/${this.MAX_QUEUE_SIZE} capacity`);
                 }
+
+                // Emittiere Warning-Event
+                this.io.emit('alert:queue-warning', {
+                    queueSize: this.queue.length,
+                    maxSize: this.MAX_QUEUE_SIZE,
+                    percentFull: Math.round(this.queue.length / this.MAX_QUEUE_SIZE * 100)
+                });
             }
 
             // In Queue einreihen

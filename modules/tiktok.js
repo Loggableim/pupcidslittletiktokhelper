@@ -12,6 +12,12 @@ class TikTokConnector extends EventEmitter {
         this.retryCount = 0;
         this.maxRetries = 3;
         this.retryDelays = [2000, 5000, 10000]; // Exponential backoff: 2s, 5s, 10s
+
+        // Auto-Reconnect-Limiter
+        this.autoReconnectCount = 0;
+        this.maxAutoReconnects = 5; // Max 5 automatische Reconnects
+        this.autoReconnectResetTimeout = null;
+
         this.stats = {
             viewers: 0,
             likes: 0,
@@ -61,6 +67,15 @@ class TikTokConnector extends EventEmitter {
 
             this.isConnected = true;
             this.retryCount = 0; // Reset bei erfolgreicher Verbindung
+
+            // Reset Auto-Reconnect-Counter nach 5 Minuten stabiler Verbindung
+            if (this.autoReconnectResetTimeout) {
+                clearTimeout(this.autoReconnectResetTimeout);
+            }
+            this.autoReconnectResetTimeout = setTimeout(() => {
+                this.autoReconnectCount = 0;
+                console.log('✅ Auto-reconnect counter reset after stable connection');
+            }, 5 * 60 * 1000); // 5 Minuten
 
             this.broadcastStatus('connected', {
                 username,
@@ -274,14 +289,29 @@ class TikTokConnector extends EventEmitter {
             this.isConnected = false;
             this.broadcastStatus('disconnected');
 
-            // Auto-Reconnect nach 5 Sekunden
-            if (this.currentUsername) {
+            // Auto-Reconnect mit Limit
+            if (this.currentUsername && this.autoReconnectCount < this.maxAutoReconnects) {
+                this.autoReconnectCount++;
+                const delay = 5000;
+
+                console.log(`🔄 Attempting auto-reconnect ${this.autoReconnectCount}/${this.maxAutoReconnects} in ${delay/1000}s...`);
+
                 setTimeout(() => {
-                    console.log('🔄 Attempting to reconnect...');
                     this.connect(this.currentUsername).catch(err => {
-                        console.error('Reconnect failed:', err);
+                        console.error(`Auto-reconnect ${this.autoReconnectCount}/${this.maxAutoReconnects} failed:`, err.message);
                     });
-                }, 5000);
+                }, delay);
+
+                // Reset Counter nach 5 Minuten erfolgreicher Verbindung
+                if (this.autoReconnectResetTimeout) {
+                    clearTimeout(this.autoReconnectResetTimeout);
+                }
+            } else if (this.autoReconnectCount >= this.maxAutoReconnects) {
+                console.warn(`⚠️ Max auto-reconnect attempts (${this.maxAutoReconnects}) reached. Manual reconnect required.`);
+                this.broadcastStatus('max_reconnects_reached', {
+                    maxReconnects: this.maxAutoReconnects,
+                    message: 'Bitte manuell neu verbinden'
+                });
             }
         });
 
