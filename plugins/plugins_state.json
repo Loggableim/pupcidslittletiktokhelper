@@ -1,5 +1,8 @@
 {
   "tts_core_v2": {
+    "enabled": false
+  },
+  "wwm_gpt": {
     "enabled": true,
     "loadedAt": "2025-11-11T00:00:00.000Z"
   },

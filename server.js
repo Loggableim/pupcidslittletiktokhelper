@@ -548,7 +548,7 @@ app.get('/api/status', apiLimiter, (req, res) => {
 });
 
 // ========== VOICE MAPPING ROUTES ==========
-// Moved to TTS Plugin (plugins/tts)
+// Handled by TTS Core V2 Plugin (plugins/tts_core_v2)
 
 // ========== PLUGIN ROUTES ==========
 // Plugin routes are set up in routes/plugin-routes.js (setupPluginRoutes)
@@ -932,7 +932,7 @@ app.post('/api/alerts/test', apiLimiter, (req, res) => {
 });
 
 // ========== TTS ROUTES ==========
-// Moved to TTS Plugin (plugins/tts)
+// Handled by TTS Core V2 Plugin (plugins/tts_core_v2)
 
 // ========== SOUNDBOARD ROUTES ==========
 // Moved to Soundboard Plugin (plugins/soundboard)
@@ -1523,7 +1523,7 @@ io.on('connection', (socket) => {
         alerts.testAlert(data.type, data.testData);
     });
 
-    // test:tts is now handled by TTS Plugin
+    // test:tts is now handled by TTS Core V2 Plugin
 
     // VDO.Ninja Socket.IO Events are now handled by VDO.Ninja Plugin
 
@@ -1602,7 +1602,7 @@ tiktok.on('share', async (data) => {
 
 // Chat Event
 tiktok.on('chat', async (data) => {
-    // TTS für Chat ist jetzt im TTS-Plugin (plugins/tts)
+    // TTS für Chat ist jetzt im TTS Core V2 Plugin (plugins/tts_core_v2)
 
     // Leaderboard: Track chat message
     await leaderboard.trackChat(data.username);

@@ -173,6 +173,43 @@ class TTSCoreV2Plugin {
             this.api.log(`TTS Core V2 initialization failed: ${error.message}`, 'error');
             throw error;
         }
+        this.api.log('TTS Core V2 Plugin initializing...');
+
+        try {
+            // Ensure config files exist
+            logDebug('Ensuring config files...');
+            this.ensureConfigFiles();
+            logDebug('Config files OK');
+
+            // Register API Routes
+            logDebug('Registering API routes...');
+            this.registerRoutes();
+            logDebug('API routes registered');
+
+            // Register TikTok Event Hooks
+            logDebug('Registering TikTok events...');
+            this.registerTikTokEvents();
+            logDebug('TikTok events registered');
+
+            // Register Socket Events
+            logDebug('Registering Socket events...');
+            this.registerSocketEvents();
+            logDebug('Socket events registered');
+
+            // Start cleanup timer for expired mutes
+            logDebug('Starting cleanup timer...');
+            this.startMuteCleanupTimer();
+            logDebug('Cleanup timer started');
+
+            logDebug('=== INIT COMPLETE ===');
+            this.api.log('TTS Core V2 Plugin initialized successfully');
+            this.api.log(`Loaded ${this.bannedWords.length} banned words`);
+            this.api.log(`Loaded ${this.mutedUsers.size} muted users`);
+        } catch (error) {
+            console.error(`${LOG_PREFIX} INIT ERROR:`, error);
+            this.api.log(`TTS Core V2 initialization failed: ${error.message}`, 'error');
+            throw error;
+        }
     }
 
     // ============================================

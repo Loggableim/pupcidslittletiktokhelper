@@ -1074,6 +1074,12 @@ class DatabaseManager {
             defaultConfig.session_reset
         );
 
+        // Initialize stats with default threshold
+        const statsStmt = this.db.prepare(`
+            INSERT OR IGNORE INTO milestone_stats (id, cumulative_coins, current_milestone)
+            VALUES (1, 0, ?)
+        `);
+        statsStmt.run(defaultConfig.threshold);
         // Initialize stats
         const statsInitStmt = this.db.prepare(`
             INSERT OR IGNORE INTO milestone_stats (id, cumulative_coins, current_milestone)
