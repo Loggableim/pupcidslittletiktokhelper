@@ -21,6 +21,7 @@ try {
     francAll = () => [['eng', 1]]; // Default to English
     logDebug('franc-min not available, using fallback');
 }
+const { francAll } = require('franc-min');
 
 // TikTok TTS Voice Mapping mit Sprachzuordnung
 const TIKTOK_VOICES = {
@@ -173,6 +174,26 @@ class TTSCoreV2Plugin {
             this.api.log(`TTS Core V2 initialization failed: ${error.message}`, 'error');
             throw error;
         }
+        this.api.log('TTS Core V2 Plugin initializing...');
+
+        // Ensure config files exist
+        this.ensureConfigFiles();
+
+        // Register API Routes
+        this.registerRoutes();
+
+        // Register TikTok Event Hooks
+        this.registerTikTokEvents();
+
+        // Register Socket Events
+        this.registerSocketEvents();
+
+        // Start cleanup timer for expired mutes
+        this.startMuteCleanupTimer();
+
+        this.api.log('TTS Core V2 Plugin initialized successfully');
+        this.api.log(`Loaded ${this.bannedWords.length} banned words`);
+        this.api.log(`Loaded ${this.mutedUsers.size} muted users`);
     }
 
     // ============================================
@@ -184,6 +205,7 @@ class TTSCoreV2Plugin {
 
         // banned_words.json
         logDebug(`Checking: ${this.bannedWordsFile}`);
+        // banned_words.json
         if (!fs.existsSync(this.bannedWordsFile)) {
             const defaultBannedWords = [
                 // URLs & Links
@@ -305,6 +327,7 @@ class TTSCoreV2Plugin {
 
         // GET /api/tts-v2/config - Get configuration
         logDebug('Registering: GET /api/tts-v2/config');
+        // GET /api/tts-v2/config - Get configuration
         this.api.registerRoute('GET', '/api/tts-v2/config', (req, res) => {
             res.json({
                 success: true,
@@ -545,6 +568,7 @@ class TTSCoreV2Plugin {
 
         // Chat Event - Main TTS Trigger
         logDebug('Registering: chat event');
+        // Chat Event - Main TTS Trigger
         this.api.registerTikTokEvent('chat', async (data) => {
             if (!data.message) return;
 

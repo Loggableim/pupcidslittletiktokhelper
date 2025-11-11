@@ -1,0 +1,242 @@
+[
+  {
+    "question": "Welche Farbe hat der Himmel an einem klaren Tag?",
+    "answers": {
+      "A": "Blau",
+      "B": "Grün",
+      "C": "Rot",
+      "D": "Gelb"
+    },
+    "correct": "A",
+    "category": "Allgemeinwissen",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Wie viele Kontinente gibt es auf der Erde?",
+    "answers": {
+      "A": "5",
+      "B": "6",
+      "C": "7",
+      "D": "8"
+    },
+    "correct": "C",
+    "category": "Geographie",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Welches Tier ist als 'König der Tiere' bekannt?",
+    "answers": {
+      "A": "Tiger",
+      "B": "Löwe",
+      "C": "Elefant",
+      "D": "Bär"
+    },
+    "correct": "B",
+    "category": "Allgemeinwissen",
+    "difficulty": "easy"
+  },
+  {
+    "question": "In welchem Jahr fiel die Berliner Mauer?",
+    "answers": {
+      "A": "1987",
+      "B": "1988",
+      "C": "1989",
+      "D": "1990"
+    },
+    "correct": "C",
+    "category": "Geschichte",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Welcher Planet ist der größte in unserem Sonnensystem?",
+    "answers": {
+      "A": "Saturn",
+      "B": "Jupiter",
+      "C": "Neptun",
+      "D": "Uranus"
+    },
+    "correct": "B",
+    "category": "Wissenschaft",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Wer schrieb das Buch '1984'?",
+    "answers": {
+      "A": "Aldous Huxley",
+      "B": "Ray Bradbury",
+      "C": "George Orwell",
+      "D": "Ernest Hemingway"
+    },
+    "correct": "C",
+    "category": "Popkultur",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Welches chemische Element hat das Symbol 'Au'?",
+    "answers": {
+      "A": "Silber",
+      "B": "Aluminium",
+      "C": "Gold",
+      "D": "Kupfer"
+    },
+    "correct": "C",
+    "category": "Wissenschaft",
+    "difficulty": "medium"
+  },
+  {
+    "question": "In welchem Land wurde Fußballspieler Cristiano Ronaldo geboren?",
+    "answers": {
+      "A": "Spanien",
+      "B": "Brasilien",
+      "C": "Portugal",
+      "D": "Italien"
+    },
+    "correct": "C",
+    "category": "Sport",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Welche Stadt ist die Hauptstadt von Australien?",
+    "answers": {
+      "A": "Sydney",
+      "B": "Melbourne",
+      "C": "Brisbane",
+      "D": "Canberra"
+    },
+    "correct": "D",
+    "category": "Geographie",
+    "difficulty": "hard"
+  },
+  {
+    "question": "Wie heißt der längste Fluss der Welt?",
+    "answers": {
+      "A": "Amazonas",
+      "B": "Nil",
+      "C": "Mississippi",
+      "D": "Yangtze"
+    },
+    "correct": "B",
+    "category": "Geographie",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Welches ist das kleinste Land der Welt?",
+    "answers": {
+      "A": "Monaco",
+      "B": "Vatikanstadt",
+      "C": "San Marino",
+      "D": "Liechtenstein"
+    },
+    "correct": "B",
+    "category": "Geographie",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Wer malte die Mona Lisa?",
+    "answers": {
+      "A": "Michelangelo",
+      "B": "Raphael",
+      "C": "Leonardo da Vinci",
+      "D": "Donatello"
+    },
+    "correct": "C",
+    "category": "Popkultur",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Welches ist das schnellste Landtier der Welt?",
+    "answers": {
+      "A": "Löwe",
+      "B": "Gepard",
+      "C": "Antilope",
+      "D": "Pferd"
+    },
+    "correct": "B",
+    "category": "Allgemeinwissen",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Wie viele Herzen hat ein Oktopus?",
+    "answers": {
+      "A": "1",
+      "B": "2",
+      "C": "3",
+      "D": "4"
+    },
+    "correct": "C",
+    "category": "Wissenschaft",
+    "difficulty": "hard"
+  },
+  {
+    "question": "In welchem Jahr wurde das Internet der Öffentlichkeit zugänglich gemacht?",
+    "answers": {
+      "A": "1989",
+      "B": "1991",
+      "C": "1993",
+      "D": "1995"
+    },
+    "correct": "B",
+    "category": "Geschichte",
+    "difficulty": "hard"
+  },
+  {
+    "question": "Welcher Film gewann 2020 den Oscar für den besten Film?",
+    "answers": {
+      "A": "1917",
+      "B": "Joker",
+      "C": "Parasite",
+      "D": "Once Upon a Time in Hollywood"
+    },
+    "correct": "C",
+    "category": "Popkultur",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Wie heißt die Hauptstadt von Japan?",
+    "answers": {
+      "A": "Kyoto",
+      "B": "Osaka",
+      "C": "Tokio",
+      "D": "Hiroshima"
+    },
+    "correct": "C",
+    "category": "Geographie",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Welches Element ist für die Photosynthese in Pflanzen unerlässlich?",
+    "answers": {
+      "A": "Sauerstoff",
+      "B": "Stickstoff",
+      "C": "Kohlendioxid",
+      "D": "Helium"
+    },
+    "correct": "C",
+    "category": "Wissenschaft",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Wie viele Spieler hat eine Fußballmannschaft auf dem Feld?",
+    "answers": {
+      "A": "9",
+      "B": "10",
+      "C": "11",
+      "D": "12"
+    },
+    "correct": "C",
+    "category": "Sport",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Wer komponierte die 'Mondscheinsonate'?",
+    "answers": {
+      "A": "Mozart",
+      "B": "Beethoven",
+      "C": "Bach",
+      "D": "Chopin"
+    },
+    "correct": "B",
+    "category": "Popkultur",
+    "difficulty": "medium"
+  }
+]
