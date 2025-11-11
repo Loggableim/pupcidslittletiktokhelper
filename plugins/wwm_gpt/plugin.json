@@ -1,0 +1,23 @@
+{
+  "id": "wwm_gpt",
+  "name": "Wer wird Millionär - GPT Edition",
+  "description": "Interaktives Quizspiel nach dem Prinzip 'Wer wird Millionär' mit GPT-5 Mini Fragenerzeugung, OBS-Overlay, Team-Mechaniken, TTS-Integration und TikTok-Event-Anbindung",
+  "version": "1.0.0",
+  "author": "TikTok Stream Tool",
+  "entry": "main.js",
+  "enabled": true,
+  "type": "module",
+  "dependencies": ["axios"],
+  "permissions": ["tiktok-events", "database", "socket-emit", "routes"],
+  "features": [
+    "GPT-5 Mini Question Generation",
+    "OBS Overlay mit Live-Timer",
+    "Team Fuchs vs Team Cid",
+    "TTS Integration",
+    "Gift-basierte Joker",
+    "Highscore & Leaderboard",
+    "Persistente Session",
+    "Custom Themes",
+    "Moderations-Tools"
+  ]
+}

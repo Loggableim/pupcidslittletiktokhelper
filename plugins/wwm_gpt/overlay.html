@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WWM Quiz Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: transparent;
+            color: white;
+            overflow: hidden;
+        }
+
+        #overlay-container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            background: transparent;
+        }
+
+        /* Question Container */
+        #question-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 1400px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #question-container.visible {
+            opacity: 1;
+        }
+
+        #question-text {
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(26, 26, 46, 0.8));
+            padding: 30px 40px;
+            border-radius: 20px;
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 3px solid #4a90e2;
+        }
+
+        #answers-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .answer {
+            background: linear-gradient(135deg, rgba(52, 73, 94, 0.95), rgba(44, 62, 80, 0.9));
+            padding: 25px 30px;
+            border-radius: 15px;
+            font-size: 24px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .answer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .answer:hover::before {
+            transform: translateX(100%);
+        }
+
+        .answer.selected {
+            border-color: #f39c12;
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
+        }
+
+        .answer.correct {
+            border-color: #2ecc71;
+            background: linear-gradient(135deg, rgba(46, 204, 113, 0.3), rgba(39, 174, 96, 0.3));
+            animation: pulse-correct 1s ease infinite;
+        }
+
+        .answer.wrong {
+            border-color: #e74c3c;
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.3), rgba(192, 57, 43, 0.3));
+        }
+
+        .answer.removed {
+            opacity: 0.3;
+            filter: blur(2px);
+            pointer-events: none;
+        }
+
+        @keyframes pulse-correct {
+            0%, 100% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(46, 204, 113, 0.8); }
+        }
+
+        .answer-letter {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        /* Timer */
+        #timer-container {
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            width: 150px;
+            height: 150px;
+        }
+
+        #timer-circle {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        #timer-circle circle {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .timer-bg {
+            stroke: rgba(255, 255, 255, 0.1);
+        }
+
+        .timer-progress {
+            stroke: #4a90e2;
+            stroke-dasharray: 440;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear, stroke 0.3s;
+        }
+
+        .timer-progress.warning {
+            stroke: #f39c12;
+        }
+
+        .timer-progress.critical {
+            stroke: #e74c3c;
+            animation: pulse-timer 0.5s ease infinite;
+        }
+
+        @keyframes pulse-timer {
+            0%, 100% { stroke-opacity: 1; }
+            50% { stroke-opacity: 0.5; }
+        }
+
+        #timer-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+        }
+
+        /* Team Scores */
+        #teams-container {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .team-score {
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(26, 26, 46, 0.8));
+            padding: 20px 30px;
+            border-radius: 15px;
+            min-width: 300px;
+            border: 3px solid;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .team-score.fuchs {
+            border-color: #e74c3c;
+        }
+
+        .team-score.cid {
+            border-color: #3498db;
+        }
+
+        .team-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .team-icon {
+            font-size: 32px;
+        }
+
+        .team-name {
+            font-size: 24px;
+            font-weight: bold;
+            flex: 1;
+        }
+
+        .team-points {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .team-members {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .team-bar {
+            margin-top: 10px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .team-bar-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        .team-bar-fill.fuchs {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+
+        .team-bar-fill.cid {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+        }
+
+        /* Leaderboard */
+        #leaderboard-container {
+            position: absolute;
+            bottom: 50px;
+            right: 50px;
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(26, 26, 46, 0.8));
+            padding: 20px;
+            border-radius: 15px;
+            border: 3px solid #4a90e2;
+            max-width: 400px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #leaderboard-container.visible {
+            opacity: 1;
+        }
+
+        #leaderboard-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .leaderboard-entry {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .leaderboard-rank {
+            width: 30px;
+            font-weight: bold;
+            color: #f39c12;
+        }
+
+        .leaderboard-name {
+            flex: 1;
+            font-size: 16px;
+        }
+
+        .leaderboard-score {
+            font-weight: bold;
+            color: #2ecc71;
+        }
+
+        /* Joker Alert */
+        #joker-alert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(243, 156, 18, 0.95), rgba(230, 126, 34, 0.9));
+            padding: 40px 60px;
+            border-radius: 20px;
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+            border: 4px solid #f39c12;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #joker-alert.visible {
+            opacity: 1;
+            animation: joker-pulse 0.6s ease;
+        }
+
+        @keyframes joker-pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        /* Answer Distribution */
+        #distribution-container {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(26, 26, 46, 0.8));
+            padding: 20px;
+            border-radius: 15px;
+            border: 3px solid #4a90e2;
+            min-width: 300px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #distribution-container.visible {
+            opacity: 1;
+        }
+
+        #distribution-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .dist-bar {
+            margin-bottom: 10px;
+        }
+
+        .dist-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .dist-progress {
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .dist-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4a90e2, #357abd);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        /* Game Status */
+        #game-status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #game-status.visible {
+            opacity: 1;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                transform: translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 0.5s ease forwards;
+        }
+
+        .slide-out {
+            animation: slideOut 0.5s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay-container">
+        <!-- Timer -->
+        <div id="timer-container">
+            <svg id="timer-circle">
+                <circle class="timer-bg" cx="75" cy="75" r="70"></circle>
+                <circle class="timer-progress" cx="75" cy="75" r="70"></circle>
+            </svg>
+            <div id="timer-text">15</div>
+        </div>
+
+        <!-- Team Scores -->
+        <div id="teams-container">
+            <div class="team-score fuchs">
+                <div class="team-header">
+                    <span class="team-icon">🦊</span>
+                    <span class="team-name">Team Fuchs</span>
+                    <span class="team-points">0</span>
+                </div>
+                <div class="team-members">0 Mitglieder</div>
+                <div class="team-bar">
+                    <div class="team-bar-fill fuchs" style="width: 50%"></div>
+                </div>
+            </div>
+
+            <div class="team-score cid">
+                <div class="team-header">
+                    <span class="team-icon">🐺</span>
+                    <span class="team-name">Team Cid</span>
+                    <span class="team-points">0</span>
+                </div>
+                <div class="team-members">0 Mitglieder</div>
+                <div class="team-bar">
+                    <div class="team-bar-fill cid" style="width: 50%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Container -->
+        <div id="question-container">
+            <div id="question-text"></div>
+            <div id="answers-grid">
+                <div class="answer" data-answer="A">
+                    <span class="answer-letter">A</span>
+                    <span class="answer-text"></span>
+                </div>
+                <div class="answer" data-answer="B">
+                    <span class="answer-letter">B</span>
+                    <span class="answer-text"></span>
+                </div>
+                <div class="answer" data-answer="C">
+                    <span class="answer-letter">C</span>
+                    <span class="answer-text"></span>
+                </div>
+                <div class="answer" data-answer="D">
+                    <span class="answer-letter">D</span>
+                    <span class="answer-text"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div id="leaderboard-container">
+            <div id="leaderboard-title">🏆 Top Spieler</div>
+            <div id="leaderboard-list"></div>
+        </div>
+
+        <!-- Answer Distribution -->
+        <div id="distribution-container">
+            <div id="distribution-title">📊 Antworten</div>
+            <div id="distribution-bars"></div>
+        </div>
+
+        <!-- Joker Alert -->
+        <div id="joker-alert"></div>
+
+        <!-- Game Status -->
+        <div id="game-status">Warten auf Spielstart...</div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        let currentState = {
+            active: false,
+            currentQuestion: null,
+            timerRemaining: 15,
+            timerMax: 15,
+            teams: {},
+            config: {}
+        };
+
+        // Connect and request state
+        socket.on('connect', () => {
+            console.log('Connected to WWM server');
+            socket.emit('wwm:get-state');
+        });
+
+        // State update
+        socket.on('wwm:state-update', (state) => {
+            console.log('State update:', state);
+            currentState = state;
+            updateUI();
+        });
+
+        // Config update
+        socket.on('wwm:config-update', (config) => {
+            console.log('Config update:', config);
+            currentState.config = config.design;
+            applyTheme();
+        });
+
+        // Game started
+        socket.on('wwm:game-started', () => {
+            console.log('Game started');
+            currentState.active = true;
+            document.getElementById('game-status').classList.remove('visible');
+        });
+
+        // Game stopped
+        socket.on('wwm:game-stopped', (data) => {
+            console.log('Game stopped:', data);
+            currentState.active = false;
+            showGameStatus('Spiel beendet!');
+            hideQuestion();
+            updateLeaderboard(data.topPlayers);
+        });
+
+        // Question start
+        socket.on('wwm:question-start', (data) => {
+            console.log('Question start:', data);
+            currentState.currentQuestion = data.question;
+            currentState.timerRemaining = data.timer;
+            currentState.timerMax = data.timer;
+            showQuestion(data.question);
+            resetAnswers();
+            document.getElementById('distribution-container').classList.remove('visible');
+        });
+
+        // Question end
+        socket.on('wwm:question-end', (data) => {
+            console.log('Question end:', data);
+            showCorrectAnswer(data.correctAnswer);
+            updateTeamScores(data.teamResults);
+            showDistribution(data.distribution);
+            updateLeaderboard(data.topPlayers);
+        });
+
+        // Timer tick
+        socket.on('wwm:timer-tick', (data) => {
+            currentState.timerRemaining = data.remaining;
+            updateTimer();
+        });
+
+        // Joker activated
+        socket.on('wwm:joker-activated', (data) => {
+            console.log('Joker activated:', data);
+            showJokerAlert(data);
+
+            if (data.type === 'fiftyFifty' && data.data.removedAnswers) {
+                removeAnswers(data.data.removedAnswers);
+            }
+        });
+
+        // Team join
+        socket.on('wwm:team-join', (data) => {
+            console.log('Team join:', data);
+            // Update team member count (would need full state refresh)
+            socket.emit('wwm:get-state');
+        });
+
+        // Answer submitted
+        socket.on('wwm:answer-submitted', (data) => {
+            console.log('Answer submitted:', data);
+            // Could show visual feedback
+        });
+
+        // UI Functions
+        function updateUI() {
+            if (!currentState.active) {
+                showGameStatus('Warten auf Spielstart...');
+                hideQuestion();
+                return;
+            }
+
+            updateTeams();
+            applyTheme();
+        }
+
+        function applyTheme() {
+            const config = currentState.config;
+            if (!config) return;
+
+            const root = document.documentElement;
+            root.style.setProperty('--primary-color', config.primaryColor || '#4a90e2');
+            root.style.setProperty('--secondary-color', config.secondaryColor || '#f39c12');
+            root.style.setProperty('--bg-color', config.backgroundColor || '#1a1a2e');
+            root.style.setProperty('--font-family', config.fontFamily || 'Arial, sans-serif');
+            root.style.setProperty('--font-size', (config.fontSize || 18) + 'px');
+
+            document.body.style.fontFamily = config.fontFamily || 'Arial, sans-serif';
+        }
+
+        function showQuestion(question) {
+            document.getElementById('question-text').textContent = question.text;
+
+            const answers = document.querySelectorAll('.answer');
+            answers.forEach(answer => {
+                const letter = answer.dataset.answer;
+                answer.querySelector('.answer-text').textContent = question.answers[letter];
+                answer.classList.remove('removed', 'correct', 'wrong');
+            });
+
+            document.getElementById('question-container').classList.add('visible');
+            document.getElementById('game-status').classList.remove('visible');
+        }
+
+        function hideQuestion() {
+            document.getElementById('question-container').classList.remove('visible');
+        }
+
+        function resetAnswers() {
+            const answers = document.querySelectorAll('.answer');
+            answers.forEach(answer => {
+                answer.classList.remove('correct', 'wrong', 'removed', 'selected');
+            });
+        }
+
+        function showCorrectAnswer(correct) {
+            const answers = document.querySelectorAll('.answer');
+            answers.forEach(answer => {
+                const letter = answer.dataset.answer;
+                if (letter === correct) {
+                    answer.classList.add('correct');
+                } else if (!answer.classList.contains('removed')) {
+                    answer.classList.add('wrong');
+                }
+            });
+        }
+
+        function removeAnswers(letters) {
+            letters.forEach(letter => {
+                const answer = document.querySelector(`.answer[data-answer="${letter}"]`);
+                if (answer) {
+                    answer.classList.add('removed');
+                }
+            });
+        }
+
+        function updateTimer() {
+            const remaining = currentState.timerRemaining;
+            const max = currentState.timerMax;
+
+            document.getElementById('timer-text').textContent = remaining;
+
+            const progress = document.querySelector('.timer-progress');
+            const circumference = 2 * Math.PI * 70;
+            const offset = circumference - (remaining / max) * circumference;
+
+            progress.style.strokeDashoffset = offset;
+
+            // Color based on time
+            progress.classList.remove('warning', 'critical');
+            if (remaining <= 5) {
+                progress.classList.add('critical');
+            } else if (remaining <= 10) {
+                progress.classList.add('warning');
+            }
+        }
+
+        function updateTeams() {
+            const teams = currentState.teams;
+            if (!teams) return;
+
+            // Update Fuchs
+            if (teams.fuchs) {
+                const fuchsEl = document.querySelector('.team-score.fuchs');
+                fuchsEl.querySelector('.team-name').textContent = teams.fuchs.name;
+                fuchsEl.querySelector('.team-icon').textContent = teams.fuchs.icon;
+                fuchsEl.querySelector('.team-points').textContent = teams.fuchs.score;
+                fuchsEl.querySelector('.team-members').textContent = `${teams.fuchs.memberCount} Mitglieder`;
+                fuchsEl.style.borderColor = teams.fuchs.color;
+            }
+
+            // Update Cid
+            if (teams.cid) {
+                const cidEl = document.querySelector('.team-score.cid');
+                cidEl.querySelector('.team-name').textContent = teams.cid.name;
+                cidEl.querySelector('.team-icon').textContent = teams.cid.icon;
+                cidEl.querySelector('.team-points').textContent = teams.cid.score;
+                cidEl.querySelector('.team-members').textContent = `${teams.cid.memberCount} Mitglieder`;
+                cidEl.style.borderColor = teams.cid.color;
+            }
+
+            // Update bars
+            updateTeamBars();
+        }
+
+        function updateTeamScores(results) {
+            if (results.fuchs) {
+                const fuchsEl = document.querySelector('.team-score.fuchs');
+                fuchsEl.querySelector('.team-points').textContent = results.fuchs.score;
+            }
+
+            if (results.cid) {
+                const cidEl = document.querySelector('.team-score.cid');
+                cidEl.querySelector('.team-points').textContent = results.cid.score;
+            }
+
+            updateTeamBars();
+        }
+
+        function updateTeamBars() {
+            const teams = currentState.teams;
+            if (!teams || !teams.fuchs || !teams.cid) return;
+
+            const total = teams.fuchs.score + teams.cid.score;
+            if (total === 0) {
+                document.querySelector('.team-bar-fill.fuchs').style.width = '50%';
+                document.querySelector('.team-bar-fill.cid').style.width = '50%';
+                return;
+            }
+
+            const fuchsPercent = (teams.fuchs.score / total) * 100;
+            const cidPercent = (teams.cid.score / total) * 100;
+
+            document.querySelector('.team-bar-fill.fuchs').style.width = fuchsPercent + '%';
+            document.querySelector('.team-bar-fill.cid').style.width = cidPercent + '%';
+        }
+
+        function updateLeaderboard(scores) {
+            if (!scores || scores.length === 0) return;
+
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+
+            scores.forEach((entry, index) => {
+                const div = document.createElement('div');
+                div.className = 'leaderboard-entry';
+                div.innerHTML = `
+                    <span class="leaderboard-rank">#${index + 1}</span>
+                    <span class="leaderboard-name">${entry.username}</span>
+                    <span class="leaderboard-score">${entry.score}</span>
+                `;
+                list.appendChild(div);
+            });
+
+            document.getElementById('leaderboard-container').classList.add('visible');
+        }
+
+        function showDistribution(distribution) {
+            if (!distribution || !distribution.overall) return;
+
+            const container = document.getElementById('distribution-bars');
+            container.innerHTML = '';
+
+            ['A', 'B', 'C', 'D'].forEach(letter => {
+                const percent = distribution.overall[letter] || 0;
+
+                const div = document.createElement('div');
+                div.className = 'dist-bar';
+                div.innerHTML = `
+                    <div class="dist-label">
+                        <span>${letter}</span>
+                        <span>${percent}%</span>
+                    </div>
+                    <div class="dist-progress">
+                        <div class="dist-fill" style="width: ${percent}%"></div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            document.getElementById('distribution-container').classList.add('visible');
+        }
+
+        function showJokerAlert(data) {
+            const alert = document.getElementById('joker-alert');
+            const teamName = currentState.teams[data.team]?.name || data.team;
+            let message = '';
+
+            if (data.type === 'fiftyFifty') {
+                message = `🎯 ${teamName} nutzt 50:50 Joker!`;
+            } else if (data.type === 'extraTime') {
+                message = `⏰ ${teamName} bekommt +${data.data.extraSeconds}s!`;
+            }
+
+            alert.textContent = message;
+            alert.classList.add('visible');
+
+            setTimeout(() => {
+                alert.classList.remove('visible');
+            }, 3000);
+        }
+
+        function showGameStatus(message) {
+            const status = document.getElementById('game-status');
+            status.textContent = message;
+            status.classList.add('visible');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            socket.emit('wwm:get-state');
+        });
+    </script>
+</body>
+</html>
