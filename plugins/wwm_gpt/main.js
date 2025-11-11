@@ -1,4 +1,3 @@
-const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -768,9 +767,13 @@ Format (JSON):
 Gib NUR das JSON-Array zurück, ohne zusätzlichen Text.`;
 
         try {
-            const response = await axios.post(
-                'https://api.openai.com/v1/chat/completions',
-                {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.config.openai.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
                     model: this.config.openai.model,
                     messages: [
                         {
@@ -784,16 +787,11 @@ Gib NUR das JSON-Array zurück, ohne zusätzlichen Text.`;
                     ],
                     temperature: this.config.openai.temperature,
                     max_tokens: 2000
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.config.openai.apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
+                })
+            });
 
-            const content = response.data.choices[0].message.content.trim();
+            const data = await response.json();
+            const content = data.choices[0].message.content.trim();
 
             // Extract JSON from response (might have markdown code blocks)
             let jsonStr = content;
