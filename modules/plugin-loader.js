@@ -225,12 +225,22 @@ class PluginAPI {
             }
         });
 
-        // Routes können nicht direkt entfernt werden, aber wir tracken sie
-        this.registeredRoutes = [];
+        // WARNUNG: Express-Routes können nicht entfernt werden (Memory-Leak bei häufigem Reload)
+        if (this.registeredRoutes.length > 0) {
+            this.log(`⚠️ WARNING: ${this.registeredRoutes.length} Express routes cannot be unregistered (Express limitation)`, 'warn');
+            this.log('Frequent plugin reloads will cause memory leak. Restart server to clean up.', 'warn');
+
+            // Markiere Routes als "stale" für Monitoring
+            this.registeredRoutes.forEach(route => {
+                route.stale = true;
+                route.unregisteredAt = new Date();
+            });
+        }
+
         this.registeredSocketEvents = [];
         this.registeredTikTokEvents = [];
 
-        this.log('All registrations cleared');
+        this.log('All registrations cleared (except Express routes)');
     }
 
     /**
@@ -518,12 +528,26 @@ class PluginLoader extends EventEmitter {
      */
     async reloadPlugin(pluginId) {
         try {
+            // Track Reload-Count für Memory-Leak-Warnung
+            if (!this.state[pluginId]) {
+                this.state[pluginId] = {};
+            }
+            this.state[pluginId].reloadCount = (this.state[pluginId].reloadCount || 0) + 1;
+            this.state[pluginId].lastReload = new Date().toISOString();
+
+            // Warnung bei häufigem Reload
+            if (this.state[pluginId].reloadCount > 10) {
+                this.logger.warn(`⚠️ Plugin ${pluginId} has been reloaded ${this.state[pluginId].reloadCount} times. Consider server restart to prevent memory leak.`);
+            }
+
+            this.saveState();
+
             await this.unloadPlugin(pluginId);
 
             const pluginPath = path.join(this.pluginsDir, pluginId);
             await this.loadPlugin(pluginPath);
 
-            this.logger.info(`Reloaded plugin: ${pluginId}`);
+            this.logger.info(`Reloaded plugin: ${pluginId} (reload count: ${this.state[pluginId].reloadCount})`);
             this.emit('plugin:reloaded', pluginId);
 
             return true;

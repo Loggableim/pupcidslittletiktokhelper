@@ -154,6 +154,13 @@ class LeaderboardManager {
    * Get top gifters
    */
   getTopGifters(limit = 10, period = 'all_time') {
+    // Validate period to prevent SQL injection
+    const validPeriods = ['session', 'all_time'];
+    if (!validPeriods.includes(period)) {
+      logger.warn(`Invalid period '${period}', defaulting to 'all_time'`);
+      period = 'all_time';
+    }
+
     const column = period === 'session' ? 'session_coins' : 'total_coins';
 
     return this.db.prepare(`
@@ -173,6 +180,13 @@ class LeaderboardManager {
    * Get top chatters
    */
   getTopChatters(limit = 10, period = 'all_time') {
+    // Validate period to prevent SQL injection
+    const validPeriods = ['session', 'all_time'];
+    if (!validPeriods.includes(period)) {
+      logger.warn(`Invalid period '${period}', defaulting to 'all_time'`);
+      period = 'all_time';
+    }
+
     const column = period === 'session' ? 'session_messages' : 'message_count';
 
     return this.db.prepare(`
@@ -191,6 +205,13 @@ class LeaderboardManager {
    * Get user rank by coins
    */
   getUserRank(username, period = 'all_time') {
+    // Validate period to prevent SQL injection
+    const validPeriods = ['session', 'all_time'];
+    if (!validPeriods.includes(period)) {
+      logger.warn(`Invalid period '${period}', defaulting to 'all_time'`);
+      period = 'all_time';
+    }
+
     const column = period === 'session' ? 'session_coins' : 'total_coins';
 
     const rank = this.db.prepare(`

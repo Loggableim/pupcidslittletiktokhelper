@@ -29,6 +29,9 @@ class VDONinjaManager extends EventEmitter {
         // VDO.Ninja Base URL
         this.VDO_BASE_URL = 'https://vdo.ninja';
 
+        // Timer tracking für cleanup
+        this.activeTimers = new Set();
+
         logger.info('✅ VDO.Ninja Manager initialized');
     }
 
@@ -336,9 +339,11 @@ class VDONinjaManager extends EventEmitter {
 
         // After duration, return to normal layout
         if (duration > 0) {
-            setTimeout(() => {
+            const timer = setTimeout(() => {
+                this.activeTimers.delete(timer);
                 this.changeLayout(this.currentLayout);
             }, duration);
+            this.activeTimers.add(timer);
         }
     }
 
@@ -478,6 +483,12 @@ class VDONinjaManager extends EventEmitter {
             this.removeGuest(slot);
         }
 
+        // Clear all active timers
+        for (const timer of this.activeTimers) {
+            clearTimeout(timer);
+        }
+        this.activeTimers.clear();
+
         this.activeRoom = null;
         this.currentLayout = 'Grid 2x2';
 
@@ -559,8 +570,10 @@ class VDONinjaManager extends EventEmitter {
      * @returns {string} Unique room ID (12 characters)
      */
     generateRoomId(roomName) {
+        // Use crypto.randomBytes instead of Math.random() for cryptographic security
+        const randomBytes = crypto.randomBytes(16).toString('hex');
         const hash = crypto.createHash('sha256')
-            .update(roomName + Date.now() + Math.random())
+            .update(roomName + Date.now() + randomBytes)
             .digest('hex');
         return hash.substring(0, 12);
     }
