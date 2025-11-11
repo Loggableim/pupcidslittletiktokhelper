@@ -225,6 +225,86 @@
         <!-- Tab: TTS -->
         <div id="tab-tts" class="tab-content" data-plugin="tts_core_v2">
             <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl mb-6 font-semibold">🎤 Text-to-Speech Settings</h2>
+
+                <!-- TTS Provider Selection -->
+                <div class="mb-8">
+                    <h3 class="font-bold text-lg mb-4">🔌 TTS Provider</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-400 mb-2">Select TTS Provider</label>
+                            <select id="tts-provider" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="tiktok">TikTok TTS (Free, no API key needed)</option>
+                                <option value="google">Google Cloud TTS (Requires API key)</option>
+                            </select>
+                        </div>
+
+                        <!-- Google TTS API Key -->
+                        <div id="google-api-key-container" class="hidden">
+                            <label class="block text-gray-400 mb-2">Google Cloud TTS API Key</label>
+                            <input type="password" id="google-api-key" placeholder="Enter your Google Cloud API key"
+                                   class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-2">
+                                Get your API key from: <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-blue-400 hover:underline">Google Cloud Console</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TTS General Settings -->
+                <div class="mb-8">
+                    <h3 class="font-bold text-lg mb-4">⚙️ General Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-400 mb-2">Default Voice</label>
+                            <select id="default-voice" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Wird dynamisch gefüllt -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-2">Volume: <span id="tts-volume-label">80</span>%</label>
+                            <input type="range" min="0" max="100" value="80"
+                                   id="tts-volume" class="w-full">
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-2">Speed: <span id="tts-speed-label">1.0</span>x</label>
+                            <input type="range" min="0.5" max="2" step="0.1" value="1"
+                                   id="tts-speed" class="w-full">
+                        </div>
+                        <div>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="tts-chat-enabled" class="w-5 h-5">
+                                <span>Enable TTS for Chat Messages</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-gray-400 mb-2">Minimum Team Level for TTS</label>
+                            <input type="number" id="tts-min-team-level" min="0" value="0"
+                                   class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Only users with at least this team member level can use TTS (0 = everyone)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test TTS -->
+                <div class="mb-8">
+                    <h3 class="font-bold text-lg mb-4">🧪 Test TTS</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="tts-test-text" placeholder="Enter text to test TTS..."
+                               class="bg-gray-700 text-white px-4 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="tts-test-btn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700">
+                            🔊 Test
+                        </button>
+                    </div>
+                </div>
+
+                <button id="save-tts-settings-btn" class="bg-blue-600 px-6 py-3 rounded hover:bg-blue-700 font-semibold">
+                    💾 Save TTS Settings
+                </button>
+            </div>
+
+            <!-- User Voice Mapping -->
+            <div class="bg-gray-800 rounded-lg p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold">🎤 TTS Core V2 - Advanced Text-to-Speech</h2>
                     <a href="/plugins/tts_core_v2/ui.html" target="_blank"

@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": false,
+  "enabled": true,
   "type": "overlay",
   "dependencies": ["express", "socket.io"],
   "permissions": ["tiktok-events", "database"]
