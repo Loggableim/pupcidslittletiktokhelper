@@ -215,7 +215,7 @@ class Launcher {
      */
     async startServer() {
         this.log.newLine();
-        this.log.header(`${this.log.symbols.rocket} TikTok Stream Tool läuft!`);
+        this.log.header(`${this.log.symbols.rocket} Pup Cid´s Little Tiktok Helper läuft!`);
 
         this.log.box('Wichtige URLs', [
             `Dashboard: http://localhost:3000/dashboard.html`,

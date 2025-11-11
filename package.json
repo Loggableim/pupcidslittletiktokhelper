@@ -1,7 +1,7 @@
 {
-  "name": "tiktok-stream-tool",
+  "name": "pupcidslittletiktokhelper",
   "version": "1.0.3",
-  "description": "Professional TikTok LIVE streaming tool with overlays, alerts, TTS and automation",
+  "description": "Pup Cid's Little Tiktok Helper - Professional TikTok LIVE streaming tool with overlays, alerts, TTS and automation",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

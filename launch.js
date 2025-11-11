@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Launch.js - Haupt-Einstiegspunkt für TikTok Stream Tool
+ * Launch.js - Haupt-Einstiegspunkt für Pup Cid´s Little Tiktok Helper
  * Startet das Launcher-Modul
  */
 
