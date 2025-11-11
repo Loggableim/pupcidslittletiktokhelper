@@ -191,24 +191,25 @@ class TTSPlugin {
 
     registerTikTokEvents() {
         // Chat-Event für Auto-TTS
+        // TTS wird immer verarbeitet, Team-Level-Prüfung erfolgt in speak()
         this.api.registerTikTokEvent('chat', async (data) => {
-            const ttsEnabled = this.db.getSetting('tts_chat_enabled') === 'true';
-
-            if (ttsEnabled && data.message) {
+            if (data.message) {
                 await this.speak(data.username, data.message, null, {
-                    teamMemberLevel: data.teamMemberLevel
+                    teamMemberLevel: data.teamMemberLevel || 0
                 });
             }
         });
 
         // Gift-Event für TTS (falls gewünscht)
+        // Team-Level-basiert statt Coin-basiert
         this.api.registerTikTokEvent('gift', async (data) => {
             const ttsGiftEnabled = this.db.getSetting('tts_gift_enabled') === 'true';
-            const minCoins = parseInt(this.db.getSetting('tts_min_coins')) || 100;
 
-            if (ttsGiftEnabled && data.coins >= minCoins) {
-                const message = `${data.username} sent ${data.giftName} for ${data.coins} coins`;
-                await this.speak('System', message, null, {});
+            if (ttsGiftEnabled) {
+                const message = `${data.username} sent ${data.giftName}`;
+                await this.speak('System', message, null, {
+                    teamMemberLevel: data.teamMemberLevel || 0
+                });
             }
         });
     }
