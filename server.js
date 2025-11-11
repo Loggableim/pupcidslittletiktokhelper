@@ -9,7 +9,7 @@ const crypto = require('crypto');
 // Import Core Modules
 const Database = require('./modules/database');
 const TikTokConnector = require('./modules/tiktok');
-// const TTSEngine = require('./modules/tts'); // DEPRECATED: Now using tts_core_v2 plugin
+// OLD TTS ENGINE REMOVED - Using TTS Core V2 Plugin (plugins/tts_core_v2) instead
 const AlertManager = require('./modules/alerts');
 const FlowEngine = require('./modules/flows');
 const { GoalManager } = require('./modules/goals');
@@ -114,6 +114,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static('public'));
+app.use('/plugins', express.static('plugins')); // Plugin static files (ui.html, etc.)
 
 // i18n Middleware
 app.use(i18n.init);
@@ -1679,7 +1680,7 @@ const PORT = process.env.PORT || 3000;
     // Jetzt Server starten
     server.listen(PORT, async () => {
         logger.info('\n' + '='.repeat(50));
-        logger.info('🎥 TikTok Stream Tool');
+        logger.info('🐶 Pup Cid´s Little Tiktok Helper');
         logger.info('='.repeat(50));
         logger.info(`\n✅ Server running on http://localhost:${PORT}`);
         logger.info(`\n📊 Dashboard:     http://localhost:${PORT}/dashboard.html`);

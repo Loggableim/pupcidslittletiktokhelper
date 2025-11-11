@@ -22,7 +22,7 @@ class Launcher {
     async launch() {
         try {
             this.log.clear();
-            this.log.header('TikTok Stream Tool - Launcher');
+            this.log.header('Pup Cid´s Little Tiktok Helper - Launcher');
 
             // 1. Node.js prüfen
             this.log.step(1, 5, 'Prüfe Node.js Installation...');
