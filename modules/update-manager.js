@@ -494,18 +494,24 @@ class UpdateManager {
      * Startet automatische Update-Prüfung
      */
     startAutoCheck(intervalHours = 24) {
+        // Clear existing interval first
         if (this.checkInterval) {
             clearInterval(this.checkInterval);
+            this.checkInterval = null;
         }
 
         const intervalMs = intervalHours * 60 * 60 * 1000;
 
         // Initial check
-        this.checkForUpdates();
+        this.checkForUpdates().catch(err => {
+            this.logger?.warn(`Initial update check failed: ${err.message}`);
+        });
 
         // Periodisch prüfen
         this.checkInterval = setInterval(() => {
-            this.checkForUpdates();
+            this.checkForUpdates().catch(err => {
+                this.logger?.warn(`Scheduled update check failed: ${err.message}`);
+            });
         }, intervalMs);
 
         this.logger?.info(`Auto-update check gestartet (alle ${intervalHours}h)`);

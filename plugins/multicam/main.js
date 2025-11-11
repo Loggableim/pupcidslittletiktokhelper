@@ -27,6 +27,7 @@ class MultiCamPlugin {
         // Safety-Tracking (Rapid switches)
         this.switchHistory = []; // Array von Timestamps
         this.locked = false;
+        this.lockTimer = null; // Timer für Auto-Unlock
 
         // Gift Catalog (wird von Core geladen)
         this.giftCatalog = new Map(); // giftId -> {name, coins, ...}
@@ -182,8 +183,10 @@ class MultiCamPlugin {
             this.connected = true;
             this.reconnectAttempt = 0;
 
-            // Event-Listener
-            this.obs.on('ConnectionClosed', () => this.handleDisconnect());
+            // Event-Listener (nur einmal registrieren)
+            // Entferne alte Listener vor dem Hinzufügen neuer
+            this.obs.removeAllListeners('ConnectionClosed');
+            this.obs.once('ConnectionClosed', () => this.handleDisconnect());
 
             // Szenen und Quellen laden
             await this.refreshScenes();
@@ -598,10 +601,16 @@ class MultiCamPlugin {
             this.api.log('Multi-Cam: Safety limit exceeded! Locking switches.', 'warn');
             this.locked = true;
 
+            // Clear existing timer
+            if (this.lockTimer) {
+                clearTimeout(this.lockTimer);
+            }
+
             // Auto-Unlock nach 60 Sekunden
-            setTimeout(() => {
+            this.lockTimer = setTimeout(() => {
                 this.locked = false;
                 this.switchHistory = [];
+                this.lockTimer = null;
                 this.api.log('Multi-Cam: Safety lock released');
                 this.broadcastState();
             }, 60000);
@@ -812,6 +821,11 @@ class MultiCamPlugin {
         // Timers clearen
         if (this.reconnectTimeout) {
             clearTimeout(this.reconnectTimeout);
+        }
+
+        if (this.lockTimer) {
+            clearTimeout(this.lockTimer);
+            this.lockTimer = null;
         }
 
         this.api.log('Multi-Cam Plugin destroyed');
