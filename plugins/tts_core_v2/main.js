@@ -1,6 +1,26 @@
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+
+// Logging helper
+const LOG_PREFIX = '[TTS-Core-V2]';
+function logDebug(message) {
+    console.log(`${LOG_PREFIX} ${message}`);
+}
+
+logDebug('Loading dependencies...');
+
+let francAll;
+try {
+    const francModule = require('franc-min');
+    francAll = francModule.francAll || francModule;
+    logDebug('franc-min loaded successfully');
+} catch (error) {
+    console.error(`${LOG_PREFIX} ERROR: Failed to load franc-min:`, error.message);
+    // Fallback: disable language detection
+    francAll = () => [['eng', 1]]; // Default to English
+    logDebug('franc-min not available, using fallback');
+}
 const { francAll } = require('franc-min');
 
 // TikTok TTS Voice Mapping mit Sprachzuordnung
@@ -69,10 +89,15 @@ const LANGUAGE_TO_VOICE = {
  */
 class TTSCoreV2Plugin {
     constructor(api) {
+        logDebug('Constructor called');
         this.api = api;
         this.db = api.getDatabase();
         this.io = api.getSocketIO();
         this.pluginDir = api.getPluginDir();
+
+        logDebug(`Plugin directory: ${this.pluginDir}`);
+        logDebug(`Database: ${this.db ? 'OK' : 'MISSING'}`);
+        logDebug(`Socket.IO: ${this.io ? 'OK' : 'MISSING'}`);
 
         // TTS Queue & State
         this.queue = [];
@@ -111,6 +136,44 @@ class TTSCoreV2Plugin {
     }
 
     async init() {
+        logDebug('=== INIT START ===');
+        this.api.log('TTS Core V2 Plugin initializing...');
+
+        try {
+            // Ensure config files exist
+            logDebug('Ensuring config files...');
+            this.ensureConfigFiles();
+            logDebug('Config files OK');
+
+            // Register API Routes
+            logDebug('Registering API routes...');
+            this.registerRoutes();
+            logDebug('API routes registered');
+
+            // Register TikTok Event Hooks
+            logDebug('Registering TikTok events...');
+            this.registerTikTokEvents();
+            logDebug('TikTok events registered');
+
+            // Register Socket Events
+            logDebug('Registering Socket events...');
+            this.registerSocketEvents();
+            logDebug('Socket events registered');
+
+            // Start cleanup timer for expired mutes
+            logDebug('Starting cleanup timer...');
+            this.startMuteCleanupTimer();
+            logDebug('Cleanup timer started');
+
+            logDebug('=== INIT COMPLETE ===');
+            this.api.log('TTS Core V2 Plugin initialized successfully');
+            this.api.log(`Loaded ${this.bannedWords.length} banned words`);
+            this.api.log(`Loaded ${this.mutedUsers.size} muted users`);
+        } catch (error) {
+            console.error(`${LOG_PREFIX} INIT ERROR:`, error);
+            this.api.log(`TTS Core V2 initialization failed: ${error.message}`, 'error');
+            throw error;
+        }
         this.api.log('TTS Core V2 Plugin initializing...');
 
         // Ensure config files exist
@@ -138,6 +201,10 @@ class TTSCoreV2Plugin {
     // ============================================
 
     ensureConfigFiles() {
+        logDebug(`Checking config files in: ${this.pluginDir}`);
+
+        // banned_words.json
+        logDebug(`Checking: ${this.bannedWordsFile}`);
         // banned_words.json
         if (!fs.existsSync(this.bannedWordsFile)) {
             const defaultBannedWords = [
@@ -256,6 +323,10 @@ class TTSCoreV2Plugin {
     // ============================================
 
     registerRoutes() {
+        logDebug('Registering routes...');
+
+        // GET /api/tts-v2/config - Get configuration
+        logDebug('Registering: GET /api/tts-v2/config');
         // GET /api/tts-v2/config - Get configuration
         this.api.registerRoute('GET', '/api/tts-v2/config', (req, res) => {
             res.json({
@@ -493,6 +564,10 @@ class TTSCoreV2Plugin {
     // ============================================
 
     registerTikTokEvents() {
+        logDebug('Registering TikTok event hooks...');
+
+        // Chat Event - Main TTS Trigger
+        logDebug('Registering: chat event');
         // Chat Event - Main TTS Trigger
         this.api.registerTikTokEvent('chat', async (data) => {
             if (!data.message) return;
