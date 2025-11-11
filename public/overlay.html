@@ -20,35 +20,41 @@
             overflow: hidden;
         }
 
-        /* ========== AUDIO UNLOCK BUTTON ========== */
-        #audio-unlock {
+        /* ========== MASTER MUTE BUTTON ========== */
+        #master-mute-btn {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 20px;
+            right: 20px;
             z-index: 9999;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 20px 40px;
-            border-radius: 15px;
-            font-size: 18px;
-            font-weight: bold;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            font-size: 20px;
             cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            backdrop-filter: blur(10px);
         }
 
-        #audio-unlock:hover {
-            transform: translate(-50%, -50%) scale(1.05);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        #master-mute-btn:hover {
+            transform: scale(1.1);
+            background: rgba(0, 0, 0, 0.85);
+            border-color: rgba(255, 255, 255, 0.4);
         }
 
-        #audio-unlock.hidden {
-            display: none;
+        #master-mute-btn.muted {
+            background: rgba(239, 68, 68, 0.8);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        #master-mute-btn.muted:hover {
+            background: rgba(239, 68, 68, 0.95);
         }
 
         /* ========== ALERT CONTAINER ========== */
@@ -384,10 +390,9 @@
     <!-- Chat Display -->
     <div id="chat-container"></div>
 
-    <!-- Audio Unlock Button (für Browser Autoplay Policy) -->
-    <div id="audio-unlock" onclick="unlockAudio()">
-        <span>🔊</span>
-        <span>Audio aktivieren (Click here)</span>
+    <!-- Master Mute Button (dezent oben rechts) -->
+    <div id="master-mute-btn" onclick="toggleMasterMute()" title="Audio Mute/Unmute">
+        <span id="mute-icon">🔊</span>
     </div>
 
     <!-- Audio Element für TTS -->
@@ -523,9 +528,10 @@
         }
 
         // ========== AUDIO ENGINE (OBS-KOMPATIBEL) ==========
-        let audioUnlocked = false;
+        let audioUnlocked = true; // Audio standardmäßig aktiv
         let audioContext = null;
         let masterGainNode = null;
+        let isMuted = false;
 
         // Audio-Engine initialisieren (automatisch beim Laden)
         function initAudioEngine() {
@@ -549,14 +555,13 @@
                     audioContext.resume().then(() => {
                         console.log('✅ AudioContext resumed automatically');
                         audioUnlocked = true;
-                        hideAudioButton();
                     }).catch(err => {
-                        console.warn('⚠️ AudioContext resume failed, user interaction needed:', err);
-                        showAudioButton();
+                        console.warn('⚠️ AudioContext resume failed:', err);
+                        // Versuche erneut bei erstem Audio-Event
+                        audioUnlocked = false;
                     });
                 } else {
                     audioUnlocked = true;
-                    hideAudioButton();
                 }
 
                 // Stille Audio abspielen um Autoplay zu entsperren (OBS-Fallback)
@@ -569,24 +574,31 @@
                 return true;
             } catch (error) {
                 console.error('❌ Audio Engine initialization failed:', error);
-                showAudioButton();
                 return false;
             }
         }
 
-        // Audio Unlock Button verstecken
-        function hideAudioButton() {
-            const button = document.getElementById('audio-unlock');
-            if (button) {
-                button.classList.add('hidden');
+        // Master Mute Toggle
+        function toggleMasterMute() {
+            if (!masterGainNode) {
+                console.warn('⚠️ Audio Engine not initialized');
+                return;
             }
-        }
 
-        // Audio Unlock Button anzeigen
-        function showAudioButton() {
-            const button = document.getElementById('audio-unlock');
-            if (button) {
-                button.classList.remove('hidden');
+            isMuted = !isMuted;
+
+            if (isMuted) {
+                // Mute: Gain auf 0 setzen
+                masterGainNode.gain.value = 0;
+                document.getElementById('mute-icon').textContent = '🔇';
+                document.getElementById('master-mute-btn').classList.add('muted');
+                console.log('🔇 Audio muted');
+            } else {
+                // Unmute: Gain auf 1 setzen
+                masterGainNode.gain.value = 1.0;
+                document.getElementById('mute-icon').textContent = '🔊';
+                document.getElementById('master-mute-btn').classList.remove('muted');
+                console.log('🔊 Audio unmuted');
             }
         }
 
@@ -595,47 +607,6 @@
 
         // Audio Engine SOFORT beim Laden initialisieren
         initAudioEngine();
-
-        // Audio Unlock (Browser Autoplay Policy umgehen) - nur für manuelle Browser
-        function unlockAudio() {
-            if (audioUnlocked) return;
-
-            if (!audioContext) {
-                initAudioEngine();
-            }
-
-            // AudioContext wieder aufnehmen
-            if (audioContext && audioContext.state === 'suspended') {
-                audioContext.resume().then(() => {
-                    audioUnlocked = true;
-                    const button = document.getElementById('audio-unlock');
-
-                    // Show success feedback
-                    button.innerHTML = '<span>✅</span><span>Audio aktiviert!</span>';
-                    button.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-
-                    console.log('✅ Audio unlocked manually!');
-
-                    // Hide button after 1 second
-                    setTimeout(() => {
-                        button.classList.add('hidden');
-                    }, 1000);
-                }).catch(err => {
-                    console.warn('⚠️ Audio unlock failed:', err);
-
-                    // Show error feedback
-                    const button = document.getElementById('audio-unlock');
-                    button.innerHTML = '<span>❌</span><span>Fehler! Bitte erneut versuchen</span>';
-                    button.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-
-                    // Reset button after 2 seconds
-                    setTimeout(() => {
-                        button.innerHTML = '<span>🔊</span><span>Audio aktivieren (Click here)</span>';
-                        button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                    }, 2000);
-                });
-            }
-        }
 
         // State
         let goalTarget = 1000;
