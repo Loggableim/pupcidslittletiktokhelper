@@ -811,6 +811,121 @@ http://localhost:3000/plugins/gift-counter/ui.html
 - Animations-Speed/-Density
 - HUD-Integration
 
+### 8. TTS Core V2 (`plugins/tts_core_v2/`) - **NEU in v1.0.3**
+
+**Zweck:** Advanced Text-to-Speech mit Spracherkennung
+
+**Features:**
+- **Automatische Spracherkennung** - Erkennt Sprache pro Nachricht (franc-min)
+- **Mehrsprachige Stimmen** - Auto-Mapping zu passender Stimme
+- **Username-Ansage** - Separate Stimme für Username
+- **Wortfilter & Moderation** - Fäkalsprachen-Filter, Censor-Mode
+- **Team-Level-Kontrolle** - Min. Team-Level für TTS-Zugriff
+- **Emoji/Gift Voice Selection** - Stimmen via Emojis/Gifts wählen
+- **Feedback-Loop** - Zuschauer-Stimmen-Wahl
+- **Advanced Config** - Volume, Speed, Queue-Delay, Max-Länge
+
+**Endpoints:**
+- `GET /api/tts_core_v2/voices` - Verfügbare Stimmen mit Sprachzuordnung
+- `POST /api/tts_core_v2/speak` - TTS mit Auto-Language-Detection
+- `GET /api/tts_core_v2/config` - Konfiguration abrufen
+- `POST /api/tts_core_v2/config` - Konfiguration speichern
+- `GET /api/tts_core_v2/queue` - Queue-Status
+- `POST /api/tts_core_v2/moderate` - User moderieren (mute/ban)
+
+**Config-Beispiel:**
+```json
+{
+  "default_voice": "en_us_001",
+  "tts_provider": "tiktok",
+  "include_username": true,
+  "username_voice": "en_us_ghostface",
+  "enable_language_detection": true,
+  "enable_word_filter": true,
+  "filter_mode": "censor",
+  "min_team_level": 0,
+  "volume": 80,
+  "max_text_length": 300
+}
+```
+
+### 9. WWM GPT (`plugins/wwm_gpt/`) - **NEU in v1.0.3**
+
+**Zweck:** "Wer wird Millionär" Quiz-Game mit GPT-5 Mini
+
+**Features:**
+- **GPT-5 Mini Integration** - AI-generierte Quizfragen
+- **OBS-Overlay** - Professionelles Quiz-Interface mit Live-Timer
+- **Team-Mechanik** - Team Fuchs vs Team Cid
+- **Gift-Joker** - 50:50, Publikum, Telefon via Gifts
+- **TTS-Integration** - Vorlesen von Fragen/Antworten
+- **Highscore & Leaderboard** - Tracking von Gewinnern
+- **Persistente Session** - Überdauert Reconnects
+- **Custom Themes** - Anpassbare Styles
+
+**Chat-Commands:**
+- `!wwm start` - Spiel starten
+- `!wwm a/b/c/d` - Antwort auswählen
+- `!wwm joker [5050|publikum|telefon]` - Joker nutzen
+- `!wwm stop` - Spiel beenden
+- `!wwm team [fuchs|cid]` - Team wählen
+- `!wwm stats` - Statistiken anzeigen
+
+**Endpoints:**
+- `GET /api/wwm/status` - Spielstatus
+- `POST /api/wwm/start` - Spiel starten
+- `POST /api/wwm/answer` - Antwort senden
+- `POST /api/wwm/joker` - Joker nutzen
+- `GET /api/wwm/leaderboard` - Highscore
+- `POST /api/wwm/config` - Config speichern
+
+**OBS-Overlay:**
+```
+http://localhost:3000/plugins/wwm_gpt/overlay.html
+```
+
+### 10. Gift Milestone Celebration (`plugins/gift-milestone/`) - **NEU in v1.0.3**
+
+**Zweck:** Celebrations bei Coin-Meilensteinen
+
+**Features:**
+- **Threshold-System** - Celebrations bei 100, 500, 1000, 5000, 10000 Coins
+- **Custom Animations** - GIF oder MP4-Uploads
+- **Audio-Benachrichtigungen** - Sounds bei Milestones
+- **Fortschritts-Tracking** - Zeigt Fortschritt zum nächsten Milestone
+- **OBS-Overlay-Integration** - Celebrations im Stream
+- **Persistente Statistiken** - Gesamt-Coins über alle Streams
+- **Reset-Optionen** - Manuelle/Auto-Resets
+
+**Endpoints:**
+- `GET /api/gift-milestone/status` - Aktueller Status & Fortschritt
+- `GET /api/gift-milestone/milestones` - Alle Milestones
+- `POST /api/gift-milestone/milestone` - Milestone konfigurieren
+- `POST /api/gift-milestone/reset` - Statistiken zurücksetzen
+- `POST /api/gift-milestone/upload` - Animation hochladen
+
+**Config-Beispiel:**
+```json
+{
+  "milestones": {
+    "100": {
+      "animation": "celebration_100.gif",
+      "sound": "fanfare.mp3",
+      "duration": 5000,
+      "message": "🎉 100 Coins erreicht!"
+    },
+    "1000": {
+      "animation": "celebration_1000.mp4",
+      "sound": "big_fanfare.mp3",
+      "duration": 10000,
+      "message": "🚀 1000 Coins Milestone!"
+    }
+  },
+  "tracking_enabled": true,
+  "show_progress": true
+}
+```
+
 ---
 
 ## 📤 Plugin hochladen
@@ -1005,4 +1120,4 @@ registerTikTokEvents() {
 
 ---
 
-*Letzte Aktualisierung: 2025-11-11*
+*Letzte Aktualisierung: 2025-11-11 | Version: 1.0.3*

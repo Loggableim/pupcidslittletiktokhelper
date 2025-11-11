@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.0.2-blue)](https://github.com/yourusername/pupcidslittletiktokhelper)
+[![Version](https://img.shields.io/badge/version-1.0.3-blue)](https://github.com/yourusername/pupcidslittletiktokhelper)
 [![Status](https://img.shields.io/badge/status-active-success)](https://github.com/yourusername/pupcidslittletiktokhelper)
 
 ---
@@ -149,7 +149,7 @@ Modulares Erweiterungssystem:
 - 📦 **ZIP-Upload** - Plugins via Web-UI hochladen
 - 🛠️ **Plugin-API** - Express-Routes, Socket.io, TikTok-Events
 - 🎨 **Admin-UI** - Plugins mit eigenem Web-Interface
-- 📚 **7 Plugins vorinstalliert** - TTS, Soundboard, Multi-Cam, OSC-Bridge, etc.
+- 📚 **11 Plugins vorinstalliert** - TTS Core V2, WWM GPT, Gift Milestone, Multi-Cam, OSC-Bridge, etc.
 
 ### 9. Multi-Profile-System
 
@@ -168,6 +168,49 @@ Tracking und Anzeige von Top-Giftern:
 - 🔥 **Longest Streaks** - Gift-Combo-Streaks
 - 💰 **Recent Donors** - Letzte Spender
 - 📊 **Browser Source** - Leaderboard-Overlay für OBS
+
+### 11. Neue Plugins (v1.0.3)
+
+#### TTS Core V2 - Erweiterte Text-to-Speech Engine
+
+Professionelles TTS-System der nächsten Generation:
+
+- 🌍 **Automatische Spracherkennung** - Erkennt Sprache pro Nachricht (franc-min)
+- 🎙️ **Mehrsprachige Stimmen** - Auto-Mapping zu passender Stimme je nach Sprache
+- 👤 **Username-Ansage** - Separate Stimme für Username-Vorlesen
+- 🚫 **Wortfilter & Moderation** - Fäkalsprachen-Filter mit Censor-Mode
+- 📊 **Team-Level-Kontrolle** - Min. Team-Level für TTS-Zugriff
+- 🎨 **Emoji/Gift Voice Selection** - Stimmen-Auswahl via Emojis oder Gifts
+- 📈 **Feedback-Loop** - Zuschauer können Stimmen wählen
+- 🔧 **Advanced Config** - Volume, Speed, Queue-Delay, Max-Länge
+- 📝 **Moderation-Log** - Vollständiges Logging aller TTS-Events
+
+#### WWM GPT - "Wer wird Millionär" Quiz-Game
+
+Interaktives Quiz-Game für TikTok LIVE-Streams:
+
+- 🤖 **GPT-5 Mini Integration** - AI-generierte Quizfragen
+- 🎬 **OBS-Overlay** - Professionelles Quiz-Interface mit Live-Timer
+- 👥 **Team-Mechanik** - Team Fuchs vs Team Cid
+- 🎁 **Gift-Joker** - 50:50, Publikum, Telefon via Gifts freischalten
+- 🎤 **TTS-Integration** - Automatisches Vorlesen von Fragen und Antworten
+- 🏆 **Highscore & Leaderboard** - Tracking von Gewinnern
+- 💾 **Persistente Session** - Spiel überdauert Reconnects
+- 🎨 **Custom Themes** - Anpassbare Farben und Styles
+- 🎮 **Chat-Commands** - `!wwm start`, `!wwm a/b/c/d`, `!wwm joker`
+
+#### Gift Milestone Celebration
+
+Feiere Coin-Meilensteine mit spektakulären Effekten:
+
+- 🎉 **Threshold-System** - Celebrations bei 100, 500, 1000, 5000, 10000 Coins
+- 🎬 **Custom Animations** - GIF oder MP4-Uploads für jeden Meilenstein
+- 🔊 **Audio-Benachrichtigungen** - Sounds bei Erreichen von Milestones
+- 📊 **Fortschritts-Tracking** - Zeigt Fortschritt zum nächsten Meilenstein
+- 🎨 **OBS-Overlay-Integration** - Celebrations im Stream-Overlay
+- 💾 **Persistente Statistiken** - Gesamt-Coins über alle Streams
+- 🔄 **Reset-Optionen** - Manuelle oder automatische Resets
+- 🎁 **Gift-Tracking** - Einzelne Gift-Beiträge werden gespeichert
 
 ---
 
@@ -213,6 +256,7 @@ Plugin-Verwaltung:
 | **TikTok-API** | tiktok-live-connector | ^2.1.0 |
 | **OBS-Integration** | obs-websocket-js | ^5.0.6 |
 | **OSC-Protocol** | osc | ^2.4.5 |
+| **Language Detection** | franc-min | ^6.2.0 |
 | **Logging** | winston | ^3.18.3 |
 | **Frontend** | Bootstrap 5 | 5.3 |
 | **Icons** | Font Awesome | 6.x |
@@ -489,4 +533,4 @@ Abhängig von deinem Ziel, wähle die passende Seite:
 ---
 
 *Letzte Aktualisierung: 2025-11-11*
-*Version: 1.0.2*
+*Version: 1.0.3*
