@@ -139,6 +139,17 @@ function initializeSocketListeners() {
     socket.on('disconnect', () => {
         console.log('❌ Disconnected from server');
     });
+
+    // ========== AUDIO PLAYBACK (Dashboard) ==========
+    // TTS Playback im Dashboard
+    socket.on('tts:play', (data) => {
+        playDashboardTTS(data);
+    });
+
+    // Soundboard Playback im Dashboard
+    socket.on('soundboard:play', (data) => {
+        playDashboardSoundboard(data);
+    });
 }
 
 // ========== TIKTOK CONNECTION ==========
@@ -1505,4 +1516,93 @@ async function checkPluginsAndUpdateUI() {
         console.error('Error checking plugins:', error);
         // Bei Fehler: Zeige alle UI-Elemente an (fail-safe)
     }
+}
+
+// ========== DASHBOARD AUDIO PLAYBACK ==========
+
+/**
+ * TTS im Dashboard abspielen
+ */
+function playDashboardTTS(data) {
+    console.log('🎤 [Dashboard] Playing TTS:', data.text);
+
+    const audio = document.getElementById('dashboard-tts-audio');
+
+    try {
+        // Base64-Audio zu Blob konvertieren
+        const audioData = data.audioData;
+        const audioBlob = base64ToBlob(audioData, 'audio/mpeg');
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        audio.src = audioUrl;
+        audio.volume = (data.volume || 80) / 100;
+        audio.playbackRate = data.speed || 1.0;
+
+        audio.play().then(() => {
+            console.log('✅ [Dashboard] TTS started playing');
+        }).catch(err => {
+            console.error('❌ [Dashboard] TTS playback error:', err);
+        });
+
+        // URL nach Abspielen freigeben
+        audio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+            console.log('✅ [Dashboard] TTS finished');
+        };
+
+        audio.onerror = (err) => {
+            console.error('❌ [Dashboard] TTS audio error:', err);
+            URL.revokeObjectURL(audioUrl);
+        };
+
+    } catch (error) {
+        console.error('❌ [Dashboard] Error in playDashboardTTS:', error);
+    }
+}
+
+/**
+ * Soundboard-Audio im Dashboard abspielen
+ */
+function playDashboardSoundboard(data) {
+    console.log('🔊 [Dashboard] Playing soundboard:', data.label);
+
+    // Create new audio element
+    const audio = document.createElement('audio');
+    audio.src = data.url;
+    audio.volume = data.volume || 1.0;
+
+    // Add to pool
+    const pool = document.getElementById('dashboard-soundboard-pool');
+    pool.appendChild(audio);
+
+    // Play
+    audio.play().then(() => {
+        console.log('✅ [Dashboard] Soundboard started playing:', data.label);
+    }).catch(err => {
+        console.error('❌ [Dashboard] Soundboard playback error:', err);
+    });
+
+    // Remove after playback
+    audio.onended = () => {
+        console.log('✅ [Dashboard] Soundboard finished:', data.label);
+        audio.remove();
+    };
+
+    audio.onerror = (e) => {
+        console.error('❌ [Dashboard] Error playing soundboard:', data.label, e);
+        audio.remove();
+    };
+}
+
+/**
+ * Base64 zu Blob konvertieren (für TTS)
+ */
+function base64ToBlob(base64, mimeType) {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
 }
