@@ -1,0 +1,36 @@
+{
+  "tts_core_v2": {
+    "enabled": false
+  },
+  "wwm_gpt": {
+    "enabled": true,
+    "loadedAt": "2025-11-11T00:00:00.000Z"
+  },
+  "obs-browser-source": {
+    "enabled": true,
+    "loadedAt": "2025-11-11T00:00:00.000Z"
+  },
+  "topboard": {
+    "enabled": true,
+    "loadedAt": "2025-11-11T00:00:00.000Z"
+  },
+  "soundboard": {
+    "enabled": true,
+    "loadedAt": "2025-11-11T00:00:00.000Z"
+  },
+  "vdoninja": {
+    "enabled": false
+  },
+  "multicam": {
+    "enabled": false
+  },
+  "osc-bridge": {
+    "enabled": false
+  },
+  "emoji-rain": {
+    "enabled": false
+  },
+  "gift-milestone": {
+    "enabled": false
+  }
+}

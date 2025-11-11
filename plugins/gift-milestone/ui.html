@@ -568,6 +568,15 @@
             document.getElementById('audioVolume').value = config.audio_volume || 80;
             document.getElementById('animationDuration').value = config.animation_duration || 0;
             document.getElementById('sessionReset').checked = config.session_reset || false;
+            document.getElementById('enableToggle').checked = config.enabled;
+            document.getElementById('statusText').textContent = config.enabled ? 'Aktiviert' : 'Deaktiviert';
+            document.getElementById('threshold').value = config.threshold;
+            document.getElementById('incrementStep').value = config.increment_step;
+            document.getElementById('mode').value = config.mode;
+            document.getElementById('playbackMode').value = config.playback_mode;
+            document.getElementById('audioVolume').value = config.audio_volume;
+            document.getElementById('animationDuration').value = config.animation_duration;
+            document.getElementById('sessionReset').checked = config.session_reset;
 
             // Update file previews
             updateFilePreview('gif', config.animation_gif_path);
@@ -585,6 +594,9 @@
             const currentCoins = stats.cumulative_coins || 0;
             const nextMilestone = stats.current_milestone || config.threshold || 1000;
             const progress = nextMilestone > 0 ? (currentCoins / nextMilestone) * 100 : 0;
+            const currentCoins = stats.cumulative_coins || 0;
+            const nextMilestone = stats.current_milestone || config.threshold;
+            const progress = (currentCoins / nextMilestone) * 100;
 
             document.getElementById('currentCoins').textContent = currentCoins.toLocaleString();
             document.getElementById('nextMilestone').textContent = nextMilestone.toLocaleString();
