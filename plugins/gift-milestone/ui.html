@@ -554,15 +554,20 @@
 
         // Populate form with config data
         function populateForm(config) {
-            document.getElementById('enableToggle').checked = config.enabled;
+            if (!config) {
+                console.warn('Config is missing');
+                return;
+            }
+
+            document.getElementById('enableToggle').checked = config.enabled || false;
             document.getElementById('statusText').textContent = config.enabled ? 'Aktiviert' : 'Deaktiviert';
-            document.getElementById('threshold').value = config.threshold;
-            document.getElementById('incrementStep').value = config.increment_step;
-            document.getElementById('mode').value = config.mode;
-            document.getElementById('playbackMode').value = config.playback_mode;
-            document.getElementById('audioVolume').value = config.audio_volume;
-            document.getElementById('animationDuration').value = config.animation_duration;
-            document.getElementById('sessionReset').checked = config.session_reset;
+            document.getElementById('threshold').value = config.threshold || 1000;
+            document.getElementById('incrementStep').value = config.increment_step || 1000;
+            document.getElementById('mode').value = config.mode || 'auto_increment';
+            document.getElementById('playbackMode').value = config.playback_mode || 'exclusive';
+            document.getElementById('audioVolume').value = config.audio_volume || 80;
+            document.getElementById('animationDuration').value = config.animation_duration || 0;
+            document.getElementById('sessionReset').checked = config.session_reset || false;
 
             // Update file previews
             updateFilePreview('gif', config.animation_gif_path);
@@ -572,9 +577,14 @@
 
         // Update statistics display
         function updateStatsDisplay(stats, config) {
+            if (!stats || !config) {
+                console.warn('Stats or config is missing');
+                return;
+            }
+
             const currentCoins = stats.cumulative_coins || 0;
-            const nextMilestone = stats.current_milestone || config.threshold;
-            const progress = (currentCoins / nextMilestone) * 100;
+            const nextMilestone = stats.current_milestone || config.threshold || 1000;
+            const progress = nextMilestone > 0 ? (currentCoins / nextMilestone) * 100 : 0;
 
             document.getElementById('currentCoins').textContent = currentCoins.toLocaleString();
             document.getElementById('nextMilestone').textContent = nextMilestone.toLocaleString();

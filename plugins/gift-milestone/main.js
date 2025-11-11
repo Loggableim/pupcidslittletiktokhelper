@@ -19,6 +19,9 @@ class GiftMilestonePlugin {
     async init() {
         this.api.log('Initializing Gift Milestone Celebration Plugin...', 'info');
 
+        // Initialize database tables and defaults
+        this.initializeDatabase();
+
         // Create upload directory
         if (!fs.existsSync(this.uploadDir)) {
             fs.mkdirSync(this.uploadDir, { recursive: true });
@@ -37,6 +40,64 @@ class GiftMilestonePlugin {
         this.checkSessionReset();
 
         this.api.log('✅ Gift Milestone Celebration Plugin initialized', 'info');
+    }
+
+    initializeDatabase() {
+        try {
+            const db = this.api.getDatabase();
+
+            // Create tables if they don't exist
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS milestone_config (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    enabled INTEGER DEFAULT 1,
+                    threshold INTEGER DEFAULT 1000,
+                    mode TEXT DEFAULT 'auto_increment',
+                    increment_step INTEGER DEFAULT 1000,
+                    animation_gif_path TEXT,
+                    animation_video_path TEXT,
+                    animation_audio_path TEXT,
+                    audio_volume INTEGER DEFAULT 80,
+                    playback_mode TEXT DEFAULT 'exclusive',
+                    animation_duration INTEGER DEFAULT 0,
+                    session_reset INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS milestone_stats (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    cumulative_coins INTEGER DEFAULT 0,
+                    current_milestone INTEGER DEFAULT 0,
+                    last_trigger_at DATETIME,
+                    session_start_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Initialize defaults if not exists
+            const configStmt = db.prepare(`
+                INSERT OR IGNORE INTO milestone_config (
+                    id, enabled, threshold, mode, increment_step,
+                    audio_volume, playback_mode, animation_duration, session_reset
+                )
+                VALUES (1, 1, 1000, 'auto_increment', 1000, 80, 'exclusive', 0, 0)
+            `);
+            configStmt.run();
+
+            const statsStmt = db.prepare(`
+                INSERT OR IGNORE INTO milestone_stats (id, cumulative_coins, current_milestone)
+                VALUES (1, 0, 1000)
+            `);
+            statsStmt.run();
+
+            this.api.log('Database tables initialized', 'info');
+        } catch (error) {
+            this.api.log(`Error initializing database: ${error.message}`, 'error');
+            throw error;
+        }
     }
 
     setupFileUpload() {
