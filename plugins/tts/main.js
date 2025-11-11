@@ -193,10 +193,14 @@ class TTSPlugin {
         // Chat-Event für Auto-TTS
         // TTS wird immer verarbeitet, Team-Level-Prüfung erfolgt in speak()
         this.api.registerTikTokEvent('chat', async (data) => {
+            this.api.log(`🎤 [DEBUG] Chat event received: username="${data.username}", message="${data.message}", teamMemberLevel=${data.teamMemberLevel}`);
+
             if (data.message) {
                 await this.speak(data.username, data.message, null, {
                     teamMemberLevel: data.teamMemberLevel || 0
                 });
+            } else {
+                this.api.log(`⚠️ [DEBUG] Chat event has no message field!`, 'warn');
             }
         });
 
@@ -216,20 +220,32 @@ class TTSPlugin {
 
     async speak(username, text, voiceOverride = null, userMetadata = {}) {
         try {
+            this.api.log(`🎤 [DEBUG] speak() called: username="${username}", text="${text}", metadata=${JSON.stringify(userMetadata)}`);
+
             // Teamlevel-Prüfung (falls aktiviert)
-            const minTeamLevel = parseInt(this.db.getSetting('tts_min_team_level')) || 0;
+            const minTeamLevelSetting = this.db.getSetting('tts_min_team_level');
+            const minTeamLevel = parseInt(minTeamLevelSetting) || 0;
+
+            this.api.log(`🎤 [DEBUG] Team level check: minTeamLevel=${minTeamLevel} (setting value: "${minTeamLevelSetting}")`);
+
             if (minTeamLevel > 0) {
                 const userTeamLevel = userMetadata.teamMemberLevel || userMetadata.teamLevel || 0;
+                this.api.log(`🎤 [DEBUG] User ${username} teamLevel=${userTeamLevel}, min required=${minTeamLevel}`);
+
                 if (userTeamLevel < minTeamLevel) {
-                    this.api.log(`User ${username} has teamLevel ${userTeamLevel}, but min required is ${minTeamLevel}`);
+                    this.api.log(`⛔ User ${username} blocked by team level (${userTeamLevel} < ${minTeamLevel})`);
                     return;
                 }
+            } else {
+                this.api.log(`✅ [DEBUG] Team level check disabled (minTeamLevel=${minTeamLevel}), allowing all users`);
             }
 
             // Text filtern
             const filteredText = this.filterText(text);
+            this.api.log(`🎤 [DEBUG] Text filtered: original="${text}", filtered="${filteredText}"`);
+
             if (!filteredText || filteredText.trim().length === 0) {
-                this.api.log('Text filtered out or empty');
+                this.api.log('⛔ Text filtered out or empty', 'warn');
                 return;
             }
 
