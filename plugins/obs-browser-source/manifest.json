@@ -1,0 +1,122 @@
+{
+  "id": "obs-browser-source",
+  "name": "OBS Browser Source Manager",
+  "version": "1.0.0",
+  "description": "Zentralisierte Verwaltung aller OBS Browser Source URLs mit Hot-Reload, URL-Generierung und OBS-Integration. Verwaltet Overlays, Docks und dynamische Goals.",
+  "author": "TikTok Stream Tool",
+  "main": "main.js",
+  "enabled": true,
+  "dependencies": [],
+  "api_version": "1.0",
+  "permissions": [
+    "database",
+    "routes",
+    "socket",
+    "settings"
+  ],
+  "routes": {
+    "prefix": "/api/obs-browser-source"
+  },
+  "settings_schema": {
+    "base_url": {
+      "type": "string",
+      "default": "http://localhost:3000",
+      "description": "Base URL für generierte Browser Source URLs"
+    },
+    "enable_hot_reload": {
+      "type": "boolean",
+      "default": true,
+      "description": "Hot-Reload für Browser Sources aktivieren"
+    },
+    "enable_url_shortcuts": {
+      "type": "boolean",
+      "default": true,
+      "description": "Kurz-URLs für Browser Sources aktivieren (z.B. /obs/overlay statt /overlay.html)"
+    },
+    "enable_legacy_redirects": {
+      "type": "boolean",
+      "default": true,
+      "description": "Alte URLs automatisch zu neuen weiterleiten"
+    }
+  },
+  "browser_sources": [
+    {
+      "id": "overlay",
+      "name": "Main Overlay",
+      "path": "/overlay.html",
+      "description": "Haupt-Overlay mit Alerts, TTS, Chat, Events, Goals, VDO.Ninja",
+      "default_width": 1920,
+      "default_height": 1080,
+      "requires_interaction": true
+    },
+    {
+      "id": "leaderboard",
+      "name": "Leaderboard Overlay",
+      "path": "/leaderboard-overlay.html",
+      "description": "Top Gifters und Top Chatters Leaderboard",
+      "default_width": 400,
+      "default_height": 600
+    },
+    {
+      "id": "minigames",
+      "name": "Minigames Overlay",
+      "path": "/minigames-overlay.html",
+      "description": "Roulette, Dice, Coinflip Overlay",
+      "default_width": 800,
+      "default_height": 600
+    },
+    {
+      "id": "dock-main",
+      "name": "OBS Dock - Events & Chat",
+      "path": "/obs-dock.html",
+      "description": "Event-Feed, Chat, Gifts, Leaderboard",
+      "default_width": 400,
+      "default_height": 800,
+      "is_dock": true
+    },
+    {
+      "id": "dock-controls",
+      "name": "OBS Dock - Quick Controls",
+      "path": "/obs-dock-controls.html",
+      "description": "TTS Test, Soundboard, OBS Szenen, VDO.Ninja Control",
+      "default_width": 300,
+      "default_height": 600,
+      "is_dock": true
+    },
+    {
+      "id": "dock-goals",
+      "name": "OBS Dock - Goals Overview",
+      "path": "/obs-dock-goals.html",
+      "description": "Goals Management und Progress Tracking",
+      "default_width": 350,
+      "default_height": 700,
+      "is_dock": true
+    },
+    {
+      "id": "goal-dynamic",
+      "name": "Dynamic Goal Overlay",
+      "path": "/goal/{key}",
+      "description": "Dynamisch generierte Goal-Overlays (individuell pro Goal)",
+      "default_width": 500,
+      "default_height": 150,
+      "is_dynamic": true,
+      "parameters": {
+        "key": {
+          "type": "string",
+          "description": "Goal Key (likes, followers, subs, coins)",
+          "required": true
+        }
+      }
+    }
+  ],
+  "features": [
+    "URL-Generierung mit Query-Parametern",
+    "Hot-Reload für alle Browser Sources",
+    "CORS & CSP Verwaltung für OBS",
+    "Socket.IO Event-Bus Integration",
+    "HUD Configuration API",
+    "Goal Overlay Generator",
+    "OBS WebSocket Proxy",
+    "Legacy URL Redirects"
+  ]
+}
