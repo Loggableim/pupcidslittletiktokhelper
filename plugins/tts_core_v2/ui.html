@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS Core V2 - Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .section h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+            font-size: 1.3rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .status {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .queue-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .queue-bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .queue-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745 0%, #ffc107 70%, #dc3545 100%);
+            transition: width 0.3s;
+        }
+
+        .chat-log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .chat-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 5px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .chat-entry:hover {
+            background: #f0f0f0;
+        }
+
+        .chat-info {
+            flex: 1;
+        }
+
+        .chat-username {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .chat-message {
+            color: #555;
+            margin-top: 5px;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .word-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .word-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: #e9ecef;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .word-tag .remove-btn {
+            margin-left: 8px;
+            cursor: pointer;
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .muted-user {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 5px;
+            background: #fff3cd;
+            border-radius: 5px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .muted-user.permanent {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .countdown {
+            font-family: monospace;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .voice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .voice-card {
+            padding: 15px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .voice-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .voice-card.selected {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .voice-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .voice-lang {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ TTS Core V2</h1>
+            <p>Advanced Text-to-Speech System mit Moderation, Filter & Mehrsprachunterstützung</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('general')">General</button>
+            <button class="tab" onclick="switchTab('voices')">Stimmen & Sprachen</button>
+            <button class="tab" onclick="switchTab('filter')">Filter & Censor</button>
+            <button class="tab" onclick="switchTab('moderation')">Moderation</button>
+            <button class="tab" onclick="switchTab('queue')">Queue & Status</button>
+            <button class="tab" onclick="switchTab('events')">Event-Settings</button>
+        </div>
+
+        <!-- General Tab -->
+        <div id="general" class="tab-content active">
+            <div id="status-message" class="hidden"></div>
+
+            <div class="section">
+                <h3>Grundeinstellungen</h3>
+
+                <div class="form-group">
+                    <label>Standard-Stimme:</label>
+                    <select id="default_voice">
+                        <!-- Options werden dynamisch geladen -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Lautstärke (0-100):</label>
+                    <input type="number" id="volume" min="0" max="100" value="80">
+                </div>
+
+                <div class="form-group">
+                    <label>Geschwindigkeit (0.5-2.0):</label>
+                    <input type="number" id="speed" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="form-group">
+                    <label>Maximale Textlänge:</label>
+                    <input type="number" id="max_text_length" min="50" max="500" value="300">
+                </div>
+
+                <div class="form-group">
+                    <label>Queue Verzögerung (ms):</label>
+                    <input type="number" id="queue_delay_ms" min="0" max="5000" value="1000">
+                </div>
+
+                <div class="form-group">
+                    <label>Maximale Queue-Größe:</label>
+                    <input type="number" id="max_queue_size" min="10" max="500" value="100">
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Username-Vorlesen</h3>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="include_username">
+                    <label for="include_username">Username vor Nachricht vorlesen</label>
+                </div>
+
+                <div class="form-group">
+                    <label>Stimme für Username:</label>
+                    <select id="username_voice">
+                        <!-- Options werden dynamisch geladen -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Spracherkennung</h3>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enable_language_detection">
+                    <label for="enable_language_detection">Automatische Spracherkennung aktivieren</label>
+                </div>
+
+                <p style="color: #666; margin-top: 10px; font-size: 0.9rem;">
+                    Wenn aktiviert, wird die Sprache jeder Nachricht automatisch erkannt und die passende Stimme ausgewählt.
+                </p>
+            </div>
+
+            <button class="btn" onclick="saveSettings()">Einstellungen speichern</button>
+        </div>
+
+        <!-- Voices Tab -->
+        <div id="voices" class="tab-content">
+            <div class="section">
+                <h3>Verfügbare Stimmen</h3>
+                <p style="color: #666; margin-bottom: 15px;">Klicke auf eine Stimme zum Testen</p>
+
+                <div id="voice-grid" class="voice-grid">
+                    <!-- Voices werden dynamisch geladen -->
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Test TTS</h3>
+
+                <div class="form-group">
+                    <label>Test-Text:</label>
+                    <input type="text" id="test_text" value="Hello, this is a test!" placeholder="Enter text to test...">
+                </div>
+
+                <div class="form-group">
+                    <label>Stimme:</label>
+                    <select id="test_voice">
+                        <!-- Options werden dynamisch geladen -->
+                    </select>
+                </div>
+
+                <button class="btn" onclick="testTTS()">TTS testen</button>
+            </div>
+        </div>
+
+        <!-- Filter Tab -->
+        <div id="filter" class="tab-content">
+            <div class="section">
+                <h3>Wortfilter</h3>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enable_word_filter">
+                    <label for="enable_word_filter">Wortfilter aktivieren</label>
+                </div>
+
+                <div class="form-group">
+                    <label>Filter-Modus:</label>
+                    <select id="filter_mode">
+                        <option value="censor">Zensieren (***)</option>
+                        <option value="skip">Nachricht überspringen</option>
+                        <option value="beep">Ersetzen mit [BEEP]</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Neues Wort hinzufügen:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="new_banned_word" placeholder="Wort eingeben..." style="flex: 1;">
+                        <button class="btn btn-small" onclick="addBannedWord()">Hinzufügen</button>
+                    </div>
+                </div>
+
+                <div id="banned-words-list" class="word-list">
+                    <!-- Banned words werden dynamisch geladen -->
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Fäkalsprache-Filter</h3>
+
+                <div class="form-group">
+                    <label>Schweregrad:</label>
+                    <select id="profanity_level">
+                        <option value="mild">Mild (nur extreme Wörter)</option>
+                        <option value="standard">Standard (übliche Filter)</option>
+                        <option value="strict">Strikt (alle Schimpfwörter)</option>
+                    </select>
+                </div>
+
+                <p style="color: #666; margin-top: 10px; font-size: 0.9rem;">
+                    Der Fäkalsprache-Filter nutzt eine vordefinierte Liste und kann mit dem Wortfilter kombiniert werden.
+                </p>
+            </div>
+
+            <button class="btn" onclick="saveSettings()">Einstellungen speichern</button>
+        </div>
+
+        <!-- Moderation Tab -->
+        <div id="moderation" class="tab-content">
+            <div class="section">
+                <h3>Gemutete User</h3>
+
+                <div id="muted-users-list">
+                    <!-- Muted users werden dynamisch geladen -->
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Chat-Log (Letzte 100 Nachrichten)</h3>
+                <p style="color: #666; margin-bottom: 10px; font-size: 0.9rem;">
+                    Hotkeys: CTRL+5 (Mute 5 Min) | CTRL+6 (Mute 15 Min) | CTRL+7 (Permanent Ban)
+                </p>
+
+                <div id="chat-log" class="chat-log">
+                    <!-- Chat log wird dynamisch geladen -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue Tab -->
+        <div id="queue" class="tab-content">
+            <div class="section">
+                <h3>Queue Status</h3>
+
+                <div class="queue-status">
+                    <div>
+                        <strong>Queue:</strong> <span id="queue-count">0</span> / <span id="queue-max">100</span>
+                    </div>
+                    <div>
+                        <strong>Status:</strong> <span id="playing-status">Idle</span>
+                    </div>
+                </div>
+
+                <div class="queue-bar">
+                    <div id="queue-bar-fill" class="queue-bar-fill" style="width: 0%"></div>
+                </div>
+
+                <button class="btn btn-danger" onclick="clearQueue()">Queue leeren</button>
+            </div>
+
+            <div class="section">
+                <h3>Warteschlange</h3>
+
+                <div id="queue-items">
+                    <!-- Queue items werden dynamisch geladen -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Tab -->
+        <div id="events" class="tab-content">
+            <div class="section">
+                <h3>Event-Ankündigungen</h3>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="announce_gifts">
+                    <label for="announce_gifts">Geschenke ankündigen</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="announce_follows">
+                    <label for="announce_follows">Follows ankündigen</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="announce_subscribes">
+                    <label for="announce_subscribes">Subscribes ankündigen</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="announce_shares">
+                    <label for="announce_shares">Shares ankündigen</label>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Teamlevel-Kontrolle</h3>
+
+                <div class="form-group">
+                    <label>Mindest Teamlevel für TTS:</label>
+                    <input type="number" id="min_team_level" min="0" max="10" value="0">
+                </div>
+
+                <p style="color: #666; margin-top: 10px; font-size: 0.9rem;">
+                    User unter diesem Level werden ignoriert (0 = alle erlaubt). Admins können User whitelisten.
+                </p>
+            </div>
+
+            <div class="section">
+                <h3>Feedback-Loop (Zuschauer-Stimmenwahl)</h3>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enable_emoji_voice_selection">
+                    <label for="enable_emoji_voice_selection">Emoji-Stimmenwahl aktivieren</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="enable_gift_voice_selection">
+                    <label for="enable_gift_voice_selection">Geschenk-Stimmenwahl aktivieren</label>
+                </div>
+
+                <p style="color: #666; margin-top: 10px; font-size: 0.9rem;">
+                    Zuschauer können ihre bevorzugte Stimme durch Emoji oder Geschenke auswählen.
+                </p>
+            </div>
+
+            <button class="btn" onclick="saveSettings()">Einstellungen speichern</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let config = {};
+        let voices = {};
+        let selectedChatEntry = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            loadVoices();
+            loadBannedWords();
+            loadMutedUsers();
+            loadChatLog();
+            loadQueueStatus();
+
+            // Auto-refresh queue status every 2 seconds
+            setInterval(loadQueueStatus, 2000);
+
+            // Auto-refresh muted users every 5 seconds
+            setInterval(loadMutedUsers, 5000);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleKeyboardShortcuts);
+        });
+
+        // Socket events
+        socket.on('tts-v2:queue-update', (data) => {
+            updateQueueStatus(data);
+        });
+
+        socket.on('tts-v2:chat-log-update', (data) => {
+            addChatLogEntry(data.entry);
+        });
+
+        socket.on('tts-v2:filtered', (data) => {
+            console.log('Message filtered:', data);
+        });
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+
+            // Activate tab button
+            event.target.classList.add('active');
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/tts-v2/config');
+                const data = await response.json();
+
+                if (data.success) {
+                    config = data.config;
+                    populateConfigFields();
+                }
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        }
+
+        function populateConfigFields() {
+            // General
+            document.getElementById('default_voice').value = config.default_voice || 'en_us_001';
+            document.getElementById('volume').value = config.volume || 80;
+            document.getElementById('speed').value = config.speed || 1.0;
+            document.getElementById('max_text_length').value = config.max_text_length || 300;
+            document.getElementById('queue_delay_ms').value = config.queue_delay_ms || 1000;
+            document.getElementById('max_queue_size').value = config.max_queue_size || 100;
+            document.getElementById('include_username').checked = config.include_username || false;
+            document.getElementById('username_voice').value = config.username_voice || 'en_us_ghostface';
+            document.getElementById('enable_language_detection').checked = config.enable_language_detection || false;
+
+            // Filter
+            document.getElementById('enable_word_filter').checked = config.enable_word_filter || false;
+            document.getElementById('filter_mode').value = config.filter_mode || 'censor';
+            document.getElementById('profanity_level').value = config.profanity_level || 'standard';
+
+            // Events
+            document.getElementById('announce_gifts').checked = config.announce_gifts || false;
+            document.getElementById('announce_follows').checked = config.announce_follows || false;
+            document.getElementById('announce_subscribes').checked = config.announce_subscribes || false;
+            document.getElementById('announce_shares').checked = config.announce_shares || false;
+            document.getElementById('min_team_level').value = config.min_team_level || 0;
+            document.getElementById('enable_emoji_voice_selection').checked = config.enable_emoji_voice_selection || false;
+            document.getElementById('enable_gift_voice_selection').checked = config.enable_gift_voice_selection || false;
+        }
+
+        async function saveSettings() {
+            const updatedConfig = {
+                default_voice: document.getElementById('default_voice').value,
+                volume: parseInt(document.getElementById('volume').value),
+                speed: parseFloat(document.getElementById('speed').value),
+                max_text_length: parseInt(document.getElementById('max_text_length').value),
+                queue_delay_ms: parseInt(document.getElementById('queue_delay_ms').value),
+                max_queue_size: parseInt(document.getElementById('max_queue_size').value),
+                include_username: document.getElementById('include_username').checked,
+                username_voice: document.getElementById('username_voice').value,
+                enable_language_detection: document.getElementById('enable_language_detection').checked,
+                enable_word_filter: document.getElementById('enable_word_filter').checked,
+                filter_mode: document.getElementById('filter_mode').value,
+                profanity_level: document.getElementById('profanity_level').value,
+                announce_gifts: document.getElementById('announce_gifts').checked,
+                announce_follows: document.getElementById('announce_follows').checked,
+                announce_subscribes: document.getElementById('announce_subscribes').checked,
+                announce_shares: document.getElementById('announce_shares').checked,
+                min_team_level: parseInt(document.getElementById('min_team_level').value),
+                enable_emoji_voice_selection: document.getElementById('enable_emoji_voice_selection').checked,
+                enable_gift_voice_selection: document.getElementById('enable_gift_voice_selection').checked
+            };
+
+            try {
+                const response = await fetch('/api/tts-v2/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedConfig)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('Einstellungen gespeichert!', 'success');
+                } else {
+                    showStatus('Fehler beim Speichern', 'error');
+                }
+            } catch (error) {
+                showStatus('Fehler beim Speichern', 'error');
+            }
+        }
+
+        async function loadVoices() {
+            try {
+                const response = await fetch('/api/tts-v2/voices');
+                const data = await response.json();
+
+                if (data.success) {
+                    voices = data.voices;
+                    populateVoiceSelects();
+                    populateVoiceGrid();
+                }
+            } catch (error) {
+                console.error('Failed to load voices:', error);
+            }
+        }
+
+        function populateVoiceSelects() {
+            const selects = ['default_voice', 'username_voice', 'test_voice'];
+
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                select.innerHTML = '';
+
+                for (const [voiceId, voiceData] of Object.entries(voices)) {
+                    const option = document.createElement('option');
+                    option.value = voiceId;
+                    option.textContent = `${voiceData.name} (${voiceData.lang})`;
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        function populateVoiceGrid() {
+            const grid = document.getElementById('voice-grid');
+            grid.innerHTML = '';
+
+            for (const [voiceId, voiceData] of Object.entries(voices)) {
+                const card = document.createElement('div');
+                card.className = 'voice-card';
+                card.innerHTML = `
+                    <div class="voice-name">${voiceData.name}</div>
+                    <div class="voice-lang">Sprache: ${voiceData.lang}</div>
+                `;
+                card.onclick = () => selectVoiceForTest(voiceId);
+                grid.appendChild(card);
+            }
+        }
+
+        function selectVoiceForTest(voiceId) {
+            document.getElementById('test_voice').value = voiceId;
+        }
+
+        async function testTTS() {
+            const text = document.getElementById('test_text').value;
+            const voice = document.getElementById('test_voice').value;
+
+            if (!text) {
+                alert('Bitte Text eingeben');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/tts-v2/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('TTS Test gestartet!', 'success');
+                } else {
+                    showStatus('TTS Test fehlgeschlagen', 'error');
+                }
+            } catch (error) {
+                showStatus('TTS Test fehlgeschlagen', 'error');
+            }
+        }
+
+        async function loadBannedWords() {
+            try {
+                const response = await fetch('/api/tts-v2/banned-words');
+                const data = await response.json();
+
+                if (data.success) {
+                    displayBannedWords(data.words);
+                }
+            } catch (error) {
+                console.error('Failed to load banned words:', error);
+            }
+        }
+
+        function displayBannedWords(words) {
+            const list = document.getElementById('banned-words-list');
+            list.innerHTML = '';
+
+            words.forEach(word => {
+                const tag = document.createElement('div');
+                tag.className = 'word-tag';
+                tag.innerHTML = `
+                    ${word}
+                    <span class="remove-btn" onclick="removeBannedWord('${word}')">×</span>
+                `;
+                list.appendChild(tag);
+            });
+        }
+
+        async function addBannedWord() {
+            const input = document.getElementById('new_banned_word');
+            const word = input.value.trim();
+
+            if (!word) return;
+
+            try {
+                const response = await fetch('/api/tts-v2/banned-words', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayBannedWords(data.words);
+                    input.value = '';
+                    showStatus('Wort hinzugefügt', 'success');
+                }
+            } catch (error) {
+                showStatus('Fehler beim Hinzufügen', 'error');
+            }
+        }
+
+        async function removeBannedWord(word) {
+            try {
+                const response = await fetch('/api/tts-v2/banned-words', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayBannedWords(data.words);
+                    showStatus('Wort entfernt', 'success');
+                }
+            } catch (error) {
+                showStatus('Fehler beim Entfernen', 'error');
+            }
+        }
+
+        async function loadMutedUsers() {
+            try {
+                const response = await fetch('/api/tts-v2/muted-users');
+                const data = await response.json();
+
+                if (data.success) {
+                    displayMutedUsers(data.mutedUsers);
+                }
+            } catch (error) {
+                console.error('Failed to load muted users:', error);
+            }
+        }
+
+        function displayMutedUsers(mutedUsers) {
+            const list = document.getElementById('muted-users-list');
+
+            if (mutedUsers.length === 0) {
+                list.innerHTML = '<p style="color: #666;">Keine gemuteten User</p>';
+                return;
+            }
+
+            list.innerHTML = '';
+
+            mutedUsers.forEach(user => {
+                const div = document.createElement('div');
+                div.className = `muted-user ${user.permanent ? 'permanent' : ''}`;
+
+                const timeInfo = user.permanent
+                    ? 'PERMANENT'
+                    : `${Math.ceil(user.remaining / 60000)} Min verbleibend`;
+
+                div.innerHTML = `
+                    <div>
+                        <strong>${user.username}</strong><br>
+                        <span class="countdown">${timeInfo}</span>
+                    </div>
+                    <button class="btn btn-small" onclick="unmuteUser('${user.username}')">Unmute</button>
+                `;
+
+                list.appendChild(div);
+            });
+        }
+
+        async function muteUser(username, duration, permanent = false) {
+            try {
+                const response = await fetch('/api/tts-v2/mute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, duration, permanent })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadMutedUsers();
+                    showStatus(`User ${username} gemutet`, 'success');
+                }
+            } catch (error) {
+                showStatus('Fehler beim Muten', 'error');
+            }
+        }
+
+        async function unmuteUser(username) {
+            try {
+                const response = await fetch('/api/tts-v2/unmute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadMutedUsers();
+                    showStatus(`User ${username} entmutet`, 'success');
+                }
+            } catch (error) {
+                showStatus('Fehler beim Entmuten', 'error');
+            }
+        }
+
+        async function loadChatLog() {
+            try {
+                const response = await fetch('/api/tts-v2/chat-log');
+                const data = await response.json();
+
+                if (data.success) {
+                    displayChatLog(data.chatLog);
+                }
+            } catch (error) {
+                console.error('Failed to load chat log:', error);
+            }
+        }
+
+        function displayChatLog(chatLog) {
+            const log = document.getElementById('chat-log');
+            log.innerHTML = '';
+
+            if (chatLog.length === 0) {
+                log.innerHTML = '<p style="color: #666;">Kein Chat-Log verfügbar</p>';
+                return;
+            }
+
+            chatLog.reverse().forEach(entry => {
+                addChatLogEntry(entry);
+            });
+        }
+
+        function addChatLogEntry(entry) {
+            const log = document.getElementById('chat-log');
+
+            const div = document.createElement('div');
+            div.className = 'chat-entry';
+            div.dataset.username = entry.username;
+
+            const time = new Date(entry.timestamp).toLocaleTimeString();
+
+            div.innerHTML = `
+                <div class="chat-info">
+                    <div><span class="chat-username">${entry.username}</span> <small>${time}</small></div>
+                    <div class="chat-message">${entry.message}</div>
+                </div>
+                <div class="chat-actions">
+                    <button class="btn btn-small btn-secondary" onclick="muteUser('${entry.username}', 5)">5 Min</button>
+                    <button class="btn btn-small btn-secondary" onclick="muteUser('${entry.username}', 15)">15 Min</button>
+                    <button class="btn btn-small btn-danger" onclick="muteUser('${entry.username}', 0, true)">Ban</button>
+                </div>
+            `;
+
+            log.insertBefore(div, log.firstChild);
+
+            // Keep only last 100
+            while (log.children.length > 100) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        async function loadQueueStatus() {
+            try {
+                const response = await fetch('/api/tts-v2/queue');
+                const data = await response.json();
+
+                if (data.success) {
+                    updateQueueStatus(data);
+                    displayQueueItems(data.queue);
+                }
+            } catch (error) {
+                console.error('Failed to load queue status:', error);
+            }
+        }
+
+        function updateQueueStatus(data) {
+            document.getElementById('queue-count').textContent = data.queueLength;
+            document.getElementById('queue-max').textContent = data.maxQueueSize;
+            document.getElementById('playing-status').textContent = data.isPlaying ? 'Playing' : 'Idle';
+
+            const percentage = (data.queueLength / data.maxQueueSize) * 100;
+            document.getElementById('queue-bar-fill').style.width = `${percentage}%`;
+        }
+
+        function displayQueueItems(queue) {
+            const container = document.getElementById('queue-items');
+
+            if (queue.length === 0) {
+                container.innerHTML = '<p style="color: #666;">Queue ist leer</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            queue.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'chat-entry';
+                div.innerHTML = `
+                    <div class="chat-info">
+                        <div><strong>#${index + 1}</strong> - ${item.username}</div>
+                        <div class="chat-message">${item.text}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function clearQueue() {
+            if (!confirm('Queue wirklich leeren?')) return;
+
+            try {
+                const response = await fetch('/api/tts-v2/queue/clear', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadQueueStatus();
+                    showStatus('Queue geleert', 'success');
+                }
+            } catch (error) {
+                showStatus('Fehler beim Leeren', 'error');
+            }
+        }
+
+        function handleKeyboardShortcuts(e) {
+            if (!e.ctrlKey) return;
+
+            const selectedEntry = document.querySelector('.chat-entry:hover');
+            if (!selectedEntry) return;
+
+            const username = selectedEntry.dataset.username;
+            if (!username) return;
+
+            if (e.key === '5') {
+                e.preventDefault();
+                muteUser(username, 5);
+            } else if (e.key === '6') {
+                e.preventDefault();
+                muteUser(username, 15);
+            } else if (e.key === '7') {
+                e.preventDefault();
+                muteUser(username, 0, true);
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            statusDiv.classList.remove('hidden');
+
+            setTimeout(() => {
+                statusDiv.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
