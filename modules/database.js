@@ -228,10 +228,42 @@ class DatabaseManager {
             )
         `);
 
+        // Gift Milestone Celebration Plugin
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS milestone_config (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                enabled INTEGER DEFAULT 1,
+                threshold INTEGER DEFAULT 1000,
+                mode TEXT DEFAULT 'auto_increment',
+                increment_step INTEGER DEFAULT 1000,
+                animation_gif_path TEXT,
+                animation_video_path TEXT,
+                animation_audio_path TEXT,
+                audio_volume INTEGER DEFAULT 80,
+                playback_mode TEXT DEFAULT 'exclusive',
+                animation_duration INTEGER DEFAULT 0,
+                session_reset INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS milestone_stats (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                cumulative_coins INTEGER DEFAULT 0,
+                current_milestone INTEGER DEFAULT 0,
+                last_trigger_at DATETIME,
+                session_start_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Default-Einstellungen setzen
         this.setDefaultSettings();
         this.initializeEmojiRainDefaults();
         this.initializeDefaultVDONinjaLayouts(); // PATCH: VDO.Ninja Default Layouts
+        this.initializeMilestoneDefaults(); // Gift Milestone Celebration Plugin
     }
 
     setDefaultSettings() {
@@ -1002,6 +1034,210 @@ class DatabaseManager {
             ...row,
             event_data: JSON.parse(row.event_data)
         }));
+    }
+
+    // ========== GIFT MILESTONE CELEBRATION METHODS ==========
+
+    /**
+     * Initialize default Milestone configuration
+     */
+    initializeMilestoneDefaults() {
+        const defaultConfig = {
+            enabled: 1,
+            threshold: 1000,
+            mode: 'auto_increment',
+            increment_step: 1000,
+            animation_gif_path: null,
+            animation_video_path: null,
+            animation_audio_path: null,
+            audio_volume: 80,
+            playback_mode: 'exclusive',
+            animation_duration: 0,
+            session_reset: 0
+        };
+
+        const stmt = this.db.prepare(`
+            INSERT OR IGNORE INTO milestone_config (
+                id, enabled, threshold, mode, increment_step,
+                audio_volume, playback_mode, animation_duration, session_reset
+            )
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(
+            defaultConfig.enabled,
+            defaultConfig.threshold,
+            defaultConfig.mode,
+            defaultConfig.increment_step,
+            defaultConfig.audio_volume,
+            defaultConfig.playback_mode,
+            defaultConfig.animation_duration,
+            defaultConfig.session_reset
+        );
+
+        // Initialize stats
+        const statsStmt = this.db.prepare(`
+            INSERT OR IGNORE INTO milestone_stats (id, cumulative_coins, current_milestone)
+            VALUES (1, 0, 0)
+        `);
+        statsStmt.run();
+    }
+
+    /**
+     * Get Milestone configuration
+     */
+    getMilestoneConfig() {
+        const stmt = this.db.prepare('SELECT * FROM milestone_config WHERE id = 1');
+        const row = stmt.get();
+        if (!row) return null;
+        return {
+            ...row,
+            enabled: Boolean(row.enabled),
+            session_reset: Boolean(row.session_reset)
+        };
+    }
+
+    /**
+     * Update Milestone configuration
+     */
+    updateMilestoneConfig(config) {
+        const stmt = this.db.prepare(`
+            UPDATE milestone_config
+            SET enabled = ?,
+                threshold = ?,
+                mode = ?,
+                increment_step = ?,
+                animation_gif_path = ?,
+                animation_video_path = ?,
+                animation_audio_path = ?,
+                audio_volume = ?,
+                playback_mode = ?,
+                animation_duration = ?,
+                session_reset = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+        `);
+        stmt.run(
+            config.enabled ? 1 : 0,
+            config.threshold || 1000,
+            config.mode || 'auto_increment',
+            config.increment_step || 1000,
+            config.animation_gif_path || null,
+            config.animation_video_path || null,
+            config.animation_audio_path || null,
+            config.audio_volume || 80,
+            config.playback_mode || 'exclusive',
+            config.animation_duration || 0,
+            config.session_reset ? 1 : 0
+        );
+    }
+
+    /**
+     * Toggle Milestone enabled/disabled
+     */
+    toggleMilestone(enabled) {
+        const stmt = this.db.prepare(`
+            UPDATE milestone_config
+            SET enabled = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+        `);
+        stmt.run(enabled ? 1 : 0);
+    }
+
+    /**
+     * Get Milestone statistics
+     */
+    getMilestoneStats() {
+        const stmt = this.db.prepare('SELECT * FROM milestone_stats WHERE id = 1');
+        return stmt.get();
+    }
+
+    /**
+     * Add coins to milestone tracker and check if milestone reached
+     * @returns {object} { triggered: boolean, milestone: number, coins: number }
+     */
+    addCoinsToMilestone(coins) {
+        const config = this.getMilestoneConfig();
+        const stats = this.getMilestoneStats();
+
+        if (!config || !config.enabled) {
+            return { triggered: false, milestone: 0, coins: stats ? stats.cumulative_coins : 0 };
+        }
+
+        const previousCoins = stats.cumulative_coins || 0;
+        const newCoins = previousCoins + coins;
+        const currentMilestone = stats.current_milestone || config.threshold;
+
+        let triggered = false;
+        let newMilestone = currentMilestone;
+
+        // Check if milestone reached
+        if (previousCoins < currentMilestone && newCoins >= currentMilestone) {
+            triggered = true;
+
+            // Calculate next milestone based on mode
+            if (config.mode === 'auto_increment') {
+                newMilestone = currentMilestone + config.increment_step;
+            } else {
+                // Fixed mode - milestone stays the same
+                newMilestone = currentMilestone;
+            }
+
+            // Update stats with trigger
+            const updateStmt = this.db.prepare(`
+                UPDATE milestone_stats
+                SET cumulative_coins = ?,
+                    current_milestone = ?,
+                    last_trigger_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = 1
+            `);
+            updateStmt.run(newCoins, newMilestone);
+        } else {
+            // Just update coins
+            const updateStmt = this.db.prepare(`
+                UPDATE milestone_stats
+                SET cumulative_coins = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = 1
+            `);
+            updateStmt.run(newCoins);
+        }
+
+        return {
+            triggered: triggered,
+            milestone: currentMilestone,
+            coins: newCoins,
+            nextMilestone: newMilestone
+        };
+    }
+
+    /**
+     * Reset milestone statistics (manual or session reset)
+     */
+    resetMilestoneStats() {
+        const config = this.getMilestoneConfig();
+        const stmt = this.db.prepare(`
+            UPDATE milestone_stats
+            SET cumulative_coins = 0,
+                current_milestone = ?,
+                session_start_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+        `);
+        stmt.run(config ? config.threshold : 1000);
+    }
+
+    /**
+     * Update only the cumulative coins (without milestone check)
+     */
+    updateMilestoneCoins(coins) {
+        const stmt = this.db.prepare(`
+            UPDATE milestone_stats
+            SET cumulative_coins = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+        `);
+        stmt.run(coins);
     }
 
     /**
