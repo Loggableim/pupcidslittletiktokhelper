@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gift Milestone Celebration - TikTok Stream Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .nav-buttons {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-button {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .section h2 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255,255,255,0.2);
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input[type="number"]:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.2);
+        }
+
+        .form-group select option {
+            background: #764ba2;
+            color: white;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .upload-section {
+            border: 2px dashed rgba(255,255,255,0.3);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .upload-section h3 {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-button {
+            background: rgba(76,175,80,0.8);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .upload-button:hover {
+            background: rgba(76,175,80,1);
+            transform: translateY(-2px);
+        }
+
+        .delete-button {
+            background: rgba(244,67,54,0.8);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .delete-button:hover {
+            background: rgba(244,67,54,1);
+            transform: translateY(-2px);
+        }
+
+        .file-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            word-wrap: break-word;
+        }
+
+        .save-button {
+            background: rgba(33,150,243,0.8);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            width: 100%;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .save-button:hover {
+            background: rgba(33,150,243,1);
+            transform: translateY(-2px);
+        }
+
+        .test-button {
+            background: rgba(255,193,7,0.8);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .test-button:hover {
+            background: rgba(255,193,7,1);
+            transform: translateY(-2px);
+        }
+
+        .reset-button {
+            background: rgba(156,39,176,0.8);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .reset-button:hover {
+            background: rgba(156,39,176,1);
+            transform: translateY(-2px);
+        }
+
+        .stats-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(76,175,80,0.95);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.error {
+            background: rgba(244,67,54,0.95);
+        }
+
+        .help-text {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Gift Milestone Celebration</h1>
+        <p class="subtitle">Feiere Coin-Meilensteine mit benutzerdefinierten Animationen und Sounds</p>
+
+        <div class="nav-buttons">
+            <a href="/" class="nav-button">🏠 Dashboard</a>
+            <a href="/gift-milestone/overlay" class="nav-button" target="_blank">👁️ Overlay öffnen</a>
+        </div>
+
+        <!-- Enable/Disable Toggle -->
+        <div class="section">
+            <div class="toggle-container">
+                <span style="font-size: 1.2em; font-weight: 600;">Plugin Status:</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="enableToggle">
+                    <span class="slider"></span>
+                </label>
+                <span id="statusText" style="font-size: 1.2em; font-weight: 600;">Deaktiviert</span>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="section">
+            <h2>📊 Statistiken</h2>
+            <div class="stats-display">
+                <div class="stat-card">
+                    <div class="stat-value" id="currentCoins">0</div>
+                    <div class="stat-label">Aktuelle Coins</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="nextMilestone">1000</div>
+                    <div class="stat-label">Nächster Meilenstein</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="progressPercent">0%</div>
+                    <div class="stat-label">Fortschritt</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar" style="width: 0%;">0%</div>
+            </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="section">
+            <h2>⚙️ Konfiguration</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="threshold">Initialer Schwellenwert (Coins)</label>
+                    <input type="number" id="threshold" min="100" step="100" value="1000">
+                    <div class="help-text">Coins-Anzahl für den ersten Meilenstein</div>
+                </div>
+                <div class="form-group">
+                    <label for="incrementStep">Schrittweite (Auto-Increment)</label>
+                    <input type="number" id="incrementStep" min="100" step="100" value="1000">
+                    <div class="help-text">Wie viele Coins zum nächsten Meilenstein hinzugefügt werden</div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="mode">Modus</label>
+                    <select id="mode">
+                        <option value="auto_increment">Auto-Increment (empfohlen)</option>
+                        <option value="fixed">Fixer Schwellenwert</option>
+                    </select>
+                    <div class="help-text">Auto-Increment: Erhöht sich automatisch. Fixed: Bleibt gleich.</div>
+                </div>
+                <div class="form-group">
+                    <label for="playbackMode">Wiedergabe-Modus</label>
+                    <select id="playbackMode">
+                        <option value="exclusive">Exklusiv (pausiert andere Alerts)</option>
+                        <option value="parallel">Parallel (läuft gleichzeitig)</option>
+                    </select>
+                    <div class="help-text">Exklusiv pausiert TTS und andere Alerts während der Animation</div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="audioVolume">Audio-Lautstärke (%)</label>
+                    <input type="number" id="audioVolume" min="0" max="100" value="80">
+                    <div class="help-text">Lautstärke für Milestone-Audio (0-100%)</div>
+                </div>
+                <div class="form-group">
+                    <label for="animationDuration">Animation-Dauer (ms)</label>
+                    <input type="number" id="animationDuration" min="0" step="1000" value="0">
+                    <div class="help-text">0 = Automatisch (Medienlänge), sonst Timeout in Millisekunden</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="sessionReset">
+                    Session-Reset (Statistiken bei jedem Server-Start zurücksetzen)
+                </label>
+            </div>
+        </div>
+
+        <!-- Media Upload -->
+        <div class="section">
+            <h2>🎬 Medien hochladen</h2>
+
+            <div class="upload-section">
+                <h3>🖼️ GIF/Bild Animation</h3>
+                <input type="file" id="gifInput" class="file-input" accept=".gif,.png,.jpg,.jpeg,.webp">
+                <button class="upload-button" onclick="document.getElementById('gifInput').click()">📁 GIF auswählen</button>
+                <button class="delete-button" id="deleteGif" style="display: none;">🗑️ Löschen</button>
+                <div class="file-preview" id="gifPreview" style="display: none;"></div>
+            </div>
+
+            <div class="upload-section">
+                <h3>🎥 Video Animation</h3>
+                <input type="file" id="videoInput" class="file-input" accept=".mp4,.webm,.mov,.avi">
+                <button class="upload-button" onclick="document.getElementById('videoInput').click()">📁 Video auswählen</button>
+                <button class="delete-button" id="deleteVideo" style="display: none;">🗑️ Löschen</button>
+                <div class="file-preview" id="videoPreview" style="display: none;"></div>
+            </div>
+
+            <div class="upload-section">
+                <h3>🔊 Audio</h3>
+                <input type="file" id="audioInput" class="file-input" accept=".mp3,.wav,.ogg,.m4a">
+                <button class="upload-button" onclick="document.getElementById('audioInput').click()">📁 Audio auswählen</button>
+                <button class="delete-button" id="deleteAudio" style="display: none;">🗑️ Löschen</button>
+                <div class="file-preview" id="audioPreview" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="section">
+            <h2>🎮 Aktionen</h2>
+            <div style="text-align: center;">
+                <button class="test-button" id="testButton">🧪 Celebration testen</button>
+                <button class="reset-button" id="resetButton">🔄 Statistiken zurücksetzen</button>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="section">
+            <button class="save-button" id="saveButton">💾 Konfiguration speichern</button>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let config = null;
+        let stats = null;
+
+        // Load configuration on page load
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/gift-milestone/config');
+                const data = await response.json();
+                if (data.success) {
+                    config = data.config;
+                    populateForm(config);
+                }
+            } catch (error) {
+                console.error('Error loading config:', error);
+                showNotification('Fehler beim Laden der Konfiguration', 'error');
+            }
+        }
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/gift-milestone/stats');
+                const data = await response.json();
+                if (data.success) {
+                    stats = data.stats;
+                    config = data.config;
+                    updateStatsDisplay(stats, config);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Populate form with config data
+        function populateForm(config) {
+            document.getElementById('enableToggle').checked = config.enabled;
+            document.getElementById('statusText').textContent = config.enabled ? 'Aktiviert' : 'Deaktiviert';
+            document.getElementById('threshold').value = config.threshold;
+            document.getElementById('incrementStep').value = config.increment_step;
+            document.getElementById('mode').value = config.mode;
+            document.getElementById('playbackMode').value = config.playback_mode;
+            document.getElementById('audioVolume').value = config.audio_volume;
+            document.getElementById('animationDuration').value = config.animation_duration;
+            document.getElementById('sessionReset').checked = config.session_reset;
+
+            // Update file previews
+            updateFilePreview('gif', config.animation_gif_path);
+            updateFilePreview('video', config.animation_video_path);
+            updateFilePreview('audio', config.animation_audio_path);
+        }
+
+        // Update statistics display
+        function updateStatsDisplay(stats, config) {
+            const currentCoins = stats.cumulative_coins || 0;
+            const nextMilestone = stats.current_milestone || config.threshold;
+            const progress = (currentCoins / nextMilestone) * 100;
+
+            document.getElementById('currentCoins').textContent = currentCoins.toLocaleString();
+            document.getElementById('nextMilestone').textContent = nextMilestone.toLocaleString();
+            document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
+            document.getElementById('progressBar').style.width = Math.min(progress, 100) + '%';
+            document.getElementById('progressBar').textContent = Math.round(progress) + '%';
+        }
+
+        // Update file preview
+        function updateFilePreview(type, path) {
+            const preview = document.getElementById(`${type}Preview`);
+            const deleteBtn = document.getElementById(`delete${type.charAt(0).toUpperCase() + type.slice(1)}`);
+
+            if (path) {
+                preview.textContent = `✅ ${path.split('/').pop()}`;
+                preview.style.display = 'block';
+                deleteBtn.style.display = 'inline-block';
+            } else {
+                preview.style.display = 'none';
+                deleteBtn.style.display = 'none';
+            }
+        }
+
+        // Toggle enable/disable
+        document.getElementById('enableToggle').addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+            try {
+                const response = await fetch('/api/gift-milestone/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('statusText').textContent = enabled ? 'Aktiviert' : 'Deaktiviert';
+                    showNotification(data.message);
+                }
+            } catch (error) {
+                console.error('Error toggling milestone:', error);
+                showNotification('Fehler beim Umschalten', 'error');
+            }
+        });
+
+        // File upload handlers
+        ['gif', 'video', 'audio'].forEach(type => {
+            document.getElementById(`${type}Input`).addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append(type, file);
+
+                try {
+                    const response = await fetch(`/api/gift-milestone/upload/${type}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        updateFilePreview(type, data.url);
+                        showNotification(`${type.toUpperCase()} erfolgreich hochgeladen`);
+                    } else {
+                        showNotification(data.error, 'error');
+                    }
+                } catch (error) {
+                    console.error(`Error uploading ${type}:`, error);
+                    showNotification(`Fehler beim Hochladen von ${type}`, 'error');
+                }
+
+                e.target.value = '';
+            });
+
+            // Delete handlers
+            document.getElementById(`delete${type.charAt(0).toUpperCase() + type.slice(1)}`).addEventListener('click', async () => {
+                if (!confirm(`${type.toUpperCase()} wirklich löschen?`)) return;
+
+                try {
+                    const response = await fetch(`/api/gift-milestone/media/${type}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        updateFilePreview(type, null);
+                        showNotification(`${type.toUpperCase()} gelöscht`);
+                    }
+                } catch (error) {
+                    console.error(`Error deleting ${type}:`, error);
+                    showNotification(`Fehler beim Löschen von ${type}`, 'error');
+                }
+            });
+        });
+
+        // Save configuration
+        document.getElementById('saveButton').addEventListener('click', async () => {
+            const config = {
+                enabled: document.getElementById('enableToggle').checked,
+                threshold: parseInt(document.getElementById('threshold').value),
+                increment_step: parseInt(document.getElementById('incrementStep').value),
+                mode: document.getElementById('mode').value,
+                playback_mode: document.getElementById('playbackMode').value,
+                audio_volume: parseInt(document.getElementById('audioVolume').value),
+                animation_duration: parseInt(document.getElementById('animationDuration').value),
+                session_reset: document.getElementById('sessionReset').checked
+            };
+
+            try {
+                const response = await fetch('/api/gift-milestone/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Konfiguration gespeichert!');
+                    loadStats();
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving config:', error);
+                showNotification('Fehler beim Speichern', 'error');
+            }
+        });
+
+        // Test button
+        document.getElementById('testButton').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/gift-milestone/test', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Test-Celebration ausgelöst!');
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error testing milestone:', error);
+                showNotification('Fehler beim Testen', 'error');
+            }
+        });
+
+        // Reset button
+        document.getElementById('resetButton').addEventListener('click', async () => {
+            if (!confirm('Statistiken wirklich zurücksetzen? Dies kann nicht rückgängig gemacht werden!')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/gift-milestone/reset', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Statistiken zurückgesetzt!');
+                    loadStats();
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error resetting stats:', error);
+                showNotification('Fehler beim Zurücksetzen', 'error');
+            }
+        });
+
+        // Socket.io listeners for real-time updates
+        socket.on('milestone:stats-update', (data) => {
+            loadStats();
+        });
+
+        socket.on('milestone:config-update', (data) => {
+            loadConfig();
+        });
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification ' + type;
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize
+        loadConfig();
+        loadStats();
+        setInterval(loadStats, 5000); // Update stats every 5 seconds
+    </script>
+</body>
+</html>

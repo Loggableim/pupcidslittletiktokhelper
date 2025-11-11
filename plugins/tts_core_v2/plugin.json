@@ -1,0 +1,32 @@
+{
+  "id": "tts_core_v2",
+  "name": "TTS Core V2 - Advanced Text-to-Speech",
+  "description": "Vollständiges TTS-System mit Mehrsprachenerkennung, Moderation, Wortfilter, Teamlevel-Kontrolle, Feedback-Loop und erweiterten Features. Nutzt die offizielle TikTok TTS API.",
+  "version": "2.0.0",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": true,
+  "enabled": false,
+  "type": "module",
+  "dependencies": ["axios", "franc-min"],
+  "permissions": ["tiktok-events", "database", "socket-emit", "file-system"],
+  "settings": {
+    "default_voice": "en_us_001",
+    "tts_provider": "tiktok",
+    "include_username": true,
+    "username_voice": "en_us_ghostface",
+    "queue_delay_ms": 1000,
+    "max_queue_size": 100,
+    "min_team_level": 0,
+    "enable_language_detection": true,
+    "enable_word_filter": true,
+    "filter_mode": "censor",
+    "profanity_level": "standard",
+    "enable_emoji_voice_selection": false,
+    "enable_gift_voice_selection": false,
+    "volume": 80,
+    "speed": 1.0,
+    "max_text_length": 300,
+    "enable_moderation_log": true
+  }
+}

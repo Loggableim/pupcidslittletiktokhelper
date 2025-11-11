@@ -1,3 +1,4 @@
+const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -774,6 +775,9 @@ Gib NUR das JSON-Array zurück, ohne zusätzlichen Text.`;
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
+            const response = await axios.post(
+                'https://api.openai.com/v1/chat/completions',
+                {
                     model: this.config.openai.model,
                     messages: [
                         {
@@ -792,6 +796,16 @@ Gib NUR das JSON-Array zurück, ohne zusätzlichen Text.`;
 
             const data = await response.json();
             const content = data.choices[0].message.content.trim();
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${this.config.openai.apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            const content = response.data.choices[0].message.content.trim();
 
             // Extract JSON from response (might have markdown code blocks)
             let jsonStr = content;
