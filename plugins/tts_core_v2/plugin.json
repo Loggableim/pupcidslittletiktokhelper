@@ -5,7 +5,7 @@
   "version": "2.0.0",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": false,
+  "enabled": true,
   "type": "module",
   "dependencies": ["axios", "franc-min"],
   "permissions": ["tiktok-events", "database", "socket-emit", "file-system"],
