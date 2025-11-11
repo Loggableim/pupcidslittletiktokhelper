@@ -21,7 +21,6 @@ try {
     francAll = () => [['eng', 1]]; // Default to English
     logDebug('franc-min not available, using fallback');
 }
-const { francAll } = require('franc-min');
 
 // TikTok TTS Voice Mapping mit Sprachzuordnung
 const TIKTOK_VOICES = {
@@ -221,8 +220,6 @@ class TTSCoreV2Plugin {
         logDebug(`Checking config files in: ${this.pluginDir}`);
 
         // banned_words.json
-        logDebug(`Checking: ${this.bannedWordsFile}`);
-        // banned_words.json
         if (!fs.existsSync(this.bannedWordsFile)) {
             const defaultBannedWords = [
                 // URLs & Links
@@ -342,8 +339,6 @@ class TTSCoreV2Plugin {
     registerRoutes() {
         logDebug('Registering routes...');
 
-        // GET /api/tts-v2/config - Get configuration
-        logDebug('Registering: GET /api/tts-v2/config');
         // GET /api/tts-v2/config - Get configuration
         this.api.registerRoute('GET', '/api/tts-v2/config', (req, res) => {
             res.json({
@@ -651,8 +646,6 @@ class TTSCoreV2Plugin {
     registerTikTokEvents() {
         logDebug('Registering TikTok event hooks...');
 
-        // Chat Event - Main TTS Trigger
-        logDebug('Registering: chat event');
         // Chat Event - Main TTS Trigger
         this.api.registerTikTokEvent('chat', async (data) => {
             if (!data.message) return;

@@ -6,7 +6,6 @@
   "author": "Pup Cid",
   "entry": "main.js",
   "enabled": true,
-  "enabled": false,
   "type": "module",
   "dependencies": ["axios", "franc-min"],
   "permissions": ["tiktok-events", "database", "socket-emit", "file-system"],
