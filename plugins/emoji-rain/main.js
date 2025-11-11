@@ -60,6 +60,30 @@ class EmojiRainPlugin {
     }
 
     registerRoutes() {
+        // Serve plugin UI (configuration page)
+        this.api.registerRoute('get', '/emoji-rain/ui', (req, res) => {
+            const uiPath = path.join(__dirname, 'ui.html');
+            res.sendFile(uiPath);
+        });
+
+        // Serve plugin overlay
+        this.api.registerRoute('get', '/emoji-rain/overlay', (req, res) => {
+            const overlayPath = path.join(__dirname, 'overlay.html');
+            res.sendFile(overlayPath);
+        });
+
+        // Serve uploaded emoji images
+        this.api.registerRoute('get', '/emoji-rain/uploads/:filename', (req, res) => {
+            const filename = req.params.filename;
+            const filePath = path.join(this.emojiRainUploadDir, filename);
+
+            if (fs.existsSync(filePath)) {
+                res.sendFile(filePath);
+            } else {
+                res.status(404).json({ success: false, error: 'File not found' });
+            }
+        });
+
         // Get emoji rain config
         this.api.registerRoute('get', '/api/emoji-rain/config', (req, res) => {
             try {
@@ -165,7 +189,7 @@ class EmojiRainPlugin {
                         return res.status(400).json({ success: false, error: 'No file uploaded' });
                     }
 
-                    const fileUrl = `/plugins/emoji-rain/uploads/${req.file.filename}`;
+                    const fileUrl = `/emoji-rain/uploads/${req.file.filename}`;
                     this.api.log(`📤 Emoji rain image uploaded: ${req.file.filename}`, 'info');
 
                     res.json({
@@ -189,7 +213,7 @@ class EmojiRainPlugin {
                     .filter(f => f !== '.gitkeep')
                     .map(filename => ({
                         filename,
-                        url: `/plugins/emoji-rain/uploads/${filename}`,
+                        url: `/emoji-rain/uploads/${filename}`,
                         size: fs.statSync(path.join(this.emojiRainUploadDir, filename)).size,
                         created: fs.statSync(path.join(this.emojiRainUploadDir, filename)).birthtime
                     }));
