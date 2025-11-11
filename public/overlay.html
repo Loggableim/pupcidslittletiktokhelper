@@ -681,6 +681,75 @@
             showGiftAnimation(data);
         });
 
+        // ========== AUDIO ENGINE SOCKET EVENTS ==========
+
+        // Master Volume ändern
+        socket.on('audio:master-volume', (data) => {
+            if (masterGainNode) {
+                masterGainNode.gain.value = data.volume;
+                console.log(`🎵 Master volume set to ${(data.volume * 100).toFixed(0)}%`);
+            }
+        });
+
+        // Audio Output Device ändern
+        socket.on('audio:set-output-device', (data) => {
+            console.log(`🔊 Audio output device change requested: ${data.deviceId}`);
+            // Note: setSinkId nur in Chromium/OBS verfügbar
+            if (typeof HTMLMediaElement.prototype.setSinkId !== 'undefined') {
+                // Alle aktiven Audio-Elemente updaten
+                document.querySelectorAll('audio').forEach(audio => {
+                    if (audio.setSinkId) {
+                        audio.setSinkId(data.deviceId).catch(err => {
+                            console.warn('setSinkId failed:', err);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Audio Status anfordern
+        socket.on('audio:get-status', () => {
+            if (audioContext) {
+                socket.emit('audio:status', {
+                    state: audioContext.state,
+                    sampleRate: audioContext.sampleRate,
+                    latency: audioContext.baseLatency || 0
+                });
+            }
+        });
+
+        // Audio Test abspielen
+        socket.on('audio:test', () => {
+            if (!audioContext) {
+                initAudioEngine();
+            }
+
+            try {
+                // 440 Hz Sinuswelle für 0.5s
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(masterGainNode || audioContext.destination);
+
+                oscillator.frequency.value = 440; // A4
+                gainNode.gain.value = 0.3; // Moderate Lautstärke
+
+                // Envelope: Fade in/out
+                const now = audioContext.currentTime;
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.3, now + 0.05);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+
+                oscillator.start(now);
+                oscillator.stop(now + 0.5);
+
+                console.log('🎵 Test audio playing (440 Hz)');
+            } catch (error) {
+                console.error('Error playing test audio:', error);
+            }
+        });
+
         // ========== ALERT FUNCTIONS ==========
         function showAlert(data) {
             const container = document.getElementById('alert-container');

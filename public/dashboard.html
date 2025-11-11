@@ -911,7 +911,7 @@
 
         <!-- Tab: Settings -->
         <div id="tab-settings" class="tab-content">
-            <div class="bg-gray-800 rounded-lg p-6">
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
                 <h2 class="text-xl mb-6 font-semibold">⚙️ General Settings</h2>
 
                 <div class="p-4 bg-gray-700 rounded">
@@ -919,11 +919,61 @@
                         <strong>ℹ️ Info:</strong> TTS settings have been moved to the TTS tab for easier access.
                     </p>
                 </div>
+            </div>
 
-                <!-- Placeholder für zukünftige Settings -->
-                <div class="mt-6 p-4 bg-gray-700 rounded">
-                    <h3 class="font-bold mb-2">Future Settings</h3>
-                    <p class="text-gray-400 text-sm">Additional application settings will be added here.</p>
+            <!-- Audio Engine Settings -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl mb-6 font-semibold">🎵 Audio Engine Settings</h2>
+
+                <div class="space-y-6">
+                    <!-- Master Volume -->
+                    <div>
+                        <label class="block text-gray-400 mb-2">Master Volume: <span id="master-volume-label">100</span>%</label>
+                        <input type="range" min="0" max="100" value="100" id="master-volume" class="w-full">
+                        <p class="text-xs text-gray-500 mt-1">Globale Lautstärke für alle Sounds, TTS und Alerts</p>
+                    </div>
+
+                    <!-- Audio Output Device Selection -->
+                    <div>
+                        <label class="block text-gray-400 mb-2">Audio Output Device</label>
+                        <select id="audio-output-device" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="default">Standard-Ausgabegerät</option>
+                            <!-- Wird dynamisch gefüllt -->
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">
+                            ⚠️ Hinweis: Die Auswahl des Audio-Geräts funktioniert nur in Chromium-basierten Browsern und OBS.
+                            <br>
+                            In OBS: Verwende OBS Audio-Mixer zum Routing.
+                        </p>
+                    </div>
+
+                    <!-- Audio Engine Status -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <h3 class="font-bold mb-3">Audio Engine Status</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Status:</span>
+                                <span id="audio-status" class="font-semibold text-green-400">Initialisiere...</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Sample Rate:</span>
+                                <span id="audio-samplerate" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Latenz:</span>
+                                <span id="audio-latency" class="font-semibold">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audio Test -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <h3 class="font-bold mb-3">🔊 Audio Test</h3>
+                        <button id="test-audio-btn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 font-semibold">
+                            🎵 Test Audio abspielen
+                        </button>
+                        <p class="text-xs text-gray-500 mt-2">Spielt einen Test-Ton ab, um die Audio-Konfiguration zu überprüfen.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1004,5 +1054,7 @@
     <script src="/js/plugin-manager.js"></script>
     <!-- Update Checker -->
     <script src="/js/update-checker.js"></script>
+    <!-- Audio Engine Settings -->
+    <script src="/js/audio-settings.js"></script>
 </body>
 </html>
