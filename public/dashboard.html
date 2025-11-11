@@ -120,21 +120,22 @@
         </div>
 
         <!-- Audio Activation Info Banner -->
-        <div class="mb-6 bg-yellow-600 rounded-lg p-4">
+        <div class="mb-6 bg-blue-600 rounded-lg p-4">
             <div class="flex items-start gap-3">
-                <span class="text-2xl">⚠️</span>
+                <span class="text-2xl">🎵</span>
                 <div class="flex-1">
-                    <div class="font-bold mb-1">WICHTIG: Audio-Aktivierung erforderlich!</div>
+                    <div class="font-bold mb-1">Audio-Engine: OBS-Ready!</div>
                     <p class="text-sm mb-2">
-                        Browser blockieren standardmäßig automatisches Audio-Abspielen. Damit Sounds, Alerts und TTS funktionieren:
+                        Audio funktioniert jetzt automatisch in OBS! Wichtige Einstellung in der Browser Source:
                     </p>
-                    <ol class="text-sm space-y-1 ml-4 list-decimal">
-                        <li>Öffne das <a href="/overlay.html" target="_blank" class="underline font-semibold hover:text-white">Overlay in einem neuen Tab</a></li>
-                        <li>Klicke auf den Button <strong>"🔊 Audio aktivieren"</strong></li>
-                        <li>Verwende dieses Tab als OBS Browser-Source</li>
-                    </ol>
+                    <div class="text-sm bg-blue-700 bg-opacity-50 p-2 rounded">
+                        <strong>✅ "Control audio via OBS"</strong> aktivieren - dann funktioniert Audio sofort ohne manuelle Interaktion!
+                    </div>
+                    <p class="text-xs mt-2 opacity-90">
+                        Für normale Browser: Falls ein "Audio aktivieren" Button erscheint, einmal klicken.
+                    </p>
                 </div>
-                <button id="dismiss-audio-info" class="text-yellow-200 hover:text-white text-sm px-2">
+                <button id="dismiss-audio-info" class="text-blue-200 hover:text-white text-sm px-2">
                     ✕
                 </button>
             </div>
@@ -441,17 +442,14 @@
                     </div>
                 </div>
 
-                <div class="mt-6 p-4 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded">
-                    <h3 class="font-bold mb-2 text-yellow-300">⚠️ WICHTIG: Audio aktivieren!</h3>
-                    <p class="text-sm text-yellow-100 mb-3">
-                        Bevor TTS und Soundboard funktionieren, MUSS der "Audio aktivieren" Button im Overlay geklickt werden!
-                        Dies ist wegen der Browser Autoplay Policy erforderlich.
+                <div class="mt-6 p-4 bg-green-900 bg-opacity-50 border border-green-600 rounded">
+                    <h3 class="font-bold mb-2 text-green-300">✅ Audio-Engine ist OBS-Ready!</h3>
+                    <p class="text-sm text-green-100 mb-3">
+                        Audio funktioniert jetzt automatisch in OBS Browser Sources! Kein manuelles Entsperren mehr nötig.
                     </p>
-                    <ol class="list-decimal list-inside space-y-1 text-sm text-yellow-100">
-                        <li>Öffne das Overlay im Browser: <span class="font-mono bg-gray-800 px-2 py-1 rounded">http://localhost:3000/overlay.html</span></li>
-                        <li>Klicke auf den großen "🔊 Audio aktivieren" Button</li>
-                        <li>Jetzt funktioniert Audio auch in OBS!</li>
-                    </ol>
+                    <div class="text-sm text-green-100 bg-green-800 bg-opacity-30 p-3 rounded">
+                        <strong>Wichtig:</strong> In den OBS Browser Source Einstellungen muss <strong class="text-green-300">"Control audio via OBS"</strong> aktiviert sein!
+                    </div>
                 </div>
 
                 <div class="mt-6 p-4 bg-gray-700 rounded">
@@ -463,11 +461,12 @@
                         <li>Kopiere die URL oben und füge sie ein</li>
                         <li>Setze Breite: 1920, Höhe: 1080</li>
                         <li>Entferne Häkchen bei "Shutdown source when not visible"</li>
-                        <li>Aktiviere "Control audio via OBS" (wichtig für Audio!)</li>
-                        <li>Klicke OK</li>
-                        <li><strong>Wichtig:</strong> Klicke auf "Interact" in OBS und dann auf "Audio aktivieren" Button!</li>
-                        <li>Klicke OK</li>
+                        <li><strong class="text-green-400">✅ Aktiviere "Control audio via OBS"</strong> - Audio funktioniert dann automatisch!</li>
+                        <li>Klicke OK - Fertig!</li>
                     </ol>
+                    <div class="mt-3 p-3 bg-green-900 bg-opacity-30 border border-green-600 rounded text-sm">
+                        <strong class="text-green-300">🎵 Neu:</strong> Mit "Control audio via OBS" aktiviert, funktioniert Audio automatisch - kein manuelles Entsperren mehr nötig!
+                    </div>
                 </div>
             </div>
         </div>
@@ -912,7 +911,7 @@
 
         <!-- Tab: Settings -->
         <div id="tab-settings" class="tab-content">
-            <div class="bg-gray-800 rounded-lg p-6">
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
                 <h2 class="text-xl mb-6 font-semibold">⚙️ General Settings</h2>
 
                 <div class="p-4 bg-gray-700 rounded">
@@ -920,11 +919,61 @@
                         <strong>ℹ️ Info:</strong> TTS settings have been moved to the TTS tab for easier access.
                     </p>
                 </div>
+            </div>
 
-                <!-- Placeholder für zukünftige Settings -->
-                <div class="mt-6 p-4 bg-gray-700 rounded">
-                    <h3 class="font-bold mb-2">Future Settings</h3>
-                    <p class="text-gray-400 text-sm">Additional application settings will be added here.</p>
+            <!-- Audio Engine Settings -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl mb-6 font-semibold">🎵 Audio Engine Settings</h2>
+
+                <div class="space-y-6">
+                    <!-- Master Volume -->
+                    <div>
+                        <label class="block text-gray-400 mb-2">Master Volume: <span id="master-volume-label">100</span>%</label>
+                        <input type="range" min="0" max="100" value="100" id="master-volume" class="w-full">
+                        <p class="text-xs text-gray-500 mt-1">Globale Lautstärke für alle Sounds, TTS und Alerts</p>
+                    </div>
+
+                    <!-- Audio Output Device Selection -->
+                    <div>
+                        <label class="block text-gray-400 mb-2">Audio Output Device</label>
+                        <select id="audio-output-device" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="default">Standard-Ausgabegerät</option>
+                            <!-- Wird dynamisch gefüllt -->
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">
+                            ⚠️ Hinweis: Die Auswahl des Audio-Geräts funktioniert nur in Chromium-basierten Browsern und OBS.
+                            <br>
+                            In OBS: Verwende OBS Audio-Mixer zum Routing.
+                        </p>
+                    </div>
+
+                    <!-- Audio Engine Status -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <h3 class="font-bold mb-3">Audio Engine Status</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Status:</span>
+                                <span id="audio-status" class="font-semibold text-green-400">Initialisiere...</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Sample Rate:</span>
+                                <span id="audio-samplerate" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Latenz:</span>
+                                <span id="audio-latency" class="font-semibold">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audio Test -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <h3 class="font-bold mb-3">🔊 Audio Test</h3>
+                        <button id="test-audio-btn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 font-semibold">
+                            🎵 Test Audio abspielen
+                        </button>
+                        <p class="text-xs text-gray-500 mt-2">Spielt einen Test-Ton ab, um die Audio-Konfiguration zu überprüfen.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1005,5 +1054,7 @@
     <script src="/js/plugin-manager.js"></script>
     <!-- Update Checker -->
     <script src="/js/update-checker.js"></script>
+    <!-- Audio Engine Settings -->
+    <script src="/js/audio-settings.js"></script>
 </body>
 </html>
