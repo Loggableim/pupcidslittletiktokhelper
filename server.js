@@ -70,9 +70,10 @@ app.use((req, res, next) => {
     const isOBSRoute = obsRoutes.some(route => req.path.includes(route));
 
     // Dashboard needs relaxed CSP for inline event handlers (onclick, etc.)
+    // Production-ready CSP for all admin routes (including dashboard)
     const isDashboard = req.path.includes('/dashboard.html');
 
-    if (!isOBSRoute && !isDashboard) {
+    if (!isOBSRoute) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
         // Strict CSP for admin routes - no inline scripts/styles, local resources only
         res.header('Content-Security-Policy',
