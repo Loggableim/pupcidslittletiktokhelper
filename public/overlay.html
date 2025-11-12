@@ -20,43 +20,6 @@
             overflow: hidden;
         }
 
-        /* ========== MASTER MUTE BUTTON ========== */
-        #master-mute-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            font-size: 20px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(10px);
-        }
-
-        #master-mute-btn:hover {
-            transform: scale(1.1);
-            background: rgba(0, 0, 0, 0.85);
-            border-color: rgba(255, 255, 255, 0.4);
-        }
-
-        #master-mute-btn.muted {
-            background: rgba(239, 68, 68, 0.8);
-            border-color: rgba(239, 68, 68, 0.5);
-        }
-
-        #master-mute-btn.muted:hover {
-            background: rgba(239, 68, 68, 0.95);
-        }
-
         /* ========== ALERT CONTAINER ========== */
         #alert-container {
             position: absolute;
@@ -389,12 +352,6 @@
 
     <!-- Chat Display -->
     <div id="chat-container"></div>
-
-    <!-- Master Mute Button (dezent oben rechts) -->
-    <div id="master-mute-btn" onclick="toggleMasterMute()" title="Audio Mute/Unmute">
-        <span id="mute-icon">🔊</span>
-    </div>
-
     <!-- Audio Element für TTS -->
     <audio id="tts-audio"></audio>
 
@@ -526,86 +483,8 @@
             }
         }
 
-        // ========== AUDIO ENGINE (OBS-KOMPATIBEL) ==========
-        let audioUnlocked = true; // Audio standardmäßig aktiv
-        let audioContext = null;
-        let masterGainNode = null;
-        let isMuted = false;
-
-        // Audio-Engine initialisieren (automatisch beim Laden)
-        function initAudioEngine() {
-            try {
-                // AudioContext erstellen (funktioniert in OBS mit "Control audio via OBS")
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                audioContext = new AudioContextClass();
-
-                // Master Gain Node für Lautstärke-Kontrolle
-                masterGainNode = audioContext.createGain();
-                masterGainNode.connect(audioContext.destination);
-                masterGainNode.gain.value = 1.0;
-
-                console.log('🎵 Audio Engine initialized:', {
-                    state: audioContext.state,
-                    sampleRate: audioContext.sampleRate
-                });
-
-                // Versuche AudioContext zu starten (funktioniert in OBS automatisch)
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume().then(() => {
-                        console.log('✅ AudioContext resumed automatically');
-                        audioUnlocked = true;
-                    }).catch(err => {
-                        console.warn('⚠️ AudioContext resume failed:', err);
-                        // Versuche erneut bei erstem Audio-Event
-                        audioUnlocked = false;
-                    });
-                } else {
-                    audioUnlocked = true;
-                }
-
-                // Stille Audio abspielen um Autoplay zu entsperren (OBS-Fallback)
-                const silentBuffer = audioContext.createBuffer(1, 1, 22050);
-                const source = audioContext.createBufferSource();
-                source.buffer = silentBuffer;
-                source.connect(audioContext.destination);
-                source.start(0);
-
-                return true;
-            } catch (error) {
-                console.error('❌ Audio Engine initialization failed:', error);
-                return false;
-            }
-        }
-
-        // Master Mute Toggle
-        function toggleMasterMute() {
-            if (!masterGainNode) {
-                console.warn('⚠️ Audio Engine not initialized');
-                return;
-            }
-
-            isMuted = !isMuted;
-
-            if (isMuted) {
-                // Mute: Gain auf 0 setzen
-                masterGainNode.gain.value = 0;
-                document.getElementById('mute-icon').textContent = '🔇';
-                document.getElementById('master-mute-btn').classList.add('muted');
-                console.log('🔇 Audio muted');
-            } else {
-                // Unmute: Gain auf 1 setzen
-                masterGainNode.gain.value = 1.0;
-                document.getElementById('mute-icon').textContent = '🔊';
-                document.getElementById('master-mute-btn').classList.remove('muted');
-                console.log('🔊 Audio unmuted');
-            }
-        }
-
         // Load configuration on page load
         loadHudConfiguration();
-
-        // Audio Engine SOFORT beim Laden initialisieren
-        initAudioEngine();
 
         // State
         let goalTarget = 1000;
@@ -649,75 +528,6 @@
         // Gift Animation anzeigen
         socket.on('gift:animation', (data) => {
             showGiftAnimation(data);
-        });
-
-        // ========== AUDIO ENGINE SOCKET EVENTS ==========
-
-        // Master Volume ändern
-        socket.on('audio:master-volume', (data) => {
-            if (masterGainNode) {
-                masterGainNode.gain.value = data.volume;
-                console.log(`🎵 Master volume set to ${(data.volume * 100).toFixed(0)}%`);
-            }
-        });
-
-        // Audio Output Device ändern
-        socket.on('audio:set-output-device', (data) => {
-            console.log(`🔊 Audio output device change requested: ${data.deviceId}`);
-            // Note: setSinkId nur in Chromium/OBS verfügbar
-            if (typeof HTMLMediaElement.prototype.setSinkId !== 'undefined') {
-                // Alle aktiven Audio-Elemente updaten
-                document.querySelectorAll('audio').forEach(audio => {
-                    if (audio.setSinkId) {
-                        audio.setSinkId(data.deviceId).catch(err => {
-                            console.warn('setSinkId failed:', err);
-                        });
-                    }
-                });
-            }
-        });
-
-        // Audio Status anfordern
-        socket.on('audio:get-status', () => {
-            if (audioContext) {
-                socket.emit('audio:status', {
-                    state: audioContext.state,
-                    sampleRate: audioContext.sampleRate,
-                    latency: audioContext.baseLatency || 0
-                });
-            }
-        });
-
-        // Audio Test abspielen
-        socket.on('audio:test', () => {
-            if (!audioContext) {
-                initAudioEngine();
-            }
-
-            try {
-                // 440 Hz Sinuswelle für 0.5s
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-
-                oscillator.connect(gainNode);
-                gainNode.connect(masterGainNode || audioContext.destination);
-
-                oscillator.frequency.value = 440; // A4
-                gainNode.gain.value = 0.3; // Moderate Lautstärke
-
-                // Envelope: Fade in/out
-                const now = audioContext.currentTime;
-                gainNode.gain.setValueAtTime(0, now);
-                gainNode.gain.linearRampToValueAtTime(0.3, now + 0.05);
-                gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
-
-                oscillator.start(now);
-                oscillator.stop(now + 0.5);
-
-                console.log('🎵 Test audio playing (440 Hz)');
-            } catch (error) {
-                console.error('Error playing test audio:', error);
-            }
         });
 
         // ========== ALERT FUNCTIONS ==========
@@ -769,19 +579,6 @@
         // ========== TTS FUNCTIONS ==========
         function playTTS(data) {
             console.log('🎤 Playing TTS:', data.text);
-
-            // Versuche Audio zu starten (funktioniert in OBS automatisch)
-            if (!audioUnlocked && audioContext) {
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                audioUnlocked = true;
-            }
-
-            if (!audioUnlocked) {
-                console.warn('⚠️ Audio engine not ready. Trying to initialize...');
-                initAudioEngine();
-            }
 
             const audio = document.getElementById('tts-audio');
 
@@ -836,6 +633,10 @@
                 timestamp: new Date().toISOString()
             });
 
+            // Create new audio element
+            const audio = document.createElement('audio');
+            audio.src = data.url;
+            audio.volume = data.volume || 1.0;
             // AudioContext Initialisierung prüfen
             if (!audioContext) {
                 console.warn('⚠️ AudioContext not initialized. Initializing now...');
