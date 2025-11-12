@@ -69,15 +69,32 @@ app.use((req, res, next) => {
     const obsRoutes = ['/overlay.html', '/obs-dock.html', '/obs-dock-controls.html', '/obs-dock-goals.html', '/goal/', '/leaderboard-overlay.html', '/minigames-overlay.html'];
     const isOBSRoute = obsRoutes.some(route => req.path.includes(route));
 
-    // Production-ready CSP for all admin routes (including dashboard)
+    // Dashboard needs relaxed CSP for inline event handlers (onclick, etc.)
     const isDashboard = req.path.includes('/dashboard.html');
 
-    if (!isOBSRoute) {
+    if (!isOBSRoute && !isDashboard) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
         // Strict CSP for admin routes - no inline scripts/styles, local resources only
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
             `script-src 'self'; ` +
+            `style-src 'self' 'unsafe-inline'; ` +
+            `img-src 'self' data: blob: https:; ` +
+            `font-src 'self' data:; ` +
+            `connect-src 'self' ws: wss:; ` +
+            `media-src 'self' blob: data:; ` +
+            `object-src 'none'; ` +
+            `base-uri 'self'; ` +
+            `form-action 'self'; ` +
+            `frame-ancestors 'self';`
+        );
+    } else if (isDashboard) {
+        res.header('X-Frame-Options', 'SAMEORIGIN');
+        // Dashboard CSP: Allow inline event handlers (onclick) for functionality
+        res.header('Content-Security-Policy',
+            `default-src 'self'; ` +
+            `script-src 'self' 'unsafe-inline'; ` +
+            `script-src-attr 'unsafe-inline'; ` +
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
