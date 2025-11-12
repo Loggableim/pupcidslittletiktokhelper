@@ -448,6 +448,13 @@ class TTSPlugin {
     _registerTikTokEvents() {
         this.api.registerTikTokEvent('chat', async (data) => {
             try {
+                // Extract text from either 'message' or 'comment' field
+                const chatText = data.message || data.comment;
+
+                this._logDebug('TIKTOK_EVENT', 'Chat event received', {
+                    uniqueId: data.uniqueId,
+                    nickname: data.nickname,
+                    message: chatText,
                 this._logDebug('TIKTOK_EVENT', 'Chat event received', {
                     uniqueId: data.uniqueId,
                     nickname: data.nickname,
@@ -457,6 +464,7 @@ class TTSPlugin {
                     userId: data.userId
                 });
 
+                this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${chatText}"`);
                 this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${data.comment}"`);
 
                 // Only process if chat TTS is enabled
@@ -468,7 +476,7 @@ class TTSPlugin {
 
                 // Speak chat message
                 const result = await this.speak({
-                    text: data.comment,
+                    text: chatText,
                     userId: data.userId || data.uniqueId,
                     username: data.uniqueId || data.nickname,
                     source: 'chat',
