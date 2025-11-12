@@ -452,9 +452,10 @@ class TTSPlugin {
                     : TikTokEngine;
 
                 const langResult = this.languageDetector.detectAndGetVoice(finalText, engineClass);
-                selectedVoice = langResult.voiceId;
-
-                this.logger.info(`Language detected: ${langResult.languageName} (${langResult.langCode}) for "${finalText.substring(0, 30)}..."`);
+                if (langResult && langResult.voiceId) {
+                    selectedVoice = langResult.voiceId;
+                    this.logger.info(`Language detected: ${langResult.languageName} (${langResult.langCode}) for "${finalText.substring(0, 30)}..."`);
+                }
             }
 
             // Final fallback to default voice
@@ -493,6 +494,11 @@ class TTSPlugin {
                 }
             }
 
+            // Validate audioData
+            if (!audioData || audioData.length === 0) {
+                throw new Error('Engine returned empty audio data');
+            }
+
             // Step 6: Enqueue for playback
             const queueResult = this.queueManager.enqueue({
                 userId,
@@ -501,7 +507,7 @@ class TTSPlugin {
                 voice: selectedVoice,
                 engine: selectedEngine,
                 audioData,
-                volume: this.config.volume * (userSettings?.volume_gain || 1.0),
+                volume: this.config.volume * (userSettings?.volume_gain ?? 1.0),
                 speed: this.config.speed,
                 source,
                 teamLevel,
