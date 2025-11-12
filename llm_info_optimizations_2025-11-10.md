@@ -53,7 +53,7 @@ if (origin && ALLOWED_ORIGINS.includes(origin)) {
 
 **Vorteile:**
 - Verhindert Cross-Origin-Angriffe von unbekannten Domains
-- OBS-Browser-Source weiterhin funktionsfähig
+- Browser Sources weiterhin funktionsfähig
 - Credentials nur für vertrauenswürdige Origins
 
 ---

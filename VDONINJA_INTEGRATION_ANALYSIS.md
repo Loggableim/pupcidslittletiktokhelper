@@ -16,7 +16,7 @@ Das Projekt ist ein vollständiges TikTok-LIVE-Streaming-Tool mit:
 - **SQLite-Datenbank** mit WAL-Modus für Performance
 - **Multi-Profil-System** für verschiedene Streaming-Setups
 - **Umfassendes Event-System** (TikTok Events → Flows → Actions)
-- **OBS-Integration** via WebSocket und Custom Browser Docks
+- **OBS-Integration** via WebSocket
 - **Overlay-System** mit anpassbaren HUD-Elementen
 
 **Integration-Status:** ✅ Bereit für VDO.Ninja Multi-Guest-Feature
@@ -568,23 +568,6 @@ if (config.mode === 'vdoninja_celebration') {
     border-radius: 10px;
 }
 </style>
-```
-
----
-
-#### **public/obs-dock.html (841 Zeilen) - OBS Custom Browser Dock**
-
-**Integration-Möglichkeit:**
-```html
-<!-- PATCH: VDO.Ninja Tab im OBS-Dock -->
-<div class="tab-btn" data-tab="vdo-guests">👥 Guests</div>
-
-<div id="tab-vdo-guests" class="tab-content">
-    <!-- Kompakte Guest-Kontrolle für OBS -->
-    <div class="compact-guest-controls">
-        <!-- Ähnlich wie Dashboard, aber kompakter -->
-    </div>
-</div>
 ```
 
 ---
@@ -1746,9 +1729,8 @@ Wird in separatem Dokument fortgesetzt aufgrund der Länge. Das Dokument enthäl
 
 #### **2.1 Dashboard-UI (Tab + Controls)**
 #### **2.2 Overlay-Integration (iFrames + postMessage)**
-#### **2.3 OBS-Dock-Integration**
-#### **2.4 JavaScript-Module für Guest-Management**
-#### **2.5 CSS-Styling**
+#### **2.3 JavaScript-Module für Guest-Management**
+#### **2.4 CSS-Styling**
 
 ---
 
@@ -1766,7 +1748,6 @@ Wird in separatem Dokument fortgesetzt aufgrund der Länge. Das Dokument enthäl
 ### **Frontend**
 ✅ `public/dashboard.html` - Neuer Tab "Multi-Guest"
 ✅ `public/overlay.html` - VDO.Ninja Container + iFrames
-✅ `public/obs-dock.html` - Guest-Controls
 ✅ `public/js/dashboard.js` - Guest-Management-Logik
 ✅ Neue Dateien: `public/js/vdoninja-manager.js`
 
@@ -1827,7 +1808,6 @@ Nach vollständiger Integration:
 - ✅ VDO.Ninja Multi-Guest-System vollständig integriert
 - ✅ Dashboard mit Guest-Management-UI
 - ✅ Overlay mit Live-Guest-Streams
-- ✅ OBS-Docks mit Quick-Controls
 - ✅ Flow-Automation für Guest-Steuerung
 - ✅ Layouts (Grid, Solo, PIP, Custom)
 - ✅ Alle bestehenden Features 100% intakt

@@ -110,7 +110,6 @@ VDO.Ninja is a free, open-source WebRTC-based peer-to-peer video streaming platf
 
 Once guests join:
 - Use the **Dashboard** for full controls
-- Use **OBS Dock** for quick actions
 - Guests appear in real-time
 - Control audio, video, volume individually
 
@@ -198,20 +197,6 @@ Guest Name: [Display name]
    - Right-click the Browser Source → Properties
    - ✅ "Control audio via OBS" must be checked
    - Set audio monitoring as needed
-
-### Method 2: OBS Custom Dock
-
-1. **Add Custom Dock:**
-   - OBS Studio → View → Docks → Custom Browser Docks
-   - Dock Name: "Multi-Guest Controls"
-   - URL: `http://localhost:3000/obs-dock-controls.html`
-   - Click "Apply"
-
-2. **Dock Features:**
-   - Guest count display
-   - Room status indicator
-   - Mute/Unmute all buttons
-   - Quick link to full dashboard
 
 ### Audio Mixing in OBS
 
@@ -1006,7 +991,6 @@ For 6+ guests:
 - ✅ Dashboard Multi-Guest tab with full controls
 - ✅ VDO.Ninja client JavaScript module
 - ✅ Overlay iframe container with postMessage API
-- ✅ OBS Dock quick controls
 - ✅ Real-time Socket.IO synchronization
 - ✅ Guest list UI with live updates
 - ✅ Layout switching with transitions

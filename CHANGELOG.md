@@ -219,21 +219,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.7.0] - OBS Custom Browser Docks
-
-### Added
-- **OBS Browser Docks**: Direkte OBS-Integration
-  - Custom Browser Docks für Dashboard
-  - Overlay-URLs für OBS Browser Sources
-  - Goal-Tracking direkt in OBS
-  - TTS-Kontrolle in OBS
-
-### Technical
-- OBS WebSocket Integration vorbereitet
-- Dashboard-URLs für OBS-Docks optimiert
-
----
-
 ## [0.6.0] - Goals & User Profiles
 
 ### Added

@@ -48,7 +48,7 @@
    - Hot Buttons (konfigurierbare Schnellzugriffe)
    - Activity Log (letzte 50 Switches)
    - Safety-Lock-Banner (bei Rate-Limit-Überschreitung)
-   - Dark Theme, OBS-Dock-kompatibel
+   - Dark Theme
 
 5. **`plugins/multicam/assets/`** (Verzeichnis erstellt, leer)
 
