@@ -1,4 +1,4 @@
-const franc = require('franc-min');
+const { franc } = require('franc-min');
 
 /**
  * Language Detector
