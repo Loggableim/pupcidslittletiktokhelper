@@ -18,7 +18,6 @@ const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integ
 // Import New Modules
 const logger = require('./modules/logger');
 const { apiLimiter, authLimiter, uploadLimiter } = require('./modules/rate-limiter');
-const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
 const Leaderboard = require('./modules/leaderboard');
@@ -210,7 +209,6 @@ const flows = new FlowEngine(db, alerts, logger);
 const goals = new GoalManager(db, io, logger);
 
 // New Modules
-const obs = new OBSWebSocket(db, io, logger);
 const subscriptionTiers = new SubscriptionTiers(db, io, logger);
 const leaderboard = new Leaderboard(db, io, logger);
 
@@ -269,7 +267,7 @@ app.get('/api/update/current', apiLimiter, (req, res) => {
 });
 
 /**
- * POST /api/update/download - Lädt das Update herunter (git pull)
+ * POST /api/update/download - Führt Update durch (Git Pull oder ZIP Download)
  */
 app.post('/api/update/download', authLimiter, async (req, res) => {
     try {
@@ -735,84 +733,7 @@ app.post('/api/profiles/:username/backup', apiLimiter, (req, res) => {
     }
 });
 
-// ========== HUD CONFIGURATION ROUTES ==========
-
-app.get('/api/hud-config', apiLimiter, (req, res) => {
-    try {
-        const elements = db.getAllHudElements();
-        const resolution = db.getSetting('hud_resolution') || '1920x1080';
-        const orientation = db.getSetting('hud_orientation') || 'landscape';
-
-        res.json({
-            success: true,
-            elements,
-            resolution,
-            orientation
-        });
-    } catch (error) {
-        logger.error('Error getting HUD config:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/hud-config', apiLimiter, (req, res) => {
-    const { elements, resolution, orientation } = req.body;
-
-    try {
-        // Update resolution and orientation if provided
-        if (resolution) {
-            db.setSetting('hud_resolution', resolution);
-        }
-        if (orientation) {
-            db.setSetting('hud_orientation', orientation);
-        }
-
-        // Update each element's configuration
-        if (elements && Array.isArray(elements)) {
-            elements.forEach(element => {
-                db.setHudElement(element.element_id, {
-                    enabled: element.enabled,
-                    position_x: element.position_x,
-                    position_y: element.position_y,
-                    position_unit: element.position_unit || 'px',
-                    anchor: element.anchor || 'top-left'
-                });
-            });
-        }
-
-        logger.info('🖼️ HUD configuration updated');
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error saving HUD config:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/hud-config/element/:elementId', apiLimiter, (req, res) => {
-    const { elementId } = req.params;
-    const config = req.body;
-
-    try {
-        db.setHudElement(elementId, config);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error updating HUD element:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/hud-config/element/:elementId/toggle', apiLimiter, (req, res) => {
-    const { elementId } = req.params;
-    const { enabled } = req.body;
-
-    try {
-        db.toggleHudElement(elementId, enabled);
-        res.json({ success: true });
-    } catch (error) {
-        logger.error('Error toggling HUD element:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+// ========== HUD CONFIGURATION ROUTES (REMOVED - Will be reintegrated as plugin) ==========
 
 // ========== FLOWS ROUTES ==========
 
@@ -1105,104 +1026,7 @@ app.post('/api/goals/reset', apiLimiter, async (req, res) => {
     }
 });
 
-// ========== OBS WEBSOCKET ROUTES ==========
-
-app.get('/api/obs/status', apiLimiter, (req, res) => {
-    try {
-        const status = obs.getStatus();
-        res.json({ success: true, ...status });
-    } catch (error) {
-        logger.error('Error getting OBS status:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/obs/connect', apiLimiter, async (req, res) => {
-    const { host, port, password } = req.body;
-
-    try {
-        await obs.connect(host, port, password);
-        logger.info(`🎬 Connected to OBS at ${host}:${port}`);
-        res.json({ success: true, message: 'Connected to OBS' });
-    } catch (error) {
-        logger.error('Error connecting to OBS:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/obs/disconnect', apiLimiter, async (req, res) => {
-    try {
-        await obs.disconnect();
-        logger.info('🎬 Disconnected from OBS');
-        res.json({ success: true, message: 'Disconnected from OBS' });
-    } catch (error) {
-        logger.error('Error disconnecting from OBS:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/obs/scene/:sceneName', apiLimiter, async (req, res) => {
-    const { sceneName } = req.params;
-
-    try {
-        await obs.setScene(sceneName);
-        logger.info(`🎬 OBS scene changed to: ${sceneName}`);
-        res.json({ success: true, message: `Scene changed to ${sceneName}` });
-    } catch (error) {
-        logger.error('Error changing OBS scene:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/obs/source/:sourceName/visibility', apiLimiter, async (req, res) => {
-    const { sourceName } = req.params;
-    const { visible, sceneName } = req.body;
-
-    try {
-        await obs.setSourceVisibility(sourceName, visible, sceneName);
-        logger.info(`🎬 OBS source ${sourceName} visibility: ${visible}`);
-        res.json({ success: true, message: `Source ${sourceName} visibility set to ${visible}` });
-    } catch (error) {
-        logger.error('Error setting source visibility:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/obs/filter/:sourceName/:filterName/toggle', apiLimiter, async (req, res) => {
-    const { sourceName, filterName } = req.params;
-    const { enabled } = req.body;
-
-    try {
-        await obs.setFilterEnabled(sourceName, filterName, enabled);
-        logger.info(`🎬 OBS filter ${filterName} on ${sourceName}: ${enabled}`);
-        res.json({ success: true, message: `Filter ${filterName} set to ${enabled}` });
-    } catch (error) {
-        logger.error('Error toggling filter:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/obs/scenes', apiLimiter, async (req, res) => {
-    try {
-        const scenes = await obs.getScenes();
-        res.json({ success: true, scenes });
-    } catch (error) {
-        logger.error('Error getting OBS scenes:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/obs/sources', apiLimiter, async (req, res) => {
-    const { sceneName } = req.query;
-
-    try {
-        const sources = await obs.getSources(sceneName);
-        res.json({ success: true, sources });
-    } catch (error) {
-        logger.error('Error getting OBS sources:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
+// ========== OBS WEBSOCKET ROUTES (REMOVED - Will be reintegrated as plugin) ==========
 
 // ========== LEADERBOARD ROUTES ==========
 
@@ -1684,26 +1508,6 @@ const PORT = process.env.PORT || 3000;
         logger.info('\n⚠️  WICHTIG: Öffne das Overlay und klicke auf "🔊 Audio aktivieren"!');
         logger.info('   Browser Autoplay Policy erfordert User-Interaktion.\n');
 
-        // OBS WebSocket auto-connect (if configured)
-    const obsConfigStr = db.getSetting('obs_websocket_config');
-    if (obsConfigStr) {
-        try {
-            const obsConfig = JSON.parse(obsConfigStr);
-            if (obsConfig.enabled && obsConfig.host && obsConfig.port) {
-                logger.info(`🎬 Connecting to OBS at ${obsConfig.host}:${obsConfig.port}...`);
-                try {
-                    await obs.connect(obsConfig.host, obsConfig.port, obsConfig.password);
-                    logger.info('✅ OBS connected successfully');
-                } catch (error) {
-                    logger.warn('⚠️  Could not connect to OBS:', error.message);
-                    logger.info('   You can configure OBS connection in settings');
-                }
-            }
-        } catch (error) {
-            logger.warn('⚠️  Failed to parse OBS config:', error.message);
-        }
-    }
-
     // Gift-Katalog automatisch beim Start aktualisieren (falls Username konfiguriert)
     const savedUsername = db.getSetting('last_connected_username');
     if (savedUsername) {
@@ -1749,11 +1553,6 @@ process.on('SIGINT', async () => {
         tiktok.disconnect();
     }
 
-    // OBS-Verbindung trennen
-    if (obs.isConnected()) {
-        await obs.disconnect();
-    }
-
     // Datenbank schließen
     db.close();
 
@@ -1773,4 +1572,4 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, tiktok, alerts, flows, goals, obs, leaderboard, subscriptionTiers };
+module.exports = { app, server, io, db, tiktok, alerts, flows, goals, leaderboard, subscriptionTiers };

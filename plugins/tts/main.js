@@ -465,7 +465,6 @@ class TTSPlugin {
                 });
 
                 this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${chatText}"`);
-                this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${data.comment}"`);
 
                 // Only process if chat TTS is enabled
                 if (!this.config.enabledForChat) {

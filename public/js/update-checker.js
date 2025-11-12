@@ -171,29 +171,36 @@ class UpdateUI {
             if (data.success) {
                 const instructions = data.instructions;
 
+                const methodTitle = instructions.method === 'git' ?
+                    'Update via Git' : 'Update via ZIP-Download';
+
                 const modal = document.createElement('div');
                 modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto';
                 modal.innerHTML = `
                     <div class="bg-gray-800 rounded-lg p-8 max-w-2xl my-8">
-                        <h3 class="text-2xl font-bold mb-4">📖 Manuelle Update-Anleitung</h3>
+                        <h3 class="text-2xl font-bold mb-4">📖 ${this.escapeHtml(methodTitle)}</h3>
 
                         <div class="mb-6">
-                            <h4 class="text-lg font-semibold mb-2">Methode 1: Git</h4>
-                            <ol class="list-decimal list-inside space-y-2 text-sm text-gray-300">
+                            <p class="text-gray-300 mb-4">
+                                ${instructions.method === 'git'
+                                    ? 'Dein Projekt ist ein Git-Repository. Folge diesen Schritten für ein automatisches Update:'
+                                    : 'Dein Projekt wurde als ZIP-Datei installiert. Du kannst dennoch automatisch updaten!'}
+                            </p>
+                            <ol class="list-decimal list-inside space-y-2 text-sm text-gray-300 bg-gray-900 p-4 rounded">
                                 ${instructions.steps.map(step => `<li>${this.escapeHtml(step)}</li>`).join('')}
                             </ol>
                         </div>
 
-                        <div class="mb-6">
-                            <h4 class="text-lg font-semibold mb-2">Methode 2: Download</h4>
-                            <ol class="list-decimal list-inside space-y-2 text-sm text-gray-300">
-                                ${instructions.alternative.steps.map(step => `<li>${this.escapeHtml(step)}</li>`).join('')}
-                            </ol>
+                        <div class="bg-blue-900 bg-opacity-30 border border-blue-500 rounded p-4 mb-6">
+                            <p class="text-sm text-blue-200">
+                                <strong>💡 Tipp:</strong> Das automatische Update funktioniert sowohl für Git- als auch für ZIP-Installationen!
+                                Klicke einfach auf "Update installieren" im Banner.
+                            </p>
                         </div>
 
                         <div class="flex gap-2">
                             <a href="${this.currentUpdateInfo.releaseUrl}" target="_blank" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 flex-1 text-center">
-                                🌐 Zu GitHub
+                                🌐 Zu GitHub Release
                             </a>
                             <button class="bg-gray-600 px-6 py-2 rounded hover:bg-gray-700" onclick="this.parentElement.parentElement.parentElement.remove()">
                                 Schließen
