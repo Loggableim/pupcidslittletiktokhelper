@@ -69,32 +69,16 @@ app.use((req, res, next) => {
     const obsRoutes = ['/overlay.html', '/obs-dock.html', '/obs-dock-controls.html', '/obs-dock-goals.html', '/goal/', '/leaderboard-overlay.html', '/minigames-overlay.html'];
     const isOBSRoute = obsRoutes.some(route => req.path.includes(route));
 
-    // Dashboard braucht Tailwind CSS CDN
+    // Production-ready CSP for all admin routes (including dashboard)
     const isDashboard = req.path.includes('/dashboard.html');
 
-    if (!isOBSRoute && !isDashboard) {
+    if (!isOBSRoute) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Strikte CSP für normale Admin-Routes
+        // Strict CSP for admin routes - no inline scripts/styles, local resources only
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'nonce-${nonce}'; ` +
-            `style-src 'self' 'nonce-${nonce}'; ` +
-            `img-src 'self' data: blob: https:; ` +
-            `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss:; ` +
-            `media-src 'self' blob: data:; ` +
-            `object-src 'none'; ` +
-            `base-uri 'self'; ` +
-            `form-action 'self'; ` +
-            `frame-ancestors 'self';`
-        );
-    } else if (isDashboard) {
-        res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Dashboard CSP: Erlaube Tailwind CSS CDN + Socket.io
-        res.header('Content-Security-Policy',
-            `default-src 'self'; ` +
-            `script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; ` +
-            `style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; ` +
+            `script-src 'self'; ` +
+            `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
             `connect-src 'self' ws: wss:; ` +
