@@ -21,7 +21,8 @@ const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integ
 // Import New Modules
 const logger = require('./modules/logger');
 const { apiLimiter, authLimiter, uploadLimiter } = require('./modules/rate-limiter');
-const OBSWebSocket = require('./modules/obs-websocket');
+// OBS WebSocket will be integrated later
+// const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
 const Leaderboard = require('./modules/leaderboard');
@@ -69,9 +70,8 @@ app.use((req, res, next) => {
     const nonce = crypto.randomBytes(16).toString('base64');
     res.locals.cspNonce = nonce;
 
-    // Entferne X-Frame-Options für Overlays
-    const overlayRoutes = ['/overlay.html', '/goal/', '/leaderboard-overlay.html', '/minigames-overlay.html'];
-    const isOverlayRoute = overlayRoutes.some(route => req.path.includes(route));
+    // No overlay routes anymore (OBS integration will be added later)
+    const isOverlayRoute = false;
 
     // Dashboard needs relaxed CSP for inline event handlers (onclick, etc.)
     // Production-ready CSP for all admin routes (including dashboard)
@@ -215,7 +215,8 @@ const flows = new FlowEngine(db, alerts, logger);
 const goals = new GoalManager(db, io, logger);
 
 // New Modules
-const obs = new OBSWebSocket(db, io, logger);
+// OBS WebSocket will be integrated later
+// const obs = new OBSWebSocket(db, io, logger);
 const subscriptionTiers = new SubscriptionTiers(db, io, logger);
 const leaderboard = new Leaderboard(db, io, logger);
 
@@ -489,202 +490,13 @@ app.post('/api/presets/import', authLimiter, async (req, res) => {
 });
 
 // ========== HELPER FUNCTIONS ==========
-
-function generateGoalOverlay(key, config, state) {
-    const style = config.style;
-
-    return `<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${config.name} Goal</title>
-    <script src="/socket.io/socket.io.js"></script>
-    ${style.font_url ? `<link rel="stylesheet" href="${style.font_url}">` : ''}
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: transparent;
-            overflow: hidden;
-            font-family: ${style.font_family};
-        }
-        .wrap {
-            width: ${style.width_pct}%;
-            margin: 0 auto;
-            padding: 16px;
-        }
-        .panel {
-            position: relative;
-            padding: 16px;
-            border-radius: ${style.round_px}px;
-            ${style.bg_mode === 'gradient'
-                ? `background: linear-gradient(${style.bg_angle}deg, ${style.bg_color}, ${style.bg_color2});`
-                : `background: ${style.bg_color};`
-            }
-            ${style.border_enabled ? `border: ${style.border_width}px solid ${style.border_color};` : ''}
-            ${style.shadow_enabled ? `box-shadow: ${style.shadow_css};` : ''}
-        }
-        .bar {
-            position: relative;
-            height: ${style.bar_height_px}px;
-            background: ${style.bar_bg};
-            border-radius: ${style.round_px}px;
-            overflow: hidden;
-        }
-        .fill {
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            width: 0%;
-            border-radius: ${style.round_px}px;
-            transition: width ${style.anim_duration_ms}ms ease;
-            ${style.fill_mode === 'solid' ? `background: ${style.fill_color1};` : ''}
-            ${style.fill_mode === 'gradient' ? `background: linear-gradient(${style.fill_angle}deg, ${style.fill_color1}, ${style.fill_color2});` : ''}
-        }
-        .fill.stripes {
-            background: ${style.fill_color1};
-            background-image: linear-gradient(45deg, rgba(255,255,255,${style.stripes_alpha}) 25%, transparent 25%, transparent 50%, rgba(255,255,255,${style.stripes_alpha}) 50%, rgba(255,255,255,${style.stripes_alpha}) 75%, transparent 75%, transparent);
-            background-size: 30px 30px;
-            animation: move ${style.stripes_speed_s}s linear infinite;
-        }
-        @keyframes move {
-            to { background-position: 60px 0; }
-        }
-        .label {
-            margin-top: 8px;
-            font-size: ${style.text_size_px}px;
-            color: ${style.text_color};
-            letter-spacing: ${style.letter_spacing_px}px;
-            text-align: ${style.label_align};
-            ${style.uppercase ? 'text-transform: uppercase;' : ''}
-            font-weight: 800;
-        }
-        .inside {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: ${style.text_size_px}px;
-            color: ${style.text_color};
-            letter-spacing: ${style.letter_spacing_px}px;
-            ${style.uppercase ? 'text-transform: uppercase;' : ''}
-            font-weight: 800;
-            pointer-events: none;
-        }
-        .pulse {
-            animation: pulse 0.9s ease-out 1;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.8); }
-            100% { box-shadow: 0 0 0 24px rgba(255,255,255,0); }
-        }
-        .hidden { display: none !important; }
-    </style>
-</head>
-<body>
-    <div class="wrap" id="wrap" style="${!state.show ? 'display:none;' : ''}">
-        <div class="panel">
-            <div class="bar" id="bar">
-                <div class="fill ${style.fill_mode === 'stripes' ? 'stripes' : ''}" id="fill"></div>
-                ${style.label_pos === 'inside' ? '<div class="inside" id="label"></div>' : ''}
-            </div>
-            ${style.label_pos === 'below' ? '<div class="label" id="label"></div>' : ''}
-        </div>
-    </div>
-
-    <script>
-        const socket = io();
-        const key = '${key}';
-        let total = ${state.total};
-        let goal = ${state.goal};
-        let show = ${state.show ? 'true' : 'false'};
-
-        // Join goal room
-        socket.emit('goal:join', key);
-
-        // Listen for updates
-        socket.on('goal:update', (data) => {
-            total = data.total;
-            goal = data.goal;
-            show = data.show;
-            render();
-        });
-
-        socket.on('goal:style', (data) => {
-            // Reload page for style changes
-            location.reload();
-        });
-
-        socket.on('goal:reached', (data) => {
-            ${style.pulse_on_full ? `document.getElementById('bar').classList.add('pulse');
-            setTimeout(() => document.getElementById('bar').classList.remove('pulse'), 900);` : ''}
-            ${style.confetti_on_goal ? `console.log('🎉 Confetti!');` : ''}
-        });
-
-        function formatLabel(t, g, pc) {
-            let tpl = ${JSON.stringify(style.label_template)};
-            const parts = {
-                total: ${style.show_total_num} ? t.toLocaleString() : '',
-                goal: ${style.show_goal_num} ? g.toLocaleString() : '',
-                percent: ${style.show_percent} ? pc : ''
-            };
-            let out = tpl
-                .replace('{total}', parts.total)
-                .replace('{goal}', parts.goal)
-                .replace('{percent}', parts.percent);
-            ${style.prefix_text ? `out = ${JSON.stringify(style.prefix_text)} + ' ' + out;` : ''}
-            ${style.suffix_text ? `out = out + ' ' + ${JSON.stringify(style.suffix_text)};` : ''}
-            return out.trim();
-        }
-
-        function render() {
-            const wrap = document.getElementById('wrap');
-            const fill = document.getElementById('fill');
-            const label = document.getElementById('label');
-
-            // Show/hide
-            wrap.style.display = show ? 'block' : 'none';
-
-            // Calculate percent
-            const pct = goal > 0 ? Math.max(0, Math.min(100, (total / goal) * 100)) : 0;
-
-            // Update fill
-            fill.style.width = pct + '%';
-
-            // Update label
-            const text = formatLabel(total, goal, Math.round(pct));
-            label.textContent = text;
-        }
-
-        // Initial render
-        render();
-    </script>
-</body>
-</html>`;
-}
+// (OBS overlay generation will be added later)
 
 // ========== ROUTES ==========
 
 // Haupt-Seite
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-// Goal Overlay Routes
-app.get('/goal/:key', (req, res) => {
-    const { key } = req.params;
-
-    if (!goals.state[key]) {
-        return res.status(404).send('Goal not found');
-    }
-
-    const config = goals.getGoalConfig(key);
-    const state = goals.state[key];
-
-    const html = generateGoalOverlay(key, config, state);
-    res.send(html);
 });
 
 // ========== TIKTOK CONNECTION ROUTES ==========
@@ -1947,4 +1759,4 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, tiktok, alerts, flows, goals, obs, leaderboard, subscriptionTiers };
+module.exports = { app, server, io, db, tiktok, alerts, flows, goals, leaderboard, subscriptionTiers };

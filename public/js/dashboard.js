@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeTabs();
     initializeButtons();
     initializeSocketListeners();
-    setOverlayURL();
     initializeAudioInfoBanner();
 
     // Dann asynchron (ohne await) laden - blockiert nicht die UI
@@ -742,27 +741,6 @@ async function saveNewFlow() {
         console.error('Error creating flow:', error);
         alert('❌ Error creating flow!');
     }
-}
-
-// ========== OVERLAY ==========
-function setOverlayURL() {
-    const origin = window.location.origin;
-
-    // Main overlay URL
-    document.getElementById('overlay-url').value = `${origin}/overlay.html`;
-}
-
-function copyURL(elementId) {
-    const input = document.getElementById(elementId);
-    input.select();
-    document.execCommand('copy');
-
-    const btn = event.target;
-    const originalText = btn.textContent;
-    btn.textContent = '✅ Copied!';
-    setTimeout(() => {
-        btn.textContent = originalText;
-    }, 2000);
 }
 
 // ========== SOUNDBOARD ==========

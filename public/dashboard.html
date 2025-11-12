@@ -165,7 +165,6 @@
             <div class="border-b border-gray-700 flex gap-2">
                 <button class="tab-btn active" data-tab="events">📋 Events</button>
                 <button class="tab-btn" data-tab="tts" data-plugin="tts">🎤 TTS v2.0</button>
-                <button class="tab-btn" data-tab="overlays">🖼️ Overlays</button>
                 <button class="tab-btn" data-tab="flows">⚡ Flows</button>
                 <button class="tab-btn" data-tab="soundboard" data-plugin="soundboard">🔊 Soundboard</button>
                 <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
@@ -223,81 +222,6 @@
                     style="width: 100%; height: 100%; border: none;"
                     title="TTS v2.0 Admin Panel">
                 </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: Overlays -->
-        <div id="tab-overlays" class="tab-content">
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl mb-4 font-semibold">Browser Source URLs (für OBS)</h2>
-                <div class="space-y-4">
-                    <div class="bg-gray-700 p-4 rounded">
-                        <div class="font-bold mb-2">🎬 Main Overlay (All-in-One)</div>
-                        <div class="text-sm text-gray-400 mb-2">Empfohlene Auflösung: 1920x1080</div>
-                        <div class="flex gap-2">
-                            <input type="text" readonly id="overlay-url" value=""
-                                   class="bg-gray-600 text-white px-4 py-2 rounded flex-1 font-mono text-sm">
-                            <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700" onclick="copyURL('overlay-url')">
-                                📋 Copy
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-6 p-4 bg-gradient-to-r from-purple-900 to-indigo-900 bg-opacity-50 border border-purple-600 rounded">
-                    <h3 class="font-bold mb-2 text-purple-200">🎨 HUD Konfiguration</h3>
-                    <p class="text-sm text-purple-100 mb-3">
-                        Passe die Position und Sichtbarkeit deiner Overlay-Elemente an. Du kannst die Elemente per Drag & Drop verschieben und die Auflösung/Orientierung wählen.
-                    </p>
-                    <a href="/hud-config.html" target="_blank"
-                       class="inline-block bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-3 rounded-lg transition-all transform hover:scale-105 shadow-lg">
-                        ⚙️ HUD Konfiguration öffnen
-                    </a>
-                </div>
-
-                <div class="mt-6 p-4 bg-gradient-to-r from-green-900 to-teal-900 bg-opacity-50 border border-green-600 rounded" data-plugin="emoji-rain">
-                    <h3 class="font-bold mb-2 text-green-200">🌧️ Emoji Rain HUD</h3>
-                    <p class="text-sm text-green-100 mb-3">
-                        Physik-basierte Emoji-Animationen mit Matter.js! Emojis fallen bei Likes, Gifts, Follows etc. mit realistischer Gravitation, Wind und Bounce-Effekten.
-                    </p>
-                    <div class="flex gap-3">
-                        <a href="/emoji-rain/ui" target="_blank"
-                           class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-all transform hover:scale-105 shadow-lg">
-                            ⚙️ Emoji Rain konfigurieren
-                        </a>
-                        <a href="/emoji-rain/overlay" target="_blank"
-                           class="inline-block bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-lg transition-all transform hover:scale-105 shadow-lg">
-                            👁️ Overlay Vorschau
-                        </a>
-                    </div>
-                </div>
-
-                <div class="mt-6 p-4 bg-green-900 bg-opacity-50 border border-green-600 rounded">
-                    <h3 class="font-bold mb-2 text-green-300">✅ Audio-Engine ist OBS-Ready!</h3>
-                    <p class="text-sm text-green-100 mb-3">
-                        Audio funktioniert jetzt automatisch in OBS Browser Sources! Kein manuelles Entsperren mehr nötig.
-                    </p>
-                    <div class="text-sm text-green-100 bg-green-800 bg-opacity-30 p-3 rounded">
-                        <strong>Wichtig:</strong> In den OBS Browser Source Einstellungen muss <strong class="text-green-300">"Control audio via OBS"</strong> aktiviert sein!
-                    </div>
-                </div>
-
-                <div class="mt-6 p-4 bg-gray-700 rounded">
-                    <h3 class="font-bold mb-2">📖 OBS Setup-Anleitung:</h3>
-                    <ol class="list-decimal list-inside space-y-1 text-sm text-gray-300">
-                        <li>Öffne OBS Studio</li>
-                        <li>Klicke auf "+" unter "Sources" (Quellen)</li>
-                        <li>Wähle "Browser Source" (Browser-Quelle)</li>
-                        <li>Kopiere die URL oben und füge sie ein</li>
-                        <li>Setze Breite: 1920, Höhe: 1080</li>
-                        <li>Entferne Häkchen bei "Shutdown source when not visible"</li>
-                        <li><strong class="text-green-400">✅ Aktiviere "Control audio via OBS"</strong> - Audio funktioniert dann automatisch!</li>
-                        <li>Klicke OK - Fertig!</li>
-                    </ol>
-                    <div class="mt-3 p-3 bg-green-900 bg-opacity-30 border border-green-600 rounded text-sm">
-                        <strong class="text-green-300">🎵 Neu:</strong> Mit "Control audio via OBS" aktiviert, funktioniert Audio automatisch - kein manuelles Entsperren mehr nötig!
-                    </div>
-                </div>
             </div>
         </div>
 
