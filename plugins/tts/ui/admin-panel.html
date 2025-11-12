@@ -4,13 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TTS Admin Panel - Pup Cids TikTok Helper</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/socket.io/socket.io.js" onerror="console.error('Failed to load Socket.io')"></script>
+    <link rel="stylesheet" href="/css/tailwind.output.css">
     <style>
-        .fade-in { animation: fadeIn 0.3s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        /* Custom animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100">
@@ -30,10 +40,10 @@
         <!-- Tabs -->
         <div class="mb-6 border-b border-gray-700">
             <nav class="flex space-x-4">
-                <button onclick="switchTab('config')" id="tab-config" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-400">Configuration</button>
-                <button onclick="switchTab('users')" id="tab-users" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">User Management</button>
-                <button onclick="switchTab('queue')" id="tab-queue" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Queue & Playback</button>
-                <button onclick="switchTab('stats')" id="tab-stats" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Statistics</button>
+                <button data-tab="config" id="tab-config" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-400">Configuration</button>
+                <button data-tab="users" id="tab-users" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">User Management</button>
+                <button data-tab="queue" id="tab-queue" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Queue & Playback</button>
+                <button data-tab="stats" id="tab-stats" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Statistics</button>
             </nav>
         </div>
 
@@ -172,7 +182,7 @@
                             <p class="text-xs text-gray-400 mt-1">Default: 86400 (24 hours)</p>
                         </div>
 
-                        <button onclick="clearCache()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
+                        <button id="clearCacheBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
                             Clear Cache
                         </button>
                     </div>
@@ -180,7 +190,7 @@
             </div>
 
             <div class="mt-6">
-                <button onclick="saveConfig()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition">
+                <button id="saveConfigBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition">
                     💾 Save Configuration
                 </button>
             </div>
@@ -192,10 +202,10 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold">👥 User Management</h2>
                     <div class="space-x-2">
-                        <button onclick="filterUsers('all')" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">All</button>
-                        <button onclick="filterUsers('whitelisted')" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Whitelisted</button>
-                        <button onclick="filterUsers('blacklisted')" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Blacklisted</button>
-                        <button onclick="filterUsers('voice_assigned')" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Voice Assigned</button>
+                        <button data-filter="all" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">All</button>
+                        <button data-filter="whitelisted" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Whitelisted</button>
+                        <button data-filter="blacklisted" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Blacklisted</button>
+                        <button data-filter="voice_assigned" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Voice Assigned</button>
                     </div>
                 </div>
 
@@ -215,7 +225,7 @@
                 <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-bold">📋 Current Queue</h2>
-                        <button onclick="clearQueue()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Clear Queue</button>
+                        <button id="clearQueueBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Clear Queue</button>
                     </div>
 
                     <div id="queueList" class="space-y-2">
@@ -231,7 +241,7 @@
                     </div>
 
                     <div class="mt-6">
-                        <button onclick="skipCurrent()" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">
+                        <button id="skipCurrentBtn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">
                             ⏭️ Skip Current
                         </button>
                     </div>
@@ -239,7 +249,7 @@
                     <div class="mt-6">
                         <h3 class="text-xl font-bold mb-2">🎤 Test TTS</h3>
                         <input type="text" id="testText" placeholder="Enter test text..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 mb-2">
-                        <button onclick="testTTS()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        <button id="testTTSBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                             🔊 Speak
                         </button>
                     </div>
@@ -277,6 +287,7 @@
         </div>
     </div>
 
-    <script src="/plugins/tts/ui/tts-admin.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/plugins/tts/ui/tts-admin-production.js"></script>
 </body>
 </html>
