@@ -21,6 +21,23 @@
   "tts": {
     "enabled": true,
     "loadedAt": "2025-11-12T03:13:06.504Z"
+    "loadedAt": "2025-11-12T02:52:15.313Z"
+  },
+  "obs-browser-source": {
+    "enabled": true,
+    "loadedAt": "2025-11-12T02:52:14.672Z"
+  },
+  "topboard": {
+    "enabled": true,
+    "loadedAt": "2025-11-12T02:52:15.230Z"
+  },
+  "soundboard": {
+    "enabled": true,
+    "loadedAt": "2025-11-12T02:52:15.226Z"
+  },
+  "tts": {
+    "enabled": true,
+    "loadedAt": "2025-11-12T02:52:15.287Z"
   },
   "vdoninja": {
     "enabled": false
