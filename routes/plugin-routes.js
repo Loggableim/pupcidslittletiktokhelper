@@ -451,25 +451,6 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger)
         }
     });
 
-    /**
-     * GET /plugins/:pluginId/* - Serve static files from plugin directories
-     */
-    app.use('/plugins/:pluginId', (req, res, next) => {
-        const { pluginId } = req.params;
-        const pluginPath = path.join(pluginLoader.pluginsDir, pluginId);
-
-        if (!fs.existsSync(pluginPath)) {
-            return res.status(404).json({
-                success: false,
-                error: 'Plugin not found'
-            });
-        }
-
-        // Serve static files from plugin directory
-        const express = require('express');
-        express.static(pluginPath)(req, res, next);
-    });
-
     logger.info('✅ Plugin routes registered');
 }
 

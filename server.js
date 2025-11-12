@@ -234,6 +234,11 @@ logger.info('📚 Swagger API Documentation available at /api-docs');
 // ========== PLUGIN ROUTES ==========
 setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger);
 
+// ========== PLUGIN STATIC FILES ==========
+// Serve static files from plugin directories
+app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
+logger.info('📂 Plugin static files served from /plugins/*');
+
 // ========== UPDATE ROUTES ==========
 
 /**
