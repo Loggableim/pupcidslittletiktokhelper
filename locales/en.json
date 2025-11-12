@@ -21,7 +21,6 @@
   },
   "tabs": {
     "events": "Events",
-    "tts": "TTS",
     "overlays": "Overlays",
     "flows": "Flows",
     "soundboard": "Soundboard",
@@ -38,22 +37,6 @@
     "like": "{username} liked! (Total: {likeCount})",
     "no_events": "No events yet. Connect to see live events!"
   },
-  "tts": {
-    "title": "Text-to-Speech",
-    "provider": "TTS Provider",
-    "default_voice": "Default Voice",
-    "volume": "Volume",
-    "speed": "Speed",
-    "enable_chat_tts": "Enable TTS for Chat Messages",
-    "min_coins": "Minimum Coins for Chat TTS",
-    "test": "Test TTS",
-    "voice_mapping": "Voice Mapping",
-    "add_user": "Add User",
-    "username": "Username",
-    "voice": "Voice",
-    "save": "Save",
-    "delete": "Delete"
-  },
   "flows": {
     "title": "Event Automation (Flows)",
     "create": "Create Flow",
@@ -69,7 +52,6 @@
     "add_action": "Add Action",
     "drag_to_reorder": "Drag to reorder actions",
     "action_types": {
-      "tts": "Text-to-Speech",
       "alert": "Show Alert",
       "sound": "Play Sound",
       "webhook": "Send Webhook",

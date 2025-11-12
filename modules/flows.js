@@ -5,10 +5,9 @@ const dns = require('dns').promises;
 const templateEngine = require('./template-engine');
 
 class FlowEngine {
-    constructor(db, alertManager, ttsEngine, logger) {
+    constructor(db, alertManager, logger) {
         this.db = db;
         this.alertManager = alertManager;
-        this.ttsEngine = ttsEngine;
         this.logger = logger;
 
         // Sicheres Verzeichnis für File-Writes
@@ -162,15 +161,6 @@ class FlowEngine {
     async executeAction(action, eventData) {
         try {
             switch (action.type) {
-
-                // ========== TTS ==========
-                case 'tts':
-                case 'speak': {
-                    const text = this.replaceVariables(action.text, eventData);
-                    const voice = action.voice || null;
-                    await this.ttsEngine.speak(eventData.username, text, voice);
-                    break;
-                }
 
                 // ========== ALERT ==========
                 case 'alert':

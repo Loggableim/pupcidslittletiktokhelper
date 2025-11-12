@@ -52,17 +52,6 @@ class DatabaseManager {
     }
 
     initializeTables() {
-        // User-Voice Mappings (TTS)
-        this.db.exec(`
-            CREATE TABLE IF NOT EXISTS user_voices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                voice TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                last_used DATETIME
-            )
-        `);
-
         // Globale Einstellungen
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS settings (
@@ -268,12 +257,6 @@ class DatabaseManager {
 
     setDefaultSettings() {
         const defaults = {
-            'default_voice': 'en_us_ghostface',
-            'tts_speed': '1.0',
-            'tts_volume': '80',
-            'tts_chat_enabled': 'false',
-            'tts_min_coins': '0',
-            'tts_min_team_level': '0',
             'alert_gift_min_coins': '100',
             'theme': 'dark',
             // Soundboard Einstellungen
@@ -331,44 +314,6 @@ class DatabaseManager {
                 element.anchor
             );
         }
-    }
-
-    // ========== USER VOICES ==========
-    getUserVoice(username) {
-        const stmt = this.db.prepare('SELECT voice FROM user_voices WHERE username = ?');
-        const result = stmt.get(username);
-        return result ? result.voice : null;
-    }
-
-    getUserVoices() {
-        const stmt = this.db.prepare('SELECT * FROM user_voices ORDER BY last_used DESC');
-        return stmt.all();
-    }
-
-    // Alias für Plugin-Kompatibilität
-    getAllUserVoices() {
-        return this.getUserVoices();
-    }
-
-    setUserVoice(username, voice) {
-        const stmt = this.db.prepare(`
-            INSERT INTO user_voices (username, voice, last_used)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(username) DO UPDATE SET
-                voice = excluded.voice,
-                last_used = CURRENT_TIMESTAMP
-        `);
-        stmt.run(username, voice);
-    }
-
-    deleteUserVoice(username) {
-        const stmt = this.db.prepare('DELETE FROM user_voices WHERE username = ?');
-        stmt.run(username);
-    }
-
-    updateUserVoiceLastUsed(username) {
-        const stmt = this.db.prepare('UPDATE user_voices SET last_used = CURRENT_TIMESTAMP WHERE username = ?');
-        stmt.run(username);
     }
 
     // ========== SETTINGS ==========
