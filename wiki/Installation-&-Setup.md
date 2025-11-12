@@ -416,27 +416,14 @@ Für separate Goal-Overlays:
 
 1. **Neue Browser Source**
    - Name: "Likes Goal"
-   - URL: `http://localhost:3000/obs-dock-goals.html?goal=likes`
+   - URL: `http://localhost:3000/goal/likes`
    - Width: `400`
    - Height: `100`
 
 2. **Weitere Goals**
-   - Followers: `?goal=followers`
-   - Subs: `?goal=subs`
-   - Coins: `?goal=coins`
-
-### Custom Browser Dock (OBS 28+)
-
-Für Dashboard direkt in OBS:
-
-1. **OBS öffnen**
-2. **View** → **Docks** → **Custom Browser Docks**
-3. **Neues Dock hinzufügen**
-   - Dock Name: `TikTok Helper`
-   - URL: `http://localhost:3000/obs-dock.html`
-4. **Apply**
-
-**Fertig!** Dashboard ist jetzt in OBS integriert.
+   - Followers: `/goal/followers`
+   - Subs: `/goal/subs`
+   - Coins: `/goal/coins`
 
 ### OBS WebSocket aktivieren (für Multi-Cam Plugin)
 

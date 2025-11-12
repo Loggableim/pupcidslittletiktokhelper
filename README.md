@@ -56,7 +56,6 @@ Dieses Tool wird von mir als Solo-Entwickler zusammen mit Claude AI entwickelt. 
 
 ### OBS Integration
 - Transparentes Full-HD-Overlay (1920x1080)
-- 3 Custom Browser Docks (Chat, Controls, Goals)
 - HUD-Konfiguration per Drag & Drop
 - Separate Goal-Overlays
 
@@ -115,12 +114,6 @@ http://localhost:3000/goal/followers
 http://localhost:3000/goal/subs
 http://localhost:3000/goal/coins
 ```
-
-**OBS Custom Browser Docks:**
-- View → Docks → Custom Browser Docks
-- Main Dock: `http://localhost:3000/obs-dock.html`
-- Controls: `http://localhost:3000/obs-dock-controls.html`
-- Goals: `http://localhost:3000/obs-dock-goals.html`
 
 ### 3. Soundboard konfigurieren
 1. Dashboard → Soundboard (`http://localhost:3000/soundboard.html`)
@@ -210,8 +203,7 @@ pupcidslittletiktokhelper/
 │   ├── dashboard.html
 │   ├── soundboard.html
 │   ├── overlay.html
-│   ├── hud-config.html
-│   └── obs-dock*.html
+│   └── hud-config.html
 └── user_configs/                 # Profile-Datenbanken (gitignored)
 ```
 

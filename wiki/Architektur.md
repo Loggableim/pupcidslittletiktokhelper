@@ -28,10 +28,10 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     FRONTEND LAYER                          │
-│  ┌──────────────┬──────────────┬──────────────────────┐    │
-│  │  Dashboard   │ OBS Overlay  │ Browser Docks         │    │
-│  │ (Bootstrap)  │ (Transparent)│ (Controls, Goals)     │    │
-│  └──────┬───────┴──────┬───────┴──────────┬───────────┘    │
+│  ┌──────────────┬──────────────┐                            │
+│  │  Dashboard   │ OBS Overlay  │                            │
+│  │ (Bootstrap)  │ (Transparent)│                            │
+│  └──────┬───────┴──────┬───────┘                            │
 │         │              │                  │                 │
 │         └──────────────┴──────────────────┘                 │
 │                        │                                    │
@@ -255,9 +255,6 @@ pupcidslittletiktokhelper/
 │   ├── overlay.html             # OBS Browser Source Overlay
 │   ├── soundboard.html          # Soundboard UI
 │   ├── hud-config.html          # HUD-Konfigurator
-│   ├── obs-dock.html            # OBS Custom Browser Dock
-│   ├── obs-dock-controls.html   # OBS Controls Dock
-│   ├── obs-dock-goals.html      # OBS Goals Dock
 │   ├── leaderboard-overlay.html # Leaderboard Overlay
 │   ├── minigames-overlay.html   # Minigames Overlay
 │   └── js/

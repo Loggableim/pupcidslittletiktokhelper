@@ -80,7 +80,6 @@ plugins/<plugin-id>/
 
 - **`index.html`**: Dashboard (Bootstrap 5, jQuery)
 - **`overlay.html`**: OBS Browser Source Overlay
-- **`obs-dock.html`**: OBS Custom Browser Dock
 - **`js/plugin-manager.js`**: Plugin-Manager Frontend
 - **`js/update-checker.js`**: Update-Checker Frontend
 

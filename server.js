@@ -36,13 +36,12 @@ const io = socketIO(server);
 // Middleware
 app.use(express.json());
 
-// CORS-Header für OBS-Kompatibilität mit Whitelist
+// CORS-Header mit Whitelist
 const ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:8080',
     'http://127.0.0.1:8080',
-    // OBS Browser Source läuft oft ohne Origin-Header
     'null'
 ];
 
@@ -54,7 +53,7 @@ app.use((req, res, next) => {
         res.header('Access-Control-Allow-Origin', origin);
         res.header('Access-Control-Allow-Credentials', 'true');
     } else if (!origin) {
-        // Requests ohne Origin (z.B. OBS Browser Source, Server-to-Server)
+        // Requests ohne Origin (z.B. Server-to-Server)
         res.header('Access-Control-Allow-Origin', 'null');
     }
 
@@ -65,15 +64,15 @@ app.use((req, res, next) => {
     const nonce = crypto.randomBytes(16).toString('base64');
     res.locals.cspNonce = nonce;
 
-    // Entferne X-Frame-Options für OBS Docks und Overlays
-    const obsRoutes = ['/overlay.html', '/obs-dock.html', '/obs-dock-controls.html', '/obs-dock-goals.html', '/goal/', '/leaderboard-overlay.html', '/minigames-overlay.html'];
-    const isOBSRoute = obsRoutes.some(route => req.path.includes(route));
+    // Entferne X-Frame-Options für Overlays
+    const overlayRoutes = ['/overlay.html', '/goal/', '/leaderboard-overlay.html', '/minigames-overlay.html'];
+    const isOverlayRoute = overlayRoutes.some(route => req.path.includes(route));
 
     // Dashboard needs relaxed CSP for inline event handlers (onclick, etc.)
     // Production-ready CSP for all admin routes (including dashboard)
     const isDashboard = req.path.includes('/dashboard.html');
 
-    if (!isOBSRoute) {
+    if (!isOverlayRoute) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
         // Strict CSP for admin routes - no inline scripts/styles, local resources only
         res.header('Content-Security-Policy',
@@ -107,7 +106,7 @@ app.use((req, res, next) => {
             `frame-ancestors 'self';`
         );
     } else {
-        // CSP für OBS Browser Sources (muss permissiv bleiben)
+        // CSP für Overlays (muss permissiv bleiben)
         res.header('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' ws: wss: http: https: data: blob:; frame-ancestors 'self' *;");
     }
 

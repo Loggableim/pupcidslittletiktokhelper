@@ -347,6 +347,18 @@ class TikTokConnector extends EventEmitter {
             // Extrahiere Gift-Daten
             const giftData = this.extractGiftData(data);
 
+            // Wenn kein Gift-Name vorhanden, versuche aus Katalog zu laden
+            if (!giftData.giftName && giftData.giftId) {
+                const catalogGift = this.db.getGift(giftData.giftId);
+                if (catalogGift) {
+                    giftData.giftName = catalogGift.name;
+                    // Wenn diamondCount nicht verfügbar, nutze Katalog-Wert
+                    if (!giftData.diamondCount && catalogGift.diamond_count) {
+                        giftData.diamondCount = catalogGift.diamond_count;
+                    }
+                }
+            }
+
             // Robuste Coins-Berechnung: diamond_count * 2 * repeat_count
             // (≈2 Coins pro Diamond ist die Standard-Konvertierung)
             const repeatCount = giftData.repeatCount;
