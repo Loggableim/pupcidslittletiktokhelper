@@ -12,6 +12,12 @@ let voices = {};
 let queuePollInterval = null;
 let statsPollInterval = null;
 
+// Debug logs state
+let debugLogs = [];
+let debugFilter = 'all';
+let debugEnabled = true;
+let autoScrollLogs = true;
+
 // ============================================================================
 // SOCKET.IO INITIALIZATION
 // ============================================================================
@@ -28,6 +34,11 @@ function initializeSocket() {
 
             socket.on('tts:config_update', () => {
                 loadConfig().catch(err => console.error('Config update failed:', err));
+            });
+
+            // Debug log listener
+            socket.on('tts:debug', (logEntry) => {
+                addDebugLog(logEntry);
             });
         } else {
             console.warn('⚠ Socket.io not available - using polling only');
@@ -130,6 +141,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('✗ Stats load failed:', error);
             showNotification('Failed to load statistics (non-critical)', 'warning');
+        }
+
+        // Load debug logs (non-critical)
+        if (statusEl) statusEl.textContent = 'Loading debug logs...';
+        try {
+            await loadDebugLogs();
+            updateDebugModeUI();
+            console.log('✓ Debug logs loaded');
+        } catch (error) {
+            console.error('✗ Debug logs load failed:', error);
         }
 
         // Setup event listeners
@@ -869,6 +890,31 @@ function setupEventListeners() {
     if (testTTSBtn) {
         testTTSBtn.addEventListener('click', testTTS);
     }
+
+    // Debug log controls
+    const clearLogsBtn = document.getElementById('clearLogsBtn');
+    if (clearLogsBtn) {
+        clearLogsBtn.addEventListener('click', clearDebugLogs);
+    }
+
+    const toggleDebugBtn = document.getElementById('toggleDebugBtn');
+    if (toggleDebugBtn) {
+        toggleDebugBtn.addEventListener('click', toggleDebugMode);
+    }
+
+    const autoScrollLogsCheckbox = document.getElementById('autoScrollLogs');
+    if (autoScrollLogsCheckbox) {
+        autoScrollLogsCheckbox.addEventListener('change', (e) => {
+            autoScrollLogs = e.target.checked;
+        });
+    }
+
+    // Debug log filter buttons
+    document.querySelectorAll('.log-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterDebugLogs(btn.dataset.category);
+        });
+    });
 }
 
 // ============================================================================
@@ -912,4 +958,233 @@ function showNotification(message, type = 'info') {
         notification.style.transition = 'all 0.3s ease';
         setTimeout(() => notification.remove(), 300);
     }, 3000);
+}
+
+// ============================================================================
+// DEBUG LOGS MANAGEMENT
+// ============================================================================
+
+/**
+ * Load initial debug logs from server
+ */
+async function loadDebugLogs() {
+    try {
+        const data = await fetchJSON('/api/tts/debug/logs?limit=100');
+
+        if (data.success && data.logs) {
+            debugLogs = data.logs;
+            renderDebugLogs();
+            updateDebugStats();
+        }
+    } catch (error) {
+        console.error('Failed to load debug logs:', error);
+    }
+}
+
+/**
+ * Add a new debug log entry (called by socket listener)
+ */
+function addDebugLog(logEntry) {
+    debugLogs.push(logEntry);
+
+    // Keep only last 500 logs in memory
+    if (debugLogs.length > 500) {
+        debugLogs.shift();
+    }
+
+    renderDebugLogs();
+    updateDebugStats();
+}
+
+/**
+ * Render debug logs to the UI
+ */
+function renderDebugLogs() {
+    const container = document.getElementById('debugLogsList');
+    if (!container) return;
+
+    // Filter logs based on current filter
+    let filteredLogs = debugLogs;
+    if (debugFilter !== 'all') {
+        if (debugFilter === 'SPEAK_STEP') {
+            // Show all SPEAK_STEP1-6
+            filteredLogs = debugLogs.filter(log => log.category.startsWith('SPEAK_STEP'));
+        } else {
+            filteredLogs = debugLogs.filter(log => log.category === debugFilter);
+        }
+    }
+
+    // Render logs
+    if (filteredLogs.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-center py-8">No logs match the current filter</div>';
+    } else {
+        container.innerHTML = filteredLogs.map(log => formatDebugLog(log)).join('');
+    }
+
+    // Auto-scroll to bottom
+    if (autoScrollLogs) {
+        const logsContainer = document.getElementById('debugLogsContainer');
+        if (logsContainer) {
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+    }
+
+    // Update displayed count
+    const displayedCount = document.getElementById('displayedLogsCount');
+    if (displayedCount) {
+        displayedCount.textContent = filteredLogs.length;
+    }
+}
+
+/**
+ * Format a single debug log entry to HTML
+ */
+function formatDebugLog(log) {
+    const categoryColors = {
+        'INIT': 'text-blue-400',
+        'TIKTOK_EVENT': 'text-purple-400',
+        'SPEAK_START': 'text-green-400',
+        'SPEAK_STEP1': 'text-yellow-300',
+        'SPEAK_STEP2': 'text-yellow-300',
+        'SPEAK_STEP3': 'text-yellow-300',
+        'SPEAK_STEP4': 'text-yellow-300',
+        'SPEAK_STEP5': 'text-yellow-300',
+        'SPEAK_STEP6': 'text-yellow-300',
+        'SPEAK_SUCCESS': 'text-green-500',
+        'SPEAK_DENIED': 'text-red-400',
+        'SPEAK_ERROR': 'text-red-600',
+        'PLAYBACK': 'text-cyan-400'
+    };
+
+    const color = categoryColors[log.category] || 'text-gray-400';
+    const timestamp = new Date(log.timestamp).toLocaleTimeString('de-DE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3
+    });
+
+    let dataStr = '';
+    if (log.data && Object.keys(log.data).length > 0) {
+        dataStr = '<div class="text-gray-500 text-xs mt-1 pl-4">' +
+            Object.entries(log.data)
+                .map(([key, value]) => {
+                    const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                    return `${escapeHtml(key)}: ${escapeHtml(displayValue.substring(0, 100))}`;
+                })
+                .join(' | ') +
+            '</div>';
+    }
+
+    return `
+        <div class="border-b border-gray-800 py-2">
+            <div class="flex items-start gap-3">
+                <span class="text-gray-600 text-xs whitespace-nowrap">${timestamp}</span>
+                <span class="${color} font-bold text-xs whitespace-nowrap min-w-[120px]">[${escapeHtml(log.category)}]</span>
+                <span class="text-gray-300 text-xs flex-1">${escapeHtml(log.message)}</span>
+            </div>
+            ${dataStr}
+        </div>
+    `;
+}
+
+/**
+ * Filter debug logs by category
+ */
+function filterDebugLogs(category) {
+    debugFilter = category;
+
+    // Update filter button styles
+    document.querySelectorAll('.log-filter-btn').forEach(btn => {
+        if (btn.dataset.category === category) {
+            btn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+            btn.classList.add('bg-blue-600');
+        } else {
+            btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+            btn.classList.remove('bg-blue-600');
+        }
+    });
+
+    renderDebugLogs();
+}
+
+/**
+ * Clear debug logs
+ */
+async function clearDebugLogs() {
+    if (!confirm('Clear all debug logs?')) return;
+
+    try {
+        const data = await postJSON('/api/tts/debug/clear', {});
+
+        if (data.success) {
+            debugLogs = [];
+            renderDebugLogs();
+            updateDebugStats();
+            showNotification('Debug logs cleared', 'success');
+        } else {
+            throw new Error(data.error || 'Failed to clear logs');
+        }
+    } catch (error) {
+        console.error('Failed to clear debug logs:', error);
+        showNotification(`Failed to clear logs: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Toggle debug mode on/off
+ */
+async function toggleDebugMode() {
+    try {
+        const data = await postJSON('/api/tts/debug/toggle', {});
+
+        if (data.success) {
+            debugEnabled = data.enabled;
+            updateDebugModeUI();
+            showNotification(`Debug mode ${debugEnabled ? 'enabled' : 'disabled'}`, 'success');
+        } else {
+            throw new Error(data.error || 'Failed to toggle debug mode');
+        }
+    } catch (error) {
+        console.error('Failed to toggle debug mode:', error);
+        showNotification(`Failed to toggle debug mode: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Update debug mode UI indicators
+ */
+function updateDebugModeUI() {
+    const toggleText = document.getElementById('debugToggleText');
+    const statusEl = document.getElementById('debugModeStatus');
+    const liveUpdateStatus = document.getElementById('liveUpdateStatus');
+
+    if (toggleText) {
+        toggleText.textContent = debugEnabled ? 'Disable Debug' : 'Enable Debug';
+    }
+
+    if (statusEl) {
+        statusEl.textContent = debugEnabled ? 'Enabled' : 'Disabled';
+        statusEl.className = debugEnabled ? 'ml-2 font-bold text-green-500' : 'ml-2 font-bold text-red-500';
+    }
+
+    if (liveUpdateStatus) {
+        if (debugEnabled && socket) {
+            liveUpdateStatus.textContent = 'Active';
+            liveUpdateStatus.className = 'ml-2 font-bold text-green-500 pulse';
+        } else {
+            liveUpdateStatus.textContent = 'Inactive';
+            liveUpdateStatus.className = 'ml-2 font-bold text-gray-500';
+        }
+    }
+}
+
+/**
+ * Update debug statistics
+ */
+function updateDebugStats() {
+    const totalCount = document.getElementById('totalLogsCount');
+    if (totalCount) {
+        totalCount.textContent = debugLogs.length;
+    }
 }
