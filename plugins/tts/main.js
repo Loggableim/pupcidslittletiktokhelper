@@ -360,6 +360,7 @@ class TTSPlugin {
                     text,
                     timestamp: new Date().toISOString()
                 });
+                this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${data.comment}"`);
 
                 // Only process if chat TTS is enabled
                 if (!this.config.enabledForChat) {
@@ -375,6 +376,7 @@ class TTSPlugin {
                 // Speak chat message
                 const result = await this.speak({
                     text,
+                    text: data.comment,
                     userId: data.userId || data.uniqueId,
                     username,
                     source: 'chat',
