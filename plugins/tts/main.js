@@ -535,7 +535,7 @@ class TTSPlugin {
                 estimatedWaitMs: queueResult.estimatedWaitMs,
                 voice: selectedVoice,
                 engine: selectedEngine,
-                cached: fromCache
+                cached: false
             };
 
         } catch (error) {
