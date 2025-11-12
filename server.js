@@ -269,7 +269,7 @@ app.get('/api/update/current', apiLimiter, (req, res) => {
 });
 
 /**
- * POST /api/update/download - Lädt das Update herunter (git pull)
+ * POST /api/update/download - Führt Update durch (Git Pull oder ZIP Download)
  */
 app.post('/api/update/download', authLimiter, async (req, res) => {
     try {

@@ -332,6 +332,9 @@ class UpdateManager {
      * Update via ZIP-Download
      */
     async updateViaZip() {
+        const zipPath = path.join(this.projectRoot, 'update.zip');
+        const tempDir = path.join(this.projectRoot, '.update-temp');
+
         try {
             // 1. Hole Release-Info
             const url = `https://api.github.com/repos/${this.githubRepo}/releases/latest`;
@@ -339,46 +342,56 @@ class UpdateManager {
                 headers: {
                     'User-Agent': 'PupCids-TikTok-Helper',
                     'Accept': 'application/vnd.github.v3+json'
-                }
+                },
+                timeout: 10000
             });
 
             const downloadUrl = response.data.zipball_url;
 
             // 2. Lade ZIP herunter
             this.logger?.info('Lade Update-Archiv herunter...');
+            this.logger?.info(`Download URL: ${downloadUrl}`);
+
             const zipResponse = await axios.get(downloadUrl, {
                 responseType: 'arraybuffer',
                 headers: {
                     'User-Agent': 'PupCids-TikTok-Helper'
                 },
-                timeout: 60000 // 1 Minute
+                timeout: 120000, // 2 Minuten für größere Dateien
+                maxContentLength: 100 * 1024 * 1024 // 100 MB max
             });
 
-            const zipPath = path.join(this.projectRoot, 'update.zip');
+            this.logger?.info(`Download abgeschlossen (${(zipResponse.data.length / 1024 / 1024).toFixed(2)} MB)`);
+
             fs.writeFileSync(zipPath, zipResponse.data);
 
+            // 3. Entpacke ZIP
             this.logger?.info('Entpacke Update-Archiv...');
 
-            // 3. Entpacke ZIP (außer user_data/ und user_configs/)
-            // HINWEIS: Dies erfordert eine ZIP-Library. Wir nutzen hier zip-lib (bereits vorhanden)
-            const { extract } = require('zip-lib');
+            const zl = require('zip-lib');
 
-            const tempDir = path.join(this.projectRoot, '.update-temp');
             if (!fs.existsSync(tempDir)) {
                 fs.mkdirSync(tempDir, { recursive: true });
             }
 
-            await extract(zipPath, tempDir);
+            const unzip = new zl.Unzip();
+            await unzip.extract(zipPath, tempDir);
+
+            this.logger?.info('Archiv erfolgreich entpackt');
 
             // 4. Finde extrahierten Ordner (GitHub ZIP enthält root-Ordner mit Repo-Namen)
             const entries = fs.readdirSync(tempDir);
-            const extractedDir = entries.find(e => fs.statSync(path.join(tempDir, e)).isDirectory());
+            const extractedDir = entries.find(e => {
+                const fullPath = path.join(tempDir, e);
+                return fs.statSync(fullPath).isDirectory();
+            });
 
             if (!extractedDir) {
-                throw new Error('Extrahierter Ordner nicht gefunden');
+                throw new Error('Extrahierter Ordner nicht gefunden. Gefundene Einträge: ' + entries.join(', '));
             }
 
             const sourceDir = path.join(tempDir, extractedDir);
+            this.logger?.info(`Quelldaten gefunden in: ${extractedDir}`);
 
             // 5. Kopiere Dateien (außer user_data/ und user_configs/)
             this.logger?.info('Kopiere aktualisierte Dateien...');
@@ -386,8 +399,10 @@ class UpdateManager {
             const entriesToCopy = fs.readdirSync(sourceDir);
             const excludeDirs = ['user_data', 'user_configs', 'node_modules', '.git', '.backups', '.update-temp'];
 
+            let copiedCount = 0;
             for (const entry of entriesToCopy) {
                 if (excludeDirs.includes(entry)) {
+                    this.logger?.info(`Überspringe: ${entry}`);
                     continue;
                 }
 
@@ -401,20 +416,42 @@ class UpdateManager {
 
                 // Kopiere neu
                 this.copyRecursive(srcPath, destPath);
+                copiedCount++;
                 this.logger?.info(`Kopiert: ${entry}`);
             }
 
-            // 6. Cleanup
-            fs.rmSync(zipPath, { force: true });
-            fs.rmSync(tempDir, { recursive: true, force: true });
+            this.logger?.info(`${copiedCount} Einträge erfolgreich kopiert`);
 
-            this.logger?.info('ZIP-Update erfolgreich!');
+            // 6. Cleanup
+            this.logger?.info('Räume temporäre Dateien auf...');
+            if (fs.existsSync(zipPath)) {
+                fs.rmSync(zipPath, { force: true });
+            }
+            if (fs.existsSync(tempDir)) {
+                fs.rmSync(tempDir, { recursive: true, force: true });
+            }
+
+            this.logger?.info('ZIP-Update erfolgreich abgeschlossen!');
 
             return {
                 success: true,
                 needsDependencyUpdate: true // Bei ZIP immer Dependencies neu installieren
             };
         } catch (error) {
+            // Cleanup bei Fehler
+            this.logger?.error(`ZIP-Update Fehler: ${error.message}`);
+
+            try {
+                if (fs.existsSync(zipPath)) {
+                    fs.rmSync(zipPath, { force: true });
+                }
+                if (fs.existsSync(tempDir)) {
+                    fs.rmSync(tempDir, { recursive: true, force: true });
+                }
+            } catch (cleanupError) {
+                this.logger?.warn(`Cleanup fehlgeschlagen: ${cleanupError.message}`);
+            }
+
             throw new Error(`ZIP update fehlgeschlagen: ${error.message}`);
         }
     }
