@@ -408,7 +408,6 @@
         // Soundboard Audio Queue
         let soundQueue = [];
         let isPlayingSound = false;
-        let audioUnlocked = false;
 
         // Load HUD Configuration
         async function loadHudConfiguration() {
@@ -830,51 +829,204 @@
 
         // ========== SOUNDBOARD AUDIO ==========
         function playSoundboardAudio(data) {
-            console.log('🔊 Playing soundboard audio:', data.label);
+            console.log('🔊 [Soundboard] Received play request:', {
+                label: data.label,
+                url: data.url,
+                volume: data.volume,
+                timestamp: new Date().toISOString()
+            });
 
-            // Versuche Audio zu starten (funktioniert in OBS automatisch)
-            if (!audioUnlocked && audioContext) {
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
+            // AudioContext Initialisierung prüfen
+            if (!audioContext) {
+                console.warn('⚠️ AudioContext not initialized. Initializing now...');
+                const initialized = initAudioEngine();
+                if (!initialized) {
+                    console.error('❌ Failed to initialize AudioContext. Cannot play sound.');
+                    return;
                 }
+            }
+
+            // AudioContext State prüfen und ggf. fortsetzen
+            if (audioContext.state === 'suspended') {
+                console.log('⏸️ AudioContext suspended, attempting to resume...');
+                audioContext.resume()
+                    .then(() => {
+                        console.log('✅ AudioContext resumed successfully');
+                        audioUnlocked = true;
+                    })
+                    .catch(err => {
+                        console.error('❌ Failed to resume AudioContext:', err);
+                    });
+            } else if (audioContext.state === 'running') {
                 audioUnlocked = true;
             }
 
-            if (!audioUnlocked) {
-                console.warn('⚠️ Audio engine not ready. Trying to initialize...');
-                initAudioEngine();
+            // URL-Validierung
+            if (!data.url || typeof data.url !== 'string') {
+                console.error('❌ Invalid sound URL:', data.url);
+                processSoundQueue();
+                return;
             }
 
-            // Create new audio element
-            const audio = document.createElement('audio');
-            audio.src = data.url;
-            audio.volume = data.volume || 1.0;
+            try {
+                // Create new audio element
+                const audio = document.createElement('audio');
+                audio.crossOrigin = 'anonymous'; // CORS-Support für externe URLs
+                audio.preload = 'auto';
 
-            // Add to pool
-            const pool = document.getElementById('soundboard-audio-pool');
-            pool.appendChild(audio);
+                // Volume setzen (0.0 - 1.0)
+                const volume = parseFloat(data.volume);
+                if (!isNaN(volume) && volume >= 0 && volume <= 1) {
+                    audio.volume = volume;
+                } else {
+                    audio.volume = 1.0;
+                    console.warn('⚠️ Invalid volume value, using 1.0:', data.volume);
+                }
 
-            // Remove after playback
-            audio.onended = () => {
-                console.log('✅ Sound finished:', data.label);
-                audio.remove();
+                // Add to pool BEFORE setting src (wichtig für manche Browser)
+                const pool = document.getElementById('soundboard-audio-pool');
+                pool.appendChild(audio);
+
+                console.log('📡 [Soundboard] Loading audio from:', data.url);
+
+                // Event: Metadata geladen
+                audio.onloadedmetadata = () => {
+                    console.log('✅ [Soundboard] Audio metadata loaded:', {
+                        duration: audio.duration,
+                        readyState: audio.readyState
+                    });
+                };
+
+                // Event: Kann abgespielt werden
+                audio.oncanplay = () => {
+                    console.log('✅ [Soundboard] Audio ready to play');
+                };
+
+                // Event: Abspielen gestartet
+                audio.onplay = () => {
+                    console.log('▶️ [Soundboard] Playback started:', data.label);
+                };
+
+                // Event: Abspielen beendet
+                audio.onended = () => {
+                    console.log('✅ [Soundboard] Sound finished:', data.label);
+
+                    // Cleanup
+                    if (audio._sourceNode) {
+                        try {
+                            audio._sourceNode.disconnect();
+                        } catch (e) {
+                            // Already disconnected
+                        }
+                    }
+
+                    audio.remove();
+                    processSoundQueue();
+                };
+
+                // Event: Fehler beim Laden oder Abspielen
+                audio.onerror = (e) => {
+                    const error = audio.error;
+                    let errorMessage = 'Unknown error';
+                    let errorCode = 'UNKNOWN';
+
+                    if (error) {
+                        errorCode = error.code;
+                        switch (error.code) {
+                            case 1: // MEDIA_ERR_ABORTED
+                                errorMessage = 'Audio loading aborted';
+                                break;
+                            case 2: // MEDIA_ERR_NETWORK
+                                errorMessage = 'Network error while loading audio';
+                                break;
+                            case 3: // MEDIA_ERR_DECODE
+                                errorMessage = 'Audio decoding failed (unsupported format or corrupted file)';
+                                break;
+                            case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                                errorMessage = 'Audio format not supported or URL not accessible (CORS?)';
+                                break;
+                            default:
+                                errorMessage = error.message || 'Unknown media error';
+                        }
+                    }
+
+                    console.error('❌ [Soundboard] Error playing sound:', {
+                        label: data.label,
+                        url: data.url,
+                        errorCode: errorCode,
+                        errorMessage: errorMessage,
+                        error: error
+                    });
+
+                    // Cleanup
+                    if (audio._sourceNode) {
+                        try {
+                            audio._sourceNode.disconnect();
+                        } catch (e) {
+                            // Already disconnected
+                        }
+                    }
+
+                    audio.remove();
+                    processSoundQueue();
+                };
+
+                // Verbinde Audio-Element mit Web Audio API für Master-Volume-Kontrolle
+                if (audioContext && masterGainNode) {
+                    try {
+                        // Erstelle MediaElementSourceNode (nur einmal pro Element!)
+                        const sourceNode = audioContext.createMediaElementSource(audio);
+                        sourceNode.connect(masterGainNode);
+
+                        // Referenz speichern für Cleanup
+                        audio._sourceNode = sourceNode;
+
+                        console.log('🔗 [Soundboard] Audio connected to Web Audio API (Master Volume active)');
+                    } catch (err) {
+                        // Falls bereits connected (kann bei manchen Browsern passieren)
+                        console.warn('⚠️ Could not connect to Web Audio API:', err.message);
+                        // Trotzdem weitermachen, Audio funktioniert auch ohne Web Audio API
+                    }
+                }
+
+                // Setze src NACH allen Event-Listenern
+                audio.src = data.url;
+
+                // Play immediately (overlap mode)
+                audio.play()
+                    .then(() => {
+                        console.log('✅ [Soundboard] Play() promise resolved');
+                    })
+                    .catch(err => {
+                        console.error('❌ [Soundboard] Play() promise rejected:', {
+                            label: data.label,
+                            error: err.name,
+                            message: err.message,
+                            url: data.url
+                        });
+
+                        // Cleanup bei Play-Fehler
+                        if (audio._sourceNode) {
+                            try {
+                                audio._sourceNode.disconnect();
+                            } catch (e) {
+                                // Already disconnected
+                            }
+                        }
+
+                        audio.remove();
+                        processSoundQueue();
+                    });
+
+            } catch (error) {
+                console.error('❌ [Soundboard] Critical error in playSoundboardAudio:', {
+                    label: data.label,
+                    error: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
                 processSoundQueue();
-            };
-
-            audio.onerror = (e) => {
-                console.error('❌ Error playing sound:', data.label, e);
-                audio.remove();
-                processSoundQueue();
-            };
-
-            // Play immediately (overlap mode)
-            audio.play().then(() => {
-                console.log('✅ Sound started:', data.label);
-            }).catch(err => {
-                console.error('❌ Sound playback error:', data.label, err);
-                audio.remove();
-                processSoundQueue();
-            });
+            }
         }
 
         function processSoundQueue() {
