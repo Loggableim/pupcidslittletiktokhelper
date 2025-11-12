@@ -455,10 +455,6 @@ class TTSPlugin {
                     uniqueId: data.uniqueId,
                     nickname: data.nickname,
                     message: chatText,
-                this._logDebug('TIKTOK_EVENT', 'Chat event received', {
-                    uniqueId: data.uniqueId,
-                    nickname: data.nickname,
-                    message: chatText,
                     teamMemberLevel: data.teamMemberLevel,
                     isSubscriber: data.isSubscriber,
                     userId: data.userId
