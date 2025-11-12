@@ -858,12 +858,19 @@ class TTSPlugin {
                 audioDataLength: item.audioData?.length || 0
             });
 
-            // Estimate playback duration
-            const estimatedDuration = Math.ceil(item.text.length / 10 * 500) + 1000;
+            // Estimate playback duration based on realistic speech rate
+            // Average speaking rate: ~150 words/min = ~2.5 words/sec = ~12.5 chars/sec
+            // Formula: chars * 100ms + buffer (accounting for pauses, pacing, etc.)
+            const baseDelay = Math.ceil(item.text.length * 100); // 100ms per character
+            const speedAdjustment = item.speed ? (1 / item.speed) : 1; // Adjust for speed
+            const buffer = 2000; // 2 second buffer for network latency and startup
+            const estimatedDuration = Math.ceil(baseDelay * speedAdjustment) + buffer;
 
             this._logDebug('PLAYBACK', 'Waiting for playback to complete', {
                 estimatedDuration,
-                textLength: item.text.length
+                textLength: item.text.length,
+                speed: item.speed,
+                calculation: `${item.text.length} chars * 100ms * ${speedAdjustment.toFixed(2)} + ${buffer}ms = ${estimatedDuration}ms`
             });
 
             // Wait for playback to complete
