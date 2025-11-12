@@ -329,7 +329,8 @@ function addEventToLog(type, data) {
             break;
         case 'gift':
             typeIcon = '🎁 Gift';
-            details = `${data.giftName} x${data.repeatCount} (${data.coins} coins)`;
+            const giftName = data.giftName || (data.giftId ? `Gift #${data.giftId}` : 'Unknown Gift');
+            details = `${giftName} x${data.repeatCount} (${data.coins} coins)`;
             break;
         case 'follow':
             typeIcon = '⭐ Follow';
