@@ -687,15 +687,15 @@ class TTSPlugin {
                 speed: this.config.speed
             });
 
-            const engine = this.engines[selectedEngine];
-            if (!engine) {
+            const ttsEngine = this.engines[selectedEngine];
+            if (!ttsEngine) {
                 this._logDebug('SPEAK_ERROR', 'Engine not available', { selectedEngine });
                 throw new Error(`TTS engine not available: ${selectedEngine}`);
             }
 
             let audioData;
             try {
-                audioData = await engine.synthesize(finalText, selectedVoice, this.config.speed);
+                audioData = await ttsEngine.synthesize(finalText, selectedVoice, this.config.speed);
                 this._logDebug('SPEAK_STEP5', 'TTS synthesis successful', {
                     engine: selectedEngine,
                     voice: selectedVoice,
