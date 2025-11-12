@@ -44,6 +44,7 @@
                 <button data-tab="users" id="tab-users" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">User Management</button>
                 <button data-tab="queue" id="tab-queue" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Queue & Playback</button>
                 <button data-tab="stats" id="tab-stats" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Statistics</button>
+                <button data-tab="debug" id="tab-debug" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">🐛 Debug Logs</button>
             </nav>
         </div>
 
@@ -260,6 +261,101 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- Debug Logs Tab -->
+        <div id="content-debug" class="tab-content hidden">
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">🐛 Debug Logs - Live TTS Pipeline Tracking</h2>
+                    <div class="flex items-center space-x-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="autoScrollLogs" checked class="w-4 h-4">
+                            <span class="text-sm">Auto-scroll</span>
+                        </label>
+                        <button id="clearLogsBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Clear Logs</button>
+                        <button id="toggleDebugBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            <span id="debugToggleText">Disable Debug</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filter Buttons -->
+                <div class="mb-4 flex flex-wrap gap-2">
+                    <button data-category="all" class="log-filter-btn px-3 py-1 bg-blue-600 text-white rounded text-sm font-medium">All</button>
+                    <button data-category="INIT" class="log-filter-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">INIT</button>
+                    <button data-category="TIKTOK_EVENT" class="log-filter-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">TikTok Events</button>
+                    <button data-category="SPEAK_START" class="log-filter-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Speak Start</button>
+                    <button data-category="SPEAK_STEP" class="log-filter-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Pipeline Steps</button>
+                    <button data-category="SPEAK_SUCCESS" class="log-filter-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Success</button>
+                    <button data-category="SPEAK_DENIED" class="log-filter-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Denied</button>
+                    <button data-category="SPEAK_ERROR" class="log-filter-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Errors</button>
+                    <button data-category="PLAYBACK" class="log-filter-btn px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Playback</button>
+                </div>
+
+                <!-- Status Info -->
+                <div class="mb-4 p-4 bg-gray-900 rounded">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-400">Total Logs:</span>
+                            <span id="totalLogsCount" class="ml-2 font-bold text-white">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Displayed:</span>
+                            <span id="displayedLogsCount" class="ml-2 font-bold text-white">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Debug Mode:</span>
+                            <span id="debugModeStatus" class="ml-2 font-bold text-green-500">Enabled</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Live Updates:</span>
+                            <span id="liveUpdateStatus" class="ml-2 font-bold text-green-500 pulse">Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logs Display -->
+                <div id="debugLogsContainer" class="bg-gray-900 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
+                    <div id="debugLogsList">
+                        <div class="text-gray-500 text-center py-8">Waiting for logs... Try triggering TTS events</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-3">📖 Debug Log Categories</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <strong class="text-blue-400">INIT:</strong> Plugin initialization events
+                    </div>
+                    <div>
+                        <strong class="text-purple-400">TIKTOK_EVENT:</strong> TikTok chat messages received
+                    </div>
+                    <div>
+                        <strong class="text-green-400">SPEAK_START:</strong> speak() method called
+                    </div>
+                    <div>
+                        <strong class="text-yellow-400">SPEAK_STEP1-6:</strong> Each pipeline step (permissions, profanity, validation, voice selection, synthesis, queue)
+                    </div>
+                    <div>
+                        <strong class="text-green-500">SPEAK_SUCCESS:</strong> TTS successfully queued
+                    </div>
+                    <div>
+                        <strong class="text-red-400">SPEAK_DENIED:</strong> TTS request denied (permissions/rate limit)
+                    </div>
+                    <div>
+                        <strong class="text-red-600">SPEAK_ERROR:</strong> Errors during processing
+                    </div>
+                    <div>
+                        <strong class="text-cyan-400">PLAYBACK:</strong> Audio playback events
+                    </div>
+                </div>
+                <div class="mt-4 p-3 bg-gray-900 rounded">
+                    <strong class="text-yellow-500">💡 Tip:</strong> If TTS works in test mode but not live, check for TIKTOK_EVENT logs. If missing, the TikTok integration isn't receiving events. If present but no SPEAK_START, permission checks may be blocking.
+                </div>
             </div>
         </div>
     </div>

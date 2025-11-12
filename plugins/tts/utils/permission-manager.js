@@ -183,10 +183,12 @@ class PermissionManager {
             const now = Math.floor(Date.now() / 1000);
 
             const stmt = this.db.db.prepare(`
-                INSERT INTO tts_user_permissions (user_id, username, allow_tts, created_at, updated_at)
-                VALUES (?, ?, 0, ?, ?)
+                INSERT INTO tts_user_permissions (user_id, username, allow_tts, assigned_voice_id, assigned_engine, is_blacklisted, created_at, updated_at)
+                VALUES (?, ?, 0, NULL, NULL, 0, ?, ?)
                 ON CONFLICT(user_id) DO UPDATE SET
                     allow_tts = 0,
+                    assigned_voice_id = NULL,
+                    assigned_engine = NULL,
                     updated_at = excluded.updated_at
             `);
 
@@ -340,6 +342,7 @@ class PermissionManager {
             `);
 
             stmt.run(gain, Math.floor(Date.now() / 1000), userId);
+            this.clearCache();
 
             return true;
 

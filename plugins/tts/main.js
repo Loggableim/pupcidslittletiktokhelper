@@ -15,6 +15,11 @@ class TTSPlugin {
         this.api = api;
         this.logger = api.logger;
 
+        // Debug logging system
+        this.debugLogs = [];
+        this.maxDebugLogs = 500;
+        this.debugEnabled = true;
+
         // Load configuration
         this.config = this._loadConfig();
 
@@ -28,6 +33,9 @@ class TTSPlugin {
         if (this.config.googleApiKey) {
             this.engines.google = new GoogleEngine(this.config.googleApiKey, this.logger);
             this.logger.info('TTS: Google Cloud TTS engine initialized');
+            this._logDebug('INIT', 'Google TTS engine initialized', { hasApiKey: true });
+        } else {
+            this._logDebug('INIT', 'Google TTS engine NOT initialized', { hasApiKey: false });
         }
 
         // Initialize utilities
@@ -40,7 +48,41 @@ class TTSPlugin {
         this.profanityFilter.setMode(this.config.profanityFilter);
         this.profanityFilter.setReplacement('asterisk');
 
+        this._logDebug('INIT', 'TTS Plugin initialized', {
+            defaultEngine: this.config.defaultEngine,
+            defaultVoice: this.config.defaultVoice,
+            enabledForChat: this.config.enabledForChat,
+            autoLanguageDetection: this.config.autoLanguageDetection
+        });
+
         this.logger.info('TTS Plugin initialized successfully');
+    }
+
+    /**
+     * Internal debug logging
+     */
+    _logDebug(category, message, data = {}) {
+        if (!this.debugEnabled) return;
+
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            category,
+            message,
+            data
+        };
+
+        this.debugLogs.push(logEntry);
+
+        // Keep only last N logs
+        if (this.debugLogs.length > this.maxDebugLogs) {
+            this.debugLogs.shift();
+        }
+
+        // Emit to clients
+        this.api.emit('tts:debug', logEntry);
+
+        // Also log to console with category prefix
+        this.logger.info(`[TTS:${category}] ${message}`, data);
     }
 
     /**
@@ -304,6 +346,63 @@ class TTSPlugin {
             res.json({ success: true, stats });
         });
 
+        // Debug logs
+        this.api.registerRoute('GET', '/api/tts/debug/logs', (req, res) => {
+            const limit = parseInt(req.query.limit) || 100;
+            const category = req.query.category || null;
+
+            let logs = this.debugLogs;
+
+            if (category) {
+                logs = logs.filter(log => log.category === category);
+            }
+
+            res.json({
+                success: true,
+                logs: logs.slice(-limit),
+                totalLogs: this.debugLogs.length
+            });
+        });
+
+        // Clear debug logs
+        this.api.registerRoute('POST', '/api/tts/debug/clear', (req, res) => {
+            const count = this.debugLogs.length;
+            this.debugLogs = [];
+            res.json({ success: true, cleared: count });
+        });
+
+        // Enable/disable debug
+        this.api.registerRoute('POST', '/api/tts/debug/toggle', (req, res) => {
+            this.debugEnabled = !this.debugEnabled;
+            this._logDebug('DEBUG', `Debug logging ${this.debugEnabled ? 'enabled' : 'disabled'}`);
+            res.json({ success: true, debugEnabled: this.debugEnabled });
+        });
+
+        // Get plugin status
+        this.api.registerRoute('GET', '/api/tts/status', (req, res) => {
+            res.json({
+                success: true,
+                status: {
+                    initialized: true,
+                    config: {
+                        defaultEngine: this.config.defaultEngine,
+                        defaultVoice: this.config.defaultVoice,
+                        enabledForChat: this.config.enabledForChat,
+                        autoLanguageDetection: this.config.autoLanguageDetection,
+                        volume: this.config.volume,
+                        speed: this.config.speed
+                    },
+                    engines: {
+                        tiktok: !!this.engines.tiktok,
+                        google: !!this.engines.google
+                    },
+                    queue: this.queueManager.getInfo(),
+                    debugEnabled: this.debugEnabled,
+                    totalDebugLogs: this.debugLogs.length
+                }
+            });
+        });
+
         this.logger.info('TTS Plugin: HTTP routes registered');
     }
 
@@ -349,10 +448,20 @@ class TTSPlugin {
     _registerTikTokEvents() {
         this.api.registerTikTokEvent('chat', async (data) => {
             try {
+                this._logDebug('TIKTOK_EVENT', 'Chat event received', {
+                    uniqueId: data.uniqueId,
+                    nickname: data.nickname,
+                    comment: data.comment,
+                    teamMemberLevel: data.teamMemberLevel,
+                    isSubscriber: data.isSubscriber,
+                    userId: data.userId
+                });
+
                 this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${data.comment}"`);
 
                 // Only process if chat TTS is enabled
                 if (!this.config.enabledForChat) {
+                    this._logDebug('TIKTOK_EVENT', 'Chat TTS disabled in config', { enabledForChat: false });
                     this.logger.warn('TTS: Chat TTS is disabled in config');
                     return;
                 }
@@ -368,14 +477,29 @@ class TTSPlugin {
                 });
 
                 if (!result.success) {
+                    this._logDebug('TIKTOK_EVENT', 'Chat message rejected', {
+                        error: result.error,
+                        reason: result.reason,
+                        details: result.details
+                    });
                     this.logger.warn(`TTS: Chat message rejected: ${result.error} - ${result.reason || ''}`);
+                } else {
+                    this._logDebug('TIKTOK_EVENT', 'Chat message queued successfully', {
+                        position: result.position,
+                        queueSize: result.queueSize
+                    });
                 }
 
             } catch (error) {
+                this._logDebug('TIKTOK_EVENT', 'Chat event error', {
+                    error: error.message,
+                    stack: error.stack
+                });
                 this.logger.error(`TTS chat event error: ${error.message}`);
             }
         });
 
+        this._logDebug('INIT', 'TikTok events registered', { enabledForChat: this.config.enabledForChat });
         this.logger.info(`TTS Plugin: TikTok events registered (enabledForChat: ${this.config.enabledForChat})`);
     }
 
@@ -396,8 +520,27 @@ class TTSPlugin {
             priority = null
         } = params;
 
+        this._logDebug('SPEAK_START', 'Speak method called', {
+            text: text?.substring(0, 50),
+            userId,
+            username,
+            voiceId,
+            engine,
+            source,
+            teamLevel,
+            isSubscriber,
+            priority
+        });
+
         try {
             // Step 1: Check permissions
+            this._logDebug('SPEAK_STEP1', 'Checking permissions', {
+                userId,
+                username,
+                teamLevel,
+                minTeamLevel: this.config.teamMinLevel
+            });
+
             const permissionCheck = this.permissionManager.checkPermission(
                 userId,
                 username,
@@ -405,7 +548,13 @@ class TTSPlugin {
                 this.config.teamMinLevel
             );
 
+            this._logDebug('SPEAK_STEP1', 'Permission check result', permissionCheck);
+
             if (!permissionCheck.allowed) {
+                this._logDebug('SPEAK_DENIED', 'Permission denied', {
+                    username,
+                    reason: permissionCheck.reason
+                });
                 this.logger.info(`TTS permission denied for ${username}: ${permissionCheck.reason}`);
                 return {
                     success: false,
@@ -416,9 +565,25 @@ class TTSPlugin {
             }
 
             // Step 2: Filter profanity
+            this._logDebug('SPEAK_STEP2', 'Filtering profanity', {
+                text,
+                mode: this.config.profanityFilter
+            });
+
             const profanityResult = this.profanityFilter.filter(text);
 
+            this._logDebug('SPEAK_STEP2', 'Profanity filter result', {
+                hasProfanity: profanityResult.hasProfanity,
+                action: profanityResult.action,
+                matches: profanityResult.matches
+            });
+
             if (this.config.profanityFilter === 'strict' && profanityResult.action === 'drop') {
+                this._logDebug('SPEAK_DENIED', 'Dropped due to profanity', {
+                    username,
+                    text,
+                    matches: profanityResult.matches
+                });
                 this.logger.warn(`TTS dropped due to profanity: ${username} - "${text}"`);
                 return {
                     success: false,
@@ -430,20 +595,42 @@ class TTSPlugin {
             const filteredText = profanityResult.filtered;
 
             // Step 3: Validate and truncate text
+            this._logDebug('SPEAK_STEP3', 'Validating text', {
+                originalLength: text?.length,
+                filteredLength: filteredText?.length
+            });
+
             if (!filteredText || filteredText.trim().length === 0) {
+                this._logDebug('SPEAK_DENIED', 'Empty text after filtering');
                 return { success: false, error: 'empty_text' };
             }
 
             let finalText = filteredText.trim();
             if (finalText.length > this.config.maxTextLength) {
                 finalText = finalText.substring(0, this.config.maxTextLength) + '...';
+                this._logDebug('SPEAK_STEP3', 'Text truncated', {
+                    originalLength: text.length,
+                    truncatedLength: this.config.maxTextLength
+                });
                 this.logger.warn(`TTS text truncated for ${username}: ${text.length} -> ${this.config.maxTextLength}`);
             }
 
             // Step 4: Determine voice and engine
+            this._logDebug('SPEAK_STEP4', 'Getting user settings', { userId });
+
             const userSettings = this.permissionManager.getUserSettings(userId);
             let selectedEngine = engine || userSettings?.assigned_engine || this.config.defaultEngine;
             let selectedVoice = voiceId || userSettings?.assigned_voice_id;
+
+            this._logDebug('SPEAK_STEP4', 'Voice/Engine selection', {
+                requestedEngine: engine,
+                assignedEngine: userSettings?.assigned_engine,
+                selectedEngine,
+                requestedVoice: voiceId,
+                assignedVoice: userSettings?.assigned_voice_id,
+                selectedVoice,
+                autoLanguageDetection: this.config.autoLanguageDetection
+            });
 
             // Auto language detection if no voice assigned
             if (!selectedVoice && this.config.autoLanguageDetection) {
@@ -451,35 +638,67 @@ class TTSPlugin {
                     ? GoogleEngine
                     : TikTokEngine;
 
-                const langResult = this.languageDetector.detectAndGetVoice(finalText, engineClass);
-                selectedVoice = langResult.voiceId;
+                this._logDebug('SPEAK_STEP4', 'Detecting language', {
+                    text: finalText.substring(0, 50),
+                    engineClass: engineClass.name
+                });
 
-                this.logger.info(`Language detected: ${langResult.languageName} (${langResult.langCode}) for "${finalText.substring(0, 30)}..."`);
+                const langResult = this.languageDetector.detectAndGetVoice(finalText, engineClass);
+                if (langResult && langResult.voiceId) {
+                    selectedVoice = langResult.voiceId;
+                    this._logDebug('SPEAK_STEP4', 'Language detected', {
+                        langCode: langResult.langCode,
+                        languageName: langResult.languageName,
+                        voiceId: langResult.voiceId
+                    });
+                    this.logger.info(`Language detected: ${langResult.languageName} (${langResult.langCode}) for "${finalText.substring(0, 30)}..."`);
+                } else {
+                    this._logDebug('SPEAK_STEP4', 'Language detection returned null');
+                }
             }
 
             // Final fallback to default voice
             if (!selectedVoice) {
                 selectedVoice = this.config.defaultVoice;
+                this._logDebug('SPEAK_STEP4', 'Using default voice', { selectedVoice });
             }
 
             // Validate engine availability
             if (selectedEngine === 'google' && !this.engines.google) {
+                this._logDebug('SPEAK_STEP4', 'Google engine not available, falling back to TikTok');
                 this.logger.warn(`Google TTS requested but not available, falling back to TikTok`);
                 selectedEngine = 'tiktok';
                 selectedVoice = TikTokEngine.getDefaultVoiceForLanguage('en');
             }
 
             // Step 5: Generate TTS (no caching)
+            this._logDebug('SPEAK_STEP5', 'Starting TTS synthesis', {
+                engine: selectedEngine,
+                voice: selectedVoice,
+                textLength: finalText.length,
+                speed: this.config.speed
+            });
+
             const engine = this.engines[selectedEngine];
             if (!engine) {
+                this._logDebug('SPEAK_ERROR', 'Engine not available', { selectedEngine });
                 throw new Error(`TTS engine not available: ${selectedEngine}`);
             }
 
             let audioData;
             try {
                 audioData = await engine.synthesize(finalText, selectedVoice, this.config.speed);
+                this._logDebug('SPEAK_STEP5', 'TTS synthesis successful', {
+                    engine: selectedEngine,
+                    voice: selectedVoice,
+                    audioDataLength: audioData?.length || 0
+                });
             } catch (engineError) {
                 // Fallback to alternative engine
+                this._logDebug('SPEAK_STEP5', 'TTS engine failed, trying fallback', {
+                    failedEngine: selectedEngine,
+                    error: engineError.message
+                });
                 this.logger.error(`TTS engine ${selectedEngine} failed: ${engineError.message}, trying fallback`);
 
                 if (selectedEngine === 'google' && this.engines.tiktok) {
@@ -488,12 +707,37 @@ class TTSPlugin {
                         TikTokEngine.getDefaultVoiceForLanguage('en')
                     );
                     selectedEngine = 'tiktok';
+                    this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                        fallbackEngine: 'tiktok',
+                        audioDataLength: audioData?.length || 0
+                    });
                 } else {
+                    this._logDebug('SPEAK_ERROR', 'No fallback available', { error: engineError.message });
                     throw engineError;
                 }
             }
 
+            // Validate audioData
+            if (!audioData || audioData.length === 0) {
+                this._logDebug('SPEAK_ERROR', 'Empty audio data returned', {
+                    engine: selectedEngine,
+                    audioData: audioData
+                });
+                throw new Error('Engine returned empty audio data');
+            }
+
             // Step 6: Enqueue for playback
+            this._logDebug('SPEAK_STEP6', 'Enqueueing for playback', {
+                username,
+                textLength: finalText.length,
+                voice: selectedVoice,
+                engine: selectedEngine,
+                volume: this.config.volume * (userSettings?.volume_gain ?? 1.0),
+                speed: this.config.speed,
+                source,
+                priority
+            });
+
             const queueResult = this.queueManager.enqueue({
                 userId,
                 username,
@@ -501,7 +745,7 @@ class TTSPlugin {
                 voice: selectedVoice,
                 engine: selectedEngine,
                 audioData,
-                volume: this.config.volume * (userSettings?.volume_gain || 1.0),
+                volume: this.config.volume * (userSettings?.volume_gain ?? 1.0),
                 speed: this.config.speed,
                 source,
                 teamLevel,
@@ -509,7 +753,13 @@ class TTSPlugin {
                 priority
             });
 
+            this._logDebug('SPEAK_STEP6', 'Enqueue result', queueResult);
+
             if (!queueResult.success) {
+                this._logDebug('SPEAK_DENIED', 'Queue rejected item', {
+                    reason: queueResult.reason,
+                    details: queueResult
+                });
                 return {
                     success: false,
                     error: queueResult.reason,
@@ -527,6 +777,12 @@ class TTSPlugin {
                 queueSize: queueResult.queueSize
             });
 
+            this._logDebug('SPEAK_SUCCESS', 'TTS queued successfully', {
+                position: queueResult.position,
+                queueSize: queueResult.queueSize,
+                estimatedWaitMs: queueResult.estimatedWaitMs
+            });
+
             return {
                 success: true,
                 queued: true,
@@ -539,6 +795,10 @@ class TTSPlugin {
             };
 
         } catch (error) {
+            this._logDebug('SPEAK_ERROR', 'Speak method error', {
+                error: error.message,
+                stack: error.stack
+            });
             this.logger.error(`TTS speak error: ${error.message}`);
             return {
                 success: false,
@@ -553,6 +813,16 @@ class TTSPlugin {
      */
     async _playAudio(item) {
         try {
+            this._logDebug('PLAYBACK', 'Starting playback', {
+                id: item.id,
+                username: item.username,
+                text: item.text?.substring(0, 50),
+                voice: item.voice,
+                engine: item.engine,
+                volume: item.volume,
+                speed: item.speed
+            });
+
             // Emit playback start event
             this.api.emit('tts:playback:started', {
                 id: item.id,
@@ -574,8 +844,19 @@ class TTSPlugin {
                 duckVolume: this.config.duckVolume
             });
 
+            this._logDebug('PLAYBACK', 'Audio event emitted to clients', {
+                id: item.id,
+                event: 'tts:play',
+                audioDataLength: item.audioData?.length || 0
+            });
+
             // Estimate playback duration
             const estimatedDuration = Math.ceil(item.text.length / 10 * 500) + 1000;
+
+            this._logDebug('PLAYBACK', 'Waiting for playback to complete', {
+                estimatedDuration,
+                textLength: item.text.length
+            });
 
             // Wait for playback to complete
             await new Promise(resolve => setTimeout(resolve, estimatedDuration));
@@ -586,7 +867,14 @@ class TTSPlugin {
                 username: item.username
             });
 
+            this._logDebug('PLAYBACK', 'Playback completed', { id: item.id });
+
         } catch (error) {
+            this._logDebug('PLAYBACK', 'Playback error', {
+                id: item.id,
+                error: error.message,
+                stack: error.stack
+            });
             this.logger.error(`TTS playback error: ${error.message}`);
             this.api.emit('tts:playback:error', {
                 id: item.id,
