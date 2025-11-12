@@ -1,3 +1,6 @@
+// Load environment variables first
+require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -27,6 +30,8 @@ const PluginLoader = require('./modules/plugin-loader');
 const { setupPluginRoutes } = require('./routes/plugin-routes');
 const UpdateManager = require('./modules/update-manager');
 const { Validators, ValidationError } = require('./modules/validators');
+const getAutoStartManager = require('./modules/auto-start');
+const PresetManager = require('./modules/preset-manager');
 
 // ========== EXPRESS APP ==========
 const app = express();
@@ -226,6 +231,14 @@ alerts.setPluginLoader(pluginLoader);
 const updateManager = new UpdateManager(logger);
 logger.info('🔄 Update Manager initialized');
 
+// Auto-Start Manager initialisieren
+const autoStartManager = getAutoStartManager();
+logger.info('🚀 Auto-Start Manager initialized');
+
+// Preset-Manager initialisieren
+const presetManager = new PresetManager(db.db);
+logger.info('📦 Preset Manager initialized');
+
 logger.info('✅ All modules initialized');
 
 // ========== SWAGGER DOCUMENTATION ==========
@@ -312,6 +325,167 @@ app.get('/api/update/instructions', apiLimiter, (req, res) => {
         success: true,
         instructions
     });
+});
+
+// ========== AUTO-START ROUTES ==========
+
+/**
+ * GET /api/autostart/status - Gibt Auto-Start Status zurück
+ */
+app.get('/api/autostart/status', apiLimiter, async (req, res) => {
+    try {
+        const status = await autoStartManager.getStatus();
+        res.json({
+            success: true,
+            ...status
+        });
+    } catch (error) {
+        logger.error(`Auto-start status check failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/autostart/toggle - Aktiviert/Deaktiviert Auto-Start
+ */
+app.post('/api/autostart/toggle', authLimiter, async (req, res) => {
+    try {
+        const { enabled, hidden } = req.body;
+
+        // Validate input
+        if (typeof enabled !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                error: 'enabled must be a boolean'
+            });
+        }
+
+        const result = await autoStartManager.toggle(enabled, hidden || false);
+
+        if (result) {
+            logger.info(`Auto-start ${enabled ? 'enabled' : 'disabled'} (hidden: ${hidden})`);
+            res.json({
+                success: true,
+                enabled,
+                hidden: hidden || false
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Failed to toggle auto-start'
+            });
+        }
+    } catch (error) {
+        logger.error(`Auto-start toggle failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/autostart/platform - Gibt Plattform-Informationen zurück
+ */
+app.get('/api/autostart/platform', apiLimiter, (req, res) => {
+    try {
+        const platformInfo = autoStartManager.getPlatformInfo();
+        res.json({
+            success: true,
+            ...platformInfo,
+            supported: autoStartManager.isSupported()
+        });
+    } catch (error) {
+        logger.error(`Platform info failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ========== PRESET ROUTES ==========
+
+/**
+ * POST /api/presets/export - Exportiert aktuelle Konfiguration
+ */
+app.post('/api/presets/export', authLimiter, async (req, res) => {
+    try {
+        const options = {
+            name: req.body.name || 'My Preset',
+            description: req.body.description || '',
+            author: req.body.author || 'Unknown',
+            includeSettings: req.body.includeSettings !== false,
+            includeFlows: req.body.includeFlows !== false,
+            includeAlerts: req.body.includeAlerts !== false,
+            includeGiftSounds: req.body.includeGiftSounds !== false,
+            includeVoiceMappings: req.body.includeVoiceMappings !== false,
+            includePluginConfigs: req.body.includePluginConfigs !== false,
+        };
+
+        const preset = await presetManager.exportPreset(options);
+
+        logger.info(`Preset exported: ${preset.metadata.name}`);
+        res.json({
+            success: true,
+            preset
+        });
+    } catch (error) {
+        logger.error(`Preset export failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/presets/import - Importiert eine Konfiguration
+ */
+app.post('/api/presets/import', authLimiter, async (req, res) => {
+    try {
+        const { preset, options } = req.body;
+
+        if (!preset) {
+            return res.status(400).json({
+                success: false,
+                error: 'No preset data provided'
+            });
+        }
+
+        const importOptions = {
+            overwrite: options?.overwrite || false,
+            createBackup: options?.createBackup !== false,
+            includeSettings: options?.includeSettings !== false,
+            includeFlows: options?.includeFlows !== false,
+            includeAlerts: options?.includeAlerts !== false,
+            includeGiftSounds: options?.includeGiftSounds !== false,
+            includeVoiceMappings: options?.includeVoiceMappings !== false,
+            includePluginConfigs: options?.includePluginConfigs !== false,
+        };
+
+        const result = await presetManager.importPreset(preset, importOptions);
+
+        logger.info(`Preset imported: ${preset.metadata?.name || 'Unknown'}`, {
+            imported: result.imported,
+            errors: result.errors
+        });
+
+        res.json({
+            success: result.success,
+            imported: result.imported,
+            errors: result.errors
+        });
+    } catch (error) {
+        logger.error(`Preset import failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
 });
 
 // ========== HELPER FUNCTIONS ==========
