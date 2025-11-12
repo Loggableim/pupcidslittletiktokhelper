@@ -39,7 +39,6 @@
     "rateLimitWindow": 60,
     "maxQueueSize": 100,
     "maxTextLength": 300,
-    "cacheTTL": 86400,
     "profanityFilter": "moderate",
     "duckOtherAudio": false,
     "duckVolume": 0.3
