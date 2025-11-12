@@ -633,35 +633,6 @@
                 timestamp: new Date().toISOString()
             });
 
-            // Create new audio element
-            const audio = document.createElement('audio');
-            audio.src = data.url;
-            audio.volume = data.volume || 1.0;
-            // AudioContext Initialisierung prüfen
-            if (!audioContext) {
-                console.warn('⚠️ AudioContext not initialized. Initializing now...');
-                const initialized = initAudioEngine();
-                if (!initialized) {
-                    console.error('❌ Failed to initialize AudioContext. Cannot play sound.');
-                    return;
-                }
-            }
-
-            // AudioContext State prüfen und ggf. fortsetzen
-            if (audioContext.state === 'suspended') {
-                console.log('⏸️ AudioContext suspended, attempting to resume...');
-                audioContext.resume()
-                    .then(() => {
-                        console.log('✅ AudioContext resumed successfully');
-                        audioUnlocked = true;
-                    })
-                    .catch(err => {
-                        console.error('❌ Failed to resume AudioContext:', err);
-                    });
-            } else if (audioContext.state === 'running') {
-                audioUnlocked = true;
-            }
-
             // URL-Validierung
             if (!data.url || typeof data.url !== 'string') {
                 console.error('❌ Invalid sound URL:', data.url);
@@ -713,14 +684,6 @@
                     console.log('✅ [Soundboard] Sound finished:', data.label);
 
                     // Cleanup
-                    if (audio._sourceNode) {
-                        try {
-                            audio._sourceNode.disconnect();
-                        } catch (e) {
-                            // Already disconnected
-                        }
-                    }
-
                     audio.remove();
                     processSoundQueue();
                 };
@@ -760,35 +723,9 @@
                     });
 
                     // Cleanup
-                    if (audio._sourceNode) {
-                        try {
-                            audio._sourceNode.disconnect();
-                        } catch (e) {
-                            // Already disconnected
-                        }
-                    }
-
                     audio.remove();
                     processSoundQueue();
                 };
-
-                // Verbinde Audio-Element mit Web Audio API für Master-Volume-Kontrolle
-                if (audioContext && masterGainNode) {
-                    try {
-                        // Erstelle MediaElementSourceNode (nur einmal pro Element!)
-                        const sourceNode = audioContext.createMediaElementSource(audio);
-                        sourceNode.connect(masterGainNode);
-
-                        // Referenz speichern für Cleanup
-                        audio._sourceNode = sourceNode;
-
-                        console.log('🔗 [Soundboard] Audio connected to Web Audio API (Master Volume active)');
-                    } catch (err) {
-                        // Falls bereits connected (kann bei manchen Browsern passieren)
-                        console.warn('⚠️ Could not connect to Web Audio API:', err.message);
-                        // Trotzdem weitermachen, Audio funktioniert auch ohne Web Audio API
-                    }
-                }
 
                 // Setze src NACH allen Event-Listenern
                 audio.src = data.url;
@@ -807,14 +744,6 @@
                         });
 
                         // Cleanup bei Play-Fehler
-                        if (audio._sourceNode) {
-                            try {
-                                audio._sourceNode.disconnect();
-                            } catch (e) {
-                                // Already disconnected
-                            }
-                        }
-
                         audio.remove();
                         processSoundQueue();
                     });
