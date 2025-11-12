@@ -9,7 +9,6 @@ const crypto = require('crypto');
 // Import Core Modules
 const Database = require('./modules/database');
 const TikTokConnector = require('./modules/tiktok');
-// const TTSEngine = require('./modules/tts'); // DEPRECATED: Now using tts_core_v2 plugin
 const AlertManager = require('./modules/alerts');
 const FlowEngine = require('./modules/flows');
 const { GoalManager } = require('./modules/goals');
@@ -206,7 +205,7 @@ logger.info(`✅ Database initialized: ${dbPath}`);
 // ========== MODULE INITIALISIEREN ==========
 const tiktok = new TikTokConnector(io, db, logger);
 const alerts = new AlertManager(io, db, logger);
-const flows = new FlowEngine(db, alerts, null, logger); // TTS wird später via Plugin injiziert
+const flows = new FlowEngine(db, alerts, logger);
 const goals = new GoalManager(db, io, logger);
 
 // New Modules
@@ -546,9 +545,6 @@ app.get('/api/status', apiLimiter, (req, res) => {
         stats: tiktok.getStats()
     });
 });
-
-// ========== VOICE MAPPING ROUTES ==========
-// Handled by TTS Core V2 Plugin (plugins/tts_core_v2)
 
 // ========== PLUGIN ROUTES ==========
 // Plugin routes are set up in routes/plugin-routes.js (setupPluginRoutes)
@@ -930,9 +926,6 @@ app.post('/api/alerts/test', apiLimiter, (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
-
-// ========== TTS ROUTES ==========
-// Handled by TTS Core V2 Plugin (plugins/tts_core_v2)
 
 // ========== SOUNDBOARD ROUTES ==========
 // Moved to Soundboard Plugin (plugins/soundboard)
@@ -1523,8 +1516,6 @@ io.on('connection', (socket) => {
         alerts.testAlert(data.type, data.testData);
     });
 
-    // test:tts is now handled by TTS Core V2 Plugin
-
     // VDO.Ninja Socket.IO Events are now handled by VDO.Ninja Plugin
 
 
@@ -1602,8 +1593,6 @@ tiktok.on('share', async (data) => {
 
 // Chat Event
 tiktok.on('chat', async (data) => {
-    // TTS für Chat ist jetzt im TTS Core V2 Plugin (plugins/tts_core_v2)
-
     // Leaderboard: Track chat message
     await leaderboard.trackChat(data.username);
 
