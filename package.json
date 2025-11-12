@@ -24,9 +24,11 @@
     "node": ">=18.0.0 <24.0.0"
   },
   "dependencies": {
+    "auto-launch": "^5.0.6",
     "axios": "^1.6.5",
     "better-sqlite3": "^11.9.0",
     "cheerio": "^1.1.2",
+    "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "express-rate-limit": "^8.2.1",
     "franc-min": "^6.2.0",

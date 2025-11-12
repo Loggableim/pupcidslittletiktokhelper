@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeTabs();
     initializeButtons();
     initializeSocketListeners();
-    setOverlayURL();
     initializeAudioInfoBanner();
 
     // Dann asynchron (ohne await) laden - blockiert nicht die UI
@@ -742,27 +741,6 @@ async function saveNewFlow() {
         console.error('Error creating flow:', error);
         alert('❌ Error creating flow!');
     }
-}
-
-// ========== OVERLAY ==========
-function setOverlayURL() {
-    const origin = window.location.origin;
-
-    // Main overlay URL
-    document.getElementById('overlay-url').value = `${origin}/overlay.html`;
-}
-
-function copyURL(elementId) {
-    const input = document.getElementById(elementId);
-    input.select();
-    document.execCommand('copy');
-
-    const btn = event.target;
-    const originalText = btn.textContent;
-    btn.textContent = '✅ Copied!';
-    setTimeout(() => {
-        btn.textContent = originalText;
-    }, 2000);
 }
 
 // ========== SOUNDBOARD ==========
@@ -1732,4 +1710,250 @@ function base64ToBlob(base64, mimeType) {
     }
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
+}
+
+// ========== AUTO-START FUNCTIONALITY ==========
+
+/**
+ * Load auto-start status and platform info
+ */
+async function loadAutoStartSettings() {
+    try {
+        // Load platform info
+        const platformResponse = await fetch('/api/autostart/platform');
+        const platformData = await platformResponse.json();
+
+        if (platformData.success) {
+            document.getElementById('autostart-platform-name').textContent = platformData.name || 'Unknown';
+            document.getElementById('autostart-platform-method').textContent = platformData.method || 'Unknown';
+            document.getElementById('autostart-supported').textContent = platformData.supported ? '✅ Yes' : '❌ No';
+        }
+
+        // Load status
+        const statusResponse = await fetch('/api/autostart/status');
+        const statusData = await statusResponse.json();
+
+        if (statusData.success) {
+            const checkbox = document.getElementById('autostart-enabled');
+            checkbox.checked = statusData.enabled;
+
+            const statusText = statusData.enabled ? '✅ Enabled' : '❌ Disabled';
+            document.getElementById('autostart-status').textContent = statusText;
+            document.getElementById('autostart-status').className = statusData.enabled ? 'font-semibold text-green-400' : 'font-semibold text-gray-400';
+        }
+    } catch (error) {
+        console.error('Failed to load auto-start settings:', error);
+        document.getElementById('autostart-status').textContent = '❌ Error';
+        document.getElementById('autostart-status').className = 'font-semibold text-red-400';
+    }
+}
+
+/**
+ * Toggle auto-start
+ */
+async function toggleAutoStart(enabled) {
+    try {
+        const response = await fetch('/api/autostart/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled, hidden: false })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const statusText = enabled ? '✅ Enabled' : '❌ Disabled';
+            document.getElementById('autostart-status').textContent = statusText;
+            document.getElementById('autostart-status').className = enabled ? 'font-semibold text-green-400' : 'font-semibold text-gray-400';
+
+            // Show success message
+            showNotification(
+                enabled ? 'Auto-start enabled' : 'Auto-start disabled',
+                enabled ? 'Application will start automatically on boot' : 'Auto-start disabled',
+                'success'
+            );
+        } else {
+            // Revert checkbox
+            document.getElementById('autostart-enabled').checked = !enabled;
+            showNotification('Error', data.error || 'Failed to toggle auto-start', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to toggle auto-start:', error);
+        // Revert checkbox
+        document.getElementById('autostart-enabled').checked = !enabled;
+        showNotification('Error', 'Failed to toggle auto-start: ' + error.message, 'error');
+    }
+}
+
+// Initialize auto-start event listener
+document.addEventListener('DOMContentLoaded', () => {
+    // Load auto-start settings when settings tab is opened
+    const settingsTabBtn = document.querySelector('[data-tab="settings"]');
+    if (settingsTabBtn) {
+        settingsTabBtn.addEventListener('click', () => {
+            loadAutoStartSettings();
+        });
+    }
+
+    // Auto-start toggle
+    const autostartCheckbox = document.getElementById('autostart-enabled');
+    if (autostartCheckbox) {
+        autostartCheckbox.addEventListener('change', (e) => {
+            toggleAutoStart(e.target.checked);
+        });
+    }
+
+    // Export preset button
+    const exportBtn = document.getElementById('export-preset-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportPreset);
+    }
+
+    // Import preset button
+    const importBtn = document.getElementById('import-preset-btn');
+    if (importBtn) {
+        importBtn.addEventListener('click', importPreset);
+    }
+});
+
+// ========== PRESET IMPORT/EXPORT FUNCTIONALITY ==========
+
+/**
+ * Export configuration preset
+ */
+async function exportPreset() {
+    try {
+        const name = document.getElementById('preset-name').value || 'My Preset';
+        const description = document.getElementById('preset-description').value || '';
+
+        const options = {
+            name,
+            description,
+            includeSettings: document.getElementById('export-settings').checked,
+            includeFlows: document.getElementById('export-flows').checked,
+            includeAlerts: document.getElementById('export-alerts').checked,
+            includeGiftSounds: document.getElementById('export-gift-sounds').checked,
+            includeVoiceMappings: document.getElementById('export-voice-mappings').checked,
+            includePluginConfigs: document.getElementById('export-plugin-configs').checked,
+        };
+
+        showNotification('Exporting...', 'Creating preset file...', 'info');
+
+        const response = await fetch('/api/presets/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(options)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Download as JSON file
+            const blob = new Blob([JSON.stringify(data.preset, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${name.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showNotification('Success', 'Preset exported successfully!', 'success');
+
+            // Clear form
+            document.getElementById('preset-name').value = '';
+            document.getElementById('preset-description').value = '';
+        } else {
+            showNotification('Error', data.error || 'Failed to export preset', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to export preset:', error);
+        showNotification('Error', 'Failed to export preset: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Import configuration preset
+ */
+async function importPreset() {
+    try {
+        const fileInput = document.getElementById('preset-file-input');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showNotification('Error', 'Please select a preset file', 'error');
+            return;
+        }
+
+        showNotification('Importing...', 'Loading preset file...', 'info');
+
+        // Read file
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const preset = JSON.parse(e.target.result);
+
+                const options = {
+                    overwrite: document.getElementById('import-overwrite').checked,
+                    createBackup: document.getElementById('import-backup').checked,
+                };
+
+                const response = await fetch('/api/presets/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ preset, options })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    let message = 'Preset imported successfully!\n\n';
+                    message += 'Imported: ' + Object.keys(data.imported).join(', ');
+
+                    if (Object.keys(data.errors).length > 0) {
+                        message += '\n\nErrors: ' + Object.keys(data.errors).join(', ');
+                    }
+
+                    showNotification('Success', message, 'success');
+
+                    // Clear file input
+                    fileInput.value = '';
+
+                    // Suggest reload
+                    if (confirm('Preset imported! Would you like to reload the page to see changes?')) {
+                        location.reload();
+                    }
+                } else {
+                    showNotification('Error', data.error || 'Failed to import preset', 'error');
+                }
+            } catch (parseError) {
+                console.error('Failed to parse preset file:', parseError);
+                showNotification('Error', 'Invalid preset file format', 'error');
+            }
+        };
+
+        reader.onerror = () => {
+            showNotification('Error', 'Failed to read file', 'error');
+        };
+
+        reader.readAsText(file);
+    } catch (error) {
+        console.error('Failed to import preset:', error);
+        showNotification('Error', 'Failed to import preset: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Show notification (using browser alert for now, can be replaced with better UI)
+ */
+function showNotification(title, message, type) {
+    // Simple alert for now - can be replaced with a toast notification system
+    if (type === 'error') {
+        alert(`❌ ${title}\n\n${message}`);
+    } else if (type === 'success') {
+        alert(`✅ ${title}\n\n${message}`);
+    } else {
+        alert(`ℹ️ ${title}\n\n${message}`);
+    }
 }

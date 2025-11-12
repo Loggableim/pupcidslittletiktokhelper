@@ -165,7 +165,6 @@
             <div class="border-b border-gray-700 flex gap-2">
                 <button class="tab-btn active" data-tab="events">📋 Events</button>
                 <button class="tab-btn" data-tab="tts" data-plugin="tts">🎤 TTS v2.0</button>
-                <button class="tab-btn" data-tab="overlays">🖼️ Overlays</button>
                 <button class="tab-btn" data-tab="flows">⚡ Flows</button>
                 <button class="tab-btn" data-tab="soundboard" data-plugin="soundboard">🔊 Soundboard</button>
                 <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
@@ -223,71 +222,6 @@
                     style="width: 100%; height: 100%; border: none;"
                     title="TTS v2.0 Admin Panel">
                 </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: Overlays -->
-        <div id="tab-overlays" class="tab-content">
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl mb-4 font-semibold">Browser Source URLs (für OBS)</h2>
-                <div class="space-y-4">
-                    <div class="bg-gray-700 p-4 rounded">
-                        <div class="font-bold mb-2">🎬 Main Overlay (All-in-One)</div>
-                        <div class="text-sm text-gray-400 mb-2">Empfohlene Auflösung: 1920x1080</div>
-                        <div class="flex gap-2">
-                            <input type="text" readonly id="overlay-url" value=""
-                                   class="bg-gray-600 text-white px-4 py-2 rounded flex-1 font-mono text-sm">
-                            <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700" onclick="copyURL('overlay-url')">
-                                📋 Copy
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="mt-6 p-4 bg-gradient-to-r from-green-900 to-teal-900 bg-opacity-50 border border-green-600 rounded" data-plugin="emoji-rain">
-                    <h3 class="font-bold mb-2 text-green-200">🌧️ Emoji Rain HUD</h3>
-                    <p class="text-sm text-green-100 mb-3">
-                        Physik-basierte Emoji-Animationen mit Matter.js! Emojis fallen bei Likes, Gifts, Follows etc. mit realistischer Gravitation, Wind und Bounce-Effekten.
-                    </p>
-                    <div class="flex gap-3">
-                        <a href="/emoji-rain/ui" target="_blank"
-                           class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-all transform hover:scale-105 shadow-lg">
-                            ⚙️ Emoji Rain konfigurieren
-                        </a>
-                        <a href="/emoji-rain/overlay" target="_blank"
-                           class="inline-block bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-lg transition-all transform hover:scale-105 shadow-lg">
-                            👁️ Overlay Vorschau
-                        </a>
-                    </div>
-                </div>
-
-                <div class="mt-6 p-4 bg-green-900 bg-opacity-50 border border-green-600 rounded">
-                    <h3 class="font-bold mb-2 text-green-300">✅ Audio-Engine ist OBS-Ready!</h3>
-                    <p class="text-sm text-green-100 mb-3">
-                        Audio funktioniert jetzt automatisch in OBS Browser Sources! Kein manuelles Entsperren mehr nötig.
-                    </p>
-                    <div class="text-sm text-green-100 bg-green-800 bg-opacity-30 p-3 rounded">
-                        <strong>Wichtig:</strong> In den OBS Browser Source Einstellungen muss <strong class="text-green-300">"Control audio via OBS"</strong> aktiviert sein!
-                    </div>
-                </div>
-
-                <div class="mt-6 p-4 bg-gray-700 rounded">
-                    <h3 class="font-bold mb-2">📖 OBS Setup-Anleitung:</h3>
-                    <ol class="list-decimal list-inside space-y-1 text-sm text-gray-300">
-                        <li>Öffne OBS Studio</li>
-                        <li>Klicke auf "+" unter "Sources" (Quellen)</li>
-                        <li>Wähle "Browser Source" (Browser-Quelle)</li>
-                        <li>Kopiere die URL oben und füge sie ein</li>
-                        <li>Setze Breite: 1920, Höhe: 1080</li>
-                        <li>Entferne Häkchen bei "Shutdown source when not visible"</li>
-                        <li><strong class="text-green-400">✅ Aktiviere "Control audio via OBS"</strong> - Audio funktioniert dann automatisch!</li>
-                        <li>Klicke OK - Fertig!</li>
-                    </ol>
-                    <div class="mt-3 p-3 bg-green-900 bg-opacity-30 border border-green-600 rounded text-sm">
-                        <strong class="text-green-300">🎵 Neu:</strong> Mit "Control audio via OBS" aktiviert, funktioniert Audio automatisch - kein manuelles Entsperren mehr nötig!
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -793,6 +727,165 @@
                             🎵 Test Audio abspielen
                         </button>
                         <p class="text-xs text-gray-500 mt-2">Spielt einen Test-Ton ab, um die Audio-Konfiguration zu überprüfen.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Auto-Start Settings -->
+            <div class="bg-gray-800 rounded-lg p-6 mt-6">
+                <h2 class="text-xl mb-6 font-semibold">🚀 Auto-Start Settings</h2>
+
+                <div class="space-y-6">
+                    <!-- Platform Info -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <h3 class="font-bold mb-3">Platform Information</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Platform:</span>
+                                <span id="autostart-platform-name" class="font-semibold">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Method:</span>
+                                <span id="autostart-platform-method" class="font-semibold text-xs">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Supported:</span>
+                                <span id="autostart-supported" class="font-semibold">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Auto-Start Toggle -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold">Enable Auto-Start</h3>
+                                <p class="text-xs text-gray-400 mt-1">Start application automatically when your computer boots</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="autostart-enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <!-- Hidden/Minimized Option (Currently not supported in Node.js app) -->
+                        <div class="text-xs text-gray-500 p-3 bg-gray-800 rounded">
+                            <strong>Note:</strong> Auto-start will launch the application when your system boots.
+                            <br>The application will start normally with a terminal window.
+                            <br><br>
+                            <strong>Future Enhancement:</strong> Minimize to system tray will be available in the Electron desktop version.
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <h3 class="font-bold mb-3">Current Status</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Auto-Start:</span>
+                                <span id="autostart-status" class="font-semibold">Checking...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import/Export Presets -->
+            <div class="bg-gray-800 rounded-lg p-6 mt-6">
+                <h2 class="text-xl mb-6 font-semibold">📦 Import/Export Configuration Presets</h2>
+
+                <div class="space-y-6">
+                    <!-- Export Section -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <h3 class="font-bold mb-3">Export Configuration</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Export your complete configuration (settings, flows, alerts, sounds, etc.) as a preset file that you can share or backup.
+                        </p>
+
+                        <!-- Export Options -->
+                        <div class="space-y-2 mb-4">
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="export-settings" checked class="w-4 h-4">
+                                <span>Settings</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="export-flows" checked class="w-4 h-4">
+                                <span>Flows (Automation)</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="export-alerts" checked class="w-4 h-4">
+                                <span>Alert Configurations</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="export-gift-sounds" checked class="w-4 h-4">
+                                <span>Gift Sound Mappings</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="export-voice-mappings" checked class="w-4 h-4">
+                                <span>User Voice Mappings</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="export-plugin-configs" checked class="w-4 h-4">
+                                <span>Plugin Configurations</span>
+                            </label>
+                        </div>
+
+                        <!-- Preset Name -->
+                        <div class="mb-4">
+                            <label class="block text-sm text-gray-400 mb-2">Preset Name:</label>
+                            <input type="text" id="preset-name" placeholder="My Awesome Config"
+                                   class="bg-gray-600 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Preset Description -->
+                        <div class="mb-4">
+                            <label class="block text-sm text-gray-400 mb-2">Description (optional):</label>
+                            <textarea id="preset-description" placeholder="Describe your configuration..." rows="2"
+                                   class="bg-gray-600 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+
+                        <!-- Export Button -->
+                        <button id="export-preset-btn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 font-semibold w-full">
+                            📥 Export Configuration
+                        </button>
+                    </div>
+
+                    <!-- Import Section -->
+                    <div class="p-4 bg-gray-700 rounded">
+                        <h3 class="font-bold mb-3">Import Configuration</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Import a preset file to restore or load a saved configuration.
+                        </p>
+
+                        <!-- Import Options -->
+                        <div class="space-y-2 mb-4">
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="import-overwrite" class="w-4 h-4">
+                                <span>Overwrite existing configuration</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" id="import-backup" checked class="w-4 h-4">
+                                <span>Create backup before import</span>
+                            </label>
+                        </div>
+
+                        <!-- File Input -->
+                        <div class="mb-4">
+                            <label class="block text-sm text-gray-400 mb-2">Select Preset File:</label>
+                            <input type="file" id="preset-file-input" accept=".json"
+                                   class="bg-gray-600 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Import Button -->
+                        <button id="import-preset-btn" class="bg-green-600 px-6 py-2 rounded hover:bg-green-700 font-semibold w-full">
+                            📤 Import Configuration
+                        </button>
+
+                        <!-- Warning -->
+                        <div class="mt-4 p-3 bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded text-xs">
+                            <strong>⚠️ Warning:</strong> Importing a configuration may overwrite your current settings.
+                            A backup will be created automatically if enabled.
+                        </div>
                     </div>
                 </div>
             </div>
