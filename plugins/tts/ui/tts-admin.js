@@ -1,5 +1,17 @@
 // TTS Admin Panel JavaScript
-const socket = io();
+let socket = null;
+
+// Initialize Socket.io with error handling
+try {
+    if (typeof io !== 'undefined') {
+        socket = io();
+        console.log('✓ Socket.io connected');
+    } else {
+        console.warn('⚠ Socket.io not available - using polling only');
+    }
+} catch (error) {
+    console.error('Socket.io initialization error:', error);
+}
 
 let currentConfig = {};
 let currentUsers = [];
@@ -8,13 +20,63 @@ let voices = {};
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadConfig();
-    await loadVoices();
-    await loadUsers();
-    await loadStats();
+    console.log('🚀 TTS Admin Panel initializing...');
+
+    // Update status
+    const statusEl = document.getElementById('init-status');
+    if (statusEl) statusEl.textContent = 'Loading configuration...';
+
+    try {
+        await loadConfig();
+        console.log('✓ Config loaded');
+        if (statusEl) statusEl.textContent = 'Loading voices...';
+    } catch (error) {
+        console.error('✗ Config load failed:', error);
+        if (statusEl) statusEl.innerHTML = '<span class="text-red-500">✗ Config load failed - see console</span>';
+        showNotification('Failed to load configuration: ' + error.message, 'error');
+        return; // Stop initialization on critical error
+    }
+
+    try {
+        await loadVoices();
+        console.log('✓ Voices loaded');
+        if (statusEl) statusEl.textContent = 'Loading users...';
+    } catch (error) {
+        console.error('✗ Voices load failed:', error);
+        if (statusEl) statusEl.innerHTML = '<span class="text-red-500">✗ Voices load failed - see console</span>';
+        showNotification('Failed to load voices: ' + error.message, 'error');
+        return;
+    }
+
+    try {
+        await loadUsers();
+        console.log('✓ Users loaded');
+        if (statusEl) statusEl.textContent = 'Loading statistics...';
+    } catch (error) {
+        console.error('✗ Users load failed:', error);
+        // Non-critical, continue
+    }
+
+    try {
+        await loadStats();
+        console.log('✓ Stats loaded');
+    } catch (error) {
+        console.error('✗ Stats load failed:', error);
+        // Non-critical, continue
+    }
+
     setupEventListeners();
     startQueuePolling();
     startStatsPolling();
+
+    console.log('✓ TTS Admin Panel initialized successfully');
+
+    // Hide debug info
+    const debugInfo = document.getElementById('debug-info');
+    if (debugInfo) debugInfo.style.display = 'none';
+
+    // Update status
+    if (statusEl) statusEl.innerHTML = '<span class="text-green-500">✓ Initialized successfully</span>';
 });
 
 // Tab switching

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TTS Admin Panel - Pup Cids TikTok Helper</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="/socket.io/socket.io.js" onerror="console.error('Failed to load Socket.io')"></script>
     <style>
         .fade-in { animation: fadeIn 0.3s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
@@ -14,11 +14,17 @@
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100">
+    <!-- Debug Info (will be hidden once JS loads) -->
+    <div id="debug-info" class="fixed top-0 left-0 right-0 bg-yellow-600 text-black p-2 text-center z-50">
+        ⚠️ Loading TTS Admin Panel... If this message persists, check browser console (F12)
+    </div>
+
     <div class="container mx-auto p-6 max-w-7xl">
         <!-- Header -->
         <div class="mb-8">
             <h1 class="text-4xl font-bold mb-2">🔊 TTS Admin Panel</h1>
             <p class="text-gray-400">Text-to-Speech System v2.0</p>
+            <div id="init-status" class="text-sm text-gray-500 mt-2">Initializing...</div>
         </div>
 
         <!-- Tabs -->
