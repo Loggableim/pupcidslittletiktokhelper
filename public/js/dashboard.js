@@ -4,7 +4,7 @@ const socket = io();
 // State
 let currentTab = 'events';
 let settings = {};
-let voices = {};
+// voices wird vom tts_core_v2 Plugin verwaltet
 
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
@@ -18,8 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Dann asynchron (ohne await) laden - blockiert nicht die UI
     checkPluginsAndUpdateUI().catch(err => console.error('Plugin check failed:', err));
     loadSettings().catch(err => console.error('Settings load failed:', err));
-    loadVoices().catch(err => console.error('Voices load failed:', err));
-    loadVoiceMapping().catch(err => console.error('Voice mapping load failed:', err));
+    // loadVoices und loadVoiceMapping werden vom tts_core_v2 Plugin verwaltet
     loadFlows().catch(err => console.error('Flows load failed:', err));
     loadActiveProfile().catch(err => console.error('Profile load failed:', err));
 });
@@ -49,16 +48,14 @@ function switchTab(tabName) {
     currentTab = tabName;
 
     // Tab-spezifische Aktionen
-    if (tabName === 'tts') {
-        loadVoiceMapping();
-        loadTTSSettings();
-    } else if (tabName === 'flows') {
+    if (tabName === 'flows') {
         loadFlows();
     } else if (tabName === 'soundboard') {
         loadSoundboardSettings();
         loadGiftSounds();
         loadGiftCatalog();
     }
+    // TTS-Tab wird vom tts_core_v2 Plugin verwaltet
 }
 
 // ========== BUTTONS ==========
@@ -79,12 +76,21 @@ function initializeButtons() {
         document.getElementById('event-log').innerHTML = '';
     });
 
-    // Add Voice Button
-    document.getElementById('add-voice-btn').addEventListener('click', showVoiceModal);
+    // TTS Voice Buttons (nur wenn Elemente existieren - Plugin könnte diese zur Verfügung stellen)
+    const addVoiceBtn = document.getElementById('add-voice-btn');
+    if (addVoiceBtn) {
+        addVoiceBtn.addEventListener('click', showVoiceModal);
+    }
 
-    // Modal Buttons
-    document.getElementById('modal-save-btn').addEventListener('click', saveVoiceMapping);
-    document.getElementById('modal-cancel-btn').addEventListener('click', hideVoiceModal);
+    const modalSaveBtn = document.getElementById('modal-save-btn');
+    if (modalSaveBtn) {
+        modalSaveBtn.addEventListener('click', saveVoiceMapping);
+    }
+
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    if (modalCancelBtn) {
+        modalCancelBtn.addEventListener('click', hideVoiceModal);
+    }
 
     // Profile Buttons
     document.getElementById('profile-btn').addEventListener('click', showProfileModal);
@@ -96,22 +102,38 @@ function initializeButtons() {
         if (e.key === 'Enter') createProfile();
     });
 
-    // Save TTS Settings
-    document.getElementById('save-tts-settings-btn').addEventListener('click', saveTTSSettings);
+    // TTS Settings Buttons (nur wenn Elemente existieren - Plugin könnte diese zur Verfügung stellen)
+    const saveTTSBtn = document.getElementById('save-tts-settings-btn');
+    if (saveTTSBtn) {
+        saveTTSBtn.addEventListener('click', saveTTSSettings);
+    }
 
-    // Test TTS
-    document.getElementById('tts-test-btn').addEventListener('click', testTTS);
+    const ttsTestBtn = document.getElementById('tts-test-btn');
+    if (ttsTestBtn) {
+        ttsTestBtn.addEventListener('click', testTTS);
+    }
 
-    // TTS Provider Change
-    document.getElementById('tts-provider').addEventListener('change', onTTSProviderChange);
+    const ttsProviderSelect = document.getElementById('tts-provider');
+    if (ttsProviderSelect) {
+        ttsProviderSelect.addEventListener('change', onTTSProviderChange);
+    }
 
     // Settings Range Inputs (Live-Update der Labels)
-    document.getElementById('tts-volume').addEventListener('input', (e) => {
-        document.getElementById('tts-volume-label').textContent = e.target.value;
-    });
-    document.getElementById('tts-speed').addEventListener('input', (e) => {
-        document.getElementById('tts-speed-label').textContent = e.target.value;
-    });
+    const ttsVolume = document.getElementById('tts-volume');
+    if (ttsVolume) {
+        ttsVolume.addEventListener('input', (e) => {
+            const label = document.getElementById('tts-volume-label');
+            if (label) label.textContent = e.target.value;
+        });
+    }
+
+    const ttsSpeed = document.getElementById('tts-speed');
+    if (ttsSpeed) {
+        ttsSpeed.addEventListener('input', (e) => {
+            const label = document.getElementById('tts-speed-label');
+            if (label) label.textContent = e.target.value;
+        });
+    }
 }
 
 // ========== SOCKET.IO LISTENERS ==========
@@ -352,13 +374,8 @@ async function loadSettings() {
         const response = await fetch('/api/settings');
         settings = await response.json();
 
-        // Settings in UI laden
-        document.getElementById('default-voice').value = settings.default_voice || 'en_us_ghostface';
-        document.getElementById('tts-volume').value = settings.tts_volume || 80;
-        document.getElementById('tts-volume-label').textContent = settings.tts_volume || 80;
-        document.getElementById('tts-speed').value = settings.tts_speed || 1.0;
-        document.getElementById('tts-speed-label').textContent = settings.tts_speed || 1.0;
-        document.getElementById('tts-chat-enabled').checked = settings.tts_chat_enabled === 'true';
+        // Settings in UI laden (falls Elemente existieren)
+        // TTS-Settings werden nun vom tts_core_v2 Plugin verwaltet
 
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -367,10 +384,7 @@ async function loadSettings() {
 
 async function saveSettings() {
     const newSettings = {
-        default_voice: document.getElementById('default-voice').value,
-        tts_volume: document.getElementById('tts-volume').value,
-        tts_speed: document.getElementById('tts-speed').value,
-        tts_chat_enabled: document.getElementById('tts-chat-enabled').checked ? 'true' : 'false'
+        // TTS-Settings werden nun vom tts_core_v2 Plugin verwaltet
     };
 
     try {
