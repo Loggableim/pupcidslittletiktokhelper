@@ -1,7 +1,6 @@
 const path = require('path');
 const TikTokEngine = require('./engines/tiktok-engine');
 const GoogleEngine = require('./engines/google-engine');
-const CacheManager = require('./utils/cache-manager');
 const LanguageDetector = require('./utils/language-detector');
 const ProfanityFilter = require('./utils/profanity-filter');
 const PermissionManager = require('./utils/permission-manager');
@@ -32,8 +31,6 @@ class TTSPlugin {
         }
 
         // Initialize utilities
-        const cacheDir = path.join(this.api.getPluginDir(), 'cache');
-        this.cache = new CacheManager(cacheDir, this.api.getDatabase(), this.config.cacheTTL, this.logger);
         this.languageDetector = new LanguageDetector(this.logger);
         this.profanityFilter = new ProfanityFilter(this.logger);
         this.permissionManager = new PermissionManager(this.api.getDatabase(), this.logger);
@@ -87,7 +84,6 @@ class TTSPlugin {
             rateLimitWindow: 60,
             maxQueueSize: 100,
             maxTextLength: 300,
-            cacheTTL: 86400,
             profanityFilter: 'moderate',
             duckOtherAudio: false,
             duckVolume: 0.3,
@@ -134,14 +130,14 @@ class TTSPlugin {
             try {
                 const updates = req.body;
 
-                // Update config
+                // Update config (skip googleApiKey - it has dedicated handling below)
                 Object.keys(updates).forEach(key => {
-                    if (updates[key] !== undefined && key in this.config) {
+                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey') {
                         this.config[key] = updates[key];
                     }
                 });
 
-                // Update Google API key if provided
+                // Update Google API key if provided (and not the placeholder)
                 if (updates.googleApiKey && updates.googleApiKey !== '***HIDDEN***') {
                     this.config.googleApiKey = updates.googleApiKey;
                     if (!this.engines.google) {
@@ -302,17 +298,6 @@ class TTSPlugin {
             res.json({ success: result });
         });
 
-        // Cache management
-        this.api.registerRoute('GET', '/api/tts/cache/stats', (req, res) => {
-            const stats = this.cache.getStats();
-            res.json({ success: true, stats });
-        });
-
-        this.api.registerRoute('POST', '/api/tts/cache/clear', async (req, res) => {
-            const result = await this.cache.clear();
-            res.json({ success: result });
-        });
-
         // Permission stats
         this.api.registerRoute('GET', '/api/tts/permissions/stats', (req, res) => {
             const stats = this.permissionManager.getStats();
@@ -364,13 +349,16 @@ class TTSPlugin {
     _registerTikTokEvents() {
         this.api.registerTikTokEvent('chat', async (data) => {
             try {
+                this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${data.comment}"`);
+
                 // Only process if chat TTS is enabled
                 if (!this.config.enabledForChat) {
+                    this.logger.warn('TTS: Chat TTS is disabled in config');
                     return;
                 }
 
                 // Speak chat message
-                await this.speak({
+                const result = await this.speak({
                     text: data.comment,
                     userId: data.userId || data.uniqueId,
                     username: data.uniqueId || data.nickname,
@@ -379,12 +367,16 @@ class TTSPlugin {
                     isSubscriber: data.isSubscriber || false
                 });
 
+                if (!result.success) {
+                    this.logger.warn(`TTS: Chat message rejected: ${result.error} - ${result.reason || ''}`);
+                }
+
             } catch (error) {
                 this.logger.error(`TTS chat event error: ${error.message}`);
             }
         });
 
-        this.logger.info('TTS Plugin: TikTok events registered');
+        this.logger.info(`TTS Plugin: TikTok events registered (enabledForChat: ${this.config.enabledForChat})`);
     }
 
     /**
@@ -477,45 +469,31 @@ class TTSPlugin {
                 selectedVoice = TikTokEngine.getDefaultVoiceForLanguage('en');
             }
 
-            // Step 5: Check cache
-            const cacheKey = `${finalText}_${selectedVoice}_${selectedEngine}_${this.config.speed}`;
-            const cached = await this.cache.get(finalText, selectedVoice, selectedEngine, this.config.speed);
-
-            let audioData;
-            let fromCache = false;
-
-            if (cached) {
-                audioData = cached.audioData;
-                fromCache = true;
-            } else {
-                // Step 6: Generate TTS
-                const engine = this.engines[selectedEngine];
-                if (!engine) {
-                    throw new Error(`TTS engine not available: ${selectedEngine}`);
-                }
-
-                try {
-                    audioData = await engine.synthesize(finalText, selectedVoice, this.config.speed);
-                } catch (engineError) {
-                    // Fallback to alternative engine
-                    this.logger.error(`TTS engine ${selectedEngine} failed: ${engineError.message}, trying fallback`);
-
-                    if (selectedEngine === 'google' && this.engines.tiktok) {
-                        audioData = await this.engines.tiktok.synthesize(
-                            finalText,
-                            TikTokEngine.getDefaultVoiceForLanguage('en')
-                        );
-                        selectedEngine = 'tiktok';
-                    } else {
-                        throw engineError;
-                    }
-                }
-
-                // Step 7: Cache audio
-                await this.cache.set(finalText, selectedVoice, selectedEngine, audioData, null, this.config.speed);
+            // Step 5: Generate TTS (no caching)
+            const engine = this.engines[selectedEngine];
+            if (!engine) {
+                throw new Error(`TTS engine not available: ${selectedEngine}`);
             }
 
-            // Step 8: Enqueue for playback
+            let audioData;
+            try {
+                audioData = await engine.synthesize(finalText, selectedVoice, this.config.speed);
+            } catch (engineError) {
+                // Fallback to alternative engine
+                this.logger.error(`TTS engine ${selectedEngine} failed: ${engineError.message}, trying fallback`);
+
+                if (selectedEngine === 'google' && this.engines.tiktok) {
+                    audioData = await this.engines.tiktok.synthesize(
+                        finalText,
+                        TikTokEngine.getDefaultVoiceForLanguage('en')
+                    );
+                    selectedEngine = 'tiktok';
+                } else {
+                    throw engineError;
+                }
+            }
+
+            // Step 6: Enqueue for playback
             const queueResult = this.queueManager.enqueue({
                 userId,
                 username,
@@ -528,8 +506,7 @@ class TTSPlugin {
                 source,
                 teamLevel,
                 isSubscriber,
-                priority,
-                cached: fromCache
+                priority
             });
 
             if (!queueResult.success) {
@@ -547,8 +524,7 @@ class TTSPlugin {
                 voice: selectedVoice,
                 engine: selectedEngine,
                 position: queueResult.position,
-                queueSize: queueResult.queueSize,
-                cached: fromCache
+                queueSize: queueResult.queueSize
             });
 
             return {
@@ -625,7 +601,6 @@ class TTSPlugin {
     async destroy() {
         try {
             this.queueManager.stopProcessing();
-            this.cache.destroy();
             this.logger.info('TTS Plugin destroyed');
         } catch (error) {
             this.logger.error(`TTS Plugin destroy error: ${error.message}`);

@@ -235,7 +235,6 @@ function populateConfig(config) {
     setValue('rateLimitWindow', config.rateLimitWindow || 60);
     setValue('maxQueueSize', config.maxQueueSize || 100);
     setValue('maxTextLength', config.maxTextLength || 300);
-    setValue('cacheTTL', config.cacheTTL || 86400);
     setValue('profanityFilter', config.profanityFilter || 'moderate');
     setValue('duckOtherAudio', config.duckOtherAudio || false);
     setValue('duckVolume', (config.duckVolume || 0.3) * 100);
@@ -243,9 +242,20 @@ function populateConfig(config) {
     setValue('enabledForChat', config.enabledForChat !== false);
     setValue('autoLanguageDetection', config.autoLanguageDetection !== false);
 
-    // Handle API key (don't overwrite if hidden)
-    if (config.googleApiKey && config.googleApiKey !== '***HIDDEN***') {
-        setValue('googleApiKey', config.googleApiKey);
+    // Handle API key - show placeholder if hidden
+    const apiKeyInput = document.getElementById('googleApiKey');
+    if (apiKeyInput) {
+        if (config.googleApiKey) {
+            if (config.googleApiKey === '***HIDDEN***') {
+                apiKeyInput.placeholder = 'API key configured (hidden for security)';
+                apiKeyInput.value = '';
+            } else {
+                apiKeyInput.value = config.googleApiKey;
+            }
+        } else {
+            apiKeyInput.placeholder = 'Enter API key...';
+            apiKeyInput.value = '';
+        }
     }
 }
 
@@ -262,7 +272,6 @@ async function saveConfig() {
             rateLimitWindow: parseInt(document.getElementById('rateLimitWindow').value, 10),
             maxQueueSize: parseInt(document.getElementById('maxQueueSize').value, 10),
             maxTextLength: parseInt(document.getElementById('maxTextLength').value, 10),
-            cacheTTL: parseInt(document.getElementById('cacheTTL').value, 10),
             profanityFilter: document.getElementById('profanityFilter').value,
             duckOtherAudio: document.getElementById('duckOtherAudio').checked,
             duckVolume: parseInt(document.getElementById('duckVolume').value, 10) / 100,
@@ -736,10 +745,9 @@ function startStatsPolling() {
 
 async function loadStats() {
     try {
-        const [queueRes, permRes, cacheRes] = await Promise.all([
+        const [queueRes, permRes] = await Promise.all([
             fetchJSON('/api/tts/queue'),
-            fetchJSON('/api/tts/permissions/stats'),
-            fetchJSON('/api/tts/cache/stats')
+            fetchJSON('/api/tts/permissions/stats')
         ]);
 
         if (queueRes.success && queueRes.stats) {
@@ -748,10 +756,6 @@ async function loadStats() {
 
         if (permRes.success && permRes.stats) {
             renderPermissionStats(permRes.stats);
-        }
-
-        if (cacheRes.success && cacheRes.stats) {
-            renderCacheStats(cacheRes.stats);
         }
 
     } catch (error) {
@@ -783,39 +787,6 @@ function renderPermissionStats(stats) {
         <div class="flex justify-between"><span>Blacklisted:</span><span class="font-bold text-red-400">${stats.blacklisted_users || 0}</span></div>
         <div class="flex justify-between"><span>Voice Assigned:</span><span class="font-bold text-purple-400">${stats.voice_assigned_users || 0}</span></div>
     `;
-}
-
-function renderCacheStats(stats) {
-    const el = document.getElementById('cacheStats');
-    if (!el) return;
-
-    el.innerHTML = `
-        <div class="flex justify-between"><span>Total Entries:</span><span class="font-bold">${stats.totalEntries || 0}</span></div>
-        <div class="flex justify-between"><span>Total Uses:</span><span class="font-bold">${stats.totalUses || 0}</span></div>
-        <div class="flex justify-between"><span>Avg Uses/Entry:</span><span class="font-bold">${stats.avgUses || 0}</span></div>
-        <div class="flex justify-between"><span>Cache Size:</span><span class="font-bold">${stats.totalSizeMB || 0} MB</span></div>
-        <div class="flex justify-between"><span>Files on Disk:</span><span class="font-bold">${stats.fileCount || 0}</span></div>
-        <div class="flex justify-between"><span>TTL:</span><span class="font-bold">${(stats.ttl / 3600).toFixed(1)} hours</span></div>
-    `;
-}
-
-async function clearCache() {
-    if (!confirm('Clear all cached TTS audio?')) return;
-
-    try {
-        const data = await postJSON('/api/tts/cache/clear', {});
-
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to clear cache');
-        }
-
-        showNotification('Cache cleared successfully', 'success');
-        await loadStats();
-
-    } catch (error) {
-        console.error('Failed to clear cache:', error);
-        showNotification(`Failed to clear cache: ${error.message}`, 'error');
-    }
 }
 
 // ============================================================================
@@ -882,11 +853,6 @@ function setupEventListeners() {
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', saveConfig);
-    }
-
-    const clearCacheBtn = document.getElementById('clearCacheBtn');
-    if (clearCacheBtn) {
-        clearCacheBtn.addEventListener('click', clearCache);
     }
 
     const clearQueueBtn = document.getElementById('clearQueueBtn');
