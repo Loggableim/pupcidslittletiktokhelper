@@ -83,10 +83,18 @@ class SoundboardManager extends EventEmitter {
      * Play sound for gift event
      */
     async playGiftSound(giftData) {
+        console.log(`🎁 [Soundboard] Gift event received:`, {
+            giftId: giftData.giftId,
+            giftName: giftData.giftName,
+            username: giftData.username,
+            repeatCount: giftData.repeatCount || 1
+        });
+
         const giftSound = this.getGiftSound(giftData.giftId);
 
         if (giftSound) {
             // Use specific gift sound
+            console.log(`🎵 [Soundboard] Playing gift-specific sound: ${giftSound.label}`);
             await this.playSound(giftSound.mp3Url, giftSound.volume, giftSound.label);
 
             // Play animation if configured
@@ -99,7 +107,10 @@ class SoundboardManager extends EventEmitter {
             const defaultVolume = parseFloat(this.db.getSetting('soundboard_gift_volume')) || 1.0;
 
             if (defaultUrl) {
+                console.log(`🎵 [Soundboard] Playing default gift sound (no specific sound found for giftId ${giftData.giftId})`);
                 await this.playSound(defaultUrl, defaultVolume, 'Default Gift');
+            } else {
+                console.log(`ℹ️ [Soundboard] No sound configured for gift: ${giftData.giftName} (ID: ${giftData.giftId})`);
             }
         }
     }
@@ -125,11 +136,14 @@ class SoundboardManager extends EventEmitter {
      * Play sound for follow event
      */
     async playFollowSound() {
+        console.log(`⭐ [Soundboard] Follow event received`);
         const url = this.db.getSetting('soundboard_follow_sound');
         const volume = parseFloat(this.db.getSetting('soundboard_follow_volume')) || 1.0;
 
         if (url) {
             await this.playSound(url, volume, 'Follow');
+        } else {
+            console.log(`ℹ️ [Soundboard] No sound configured for follow event`);
         }
     }
 
@@ -137,11 +151,14 @@ class SoundboardManager extends EventEmitter {
      * Play sound for subscribe event
      */
     async playSubscribeSound() {
+        console.log(`🌟 [Soundboard] Subscribe event received`);
         const url = this.db.getSetting('soundboard_subscribe_sound');
         const volume = parseFloat(this.db.getSetting('soundboard_subscribe_volume')) || 1.0;
 
         if (url) {
             await this.playSound(url, volume, 'Subscribe');
+        } else {
+            console.log(`ℹ️ [Soundboard] No sound configured for subscribe event`);
         }
     }
 
@@ -149,11 +166,14 @@ class SoundboardManager extends EventEmitter {
      * Play sound for share event
      */
     async playShareSound() {
+        console.log(`🔄 [Soundboard] Share event received`);
         const url = this.db.getSetting('soundboard_share_sound');
         const volume = parseFloat(this.db.getSetting('soundboard_share_volume')) || 1.0;
 
         if (url) {
             await this.playSound(url, volume, 'Share');
+        } else {
+            console.log(`ℹ️ [Soundboard] No sound configured for share event`);
         }
     }
 
@@ -168,6 +188,8 @@ class SoundboardManager extends EventEmitter {
         if (threshold === 0) {
             return; // Like threshold disabled
         }
+
+        console.log(`👍 [Soundboard] Like event received: ${likeCount} likes`);
 
         // Add current like event to history
         this.likeHistory.push({ count: likeCount, timestamp: now });
@@ -187,13 +209,18 @@ class SoundboardManager extends EventEmitter {
         // Calculate total likes in window
         const totalLikes = this.likeHistory.reduce((sum, like) => sum + like.count, 0);
 
+        console.log(`👍 [Soundboard] Like threshold check: ${totalLikes}/${threshold} likes in last ${windowSeconds}s`);
+
         // Check if threshold is met
         if (totalLikes >= threshold) {
             const url = this.db.getSetting('soundboard_like_sound');
             const volume = parseFloat(this.db.getSetting('soundboard_like_volume')) || 1.0;
 
             if (url) {
+                console.log(`🎵 [Soundboard] Like threshold reached! Playing sound (${totalLikes} likes)`);
                 await this.playSound(url, volume, `Like Threshold (${totalLikes} likes)`);
+            } else {
+                console.log(`ℹ️ [Soundboard] Like threshold reached but no sound configured`);
             }
 
             // Clear history after triggering
@@ -206,6 +233,17 @@ class SoundboardManager extends EventEmitter {
      * Queue management happens in the frontend based on play_mode
      */
     async playSound(url, volume = 1.0, label = 'Sound') {
+        // Validierung
+        if (!url || typeof url !== 'string') {
+            console.error('❌ [Soundboard] Invalid sound URL:', url);
+            return;
+        }
+
+        if (typeof volume !== 'number' || volume < 0 || volume > 1) {
+            console.warn('⚠️ [Soundboard] Invalid volume, using 1.0:', volume);
+            volume = 1.0;
+        }
+
         const soundData = {
             url: url,
             volume: volume,
@@ -213,10 +251,16 @@ class SoundboardManager extends EventEmitter {
             timestamp: Date.now()
         };
 
+        console.log(`🎵 [Soundboard] Emitting sound to frontend:`, {
+            label: label,
+            url: url,
+            volume: volume,
+            timestamp: new Date().toISOString()
+        });
+
         // Always send to frontend immediately
         // Frontend handles queue management based on play_mode (overlap/sequential)
         this.emitSound(soundData);
-        console.log(`🎵 Playing: ${label}`);
     }
 
     /**
@@ -596,41 +640,51 @@ class SoundboardPlugin {
         // Gift Event
         this.api.registerTikTokEvent('gift', async (data) => {
             const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-            if (soundboardEnabled) {
-                await this.soundboard.playGiftSound(data);
+            if (!soundboardEnabled) {
+                console.log('ℹ️ [Soundboard] Gift event received but soundboard is disabled');
+                return;
             }
+            await this.soundboard.playGiftSound(data);
         });
 
         // Follow Event
         this.api.registerTikTokEvent('follow', async (data) => {
             const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-            if (soundboardEnabled) {
-                await this.soundboard.playFollowSound();
+            if (!soundboardEnabled) {
+                console.log('ℹ️ [Soundboard] Follow event received but soundboard is disabled');
+                return;
             }
+            await this.soundboard.playFollowSound();
         });
 
         // Subscribe Event
         this.api.registerTikTokEvent('subscribe', async (data) => {
             const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-            if (soundboardEnabled) {
-                await this.soundboard.playSubscribeSound();
+            if (!soundboardEnabled) {
+                console.log('ℹ️ [Soundboard] Subscribe event received but soundboard is disabled');
+                return;
             }
+            await this.soundboard.playSubscribeSound();
         });
 
         // Share Event
         this.api.registerTikTokEvent('share', async (data) => {
             const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-            if (soundboardEnabled) {
-                await this.soundboard.playShareSound();
+            if (!soundboardEnabled) {
+                console.log('ℹ️ [Soundboard] Share event received but soundboard is disabled');
+                return;
             }
+            await this.soundboard.playShareSound();
         });
 
         // Like Event
         this.api.registerTikTokEvent('like', async (data) => {
             const soundboardEnabled = db.getSetting('soundboard_enabled') === 'true';
-            if (soundboardEnabled) {
-                await this.soundboard.handleLikeEvent(data.likeCount || 1);
+            if (!soundboardEnabled) {
+                // Likes sind sehr häufig - nur beim ersten Mal loggen
+                return;
             }
+            await this.soundboard.handleLikeEvent(data.likeCount || 1);
         });
 
         this.api.log('✅ Soundboard TikTok event handlers registered', 'info');
