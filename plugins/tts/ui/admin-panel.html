@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS Admin Panel - Pup Cids TikTok Helper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div class="container mx-auto p-6 max-w-7xl">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold mb-2">🔊 TTS Admin Panel</h1>
+            <p class="text-gray-400">Text-to-Speech System v2.0</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="mb-6 border-b border-gray-700">
+            <nav class="flex space-x-4">
+                <button onclick="switchTab('config')" id="tab-config" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-400">Configuration</button>
+                <button onclick="switchTab('users')" id="tab-users" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">User Management</button>
+                <button onclick="switchTab('queue')" id="tab-queue" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Queue & Playback</button>
+                <button onclick="switchTab('stats')" id="tab-stats" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Statistics</button>
+            </nav>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div id="content-config" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Engine Settings -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4">🎙️ Engine Settings</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Default Engine</label>
+                            <select id="defaultEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="tiktok">TikTok TTS (Free)</option>
+                                <option value="google">Google Cloud TTS (Requires API Key)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Default Voice</label>
+                            <select id="defaultVoice" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Google Cloud API Key (Optional)</label>
+                            <input type="password" id="googleApiKey" placeholder="Enter API key..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-400 mt-1">Leave empty to use TikTok TTS only</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio Settings -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4">🎚️ Audio Settings</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Volume: <span id="volumeValue">80</span>%</label>
+                            <input type="range" id="volume" min="0" max="100" value="80" class="w-full">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Speed: <span id="speedValue">1.0</span>x</label>
+                            <input type="range" id="speed" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full">
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="duckOtherAudio" class="w-4 h-4">
+                            <label for="duckOtherAudio" class="text-sm">Duck other audio during TTS</label>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Duck Volume: <span id="duckVolumeValue">30</span>%</label>
+                            <input type="range" id="duckVolume" min="0" max="100" value="30" class="w-full">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Permission Settings -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4">🔒 Permission Settings</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Minimum Team Level</label>
+                            <input type="number" id="teamMinLevel" min="0" max="10" value="0" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                            <p class="text-xs text-gray-400 mt-1">0 = Everyone, 1+ = Team members/Mods only</p>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="enabledForChat" checked class="w-4 h-4">
+                            <label for="enabledForChat" class="text-sm">Enable TTS for chat messages</label>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="autoLanguageDetection" checked class="w-4 h-4">
+                            <label for="autoLanguageDetection" class="text-sm">Auto-detect language</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rate Limiting & Queue -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4">⏱️ Rate Limiting & Queue</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Messages per User</label>
+                            <input type="number" id="rateLimit" min="1" max="20" value="3" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Time Window (seconds)</label>
+                            <input type="number" id="rateLimitWindow" min="10" max="300" value="60" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Max Queue Size</label>
+                            <input type="number" id="maxQueueSize" min="10" max="500" value="100" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Max Text Length</label>
+                            <input type="number" id="maxTextLength" min="50" max="1000" value="300" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profanity Filter -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4">🚫 Profanity Filter</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Filter Mode</label>
+                            <select id="profanityFilter" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                                <option value="off">Off - No filtering</option>
+                                <option value="moderate">Moderate - Replace profanity</option>
+                                <option value="strict">Strict - Drop messages with profanity</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cache Settings -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4">💾 Cache Settings</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Cache TTL (seconds)</label>
+                            <input type="number" id="cacheTTL" min="3600" max="604800" value="86400" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                            <p class="text-xs text-gray-400 mt-1">Default: 86400 (24 hours)</p>
+                        </div>
+
+                        <button onclick="clearCache()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
+                            Clear Cache
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button onclick="saveConfig()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition">
+                    💾 Save Configuration
+                </button>
+            </div>
+        </div>
+
+        <!-- User Management Tab -->
+        <div id="content-users" class="tab-content hidden">
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">👥 User Management</h2>
+                    <div class="space-x-2">
+                        <button onclick="filterUsers('all')" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">All</button>
+                        <button onclick="filterUsers('whitelisted')" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Whitelisted</button>
+                        <button onclick="filterUsers('blacklisted')" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Blacklisted</button>
+                        <button onclick="filterUsers('voice_assigned')" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Voice Assigned</button>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <input type="text" id="userSearch" placeholder="Search users..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                </div>
+
+                <div id="userList" class="space-y-2">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue Tab -->
+        <div id="content-queue" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold">📋 Current Queue</h2>
+                        <button onclick="clearQueue()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Clear Queue</button>
+                    </div>
+
+                    <div id="queueList" class="space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4">🎵 Now Playing</h2>
+
+                    <div id="nowPlaying" class="text-center text-gray-400">
+                        No audio playing
+                    </div>
+
+                    <div class="mt-6">
+                        <button onclick="skipCurrent()" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">
+                            ⏭️ Skip Current
+                        </button>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="text-xl font-bold mb-2">🎤 Test TTS</h3>
+                        <input type="text" id="testText" placeholder="Enter test text..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 mb-2">
+                        <button onclick="testTTS()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            🔊 Speak
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div id="content-stats" class="tab-content hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Queue Stats -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4">📊 Queue Statistics</h3>
+                    <div id="queueStats" class="space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Permission Stats -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4">🔒 Permission Statistics</h3>
+                    <div id="permissionStats" class="space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Cache Stats -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h3 class="text-lg font-bold mb-4">💾 Cache Statistics</h3>
+                    <div id="cacheStats" class="space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="tts-admin.js"></script>
+</body>
+</html>
