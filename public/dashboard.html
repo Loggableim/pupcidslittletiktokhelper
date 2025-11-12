@@ -962,6 +962,76 @@
         </div>
     </div>
 
+    <!-- Modal: Create Flow -->
+    <div id="flow-modal" class="modal">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold">⚡ Create Automation Flow</h3>
+                <button id="flow-modal-close" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Flow Name -->
+                <div>
+                    <label class="block text-gray-400 mb-2">Flow Name</label>
+                    <input type="text" id="flow-name" placeholder="e.g., Thank you for big gifts"
+                           class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Trigger Type -->
+                <div>
+                    <label class="block text-gray-400 mb-2">Trigger Event</label>
+                    <select id="flow-trigger-type" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="gift">🎁 Gift Received</option>
+                        <option value="follow">⭐ New Follow</option>
+                        <option value="subscribe">🌟 New Subscribe</option>
+                        <option value="share">🔄 Stream Shared</option>
+                        <option value="like">❤️ Likes</option>
+                        <option value="chat">💬 Chat Message</option>
+                    </select>
+                </div>
+
+                <!-- Action Type -->
+                <div>
+                    <label class="block text-gray-400 mb-2">Action Type</label>
+                    <select id="flow-action-type" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="alert">🔔 Show Alert</option>
+                        <option value="webhook">🌐 Webhook (HTTP Request)</option>
+                    </select>
+                </div>
+
+                <!-- Alert Action Settings -->
+                <div id="alert-settings">
+                    <label class="block text-gray-400 mb-2">Alert Text (supports variables)</label>
+                    <textarea id="flow-action-text" placeholder="e.g., Thank you {username} for {gift_name}!"
+                              class="bg-gray-700 text-white px-4 py-2 rounded w-full h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <div class="text-xs text-gray-500 mt-1">
+                        Available variables: {username}, {gift_name}, {coins}, {message}
+                    </div>
+                </div>
+
+                <!-- Webhook Action Settings (hidden by default) -->
+                <div id="webhook-settings" style="display: none;">
+                    <label class="block text-gray-400 mb-2">Webhook URL</label>
+                    <input type="text" id="flow-webhook-url" placeholder="https://webhook.site/..."
+                           class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="text-xs text-gray-500 mt-1">
+                        Allowed domains: webhook.site, discord.com, zapier.com, ifttt.com, make.com
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button id="flow-modal-save-btn" class="bg-green-600 px-6 py-2 rounded hover:bg-green-700 flex-1 font-semibold">
+                    ✅ Create Flow
+                </button>
+                <button id="flow-modal-cancel-btn" class="bg-gray-600 px-6 py-2 rounded hover:bg-gray-700 flex-1 font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Audio Elements für Dashboard-Playback -->
     <audio id="dashboard-tts-audio"></audio>
     <div id="dashboard-soundboard-pool"></div>

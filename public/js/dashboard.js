@@ -92,6 +92,44 @@ function initializeButtons() {
         modalCancelBtn.addEventListener('click', hideVoiceModal);
     }
 
+    // Flow Buttons
+    const addFlowBtn = document.getElementById('add-flow-btn');
+    if (addFlowBtn) {
+        addFlowBtn.addEventListener('click', showCreateFlowModal);
+    }
+
+    const flowModalSaveBtn = document.getElementById('flow-modal-save-btn');
+    if (flowModalSaveBtn) {
+        flowModalSaveBtn.addEventListener('click', saveNewFlow);
+    }
+
+    const flowModalCancelBtn = document.getElementById('flow-modal-cancel-btn');
+    if (flowModalCancelBtn) {
+        flowModalCancelBtn.addEventListener('click', hideCreateFlowModal);
+    }
+
+    const flowModalClose = document.getElementById('flow-modal-close');
+    if (flowModalClose) {
+        flowModalClose.addEventListener('click', hideCreateFlowModal);
+    }
+
+    // Flow Action Type Change (show/hide settings)
+    const flowActionType = document.getElementById('flow-action-type');
+    if (flowActionType) {
+        flowActionType.addEventListener('change', (e) => {
+            const alertSettings = document.getElementById('alert-settings');
+            const webhookSettings = document.getElementById('webhook-settings');
+
+            if (e.target.value === 'alert') {
+                alertSettings.style.display = 'block';
+                webhookSettings.style.display = 'none';
+            } else if (e.target.value === 'webhook') {
+                alertSettings.style.display = 'none';
+                webhookSettings.style.display = 'block';
+            }
+        });
+    }
+
     // Profile Buttons
     document.getElementById('profile-btn').addEventListener('click', showProfileModal);
     document.getElementById('profile-modal-close').addEventListener('click', hideProfileModal);
@@ -619,6 +657,90 @@ async function deleteFlow(id) {
         }
     } catch (error) {
         console.error('Error deleting flow:', error);
+    }
+}
+
+// ========== FLOW EDITOR MODAL ==========
+function showCreateFlowModal() {
+    // Reset form
+    document.getElementById('flow-name').value = '';
+    document.getElementById('flow-trigger-type').value = 'gift';
+    document.getElementById('flow-action-type').value = 'alert';
+    document.getElementById('flow-action-text').value = '';
+
+    // Show modal
+    document.getElementById('flow-modal').classList.add('active');
+}
+
+function hideCreateFlowModal() {
+    document.getElementById('flow-modal').classList.remove('active');
+}
+
+async function saveNewFlow() {
+    const name = document.getElementById('flow-name').value.trim();
+    const triggerType = document.getElementById('flow-trigger-type').value;
+    const actionType = document.getElementById('flow-action-type').value;
+    const actionText = document.getElementById('flow-action-text').value.trim();
+
+    if (!name) {
+        alert('Please enter a flow name!');
+        return;
+    }
+
+    if (actionType === 'alert' && !actionText) {
+        alert('Please enter alert text!');
+        return;
+    }
+
+    // Build flow object
+    const flow = {
+        name: name,
+        trigger_type: triggerType,
+        trigger_condition: null, // Basic flow without conditions
+        actions: [],
+        enabled: true
+    };
+
+    // Add action based on type
+    if (actionType === 'alert') {
+        flow.actions.push({
+            type: 'alert',
+            text: actionText,
+            duration: 5,
+            sound_file: null,
+            volume: 80
+        });
+    } else if (actionType === 'webhook') {
+        const webhookUrl = document.getElementById('flow-webhook-url').value.trim();
+        if (!webhookUrl) {
+            alert('Please enter a webhook URL!');
+            return;
+        }
+        flow.actions.push({
+            type: 'webhook',
+            method: 'POST',
+            url: webhookUrl
+        });
+    }
+
+    try {
+        const response = await fetch('/api/flows', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(flow)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(`✅ Flow "${name}" created successfully!`);
+            hideCreateFlowModal();
+            loadFlows();
+        } else {
+            alert('❌ Error creating flow: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error creating flow:', error);
+        alert('❌ Error creating flow!');
     }
 }
 
