@@ -323,10 +323,32 @@ class TikTokConnector extends EventEmitter {
         this.connection.on('chat', (data) => {
             const userData = this.extractUserData(data);
 
-            // Extrahiere Team-Level (falls vorhanden)
-            const teamMemberLevel = data.teamMemberLevel ||
-                                   (data.user && data.user.teamMemberLevel) ||
-                                   0;
+            // DEBUG: Log raw event structure to understand teamMemberLevel
+            console.log('🔍 [DEBUG] Chat event structure:', {
+                hasUserIdentity: !!data.userIdentity,
+                hasFansClub: !!(data.user && data.user.fansClub),
+                fansClubLevel: data.user?.fansClub?.data?.level,
+                isModeratorOfAnchor: data.userIdentity?.isModeratorOfAnchor,
+                isSubscriberOfAnchor: data.userIdentity?.isSubscriberOfAnchor,
+                availableKeys: Object.keys(data).slice(0, 20)
+            });
+
+            // Extrahiere Team-Level aus verschiedenen Quellen
+            // Priority: 1. Fans Club Level, 2. Moderator = 10, 3. Subscriber = 1, 4. Default = 0
+            let teamMemberLevel = 0;
+
+            // Check if user is moderator (highest priority)
+            if (data.userIdentity?.isModeratorOfAnchor) {
+                teamMemberLevel = 10;  // Moderators get highest level
+            }
+            // Check fans club level
+            else if (data.user?.fansClub?.data?.level) {
+                teamMemberLevel = data.user.fansClub.data.level;
+            }
+            // Check if subscriber
+            else if (data.userIdentity?.isSubscriberOfAnchor) {
+                teamMemberLevel = 1;  // Subscribers get level 1
+            }
 
             const eventData = {
                 username: userData.username,
@@ -335,6 +357,8 @@ class TikTokConnector extends EventEmitter {
                 userId: userData.userId,
                 profilePictureUrl: userData.profilePictureUrl,
                 teamMemberLevel: teamMemberLevel,
+                isModerator: data.userIdentity?.isModeratorOfAnchor || false,
+                isSubscriber: data.userIdentity?.isSubscriberOfAnchor || false,
                 timestamp: new Date().toISOString()
             };
 
