@@ -455,17 +455,12 @@ class TTSPlugin {
                     uniqueId: data.uniqueId,
                     nickname: data.nickname,
                     message: chatText,
-                this._logDebug('TIKTOK_EVENT', 'Chat event received', {
-                    uniqueId: data.uniqueId,
-                    nickname: data.nickname,
-                    comment: data.comment,
                     teamMemberLevel: data.teamMemberLevel,
                     isSubscriber: data.isSubscriber,
                     userId: data.userId
                 });
 
                 this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${chatText}"`);
-                this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${data.comment}"`);
 
                 // Only process if chat TTS is enabled
                 if (!this.config.enabledForChat) {
