@@ -349,19 +349,34 @@ class TTSPlugin {
     _registerTikTokEvents() {
         this.api.registerTikTokEvent('chat', async (data) => {
             try {
-                this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${data.comment}"`);
+                const username = data.uniqueId || data.nickname;
+                const text = data.comment;
+
+                this.logger.info(`TTS: Received chat event from ${username}: "${text}"`);
+
+                // Emit debug log event
+                this.api.emit('tts:chat_received', {
+                    username,
+                    text,
+                    timestamp: new Date().toISOString()
+                });
 
                 // Only process if chat TTS is enabled
                 if (!this.config.enabledForChat) {
                     this.logger.warn('TTS: Chat TTS is disabled in config');
+                    this.api.emit('tts:chat_rejected', {
+                        username,
+                        text,
+                        reason: 'Chat TTS is disabled in config'
+                    });
                     return;
                 }
 
                 // Speak chat message
                 const result = await this.speak({
-                    text: data.comment,
+                    text,
                     userId: data.userId || data.uniqueId,
-                    username: data.uniqueId || data.nickname,
+                    username,
                     source: 'chat',
                     teamLevel: data.teamMemberLevel || 0,
                     isSubscriber: data.isSubscriber || false
@@ -369,10 +384,25 @@ class TTSPlugin {
 
                 if (!result.success) {
                     this.logger.warn(`TTS: Chat message rejected: ${result.error} - ${result.reason || ''}`);
+                    this.api.emit('tts:chat_rejected', {
+                        username,
+                        text,
+                        reason: result.reason || result.error
+                    });
+                } else {
+                    this.api.emit('tts:chat_processed', {
+                        username,
+                        text,
+                        voice: result.voice,
+                        engine: result.engine
+                    });
                 }
 
             } catch (error) {
                 this.logger.error(`TTS chat event error: ${error.message}`);
+                this.api.emit('tts:error', {
+                    message: `Chat event error: ${error.message}`
+                });
             }
         });
 
@@ -534,8 +564,7 @@ class TTSPlugin {
                 queueSize: queueResult.queueSize,
                 estimatedWaitMs: queueResult.estimatedWaitMs,
                 voice: selectedVoice,
-                engine: selectedEngine,
-                cached: fromCache
+                engine: selectedEngine
             };
 
         } catch (error) {

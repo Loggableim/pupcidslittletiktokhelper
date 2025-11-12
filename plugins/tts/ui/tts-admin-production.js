@@ -11,6 +11,7 @@ let currentFilter = 'all';
 let voices = {};
 let queuePollInterval = null;
 let statsPollInterval = null;
+let debugLogEntries = [];
 
 // ============================================================================
 // SOCKET.IO INITIALIZATION
@@ -28,6 +29,27 @@ function initializeSocket() {
 
             socket.on('tts:config_update', () => {
                 loadConfig().catch(err => console.error('Config update failed:', err));
+            });
+
+            // TTS debug log events
+            socket.on('tts:log', (data) => {
+                addDebugLog(data.level || 'info', data.message || data);
+            });
+
+            socket.on('tts:chat_received', (data) => {
+                addDebugLog('info', `📨 Chat received: ${data.username} - "${data.text}"`);
+            });
+
+            socket.on('tts:chat_processed', (data) => {
+                addDebugLog('success', `✓ Chat TTS queued: ${data.username} - Voice: ${data.voice}, Engine: ${data.engine}`);
+            });
+
+            socket.on('tts:chat_rejected', (data) => {
+                addDebugLog('warn', `⚠ Chat rejected: ${data.username} - Reason: ${data.reason}`);
+            });
+
+            socket.on('tts:error', (data) => {
+                addDebugLog('error', `❌ Error: ${data.message}`);
             });
         } else {
             console.warn('⚠ Socket.io not available - using polling only');
@@ -869,6 +891,11 @@ function setupEventListeners() {
     if (testTTSBtn) {
         testTTSBtn.addEventListener('click', testTTS);
     }
+
+    const clearLogBtn = document.getElementById('clearLogBtn');
+    if (clearLogBtn) {
+        clearLogBtn.addEventListener('click', clearDebugLog);
+    }
 }
 
 // ============================================================================
@@ -912,4 +939,62 @@ function showNotification(message, type = 'info') {
         notification.style.transition = 'all 0.3s ease';
         setTimeout(() => notification.remove(), 300);
     }, 3000);
+}
+
+/**
+ * Add entry to debug log
+ */
+function addDebugLog(level, message) {
+    const timestamp = new Date().toLocaleTimeString('de-DE', { hour12: false });
+    const colors = {
+        info: 'text-blue-400',
+        success: 'text-green-400',
+        warn: 'text-yellow-400',
+        error: 'text-red-400'
+    };
+
+    const entry = {
+        timestamp,
+        level,
+        message,
+        color: colors[level] || 'text-gray-400'
+    };
+
+    debugLogEntries.push(entry);
+
+    // Keep only last 100 entries
+    if (debugLogEntries.length > 100) {
+        debugLogEntries = debugLogEntries.slice(-100);
+    }
+
+    renderDebugLog();
+}
+
+/**
+ * Render debug log
+ */
+function renderDebugLog() {
+    const logEl = document.getElementById('debugLog');
+    if (!logEl) return;
+
+    if (debugLogEntries.length === 0) {
+        logEl.innerHTML = '<div class="text-gray-500">Waiting for TTS events...</div>';
+        return;
+    }
+
+    logEl.innerHTML = debugLogEntries.map(entry =>
+        `<div class="${entry.color}"><span class="text-gray-500">[${entry.timestamp}]</span> ${escapeHtml(entry.message)}</div>`
+    ).join('');
+
+    // Auto-scroll to bottom
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+/**
+ * Clear debug log
+ */
+function clearDebugLog() {
+    debugLogEntries = [];
+    renderDebugLog();
+    showNotification('Debug log cleared', 'success');
 }

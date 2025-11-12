@@ -2,7 +2,7 @@
   "id": "tts",
   "name": "Text-to-Speech System",
   "version": "2.0.0",
-  "description": "Enterprise-grade TTS plugin with multi-engine support, permission system, language detection, caching, and queue management",
+  "description": "Enterprise-grade TTS plugin with multi-engine support, permission system, language detection, and queue management",
   "author": "Pup Cid",
   "entry": "main.js",
   "enabled": true,
@@ -21,7 +21,6 @@
     "Team-level Permission System",
     "Manual Voice Assignment Whitelist",
     "Language Detection & Routing",
-    "Audio Caching with TTL",
     "Priority Queue System",
     "Rate Limiting & Flood Control",
     "Profanity Filter",
@@ -41,6 +40,8 @@
     "maxTextLength": 300,
     "profanityFilter": "moderate",
     "duckOtherAudio": false,
-    "duckVolume": 0.3
+    "duckVolume": 0.3,
+    "enabledForChat": true,
+    "autoLanguageDetection": true
   }
 }

@@ -173,6 +173,19 @@
 
             </div>
 
+            <!-- Debug Log -->
+            <div class="mt-6 bg-gray-800 rounded-lg p-6 shadow-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">📋 Debug Log</h2>
+                    <button id="clearLogBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition text-sm">
+                        Clear Log
+                    </button>
+                </div>
+                <div id="debugLog" class="bg-gray-900 rounded p-4 font-mono text-xs h-64 overflow-y-auto space-y-1">
+                    <div class="text-gray-500">Waiting for TTS events...</div>
+                </div>
+            </div>
+
             <div class="mt-6">
                 <button id="saveConfigBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition">
                     💾 Save Configuration
