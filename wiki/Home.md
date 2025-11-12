@@ -136,7 +136,6 @@ Actions:
 Professionelle OBS Studio-Integration:
 
 - 🖥️ **Browser Source Overlay** - Transparentes Full-HD-Overlay
-- 🎛️ **Custom Browser Docks** - Dashboard in OBS integrieren
 - 🔌 **OBS WebSocket v5** - Szenen, Sources, Filter steuern
 - 📹 **Multi-Cam Switcher** - Automatischer Kamerawechsel via Gifts/Chat
 - 🎥 **Scene & Source Control** - Szenen wechseln, Sources ein/ausblenden
