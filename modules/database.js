@@ -1025,12 +1025,6 @@ class DatabaseManager {
             VALUES (1, 0, ?)
         `);
         statsStmt.run(defaultConfig.threshold);
-        // Initialize stats
-        const statsInitStmt = this.db.prepare(`
-            INSERT OR IGNORE INTO milestone_stats (id, cumulative_coins, current_milestone)
-            VALUES (1, 0, 0)
-        `);
-        statsInitStmt.run();
     }
 
     /**
