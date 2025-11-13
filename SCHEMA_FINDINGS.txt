@@ -1,0 +1,401 @@
+================================================================================
+DATABASE SCHEMA VALIDATION REPORT - GOALS PLUGIN
+================================================================================
+File: /home/user/pupcidslittletiktokhelper/plugins/goals/main.js
+Analysis Date: 2025-11-13
+
+================================================================================
+QUICK FINDINGS SUMMARY
+================================================================================
+
+✅ SECURITY: NO SQL INJECTION VULNERABILITIES FOUND
+   - All 8 database operations use prepared statements with parameter binding
+   - Dynamic query construction uses whitelisting approach
+   - No string concatenation with user input
+
+⚠️  HIGH PRIORITY ISSUES: 3
+   1. Missing error handling for JSON.parse() (line 248)
+   2. Missing foreign key constraint on goals_history.goal_type
+   3. Missing performance indexes on goals_history table
+
+⚠️  MEDIUM PRIORITY ISSUES: 3
+   1. No validation of progression_mode values (fixed/add/double/hide)
+   2. No validation of event_type values (value_changed/target_changed)
+   3. No validation of websocket_url format
+
+✅ GOOD PRACTICES FOUND: 8
+   1. UNIQUE constraint on goal_type prevents duplicates
+   2. NOT NULL constraints on critical fields
+   3. DEFAULT values for all fields
+   4. Timestamp tracking (created_at, updated_at)
+   5. Proper type conversion (Boolean, JSON parse)
+   6. Map-based caching for O(1) goal lookups
+   7. INSERT OR IGNORE pattern for idempotent seeding
+   8. Singleton pattern for tikfinity_config (CHECK id = 1)
+
+================================================================================
+TABLE STRUCTURE DETAILS
+================================================================================
+
+TABLE 1: goals_config (PRIMARY GOAL CONFIGURATION)
+────────────────────────────────────────────────────────────────────────────
+Columns: 11
+Rows: 4 (coin, likes, follower, custom)
+
+Column                Type           Constraints          Default
+──────────────────────────────────────────────────────────────────────────
+id                   INTEGER        PRIMARY KEY AUTOINCR (auto)
+goal_type            TEXT           NOT NULL, UNIQUE     
+name                 TEXT           NOT NULL             
+enabled              INTEGER        DEFAULT 1            1
+start_value          INTEGER        DEFAULT 0            0
+current_value        INTEGER        DEFAULT 0            0
+target_value         INTEGER        DEFAULT 1000         1000
+progression_mode     TEXT           DEFAULT 'fixed'      'fixed'
+increment_amount     INTEGER        DEFAULT 100          100
+style_json           TEXT           (nullable)           
+created_at           DATETIME       DEFAULT TIMESTAMP    CURRENT_TIMESTAMP
+updated_at           DATETIME       DEFAULT TIMESTAMP    CURRENT_TIMESTAMP
+
+Status: ✅ Well structured, missing foreign keys and indexes
+
+
+TABLE 2: goals_history (AUDIT TRAIL)
+────────────────────────────────────────────────────────────────────────────
+Columns: 8
+Rows: Unbounded (grows with each goal update)
+
+Column               Type           Constraints          Default
+──────────────────────────────────────────────────────────────────────────
+id                   INTEGER        PRIMARY KEY AUTOINCR (auto)
+goal_type            TEXT           NOT NULL             
+event_type           TEXT           NOT NULL             
+old_value            INTEGER        (nullable)           
+new_value            INTEGER        (nullable)           
+delta                INTEGER        (nullable)           
+metadata             TEXT           (nullable)           
+timestamp            DATETIME       DEFAULT TIMESTAMP    CURRENT_TIMESTAMP
+
+Status: ⚠️  Missing foreign key, indexes, and event_type validation
+
+
+TABLE 3: goals_tikfinity_config (WEBSOCKET CONFIG)
+────────────────────────────────────────────────────────────────────────────
+Columns: 6
+Rows: 1 (enforced by CHECK constraint)
+
+Column               Type           Constraints          Default
+──────────────────────────────────────────────────────────────────────────
+id                   INTEGER        PRIMARY KEY CHECK(=1) (auto)
+enabled              INTEGER        DEFAULT 1            1
+websocket_url        TEXT           DEFAULT URL          'ws://localhost:21213'
+auto_reconnect       INTEGER        DEFAULT 1            1
+created_at           DATETIME       DEFAULT TIMESTAMP    CURRENT_TIMESTAMP
+updated_at           DATETIME       DEFAULT TIMESTAMP    CURRENT_TIMESTAMP
+
+Status: ✅ Singleton pattern correct, URL validation missing
+
+================================================================================
+DEFAULT GOALS SEEDING ANALYSIS (Lines 137-224)
+================================================================================
+
+Goal 1: COIN
+├─ Type:              'coin'
+├─ Name:              'Coins Goal'
+├─ Start Value:       0
+├─ Target Value:      1000
+├─ Progression Mode:  'add' (→ increases target when reached)
+├─ Increment Amount:  1000
+└─ Style:             { fill: gold, bg: dark-brown, label: 'Coins: {current} / {target}' }
+
+Goal 2: LIKES
+├─ Type:              'likes'
+├─ Name:              'Likes Goal'
+├─ Start Value:       0
+├─ Target Value:      500
+├─ Progression Mode:  'add' (→ increases target when reached)
+├─ Increment Amount:  500
+└─ Style:             { fill: green, bg: dark-green, label: 'Likes: {current} / {target}' }
+
+Goal 3: FOLLOWER
+├─ Type:              'follower'
+├─ Name:              'Followers Goal'
+├─ Start Value:       0
+├─ Target Value:      10
+├─ Progression Mode:  'add' (→ increases target when reached)
+├─ Increment Amount:  10
+└─ Style:             { fill: blue, bg: dark-blue, label: 'Followers: {current} / {target}' }
+
+Goal 4: CUSTOM
+├─ Type:              'custom'
+├─ Name:              'Custom Goal'
+├─ Start Value:       0
+├─ Target Value:      100
+├─ Progression Mode:  'fixed' (→ stays completed, doesn't progress)
+├─ Increment Amount:  0  ⚠️ (should be documented why)
+└─ Style:             { fill: purple, bg: dark-purple, label: 'Custom: {current} / {target}' }
+
+Status: ✅ All seeded correctly using INSERT OR IGNORE
+
+================================================================================
+loadGoals() FUNCTION ANALYSIS (Lines 229-265)
+================================================================================
+
+CODE SNIPPET:
+────────────
+248:    style: row.style_json ? JSON.parse(row.style_json) : {},
+        ⚠️  NO ERROR HANDLING - malformed JSON will throw exception!
+
+ISSUES FOUND:
+────────────
+1. Line 248: JSON.parse() called without try-catch
+   - If database contains invalid JSON in style_json, app will crash
+   - Current error handling (line 262) is try-catch for entire function
+   - Silent failure: logs error but continues, leaving goal incomplete
+
+2. No validation that 4 goals loaded successfully
+   - If database is corrupted, this.goals could be missing entries
+   - No check: this.goals.size !== 4
+
+3. Silent failure on database error
+   - Error caught and logged but does not retry or throw
+   - Application continues with empty goals Map
+
+IMPROVEMENTS NEEDED:
+──────────────────
+```javascript
+// Better error handling for JSON
+try {
+    goal.style = row.style_json ? JSON.parse(row.style_json) : {};
+} catch (error) {
+    this.api.log(`Malformed JSON in style_json for ${row.goal_type}`, 'error');
+    goal.style = {};  // fallback to empty object
+}
+
+// Validate all goals loaded
+if (this.goals.size !== 4) {
+    this.api.log(`Warning: Expected 4 goals but loaded ${this.goals.size}`, 'warn');
+}
+```
+
+================================================================================
+SQL INJECTION VULNERABILITY SCAN
+================================================================================
+
+SCAN RESULTS: ✅ NO VULNERABILITIES FOUND
+
+All database operations reviewed:
+
+Query Type           Line Range    SQL Pattern                         Status
+──────────────────────────────────────────────────────────────────────────
+CREATE TABLE         74-115        Hardcoded DDL                      ✅ SAFE
+INSERT defaults      205-209       INSERT ... VALUES (?, ?, ?)        ✅ SAFE
+SELECT all goals     232           SELECT * (no params)               ✅ SAFE
+SELECT config        281           SELECT * WHERE id=1 (no params)    ✅ SAFE
+UPDATE goal value    430-435       UPDATE SET v=? WHERE t=?           ✅ SAFE
+INSERT history       438-442       INSERT ... VALUES (?, ?, ...)      ✅ SAFE
+UPDATE goal target   503-508       UPDATE SET t=? WHERE gt=?          ✅ SAFE
+UPDATE goal toggle   540-545       UPDATE SET e=? WHERE gt=?          ✅ SAFE
+SELECT history       929-935       SELECT * WHERE gt=? LIMIT?         ✅ SAFE
+
+DYNAMIC QUERY CONSTRUCTION - Line 738-766:
+──────────────────────────────────────────
+const allowedFields = ['name', 'start_value', 'target_value', ...];
+for (const field of allowedFields) {
+    if (updates[field] !== undefined) {
+        updateFields.push(`${field} = ?`);  ← Field names from whitelist only
+        updateValues.push(updates[field]);   ← Values parameterized
+    }
+}
+Status: ✅ SAFE - Whitelisting approach prevents field injection
+
+DYNAMIC QUERY CONSTRUCTION - Line 874-902:
+──────────────────────────────────────────
+if (enabled !== undefined) {
+    updates.push('enabled = ?');            ← Hardcoded field name
+    values.push(enabled ? 1 : 0);           ← Boolean to int conversion
+}
+Status: ✅ SAFE - Field names hardcoded in conditions
+
+================================================================================
+MISSING INDEXES PERFORMANCE IMPACT
+================================================================================
+
+Query: SELECT * FROM goals_history WHERE goal_type = ? ORDER BY timestamp DESC
+Line: 929-935
+────────────────────────────────────────────────────────────────────────────
+Current: FULL TABLE SCAN
+Rows to scan: Potentially thousands
+Impact: O(n) performance, slow with large history
+
+Recommended Index:
+    CREATE INDEX idx_goals_history_goal_type ON goals_history(goal_type);
+
+Query: ORDER BY timestamp DESC (within above query)
+────────────────────────────────────────────────────────────────────────────
+Current: In-memory sort (slow for large datasets)
+Improvement with index: Database-level sort
+
+Recommended Index:
+    CREATE INDEX idx_goals_history_timestamp ON goals_history(timestamp DESC);
+
+Combined Index Recommendation:
+    CREATE INDEX idx_goals_history_search 
+    ON goals_history(goal_type, timestamp DESC);
+
+================================================================================
+DATA INTEGRITY ISSUES
+================================================================================
+
+ISSUE 1: Missing Foreign Key Constraint
+────────────────────────────────────────
+Current State:
+  goals_history.goal_type → VARCHAR, NOT NULL
+  goals_config.goal_type → VARCHAR, NOT NULL, UNIQUE
+
+Problem: If goal_type is deleted from goals_config, history remains orphaned
+Example: DELETE FROM goals_config WHERE goal_type = 'coin'
+         → Goals_history records for 'coin' become orphaned
+
+Solution:
+    ALTER TABLE goals_history 
+    ADD CONSTRAINT fk_goal_type 
+    FOREIGN KEY (goal_type) REFERENCES goals_config(goal_type)
+    ON DELETE CASCADE;
+
+Impact: HIGH - Data consistency
+
+
+ISSUE 2: Missing Validation of progression_mode
+────────────────────────────────────────────────
+Allowed Values: 'fixed', 'add', 'double', 'hide'
+Current: TEXT DEFAULT 'fixed' (any value accepted)
+
+Problem: Application expects specific values (lines 474-484)
+Risk: Invalid values cause undefined behavior
+
+Database Solution:
+    ALTER TABLE goals_config 
+    ADD CHECK (progression_mode IN ('fixed', 'add', 'double', 'hide'));
+
+Application Solution: Validate in API route (line 725-791) before update
+
+
+ISSUE 3: Missing Validation of event_type
+──────────────────────────────────────────
+Allowed Values: 'value_changed', 'target_changed'
+Current: TEXT NOT NULL (any value accepted)
+
+Problem: History table will accept any event_type
+Risk: Invalid event types break history analysis
+
+Database Solution:
+    ALTER TABLE goals_history 
+    ADD CHECK (event_type IN ('value_changed', 'target_changed'));
+
+Application Solution: Use enum-like constants in application code
+
+
+ISSUE 4: No URL Format Validation for websocket_url
+───────────────────────────────────────────────────
+Current: TEXT DEFAULT 'ws://localhost:21213'
+
+Problem: Invalid URLs can be inserted, causing connection failures
+Example: INSERT INTO goals_tikfinity_config VALUES (1, 1, 'not a url', 1)
+
+Application Solution: Validate URL format before update (line 874-920)
+    const urlPattern = /^wss?:\/\/[\w\d\.\:\-]+(\:\d+)?$/;
+    if (websocket_url && !urlPattern.test(websocket_url)) {
+        throw new Error('Invalid WebSocket URL format');
+    }
+
+================================================================================
+SUMMARY TABLE: Issues by Severity
+================================================================================
+
+CRITICAL:     0 issues
+              (No SQL injection or data loss risks)
+
+HIGH:         3 issues
+              1. Missing error handling for JSON.parse() → Could crash app
+              2. Missing foreign key constraint → Data integrity risk
+              3. Missing performance indexes → Slow queries with large data
+
+MEDIUM:       3 issues
+              1. No validation of progression_mode values
+              2. No validation of event_type values
+              3. No validation of websocket_url format
+
+LOW:          3 issues
+              1. Boolean fields should use CHECK constraint
+              2. increment_amount=0 for custom should be documented
+              3. Default start_value=0 may not suit all goals
+
+================================================================================
+RECOMMENDATIONS (PRIORITY ORDER)
+================================================================================
+
+IMMEDIATE (Do First):
+─────────────────────
+1. Add error handling for JSON.parse in loadGoals():
+   
+   File: plugins/goals/main.js, Line 248
+   
+   BEFORE:
+   style: row.style_json ? JSON.parse(row.style_json) : {},
+   
+   AFTER:
+   style: row.style_json ? (() => {
+       try {
+           return JSON.parse(row.style_json);
+       } catch (e) {
+           this.api.log(`Invalid JSON for goal ${row.goal_type}`, 'warn');
+           return {};
+       }
+   })() : {},
+
+2. Add indexes to goals_history for query performance:
+
+   db.exec(`CREATE INDEX IF NOT EXISTS idx_goals_history_goal_type 
+            ON goals_history(goal_type);`);
+   
+   db.exec(`CREATE INDEX IF NOT EXISTS idx_goals_history_timestamp 
+            ON goals_history(timestamp DESC);`);
+
+NEXT SPRINT:
+────────────
+3. Add validation for progression_mode at application level
+   - Validate in /api/goals/:goalType/config route before DB update
+
+4. Add validation for event_type when inserting history
+   - Create constants: const VALID_EVENTS = ['value_changed', 'target_changed'];
+   - Check before INSERT in goals_history
+
+5. Add validation for websocket_url format
+   - Validate URL format before update in /api/goals/tikfinity/config
+
+FUTURE ENHANCEMENTS:
+────────────────────
+6. Add foreign key constraint:
+   ALTER TABLE goals_history ADD CONSTRAINT fk_goal_type 
+   FOREIGN KEY (goal_type) REFERENCES goals_config(goal_type) 
+   ON DELETE CASCADE;
+
+7. Add CHECK constraints at database level for enums:
+   - progression_mode IN ('fixed', 'add', 'double', 'hide')
+   - event_type IN ('value_changed', 'target_changed')
+
+================================================================================
+VALIDATION COMPLETE
+================================================================================
+
+Report Generated: 2025-11-13
+File Analyzed:   /home/user/pupcidslittletiktokhelper/plugins/goals/main.js
+Method Analyzed: initDatabase(), initializeDefaultGoals(), loadGoals()
+Total Lines:     1023
+Relevant Lines:  74-265, 430-935
+
+Security Status: ✅ SECURE - No SQL injection vulnerabilities found
+Data Integrity:  ⚠️  CAUTION - Missing constraints and indexes
+Overall Rating:  7/10 (Good structure, needs integrity improvements)
+

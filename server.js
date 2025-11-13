@@ -73,12 +73,15 @@ app.use((req, res, next) => {
     // No overlay routes anymore (OBS integration will be added later)
     const isOverlayRoute = false;
 
-    // Dashboard needs relaxed CSP for inline event handlers (onclick, etc.)
+    // Dashboard and plugin UIs need relaxed CSP for inline scripts
     const isDashboard = req.path === '/' || req.path.includes('/dashboard.html');
+    const isPluginUI = req.path.includes('/goals/ui') || req.path.includes('/goals/overlay') ||
+                       req.path.includes('/emoji-rain/ui') || req.path.includes('/gift-milestone/ui') ||
+                       req.path.includes('/plugins/');
 
-    if (isDashboard) {
+    if (isDashboard || isPluginUI) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Dashboard CSP: Allow inline event handlers (onclick) for functionality
+        // Dashboard & Plugin UI CSP: Allow inline scripts for functionality
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
             `script-src 'self' 'unsafe-inline'; ` +
@@ -943,7 +946,16 @@ app.post('/api/gift-catalog/update', apiLimiter, async (req, res) => {
 });
 
 // ========== GOALS ROUTES ==========
+// DISABLED: Old goals routes - now using Goals Plugin instead
+// The Goals Plugin (plugins/goals/) provides a complete replacement with:
+// - Coin, Likes, Follower, and Custom goal types
+// - Event API integration
+// - Real-time overlays
+// - Advanced progression modes
+//
+// All /api/goals/* routes are now handled by the plugin
 
+/* COMMENTED OUT - OLD GOALS SYSTEM
 // Get all goals
 app.get('/api/goals', apiLimiter, (req, res) => {
     try {
@@ -1086,6 +1098,7 @@ app.post('/api/goals/reset', apiLimiter, async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+END OF OLD GOALS ROUTES */
 
 // ========== OBS WEBSOCKET ROUTES ==========
 

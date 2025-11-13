@@ -291,6 +291,11 @@
                     goals[goal.goalType] = goal;
                 });
                 renderGoals();
+
+                // Subscribe to individual goal updates AFTER receiving goals
+                Object.keys(goals).forEach(goalType => {
+                    socket.emit('goals:subscribe', { goalType });
+                });
             }
         });
 
@@ -460,11 +465,6 @@
                 }, i * 20);
             }
         }
-
-        // Subscribe to goal updates
-        Object.keys(goals).forEach(goalType => {
-            socket.emit('goals:subscribe', { goalType });
-        });
 
         // Debug: Log connection status
         socket.on('connect', () => {

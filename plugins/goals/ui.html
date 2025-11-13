@@ -392,10 +392,10 @@
         <!-- Connection Status -->
         <div class="connection-status">
             <div class="status-row">
-                <div class="status-indicator" id="tikfinityStatus"></div>
+                <div class="status-indicator" id="eventApiStatus"></div>
                 <div>
-                    <strong>TikFinity Event API:</strong>
-                    <span id="tikfinityText">Connecting...</span>
+                    <strong>Event API Connection:</strong>
+                    <span id="eventApiText">Connecting...</span>
                 </div>
             </div>
             <div class="status-row">
@@ -411,7 +411,7 @@
         <div class="overlay-link">
             <h3>📺 OBS Browser Source URL</h3>
             <div class="overlay-url" id="overlayUrl">Loading...</div>
-            <button class="btn btn-primary" onclick="copyOverlayUrl()">
+            <button class="btn btn-primary" >
                 📋 Copy URL
             </button>
         </div>
@@ -459,15 +459,32 @@
         async function loadGoals() {
             try {
                 const response = await fetch('/api/goals');
-                const data = await response.json();
 
-                if (data.success) {
+                // Check if response is OK
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Received non-JSON response:', text.substring(0, 200));
+                    throw new Error('Server returned non-JSON response');
+                }
+
+                const data = await response.json();
+                console.log('Goals API response:', data);
+
+                if (data.success && Array.isArray(data.goals)) {
                     goals = data.goals;
                     renderGoals();
+                } else {
+                    console.error('Invalid data structure:', data);
+                    showNotification('Invalid goals data received', 'error');
                 }
             } catch (error) {
                 console.error('Error loading goals:', error);
-                showNotification('Error loading goals', 'error');
+                showNotification(`Error loading goals: ${error.message}`, 'error');
             }
         }
 
@@ -475,6 +492,17 @@
         function renderGoals() {
             const grid = document.getElementById('goalsGrid');
             grid.innerHTML = '';
+
+            if (!Array.isArray(goals)) {
+                console.error('goals is not an array:', goals);
+                grid.innerHTML = '<div style="color: red; padding: 20px;">Error: Goals data is invalid</div>';
+                return;
+            }
+
+            if (goals.length === 0) {
+                grid.innerHTML = '<div style="color: #94a3b8; padding: 20px; text-align: center;">No goals configured yet. Plugin is initializing...</div>';
+                return;
+            }
 
             goals.forEach(goal => {
                 const card = createGoalCard(goal);
@@ -512,7 +540,7 @@
                     </div>
                     <label class="toggle-switch">
                         <input type="checkbox" ${goal.enabled ? 'checked' : ''}
-                               onchange="toggleGoal('${goal.goalType}', this.checked)">
+                               >
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -534,19 +562,19 @@
                     <div class="form-group">
                         <label>Current Value</label>
                         <input type="number" value="${goal.currentValue}"
-                               onchange="setGoalValue('${goal.goalType}', this.value)">
+                               >
                     </div>
                     <div class="form-group">
                         <label>Target Value</label>
                         <input type="number" value="${goal.targetValue}"
-                               onchange="updateGoalConfig('${goal.goalType}', { target_value: parseInt(this.value) })">
+                               >
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label>Progression Mode</label>
-                        <select onchange="updateGoalConfig('${goal.goalType}', { progression_mode: this.value })">
+                        <select >
                             <option value="fixed" ${goal.progressionMode === 'fixed' ? 'selected' : ''}>Fixed (Stay at target)</option>
                             <option value="add" ${goal.progressionMode === 'add' ? 'selected' : ''}>Add (Increase target)</option>
                             <option value="double" ${goal.progressionMode === 'double' ? 'selected' : ''}>Double (Double target)</option>
@@ -556,13 +584,13 @@
                     <div class="form-group">
                         <label>Increment Amount</label>
                         <input type="number" value="${goal.incrementAmount}"
-                               onchange="updateGoalConfig('${goal.goalType}', { increment_amount: parseInt(this.value) })"
+                               
                                ${goal.progressionMode !== 'add' ? 'disabled' : ''}>
                     </div>
                 </div>
 
                 <div class="collapsible">
-                    <div class="collapsible-header" onclick="toggleCollapsible('${goal.goalType}')">
+                    <div class="collapsible-header" id="collapse-header-${goal.goalType}">
                         <span>🎨 Style Settings</span>
                         <span id="collapse-icon-${goal.goalType}">▼</span>
                     </div>
@@ -571,25 +599,25 @@
                             <label>Label Template</label>
                             <input type="text" value="${goal.style.label_template || ''}"
                                    placeholder="{current} / {target}"
-                                   onchange="updateGoalStyle('${goal.goalType}', { label_template: this.value })">
+                                   >
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Fill Color 1</label>
                                 <div class="color-input-group">
                                     <input type="color" value="${goal.style.fill_color1 || colors[goal.goalType]}"
-                                           onchange="updateGoalStyle('${goal.goalType}', { fill_color1: this.value })">
+                                           >
                                     <input type="text" value="${goal.style.fill_color1 || colors[goal.goalType]}"
-                                           onchange="updateGoalStyle('${goal.goalType}', { fill_color1: this.value })">
+                                           >
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label>Fill Color 2</label>
                                 <div class="color-input-group">
                                     <input type="color" value="${goal.style.fill_color2 || colors[goal.goalType]}"
-                                           onchange="updateGoalStyle('${goal.goalType}', { fill_color2: this.value })">
+                                           >
                                     <input type="text" value="${goal.style.fill_color2 || colors[goal.goalType]}"
-                                           onchange="updateGoalStyle('${goal.goalType}', { fill_color2: this.value })">
+                                           >
                                 </div>
                             </div>
                         </div>
@@ -597,10 +625,10 @@
                 </div>
 
                 <div class="button-group">
-                    <button class="btn btn-warning" onclick="resetGoal('${goal.goalType}')">
+                    <button class="btn btn-warning" >
                         🔄 Reset
                     </button>
-                    <button class="btn btn-success" onclick="incrementGoal('${goal.goalType}', 10)">
+                    <button class="btn btn-success" >
                         ➕ Add 10
                     </button>
                 </div>
@@ -741,14 +769,14 @@
             await updateGoalConfig(goalType, { style: updatedStyle });
         }
 
-        // Check TikFinity status
-        async function checkTikFinityStatus() {
+        // Check Event API connection status
+        async function checkEventApiStatus() {
             try {
-                const response = await fetch('/api/goals/tikfinity/status');
+                const response = await fetch('/api/goals/event-api/status');
                 const data = await response.json();
 
-                const indicator = document.getElementById('tikfinityStatus');
-                const text = document.getElementById('tikfinityText');
+                const indicator = document.getElementById('eventApiStatus');
+                const text = document.getElementById('eventApiText');
 
                 if (data.connected) {
                     indicator.className = 'status-indicator connected';
@@ -758,7 +786,7 @@
                     text.textContent = `Disconnected (Reconnect attempts: ${data.reconnectAttempts})`;
                 }
             } catch (error) {
-                console.error('Error checking TikFinity status:', error);
+                console.error('Error checking Event API status:', error);
             }
         }
 
@@ -775,10 +803,115 @@
             showNotification(`🎉 Goal completed: ${data.name}!`, 'success');
         });
 
+        // Event delegation for dynamic content
+        document.addEventListener('click', (e) => {
+            const target = e.target;
+
+            // Copy overlay URL button
+            if (target.closest('.btn-primary') && target.closest('.overlay-link')) {
+                copyOverlayUrl();
+                return;
+            }
+
+            // Collapsible headers
+            const collapsibleHeader = target.closest('.collapsible-header');
+            if (collapsibleHeader) {
+                const goalType = collapsibleHeader.id.replace('collapse-header-', '');
+                toggleCollapsible(goalType);
+                return;
+            }
+
+            // Reset button
+            if (target.classList.contains('btn-warning') || target.closest('.btn-warning')) {
+                const btn = target.classList.contains('btn-warning') ? target : target.closest('.btn-warning');
+                const card = btn.closest('.goal-card');
+                if (card) {
+                    const goalType = card.id.replace('goal-', '');
+                    resetGoal(goalType);
+                }
+                return;
+            }
+
+            // Increment button
+            if (target.classList.contains('btn-success') || target.closest('.btn-success')) {
+                const btn = target.classList.contains('btn-success') ? target : target.closest('.btn-success');
+                const card = btn.closest('.goal-card');
+                if (card) {
+                    const goalType = card.id.replace('goal-', '');
+                    incrementGoal(goalType, 10);
+                }
+                return;
+            }
+        });
+
+        // Event delegation for input changes
+        document.addEventListener('change', (e) => {
+            const target = e.target;
+            const card = target.closest('.goal-card');
+            if (!card) return;
+
+            const goalType = card.id.replace('goal-', '');
+
+            // Toggle switch
+            if (target.type === 'checkbox' && target.closest('.toggle-switch')) {
+                toggleGoal(goalType, target.checked);
+                return;
+            }
+
+            // Current value input
+            if (target.type === 'number' && target.closest('.form-group') &&
+                target.previousElementSibling && target.previousElementSibling.textContent === 'Current Value') {
+                setGoalValue(goalType, target.value);
+                return;
+            }
+
+            // Target value input
+            if (target.type === 'number' && target.closest('.form-group') &&
+                target.previousElementSibling && target.previousElementSibling.textContent === 'Target Value') {
+                updateGoalConfig(goalType, { target_value: parseInt(target.value) });
+                return;
+            }
+
+            // Progression mode select
+            if (target.tagName === 'SELECT' && target.closest('.form-group') &&
+                target.previousElementSibling && target.previousElementSibling.textContent === 'Progression Mode') {
+                updateGoalConfig(goalType, { progression_mode: target.value });
+                return;
+            }
+
+            // Increment amount input
+            if (target.type === 'number' && target.closest('.form-group') &&
+                target.previousElementSibling && target.previousElementSibling.textContent === 'Increment Amount') {
+                updateGoalConfig(goalType, { increment_amount: parseInt(target.value) });
+                return;
+            }
+
+            // Label template
+            if (target.type === 'text' && target.closest('.form-group') &&
+                target.previousElementSibling && target.previousElementSibling.textContent === 'Label Template') {
+                updateGoalStyle(goalType, { label_template: target.value });
+                return;
+            }
+
+            // Fill color 1
+            if ((target.type === 'color' || target.type === 'text') && target.closest('.form-group') &&
+                target.closest('.form-group').querySelector('label').textContent === 'Fill Color 1') {
+                updateGoalStyle(goalType, { fill_color1: target.value });
+                return;
+            }
+
+            // Fill color 2
+            if ((target.type === 'color' || target.type === 'text') && target.closest('.form-group') &&
+                target.closest('.form-group').querySelector('label').textContent === 'Fill Color 2') {
+                updateGoalStyle(goalType, { fill_color2: target.value });
+                return;
+            }
+        });
+
         // Initialize
         loadGoals();
-        checkTikFinityStatus();
-        setInterval(checkTikFinityStatus, 5000);
+        checkEventApiStatus();
+        setInterval(checkEventApiStatus, 5000);
     </script>
 </body>
 </html>

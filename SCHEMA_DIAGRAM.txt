@@ -1,0 +1,143 @@
+================================================================================
+DATABASE SCHEMA RELATIONSHIP DIAGRAM
+================================================================================
+
+Current Schema (No Foreign Keys):
+─────────────────────────────────────────────────────────────────────────────
+
+    goals_config                        goals_history
+    ─────────────                       ──────────────
+    PK: id                              PK: id
+    ✓  goal_type (UNIQUE)               goal_type ← (orphan risk)
+       enabled                          event_type
+       name                             old_value
+       start_value                      new_value
+       current_value                    delta
+       target_value                     metadata
+       progression_mode                 timestamp
+       increment_amount
+       style_json
+       created_at
+       updated_at
+
+    ─────────────────────────────────────────────────────────────────────────
+    ✓ Stores current goal state              ✓ Audit trail of changes
+    ✓ 4 rows (coin/likes/follower/custom)    ✓ Unbounded growth
+    ✓ UNIQUE goal_type prevents duplicates   ⚠ No FK constraint
+
+
+Recommended Schema (With Foreign Keys & Indexes):
+─────────────────────────────────────────────────────────────────────────────
+
+    goals_config
+    ───────────────────────────────────────────────
+    PK: id
+    ✓ goal_type (TEXT, NOT NULL, UNIQUE)
+       enabled (INTEGER)
+       name (TEXT)
+       start_value (INTEGER)
+       current_value (INTEGER)
+       target_value (INTEGER)
+       progression_mode (TEXT) ← Consider: ADD CHECK
+       increment_amount (INTEGER)
+       style_json (TEXT)
+       created_at (DATETIME)
+       updated_at (DATETIME)
+       
+    INDEX: idx_goals_config_goal_type  (redundant, but good)
+           │
+           │ FK relationship
+           │
+    goals_history
+    ───────────────────────────────────────────────────────────────────────
+    PK: id
+    FK: goal_type → goals_config.goal_type (ON DELETE CASCADE)
+       event_type ← Consider: ADD CHECK ('value_changed', 'target_changed')
+       old_value
+       new_value
+       delta
+       metadata
+       timestamp
+       
+    INDEX: idx_goals_history_goal_type
+    INDEX: idx_goals_history_timestamp (DESC)
+    INDEX: idx_goals_history_search (goal_type, timestamp DESC)
+
+
+    goals_tikfinity_config
+    ───────────────────────────────────────────────────────────────────────
+    PK: id (with CHECK id = 1, ensures singleton)
+       enabled
+       websocket_url ← Consider: Validate format
+       auto_reconnect
+       created_at
+       updated_at
+       
+    Status: ✓ Well designed, needs URL validation
+
+
+Query Flow Diagram:
+─────────────────────────────────────────────────────────────────────────────
+
+1. INITIALIZATION (initDatabase)
+   ├─ CREATE goals_config table
+   ├─ CREATE goals_history table
+   ├─ CREATE goals_tikfinity_config table
+   └─ INSERT default goals (INSERT OR IGNORE pattern)
+
+2. LOAD PHASE (loadGoals)
+   ├─ SELECT * FROM goals_config
+   ├─ Parse each row to Goal object
+   ├─ Parse style_json ← ⚠️ (needs error handling)
+   ├─ Store in Map for O(1) lookups
+   └─ Emit 'Loaded X goals' event
+
+3. RUNTIME UPDATES
+   ├─ API: POST /api/goals/:goalType/set
+   │  ├─ UPDATE goals_config SET current_value = ? WHERE goal_type = ?
+   │  └─ INSERT goals_history (goal_type, 'value_changed', ...)
+   │
+   ├─ API: POST /api/goals/:goalType/config
+   │  ├─ Dynamic UPDATE with whitelisted fields ✓ SAFE
+   │  ├─ Set style_json
+   │  └─ UPDATE goals_config
+   │
+   └─ API: GET /api/goals/:goalType/history
+      └─ SELECT * FROM goals_history WHERE goal_type = ? ORDER BY timestamp DESC
+
+4. WEBSOCKET EVENTS
+   ├─ Event from TikFinity WebSocket
+   └─ incrementGoal() → setGoalValue() → [Steps 3]
+
+
+Data Flow Consistency Check:
+─────────────────────────────────────────────────────────────────────────────
+
+Goal State Change → Database Update → History Log → Broadcast → UI Update
+   ↓                   ↓                  ↓             ↓          ↓
+In-memory Map    UPDATE & INSERT    Historical Log   Socket.IO   Client
+percent, 
+remaining,
+isCompleted
+
+
+Concurrency Considerations:
+─────────────────────────────────────────────────────────────────────────────
+
+Thread Safety:
+- All database operations use prepared statements ✓
+- In-memory state (Map) updated synchronously ✓
+- No locking mechanism visible in code ⚠️ (could have race condition)
+
+Example Race Condition Scenario:
+1. Request A: GET current_value (value = 100)
+2. Request B: GET current_value (value = 100)
+3. Request A: SET current_value to 150 (100 + 50)
+4. Request B: SET current_value to 120 (100 + 20)
+   → Final value: 120 (lost 30 points from Request A)
+
+Risk Level: LOW (TikTok events are generally sequential in streaming scenario)
+
+================================================================================
+END OF SCHEMA DIAGRAM
+================================================================================
