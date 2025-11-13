@@ -298,7 +298,7 @@ class GoalsPlugin extends EventEmitter {
                 this.api.log('✅ Connected to TikFinity Event API', 'info');
 
                 // Broadcast connection status via Socket.IO
-                this.api.io.emit('goals:tikfinity:connected', { connected: true });
+                this.api.io.emit('goals:event-api:connected', { connected: true });
             });
 
             this.tikfinityWs.on('message', (data) => {
@@ -319,7 +319,7 @@ class GoalsPlugin extends EventEmitter {
                 this.api.log('TikFinity WebSocket connection closed', 'warn');
 
                 // Broadcast connection status via Socket.IO
-                this.api.io.emit('goals:tikfinity:connected', { connected: false });
+                this.api.io.emit('goals:event-api:connected', { connected: false });
 
                 // Auto-reconnect if enabled
                 if (config.auto_reconnect && this.tikfinityReconnectAttempts < this.maxTikfinityReconnectAttempts) {
@@ -875,8 +875,8 @@ class GoalsPlugin extends EventEmitter {
             res.json({ success: true, message: `Goal ${enabled ? 'enabled' : 'disabled'}`, goal });
         });
 
-        // Get TikFinity connection status
-        this.api.registerRoute('get', '/api/goals/tikfinity/status', (req, res) => {
+        // Get Event API connection status
+        this.api.registerRoute('get', '/api/goals/event-api/status', (req, res) => {
             res.json({
                 success: true,
                 connected: this.tikfinityConnected,
@@ -884,8 +884,8 @@ class GoalsPlugin extends EventEmitter {
             });
         });
 
-        // Update TikFinity config
-        this.api.registerRoute('post', '/api/goals/tikfinity/config', (req, res) => {
+        // Update Event API config
+        this.api.registerRoute('post', '/api/goals/event-api/config', (req, res) => {
             const { enabled, websocket_url, auto_reconnect } = req.body;
 
             try {

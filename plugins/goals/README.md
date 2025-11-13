@@ -178,12 +178,12 @@ Content-Type: application/json
 
 ### Event API Status
 ```http
-GET /api/goals/tikfinity/status
+GET /api/goals/event-api/status
 ```
 
 ### Update Event API Config
 ```http
-POST /api/goals/tikfinity/config
+POST /api/goals/event-api/config
 Content-Type: application/json
 
 {
@@ -233,7 +233,7 @@ socket.on('goals:completed', (data) => {
 });
 
 // Event API connection status
-socket.on('goals:tikfinity:connected', (data) => {
+socket.on('goals:event-api:connected', (data) => {
   console.log('Event API connected:', data.connected);
 });
 ```

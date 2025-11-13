@@ -390,10 +390,10 @@
         <!-- Connection Status -->
         <div class="connection-status">
             <div class="status-row">
-                <div class="status-indicator" id="tikfinityStatus"></div>
+                <div class="status-indicator" id="eventApiStatus"></div>
                 <div>
                     <strong>Event API Connection:</strong>
-                    <span id="tikfinityText">Connecting...</span>
+                    <span id="eventApiText">Connecting...</span>
                 </div>
             </div>
             <div class="status-row">
@@ -767,14 +767,14 @@
             await updateGoalConfig(goalType, { style: updatedStyle });
         }
 
-        // Check TikFinity status
-        async function checkTikFinityStatus() {
+        // Check Event API connection status
+        async function checkEventApiStatus() {
             try {
-                const response = await fetch('/api/goals/tikfinity/status');
+                const response = await fetch('/api/goals/event-api/status');
                 const data = await response.json();
 
-                const indicator = document.getElementById('tikfinityStatus');
-                const text = document.getElementById('tikfinityText');
+                const indicator = document.getElementById('eventApiStatus');
+                const text = document.getElementById('eventApiText');
 
                 if (data.connected) {
                     indicator.className = 'status-indicator connected';
@@ -784,7 +784,7 @@
                     text.textContent = `Disconnected (Reconnect attempts: ${data.reconnectAttempts})`;
                 }
             } catch (error) {
-                console.error('Error checking TikFinity status:', error);
+                console.error('Error checking Event API status:', error);
             }
         }
 
@@ -908,8 +908,8 @@
 
         // Initialize
         loadGoals();
-        checkTikFinityStatus();
-        setInterval(checkTikFinityStatus, 5000);
+        checkEventApiStatus();
+        setInterval(checkEventApiStatus, 5000);
     </script>
 </body>
 </html>
