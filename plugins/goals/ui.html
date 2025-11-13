@@ -367,6 +367,12 @@
         .preview-title {
             font-size: 1.125rem;
             font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .preview-subtitle {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
             margin-bottom: 12px;
         }
 
@@ -622,6 +628,23 @@
                 <div class="sidebar-subtitle">Advanced Live Goals System</div>
             </div>
 
+            <!-- OBS Overlay Link -->
+            <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color);">
+                <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
+                    🎥 OBS Browser Source
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="overlayUrl" readonly value=""
+                           style="flex: 1; padding: 8px; background: var(--primary-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.8125rem; font-family: monospace;">
+                    <button onclick="copyOverlayUrl()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8125rem;">
+                        📋 Copy
+                    </button>
+                </div>
+                <a href="" id="overlayLink" target="_blank" style="display: inline-block; margin-top: 8px; font-size: 0.8125rem; color: var(--accent-blue); text-decoration: none;">
+                    → Open Overlay in New Tab
+                </a>
+            </div>
+
             <div class="connection-status">
                 <div class="status-indicator" id="connectionIndicator"></div>
                 <div class="status-text" id="connectionText">Connecting...</div>
@@ -710,7 +733,8 @@
             <!-- ===== PREVIEW PANEL ===== -->
             <aside class="preview-panel">
                 <div class="preview-header">
-                    <div class="preview-title">Live Preview</div>
+                    <div class="preview-title">🎯 Live Preview</div>
+                    <div class="preview-subtitle">Drag goals to reposition them on your stream overlay</div>
                     <div class="preview-controls">
                         <button class="preview-resolution-btn active" data-resolution="1920x1080">1080p</button>
                         <button class="preview-resolution-btn" data-resolution="1280x720">720p</button>
@@ -718,8 +742,8 @@
                         <button class="preview-resolution-btn" data-resolution="3840x2160">4K</button>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Zoom</label>
-                        <input type="range" class="form-input" id="previewZoom" min="0.25" max="1" step="0.05" value="0.5">
+                        <label class="form-label">Zoom: <span id="zoomValue">50%</span></label>
+                        <input type="range" class="form-input" id="previewZoom" min="0.25" max="1" step="0.05" value="0.5" oninput="document.getElementById('zoomValue').textContent = Math.round(this.value * 100) + '%'">
                     </div>
                 </div>
 
@@ -731,7 +755,7 @@
 
                 <div class="preview-footer">
                     <div class="preview-info">
-                        Drag goals to reposition • Click to edit
+                        💡 Tip: Drag goals to move them, or use the settings panel for precise positioning
                     </div>
                 </div>
             </aside>
@@ -985,6 +1009,19 @@
                         <span>${goal.name} Settings</span>
                     </div>
 
+                    <!-- Quick Actions -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 24px; padding: 16px; background: var(--tertiary-bg); border-radius: 8px;">
+                        <button class="btn ${goal.enabled ? 'btn-success' : 'btn-secondary'}" onclick="quickToggleGoal('${goalType}')" style="flex: 1;">
+                            ${goal.enabled ? '✓ Enabled' : '✗ Disabled'}
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetGoal('${goalType}')" style="flex: 1;">
+                            🔄 Reset Progress
+                        </button>
+                        <button class="btn btn-primary" onclick="incrementGoalManually('${goalType}')" style="flex: 1;">
+                            ➕ Add 1
+                        </button>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label">Goal Name</label>
                         <input type="text" class="form-input" value="${goal.name}" id="goalName-${goalType}">
@@ -992,82 +1029,83 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Target Value</label>
-                            <input type="number" class="form-input" value="${goal.targetValue}" id="goalTarget-${goalType}">
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">Current Value</label>
                             <input type="number" class="form-input" value="${goal.currentValue}" id="goalCurrent-${goalType}">
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Target Value</label>
+                            <input type="number" class="form-input" value="${goal.targetValue}" id="goalTarget-${goalType}">
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">
-                            <input type="checkbox" ${goal.enabled ? 'checked' : ''} id="goalEnabled-${goalType}">
-                            Enable this goal
-                        </label>
+                    <div style="padding: 12px; background: var(--tertiary-bg); border-radius: 8px; margin-bottom: 16px;">
+                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 4px;">Progress</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-blue);">${goal.percent}%</div>
+                        <div style="font-size: 0.8125rem; color: var(--text-secondary);">${goal.currentValue.toLocaleString()} / ${goal.targetValue.toLocaleString()} (${goal.remaining.toLocaleString()} remaining)</div>
                     </div>
 
                     <div class="btn-group">
-                        <button class="btn btn-primary" onclick="saveGoalSettings('${goalType}')">Save Changes</button>
-                        <button class="btn btn-secondary" onclick="resetGoal('${goalType}')">Reset Progress</button>
+                        <button class="btn btn-primary" onclick="saveGoalSettings('${goalType}')">💾 Save All Changes</button>
                     </div>
                 </div>
 
                 <div class="settings-section">
                     <div class="section-title">
                         <span class="section-title-icon">📐</span>
-                        <span>Layout & Position</span>
+                        <span>Position & Size</span>
+                    </div>
+
+                    <div style="padding: 12px; background: var(--primary-bg); border-radius: 8px; margin-bottom: 16px; border-left: 3px solid var(--accent-blue);">
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                            💡 <strong>Tip:</strong> Use the preview panel on the right to drag and position your goal visually.
+                            Or enter exact coordinates below for precise placement.
+                        </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">X Position (px)</label>
-                            <input type="number" class="form-input" value="${goal.position_x || 10}" id="goalPosX-${goalType}">
+                            <label class="form-label">X Position (pixels from left)</label>
+                            <input type="number" class="form-input" value="${goal.position_x || 10}" id="goalPosX-${goalType}" step="10">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Y Position (px)</label>
-                            <input type="number" class="form-input" value="${goal.position_y || 10}" id="goalPosY-${goalType}">
+                            <label class="form-label">Y Position (pixels from top)</label>
+                            <input type="number" class="form-input" value="${goal.position_y || 10}" id="goalPosY-${goalType}" step="10">
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Width (px)</label>
-                            <input type="number" class="form-input" value="${goal.width || 500}" id="goalWidth-${goalType}">
+                            <label class="form-label">Width (pixels)</label>
+                            <input type="number" class="form-input" value="${goal.width || 500}" id="goalWidth-${goalType}" step="10">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Height (px)</label>
-                            <input type="number" class="form-input" value="${goal.height || 100}" id="goalHeight-${goalType}">
+                            <label class="form-label">Height (pixels)</label>
+                            <input type="number" class="form-input" value="${goal.height || 100}" id="goalHeight-${goalType}" step="10">
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Z-Index (Layer)</label>
-                        <input type="number" class="form-input" value="${goal.z_index || 100}" id="goalZIndex-${goalType}">
                     </div>
 
                     <div class="btn-group">
-                        <button class="btn btn-primary" onclick="saveGoalLayout('${goalType}')">Save Layout</button>
+                        <button class="btn btn-primary" onclick="saveGoalLayout('${goalType}')">💾 Save Position</button>
+                        <button class="btn btn-secondary" onclick="centerGoal('${goalType}')">⊙ Center on Screen</button>
                     </div>
                 </div>
 
                 <div class="settings-section">
                     <div class="section-title">
                         <span class="section-title-icon">🎨</span>
-                        <span>Styling</span>
+                        <span>Colors</span>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Fill Color 1</label>
+                            <label class="form-label">Gradient Start Color</label>
                             <div class="color-picker-wrapper">
                                 <input type="color" class="color-picker" value="${goal.style?.fill_color1 || '#60a5fa'}" id="goalColor1-${goalType}">
                                 <input type="text" class="form-input" value="${goal.style?.fill_color1 || '#60a5fa'}" id="goalColor1Text-${goalType}">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Fill Color 2</label>
+                            <label class="form-label">Gradient End Color</label>
                             <div class="color-picker-wrapper">
                                 <input type="color" class="color-picker" value="${goal.style?.fill_color2 || '#3b82f6'}" id="goalColor2-${goalType}">
                                 <input type="text" class="form-input" value="${goal.style?.fill_color2 || '#3b82f6'}" id="goalColor2Text-${goalType}">
@@ -1076,7 +1114,7 @@
                     </div>
 
                     <div class="btn-group">
-                        <button class="btn btn-primary" onclick="saveGoalStyle('${goalType}')">Save Style</button>
+                        <button class="btn btn-primary" onclick="saveGoalStyle('${goalType}')">💾 Save Colors</button>
                     </div>
                 </div>
             `;
@@ -1473,9 +1511,92 @@
             }
         }
 
+        // ===== NEW HELPER FUNCTIONS =====
+
+        // Set overlay URL on page load
+        function setOverlayUrl() {
+            const url = window.location.origin + '/goals/overlay';
+            document.getElementById('overlayUrl').value = url;
+            document.getElementById('overlayLink').href = url;
+        }
+
+        // Copy overlay URL to clipboard
+        function copyOverlayUrl() {
+            const input = document.getElementById('overlayUrl');
+            input.select();
+            document.execCommand('copy');
+
+            // Visual feedback
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✓ Copied!';
+            btn.style.background = 'var(--accent-green)';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }
+
+        // Quick toggle goal
+        async function quickToggleGoal(goalType) {
+            try {
+                const response = await fetch(`/api/goals/${goalType}/toggle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    goals[goalType].enabled = !goals[goalType].enabled;
+                    loadGoalSettings(goalType); // Reload view
+                    updatePreview();
+                }
+            } catch (error) {
+                console.error('Error toggling goal:', error);
+                alert('Error toggling goal');
+            }
+        }
+
+        // Increment goal manually
+        async function incrementGoalManually(goalType) {
+            try {
+                const response = await fetch(`/api/goals/${goalType}/increment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: 1 })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    loadAllGoals();
+                    loadGoalSettings(goalType); // Reload view
+                }
+            } catch (error) {
+                console.error('Error incrementing goal:', error);
+                alert('Error incrementing goal');
+            }
+        }
+
+        // Center goal on screen
+        async function centerGoal(goalType) {
+            const goal = goals[goalType];
+            if (!goal) return;
+
+            const centerX = Math.round((hudConfig.resolution_width - (goal.width || 500)) / 2);
+            const centerY = Math.round((hudConfig.resolution_height - (goal.height || 100)) / 2);
+
+            // Update input fields
+            document.getElementById(`goalPosX-${goalType}`).value = centerX;
+            document.getElementById(`goalPosY-${goalType}`).value = centerY;
+
+            // Save immediately
+            await saveGoalLayout(goalType);
+        }
+
         // ===== INITIALIZE =====
         document.addEventListener('DOMContentLoaded', () => {
             console.log('Live Goals UI loaded');
+            setOverlayUrl();
         });
     </script>
 </body>
