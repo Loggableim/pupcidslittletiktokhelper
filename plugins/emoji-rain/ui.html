@@ -386,7 +386,7 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label for="obs_hud_preset">Auflösungs-Preset</label>
-                    <select id="obs_hud_preset" onchange="applyResolutionPreset()">
+                    <select id="obs_hud_preset">
                         <option value="custom">Custom</option>
                         <option value="720p">720p (1280x720)</option>
                         <option value="1080p" selected>1080p (1920x1080)</option>
@@ -495,7 +495,7 @@
                 <label>Bilder hochladen</label>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <input type="file" id="image-upload" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml" multiple style="flex: 1;">
-                    <button type="button" onclick="uploadImages()" class="secondary">📤 Upload</button>
+                    <button type="button" id="upload-images-btn" class="secondary">📤 Upload</button>
                 </div>
                 <div class="help-text">PNG, JPG, GIF, WebP, SVG (max. 5MB pro Datei)</div>
                 <div id="upload-progress" style="display: none; margin-top: 10px; color: #4CAF50; font-weight: bold;"></div>
@@ -640,8 +640,8 @@
 
         <!-- Save & Test Buttons -->
         <div class="button-group">
-            <button onclick="saveConfig()">💾 Konfiguration speichern</button>
-            <button class="secondary" onclick="testEmojiRain()">🧪 Emoji Rain testen</button>
+            <button id="save-config-btn">💾 Konfiguration speichern</button>
+            <button class="secondary" id="test-emoji-rain-btn">🧪 Emoji Rain testen</button>
         </div>
     </div>
 
@@ -1049,7 +1049,7 @@
                         item.className = 'image-item';
                         item.innerHTML = `
                             <img src="${img.url}" alt="${img.filename}" title="${img.filename}">
-                            <button class="delete-btn" onclick="deleteImage('${img.filename}')" title="Löschen">×</button>
+                            <button class="delete-btn" data-filename="${img.filename}" title="Löschen">×</button>
                         `;
                         grid.appendChild(item);
                     });
@@ -1099,6 +1099,30 @@
         loadConfig();
         loadUploadedImages();
         console.log('✅ [EMOJI RAIN UI] Initialization started');
+
+        // ========== EVENT LISTENERS (CSP-compliant) ==========
+
+        // Resolution preset selector
+        document.getElementById('obs_hud_preset').addEventListener('change', applyResolutionPreset);
+
+        // Upload images button
+        document.getElementById('upload-images-btn').addEventListener('click', uploadImages);
+
+        // Save config button
+        document.getElementById('save-config-btn').addEventListener('click', saveConfig);
+
+        // Test emoji rain button
+        document.getElementById('test-emoji-rain-btn').addEventListener('click', testEmojiRain);
+
+        // Delete image buttons (event delegation)
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-btn')) {
+                const filename = e.target.getAttribute('data-filename');
+                if (filename) {
+                    deleteImage(filename);
+                }
+            }
+        });
     </script>
 </body>
 </html>
