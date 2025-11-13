@@ -90,7 +90,7 @@ app.use((req, res, next) => {
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
             `connect-src 'self' ws: wss:; ` +
-            `media-src 'self' blob: data:; ` +
+            `media-src 'self' blob: data: https:; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
@@ -106,7 +106,7 @@ app.use((req, res, next) => {
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
             `connect-src 'self' ws: wss:; ` +
-            `media-src 'self' blob: data:; ` +
+            `media-src 'self' blob: data: https:; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +

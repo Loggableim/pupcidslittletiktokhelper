@@ -345,6 +345,20 @@
   <script>
     // ========== WebSocket & State ==========
     const socket = io();
+
+    // Socket.IO Connection Logging
+    socket.on('connect', () => {
+      console.log('✅ [Soundboard] Socket.IO connected');
+    });
+
+    socket.on('disconnect', () => {
+      console.warn('⚠️ [Soundboard] Socket.IO disconnected');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('❌ [Soundboard] Socket.IO connection error:', error);
+    });
+
     let catalog = [];
     let assignments = {};
     let pickerTarget = null;
@@ -394,6 +408,8 @@
     });
 
     socket.on('soundboard:play', (data) => {
+      console.log('🔊 [Soundboard] Received soundboard:play event:', data);
+      pushLog(`🔊 Event empfangen: ${data.label || data.url}`);
       playSound(data.url, data.volume, data.label);
     });
 
@@ -443,17 +459,71 @@
           processQueue();
           return;
         }
-        const a = new Audio(url);
-        a.volume = Number(vol || 1);
-        a.play().catch(e => pushLog('❌ Audio Error: ' + e));
+
+        // Create audio element and add to DOM
+        const a = document.createElement('audio');
+        a.src = url;
+        a.crossOrigin = 'anonymous'; // CORS support
+
+        // Fix volume bug: use nullish coalescing instead of logical OR
+        const volumeValue = typeof vol === 'number' ? vol : 1;
+        a.volume = Math.max(0, Math.min(1, volumeValue)); // Clamp between 0 and 1
+
+        // Add to DOM pool for reliable playback
+        let pool = document.getElementById('soundboard-audio-pool');
+        if (!pool) {
+          console.warn('⚠️ [Soundboard] Audio pool not found, creating it...');
+          pool = document.createElement('div');
+          pool.id = 'soundboard-audio-pool';
+          pool.style.display = 'none';
+          document.body.appendChild(pool);
+        }
+        pool.appendChild(a);
+
+        // Enhanced error handling
+        a.play().then(() => {
+          console.log('✅ [Soundboard] Audio playing:', label);
+        }).catch(e => {
+          if (e.name === 'NotAllowedError') {
+            pushLog('⚠️ Autoplay blockiert. Bitte einmal klicken.');
+            showToast('⚠️ Browser blockiert Autoplay. Bitte einmal klicken!');
+          } else if (e.name === 'NotSupportedError') {
+            pushLog('❌ Audio-Format nicht unterstützt: ' + url);
+            showToast('❌ Audio-Format nicht unterstützt');
+          } else {
+            pushLog('❌ Audio Error: ' + e.message);
+            console.error('❌ [Soundboard] Playback error:', e);
+          }
+          a.remove(); // Clean up on error
+        });
+
         activeAudio.push(a);
+
         a.onended = () => {
           activeAudio = activeAudio.filter(aud => aud !== a);
+          a.remove(); // Remove from DOM
           processQueue();
         };
+
+        a.onerror = (e) => {
+          console.error('❌ [Soundboard] Audio load error:', {
+            url: a.src,
+            readyState: a.readyState,
+            networkState: a.networkState,
+            error: a.error
+          });
+          pushLog('❌ Audio-Ladefehler: ' + (a.error?.message || 'Unbekannter Fehler'));
+          activeAudio = activeAudio.filter(aud => aud !== a);
+          a.remove(); // Clean up
+          processQueue();
+        };
+
         while (activeAudio.length > maxLen) {
           const old = activeAudio.shift();
-          if (old) old.pause();
+          if (old) {
+            old.pause();
+            old.remove(); // Clean up old audio
+          }
         }
       }
     }
@@ -463,15 +533,61 @@
       if (isProcessingQueue || audioQueue.length === 0) return;
       isProcessingQueue = true;
       const item = audioQueue.shift();
-      const a = new Audio(item.url);
-      a.volume = item.vol;
-      a.onended = () => { isProcessingQueue = false; processQueue(); };
-      a.onerror = () => { isProcessingQueue = false; processQueue(); pushLog('❌ Audio Error'); };
+
+      // Create audio element and add to DOM
+      const a = document.createElement('audio');
+      a.src = item.url;
+      a.crossOrigin = 'anonymous'; // CORS support
+
+      // Fix volume bug
+      const volumeValue = typeof item.vol === 'number' ? item.vol : 1;
+      a.volume = Math.max(0, Math.min(1, volumeValue));
+
+      // Add to DOM pool
+      let pool = document.getElementById('soundboard-audio-pool');
+      if (!pool) {
+        console.warn('⚠️ [Soundboard Queue] Audio pool not found, creating it...');
+        pool = document.createElement('div');
+        pool.id = 'soundboard-audio-pool';
+        pool.style.display = 'none';
+        document.body.appendChild(pool);
+      }
+      pool.appendChild(a);
+
+      a.onended = () => {
+        isProcessingQueue = false;
+        a.remove(); // Clean up
+        processQueue();
+      };
+
+      a.onerror = (e) => {
+        console.error('❌ [Soundboard Queue] Audio load error:', {
+          url: a.src,
+          readyState: a.readyState,
+          networkState: a.networkState,
+          error: a.error
+        });
+        pushLog('❌ Audio-Ladefehler (Queue): ' + (a.error?.message || 'Unbekannter Fehler'));
+        isProcessingQueue = false;
+        a.remove(); // Clean up
+        processQueue();
+      };
+
       try {
         await a.play();
+        console.log('✅ [Soundboard Queue] Audio playing:', item.url);
       } catch (e) {
-        pushLog('❌ Audio Error: ' + e);
+        if (e.name === 'NotAllowedError') {
+          pushLog('⚠️ Autoplay blockiert (Queue). Bitte einmal klicken.');
+          showToast('⚠️ Browser blockiert Autoplay. Bitte einmal klicken!');
+        } else if (e.name === 'NotSupportedError') {
+          pushLog('❌ Audio-Format nicht unterstützt (Queue): ' + item.url);
+        } else {
+          pushLog('❌ Audio Error (Queue): ' + e.message);
+          console.error('❌ [Soundboard Queue] Playback error:', e);
+        }
         isProcessingQueue = false;
+        a.remove(); // Clean up
         processQueue();
       }
     }
@@ -1640,5 +1756,8 @@
       }
     });
   </script>
+
+  <!-- Hidden Audio Pool for reliable playback -->
+  <div id="soundboard-audio-pool" style="display: none;"></div>
 </body>
 </html>
