@@ -2,6 +2,12 @@
   "soundboard": {
     "enabled": true,
     "loadedAt": "2025-11-13T00:50:35.227Z"
+    "loadedAt": "2025-11-13T00:41:49.902Z"
+  },
+  "tts": {
+    "enabled": true,
+    "loadedAt": "2025-11-13T00:41:49.948Z"
+    "loadedAt": "2025-11-12T23:00:00.742Z"
   },
   "tts": {
     "enabled": true,
