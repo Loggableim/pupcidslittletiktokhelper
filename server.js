@@ -75,8 +75,9 @@ app.use((req, res, next) => {
 
     // Dashboard and plugin UIs need relaxed CSP for inline scripts
     const isDashboard = req.path === '/' || req.path.includes('/dashboard.html');
-    const isPluginUI = req.path.includes('/goals/ui') || req.path.includes('/emoji-rain/ui') ||
-                       req.path.includes('/gift-milestone/ui') || req.path.includes('/plugins/');
+    const isPluginUI = req.path.includes('/goals/ui') || req.path.includes('/goals/overlay') ||
+                       req.path.includes('/emoji-rain/ui') || req.path.includes('/gift-milestone/ui') ||
+                       req.path.includes('/plugins/');
 
     if (isDashboard || isPluginUI) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
