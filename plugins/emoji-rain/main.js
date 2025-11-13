@@ -16,11 +16,14 @@ class EmojiRainPlugin {
     }
 
     async init() {
-        this.api.log('Initializing Emoji Rain Plugin...', 'info');
+        this.api.log('🌧️ [EMOJI RAIN] Initializing Emoji Rain Plugin...', 'info');
 
         // Create upload directory
         if (!fs.existsSync(this.emojiRainUploadDir)) {
             fs.mkdirSync(this.emojiRainUploadDir, { recursive: true });
+            this.api.log('📁 [EMOJI RAIN] Upload directory created', 'debug');
+        } else {
+            this.api.log('📁 [EMOJI RAIN] Upload directory exists', 'debug');
         }
 
         // Setup multer for file uploads
@@ -51,12 +54,14 @@ class EmojiRainPlugin {
         });
 
         // Register routes
+        this.api.log('🛣️ [EMOJI RAIN] Registering routes...', 'debug');
         this.registerRoutes();
 
         // Register TikTok event handlers
+        this.api.log('🎯 [EMOJI RAIN] Registering TikTok event handlers...', 'debug');
         this.registerTikTokEventHandlers();
 
-        this.api.log('✅ Emoji Rain Plugin initialized', 'info');
+        this.api.log('✅ [EMOJI RAIN] Emoji Rain Plugin initialized successfully', 'info');
     }
 
     registerRoutes() {
@@ -93,11 +98,21 @@ class EmojiRainPlugin {
         // Get emoji rain config
         this.api.registerRoute('get', '/api/emoji-rain/config', (req, res) => {
             try {
+                this.api.log('📥 [EMOJI RAIN] GET /api/emoji-rain/config - Request received', 'debug');
                 const db = this.api.getDatabase();
+                this.api.log('📥 [EMOJI RAIN] Database instance retrieved', 'debug');
+
                 const config = db.getEmojiRainConfig();
+                this.api.log(`📥 [EMOJI RAIN] Config retrieved from DB: ${JSON.stringify(config)}`, 'debug');
+                this.api.log(`📥 [EMOJI RAIN] Config.enabled: ${config.enabled}`, 'debug');
+                this.api.log(`📥 [EMOJI RAIN] Config.emoji_set: ${JSON.stringify(config.emoji_set)}`, 'debug');
+                this.api.log(`📥 [EMOJI RAIN] Config.emoji_set type: ${typeof config.emoji_set}, isArray: ${Array.isArray(config.emoji_set)}`, 'debug');
+
                 res.json({ success: true, config });
+                this.api.log('✅ [EMOJI RAIN] Config sent to client successfully', 'debug');
             } catch (error) {
-                this.api.log(`Error getting emoji rain config: ${error.message}`, 'error');
+                this.api.log(`❌ [EMOJI RAIN] Error getting emoji rain config: ${error.message}`, 'error');
+                this.api.log(`❌ [EMOJI RAIN] Error stack: ${error.stack}`, 'error');
                 res.status(500).json({ success: false, error: error.message });
             }
         });
@@ -255,7 +270,14 @@ class EmojiRainPlugin {
         const express = require('express');
         this.api.getApp().use('/plugins/emoji-rain/uploads', express.static(this.emojiRainUploadDir));
 
-        this.api.log('✅ Emoji Rain routes registered', 'info');
+        this.api.log('✅ [EMOJI RAIN] All routes registered successfully:', 'info');
+        this.api.log('   - GET  /emoji-rain/ui', 'info');
+        this.api.log('   - GET  /emoji-rain/overlay', 'info');
+        this.api.log('   - GET  /emoji-rain/obs-hud', 'info');
+        this.api.log('   - GET  /api/emoji-rain/config', 'info');
+        this.api.log('   - POST /api/emoji-rain/config', 'info');
+        this.api.log('   - POST /api/emoji-rain/toggle', 'info');
+        this.api.log('   - POST /api/emoji-rain/test', 'info');
     }
 
     registerTikTokEventHandlers() {

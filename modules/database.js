@@ -668,6 +668,8 @@ class DatabaseManager {
      * Initialize default Emoji Rain configuration
      */
     initializeEmojiRainDefaults() {
+        console.log('🔧 [DATABASE] initializeEmojiRainDefaults() called');
+
         const defaultConfig = {
             // OBS HUD Settings
             obs_hud_enabled: true,
@@ -721,10 +723,14 @@ class DatabaseManager {
         const checkStmt = this.db.prepare('SELECT * FROM emoji_rain_config WHERE id = 1');
         const existing = checkStmt.get();
 
+        console.log('🔍 [DATABASE] Existing config:', existing ? 'found' : 'not found');
+
         if (existing) {
             // Migrate old config to new format
+            console.log('🔄 [DATABASE] Migrating existing config...');
             try {
                 const oldConfig = JSON.parse(existing.config_json);
+                console.log('🔍 [DATABASE] Old config keys:', Object.keys(oldConfig).join(', '));
 
                 // Merge old config with new defaults (new defaults take precedence for new fields)
                 const migratedConfig = {
@@ -750,8 +756,10 @@ class DatabaseManager {
                     WHERE id = 1
                 `);
                 updateStmt.run(JSON.stringify(migratedConfig));
+                console.log('✅ [DATABASE] Config migrated successfully');
+                console.log('✅ [DATABASE] Migrated config emoji_set:', migratedConfig.emoji_set);
             } catch (error) {
-                console.error('Error migrating emoji rain config:', error);
+                console.error('❌ [DATABASE] Error migrating emoji rain config:', error);
                 // If migration fails, just insert defaults
                 const updateStmt = this.db.prepare(`
                     UPDATE emoji_rain_config
@@ -762,11 +770,14 @@ class DatabaseManager {
             }
         } else {
             // Insert new default config
+            console.log('➕ [DATABASE] Inserting new default config...');
             const stmt = this.db.prepare(`
                 INSERT INTO emoji_rain_config (id, enabled, config_json)
                 VALUES (1, 1, ?)
             `);
             stmt.run(JSON.stringify(defaultConfig));
+            console.log('✅ [DATABASE] Default config inserted successfully');
+            console.log('✅ [DATABASE] Default emoji_set:', defaultConfig.emoji_set);
         }
     }
 
@@ -774,21 +785,38 @@ class DatabaseManager {
      * Get Emoji Rain configuration
      */
     getEmojiRainConfig() {
+        console.log('🔍 [DATABASE] getEmojiRainConfig() called');
         const stmt = this.db.prepare('SELECT * FROM emoji_rain_config WHERE id = 1');
         const row = stmt.get();
 
+        console.log('🔍 [DATABASE] Row retrieved:', row ? 'exists' : 'null');
+
         if (!row) {
             // Fallback: initialize and return
+            console.log('⚠️ [DATABASE] No config found, initializing defaults...');
             this.initializeEmojiRainDefaults();
             return this.getEmojiRainConfig();
         }
 
+        console.log('🔍 [DATABASE] row.enabled:', row.enabled);
+        console.log('🔍 [DATABASE] row.config_json length:', row.config_json ? row.config_json.length : 0);
+
         // Return flat config object with enabled flag
         const configData = JSON.parse(row.config_json);
-        return {
+        console.log('🔍 [DATABASE] Parsed config_json:', JSON.stringify(configData).substring(0, 200));
+        console.log('🔍 [DATABASE] configData.emoji_set:', configData.emoji_set);
+        console.log('🔍 [DATABASE] configData.emoji_set type:', typeof configData.emoji_set, Array.isArray(configData.emoji_set));
+
+        const result = {
             enabled: Boolean(row.enabled),
             ...configData
         };
+
+        console.log('✅ [DATABASE] Returning config with', Object.keys(result).length, 'keys');
+        console.log('✅ [DATABASE] result.enabled:', result.enabled);
+        console.log('✅ [DATABASE] result.emoji_set:', result.emoji_set);
+
+        return result;
     }
 
     /**

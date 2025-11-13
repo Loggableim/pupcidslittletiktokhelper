@@ -654,17 +654,30 @@
 
         // Load configuration on page load
         async function loadConfig() {
+            console.log('🔄 [EMOJI RAIN UI] Loading configuration...');
             try {
                 const response = await fetch('/api/emoji-rain/config');
+                console.log('📥 [EMOJI RAIN UI] Response status:', response.status);
+
                 const data = await response.json();
+                console.log('📦 [EMOJI RAIN UI] Response data:', JSON.stringify(data, null, 2));
 
                 if (data.success) {
                     config = data.config;
+                    console.log('✅ [EMOJI RAIN UI] Config loaded successfully:', JSON.stringify(config, null, 2));
+                    console.log('🔍 [EMOJI RAIN UI] Config type:', typeof config);
+                    console.log('🔍 [EMOJI RAIN UI] Config.enabled:', config.enabled);
+                    console.log('🔍 [EMOJI RAIN UI] Config.emoji_set:', config.emoji_set);
+                    console.log('🔍 [EMOJI RAIN UI] Config.emoji_set type:', typeof config.emoji_set, Array.isArray(config.emoji_set));
                     updateUI();
+                } else {
+                    console.error('❌ [EMOJI RAIN UI] Config load failed:', data.error);
+                    showNotification('Fehler: ' + (data.error || 'Unknown error'), true);
                 }
             } catch (error) {
+                console.error('❌ [EMOJI RAIN UI] Exception during config load:', error);
+                console.error('❌ [EMOJI RAIN UI] Error stack:', error.stack);
                 showNotification('Fehler beim Laden der Konfiguration', true);
-                console.error(error);
             }
         }
 
@@ -687,68 +700,103 @@
 
         // Update UI with loaded config
         function updateUI() {
-            document.getElementById('enabled-toggle').checked = config.enabled;
-            updateEnabledStatus();
+            console.log('🎨 [EMOJI RAIN UI] Updating UI with config...');
 
-            // OBS HUD settings
-            document.getElementById('obs_hud_enabled').checked = config.obs_hud_enabled !== false;
-            document.getElementById('obs_hud_width').value = config.obs_hud_width || 1920;
-            document.getElementById('obs_hud_height').value = config.obs_hud_height || 1080;
-            document.getElementById('enable_glow').checked = config.enable_glow !== false;
-            document.getElementById('enable_particles').checked = config.enable_particles !== false;
-            document.getElementById('enable_depth').checked = config.enable_depth !== false;
-            document.getElementById('target_fps').value = config.target_fps || 60;
+            try {
+                // Main toggle
+                console.log('🎨 [EMOJI RAIN UI] Setting enabled toggle:', config.enabled);
+                document.getElementById('enabled-toggle').checked = config.enabled;
+                updateEnabledStatus();
 
-            // Detect preset
-            const width = config.obs_hud_width || 1920;
-            const height = config.obs_hud_height || 1080;
-            let detectedPreset = 'custom';
-            for (const [preset, res] of Object.entries(resolutionPresets)) {
-                if (res.width === width && res.height === height) {
-                    detectedPreset = preset;
-                    break;
+                // OBS HUD settings
+                console.log('🎨 [EMOJI RAIN UI] Setting OBS HUD settings...');
+                document.getElementById('obs_hud_enabled').checked = config.obs_hud_enabled !== false;
+                document.getElementById('obs_hud_width').value = config.obs_hud_width || 1920;
+                document.getElementById('obs_hud_height').value = config.obs_hud_height || 1080;
+                document.getElementById('enable_glow').checked = config.enable_glow !== false;
+                document.getElementById('enable_particles').checked = config.enable_particles !== false;
+                document.getElementById('enable_depth').checked = config.enable_depth !== false;
+                document.getElementById('target_fps').value = config.target_fps || 60;
+
+                // Detect preset
+                const width = config.obs_hud_width || 1920;
+                const height = config.obs_hud_height || 1080;
+                let detectedPreset = 'custom';
+                for (const [preset, res] of Object.entries(resolutionPresets)) {
+                    if (res.width === width && res.height === height) {
+                        detectedPreset = preset;
+                        break;
+                    }
                 }
+                document.getElementById('obs_hud_preset').value = detectedPreset;
+                console.log('🎨 [EMOJI RAIN UI] Detected resolution preset:', detectedPreset);
+
+                // Canvas settings
+                console.log('🎨 [EMOJI RAIN UI] Setting canvas settings...');
+                document.getElementById('width_px').value = config.width_px || 1280;
+                document.getElementById('height_px').value = config.height_px || 720;
+
+                // Emoji set
+                console.log('🎨 [EMOJI RAIN UI] Setting emoji set...');
+                console.log('🎨 [EMOJI RAIN UI] config.emoji_set:', config.emoji_set);
+
+                if (!config.emoji_set) {
+                    console.error('❌ [EMOJI RAIN UI] emoji_set is undefined or null!');
+                    config.emoji_set = ["💧","💙","💚","💜","❤️","🩵","✨","🌟","🔥","🎉"];
+                }
+
+                if (!Array.isArray(config.emoji_set)) {
+                    console.error('❌ [EMOJI RAIN UI] emoji_set is not an array:', typeof config.emoji_set);
+                    console.error('❌ [EMOJI RAIN UI] emoji_set value:', config.emoji_set);
+                    config.emoji_set = ["💧","💙","💚","💜","❤️","🩵","✨","🌟","🔥","🎉"];
+                }
+
+                document.getElementById('emoji_set').value = config.emoji_set.join(',');
+                console.log('🎨 [EMOJI RAIN UI] Emoji set value set to:', document.getElementById('emoji_set').value);
+                updateEmojiPreview();
+
+                // Custom images
+                console.log('🎨 [EMOJI RAIN UI] Setting custom images...');
+                document.getElementById('use_custom_images').checked = config.use_custom_images || false;
+                document.getElementById('image_urls').value = (config.image_urls || []).join('\n');
+
+                // Effect
+                console.log('🎨 [EMOJI RAIN UI] Setting effect...');
+                document.getElementById('effect').value = config.effect || 'bounce';
+
+                // Physics
+                console.log('🎨 [EMOJI RAIN UI] Setting physics...');
+                setRangeValue('physics_gravity_y', config.physics_gravity_y);
+                setRangeValue('physics_air', config.physics_air);
+                setRangeValue('physics_friction', config.physics_friction);
+                setRangeValue('physics_restitution', config.physics_restitution);
+                setRangeValue('physics_wind_strength', config.physics_wind_strength);
+                setRangeValue('physics_wind_variation', config.physics_wind_variation);
+
+                // Appearance
+                console.log('🎨 [EMOJI RAIN UI] Setting appearance...');
+                document.getElementById('emoji_min_size_px').value = config.emoji_min_size_px;
+                document.getElementById('emoji_max_size_px').value = config.emoji_max_size_px;
+                setRangeValue('emoji_rotation_speed', config.emoji_rotation_speed);
+                document.getElementById('emoji_lifetime_ms').value = config.emoji_lifetime_ms;
+                document.getElementById('emoji_fade_duration_ms').value = config.emoji_fade_duration_ms;
+                document.getElementById('max_emojis_on_screen').value = config.max_emojis_on_screen;
+
+                // Scaling rules
+                console.log('🎨 [EMOJI RAIN UI] Setting scaling rules...');
+                document.getElementById('like_count_divisor').value = config.like_count_divisor;
+                document.getElementById('like_min_emojis').value = config.like_min_emojis;
+                document.getElementById('like_max_emojis').value = config.like_max_emojis;
+                document.getElementById('gift_base_emojis').value = config.gift_base_emojis;
+                setRangeValue('gift_coin_multiplier', config.gift_coin_multiplier);
+                document.getElementById('gift_max_emojis').value = config.gift_max_emojis;
+
+                console.log('✅ [EMOJI RAIN UI] UI update completed successfully');
+            } catch (error) {
+                console.error('❌ [EMOJI RAIN UI] Error updating UI:', error);
+                console.error('❌ [EMOJI RAIN UI] Error stack:', error.stack);
+                showNotification('Fehler beim Aktualisieren der UI', true);
             }
-            document.getElementById('obs_hud_preset').value = detectedPreset;
-
-            // Canvas settings
-            document.getElementById('width_px').value = config.width_px || 1280;
-            document.getElementById('height_px').value = config.height_px || 720;
-
-            // Emoji set
-            document.getElementById('emoji_set').value = config.emoji_set.join(',');
-            updateEmojiPreview();
-
-            // Custom images
-            document.getElementById('use_custom_images').checked = config.use_custom_images || false;
-            document.getElementById('image_urls').value = (config.image_urls || []).join('\n');
-
-            // Effect
-            document.getElementById('effect').value = config.effect || 'bounce';
-
-            // Physics
-            setRangeValue('physics_gravity_y', config.physics_gravity_y);
-            setRangeValue('physics_air', config.physics_air);
-            setRangeValue('physics_friction', config.physics_friction);
-            setRangeValue('physics_restitution', config.physics_restitution);
-            setRangeValue('physics_wind_strength', config.physics_wind_strength);
-            setRangeValue('physics_wind_variation', config.physics_wind_variation);
-
-            // Appearance
-            document.getElementById('emoji_min_size_px').value = config.emoji_min_size_px;
-            document.getElementById('emoji_max_size_px').value = config.emoji_max_size_px;
-            setRangeValue('emoji_rotation_speed', config.emoji_rotation_speed);
-            document.getElementById('emoji_lifetime_ms').value = config.emoji_lifetime_ms;
-            document.getElementById('emoji_fade_duration_ms').value = config.emoji_fade_duration_ms;
-            document.getElementById('max_emojis_on_screen').value = config.max_emojis_on_screen;
-
-            // Scaling rules
-            document.getElementById('like_count_divisor').value = config.like_count_divisor;
-            document.getElementById('like_min_emojis').value = config.like_min_emojis;
-            document.getElementById('like_max_emojis').value = config.like_max_emojis;
-            document.getElementById('gift_base_emojis').value = config.gift_base_emojis;
-            setRangeValue('gift_coin_multiplier', config.gift_coin_multiplier);
-            document.getElementById('gift_max_emojis').value = config.gift_max_emojis;
         }
 
         function setRangeValue(id, value) {
@@ -1047,8 +1095,10 @@
         }
 
         // Initialize
+        console.log('🚀 [EMOJI RAIN UI] Initializing Emoji Rain UI...');
         loadConfig();
         loadUploadedImages();
+        console.log('✅ [EMOJI RAIN UI] Initialization started');
     </script>
 </body>
 </html>
