@@ -73,25 +73,39 @@ class GoalsPlugin extends EventEmitter {
         try {
             const db = this.api.getDatabase();
 
-            // Goals configuration table
+            // Enhanced Goals configuration table with position, size, design, animations
             db.exec(`
                 CREATE TABLE IF NOT EXISTS goals_config (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     goal_type TEXT NOT NULL UNIQUE,
                     enabled INTEGER DEFAULT 1,
                     name TEXT NOT NULL,
+                    description TEXT,
                     start_value INTEGER DEFAULT 0,
                     current_value INTEGER DEFAULT 0,
                     target_value INTEGER DEFAULT 1000,
                     progression_mode TEXT DEFAULT 'fixed',
                     increment_amount INTEGER DEFAULT 100,
+                    -- NEW: Position & Size
+                    position_x INTEGER DEFAULT 10,
+                    position_y INTEGER DEFAULT 10,
+                    width INTEGER DEFAULT 500,
+                    height INTEGER DEFAULT 100,
+                    z_index INTEGER DEFAULT 100,
+                    -- NEW: Design & Styling
+                    design_json TEXT,
                     style_json TEXT,
+                    -- NEW: Animations
+                    animation_json TEXT,
+                    -- Template reference
+                    template_id INTEGER,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (template_id) REFERENCES goals_templates(id) ON DELETE SET NULL
                 )
             `);
 
-            // Goals history/events table
+            // Goals history/events table with enhanced tracking
             db.exec(`
                 CREATE TABLE IF NOT EXISTS goals_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,8 +114,85 @@ class GoalsPlugin extends EventEmitter {
                     old_value INTEGER,
                     new_value INTEGER,
                     delta INTEGER,
+                    source TEXT DEFAULT 'manual',
+                    source_user TEXT,
                     metadata TEXT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Create indexes for performance
+            db.exec(`
+                CREATE INDEX IF NOT EXISTS idx_goals_history_type_time
+                ON goals_history(goal_type, timestamp DESC)
+            `);
+            db.exec(`
+                CREATE INDEX IF NOT EXISTS idx_goals_history_event_type
+                ON goals_history(event_type)
+            `);
+
+            // NEW: Templates table
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS goals_templates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    description TEXT,
+                    category TEXT DEFAULT 'custom',
+                    author TEXT DEFAULT 'user',
+                    config_json TEXT NOT NULL,
+                    preview_image TEXT,
+                    usage_count INTEGER DEFAULT 0,
+                    is_favorite INTEGER DEFAULT 0,
+                    tags TEXT,
+                    version TEXT DEFAULT '1.0.0',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // NEW: Custom Assets table (fonts, icons, animations)
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS goals_assets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    asset_type TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    category TEXT DEFAULT 'custom',
+                    file_path TEXT NOT NULL,
+                    file_type TEXT NOT NULL,
+                    file_size INTEGER NOT NULL,
+                    metadata_json TEXT,
+                    usage_count INTEGER DEFAULT 0,
+                    is_favorite INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(name, asset_type)
+                )
+            `);
+
+            // NEW: HUD Configuration table
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS goals_hud_config (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    enabled INTEGER DEFAULT 1,
+                    resolution_width INTEGER DEFAULT 1920,
+                    resolution_height INTEGER DEFAULT 1080,
+                    layout_json TEXT,
+                    global_style_json TEXT,
+                    animations_json TEXT,
+                    performance_json TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Initialize default HUD config
+            db.exec(`
+                INSERT OR IGNORE INTO goals_hud_config
+                (id, enabled, resolution_width, resolution_height, layout_json, animations_json)
+                VALUES (
+                    1, 1, 1920, 1080,
+                    '{"mode":"stacked","alignment":"left","spacing":15,"maxWidth":500}',
+                    '{"entrance":"slideIn","exit":"fadeOut","transition":"smooth"}'
                 )
             `);
 
@@ -127,11 +218,527 @@ class GoalsPlugin extends EventEmitter {
             `);
             tikfinityStmt.run();
 
-            this.api.log('Database tables initialized', 'info');
+            // Initialize default templates
+            this.initializeDefaultTemplates(db);
+
+            this.api.log('✅ Enhanced database schema initialized', 'info');
         } catch (error) {
             this.api.log(`Error initializing database: ${error.message}`, 'error');
             throw error;
         }
+    }
+
+    /**
+     * Initialize default templates
+     */
+    initializeDefaultTemplates(db) {
+        const defaultTemplates = [
+            // 1. Minimalist Clean
+            {
+                name: 'Minimalist Clean',
+                description: 'Clean and simple design with subtle animations, perfect for professional streams',
+                category: 'official',
+                author: 'Pup Cid',
+                tags: 'minimal,professional,clean,simple',
+                version: '1.0.0',
+                config_json: JSON.stringify({
+                    meta: {
+                        name: 'Minimalist Clean',
+                        preview: 'minimalist-clean.png'
+                    },
+                    global: {
+                        font_family: 'Inter, -apple-system, sans-serif',
+                        font_size: '16px',
+                        spacing: '15px',
+                        border_radius: '8px',
+                        shadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        text_color: '#1f2937'
+                    },
+                    goal_bar: {
+                        height: 60,
+                        padding: '12px 16px',
+                        background: 'rgba(255, 255, 255, 0.98)',
+                        border: '1px solid #e5e7eb',
+                        border_radius: '8px',
+                        shadow: '0 1px 3px rgba(0,0,0,0.08)',
+                        progress_height: 24,
+                        progress_border_radius: '4px',
+                        progress_background: '#f3f4f6',
+                        label_template: '{current} / {target}'
+                    },
+                    per_goal: {
+                        coin: { fill_color1: '#fbbf24', fill_color2: '#f59e0b' },
+                        likes: { fill_color1: '#10b981', fill_color2: '#059669' },
+                        follower: { fill_color1: '#3b82f6', fill_color2: '#2563eb' },
+                        custom: { fill_color1: '#8b5cf6', fill_color2: '#7c3aed' }
+                    },
+                    animations: {
+                        entrance: 'fadeInUp',
+                        progress: 'smooth',
+                        completion: 'subtle',
+                        confetti: false
+                    }
+                })
+            },
+
+            // 2. Gamer RGB
+            {
+                name: 'Gamer RGB',
+                description: 'Vibrant RGB gradients with gaming-inspired effects and neon glow',
+                category: 'official',
+                author: 'Pup Cid',
+                tags: 'gaming,rgb,neon,colorful,vibrant',
+                version: '1.0.0',
+                config_json: JSON.stringify({
+                    meta: {
+                        name: 'Gamer RGB',
+                        preview: 'gamer-rgb.png'
+                    },
+                    global: {
+                        font_family: 'Rajdhani, "Roboto Condensed", sans-serif',
+                        font_size: '18px',
+                        font_weight: '700',
+                        spacing: '20px',
+                        border_radius: '12px',
+                        shadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(96,165,250,0.3)',
+                        background: 'linear-gradient(135deg, rgba(17,24,39,0.95) 0%, rgba(31,41,55,0.95) 100%)',
+                        text_color: '#ffffff'
+                    },
+                    goal_bar: {
+                        height: 80,
+                        padding: '16px 24px',
+                        background: 'linear-gradient(135deg, rgba(17,24,39,0.98) 0%, rgba(31,41,55,0.98) 100%)',
+                        border: '2px solid rgba(96,165,250,0.5)',
+                        border_radius: '12px',
+                        shadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(96,165,250,0.3)',
+                        progress_height: 32,
+                        progress_border_radius: '8px',
+                        progress_background: 'rgba(30,41,59,0.8)',
+                        label_template: '{current} / {target} ({percent}%)',
+                        text_shadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 10px currentColor'
+                    },
+                    per_goal: {
+                        coin: {
+                            fill_color1: '#fbbf24',
+                            fill_color2: '#ef4444',
+                            border_color: 'rgba(251,191,36,0.5)'
+                        },
+                        likes: {
+                            fill_color1: '#22c55e',
+                            fill_color2: '#10b981',
+                            border_color: 'rgba(34,197,94,0.5)'
+                        },
+                        follower: {
+                            fill_color1: '#3b82f6',
+                            fill_color2: '#8b5cf6',
+                            border_color: 'rgba(59,130,246,0.5)'
+                        },
+                        custom: {
+                            fill_color1: '#a78bfa',
+                            fill_color2: '#ec4899',
+                            border_color: 'rgba(167,139,250,0.5)'
+                        }
+                    },
+                    animations: {
+                        entrance: 'slideInRight',
+                        progress: 'pulse',
+                        completion: 'explode',
+                        confetti: true,
+                        shimmer: true,
+                        glow_pulse: true
+                    },
+                    custom_css: `
+                        .goal-wrapper::before {
+                            background: linear-gradient(90deg, var(--color1), var(--color2), var(--color1));
+                            background-size: 200% 100%;
+                            animation: rgbShift 3s linear infinite;
+                        }
+                        @keyframes rgbShift {
+                            0%, 100% { background-position: 0% 50%; }
+                            50% { background-position: 100% 50%; }
+                        }
+                    `
+                })
+            },
+
+            // 3. Neon Glow
+            {
+                name: 'Neon Glow',
+                description: 'Cyberpunk-inspired neon effects with glowing borders and vibrant colors',
+                category: 'official',
+                author: 'Pup Cid',
+                tags: 'neon,cyberpunk,glow,retro,80s',
+                version: '1.0.0',
+                config_json: JSON.stringify({
+                    meta: {
+                        name: 'Neon Glow',
+                        preview: 'neon-glow.png'
+                    },
+                    global: {
+                        font_family: 'Orbitron, "Courier New", monospace',
+                        font_size: '17px',
+                        font_weight: '700',
+                        spacing: '18px',
+                        border_radius: '4px',
+                        shadow: '0 0 30px rgba(236,72,153,0.5), 0 8px 32px rgba(0,0,0,0.6)',
+                        background: 'rgba(10,10,30,0.95)',
+                        text_color: '#ffffff'
+                    },
+                    goal_bar: {
+                        height: 75,
+                        padding: '14px 20px',
+                        background: 'rgba(10,10,30,0.98)',
+                        border: '2px solid #ec4899',
+                        border_radius: '4px',
+                        shadow: '0 0 30px rgba(236,72,153,0.6), inset 0 0 20px rgba(236,72,153,0.1)',
+                        progress_height: 28,
+                        progress_border_radius: '2px',
+                        progress_background: 'rgba(15,15,40,0.9)',
+                        label_template: '[ {current} / {target} ]',
+                        text_shadow: '0 0 10px currentColor, 0 0 20px currentColor'
+                    },
+                    per_goal: {
+                        coin: {
+                            fill_color1: '#fbbf24',
+                            fill_color2: '#fb923c',
+                            border_color: '#fbbf24',
+                            glow_color: 'rgba(251,191,36,0.6)'
+                        },
+                        likes: {
+                            fill_color1: '#ec4899',
+                            fill_color2: '#f43f5e',
+                            border_color: '#ec4899',
+                            glow_color: 'rgba(236,72,153,0.6)'
+                        },
+                        follower: {
+                            fill_color1: '#06b6d4',
+                            fill_color2: '#0ea5e9',
+                            border_color: '#06b6d4',
+                            glow_color: 'rgba(6,182,212,0.6)'
+                        },
+                        custom: {
+                            fill_color1: '#a78bfa',
+                            fill_color2: '#c084fc',
+                            border_color: '#a78bfa',
+                            glow_color: 'rgba(167,139,250,0.6)'
+                        }
+                    },
+                    animations: {
+                        entrance: 'glitchIn',
+                        progress: 'neonPulse',
+                        completion: 'neonExplode',
+                        confetti: true,
+                        glow_pulse: true,
+                        flicker: true
+                    },
+                    custom_css: `
+                        .goal-wrapper {
+                            animation: neonBorderPulse 2s ease-in-out infinite;
+                        }
+                        @keyframes neonBorderPulse {
+                            0%, 100% { box-shadow: 0 0 20px var(--glow-color, rgba(236,72,153,0.4)); }
+                            50% { box-shadow: 0 0 40px var(--glow-color, rgba(236,72,153,0.8)); }
+                        }
+                        .progress-fill {
+                            box-shadow: 0 0 20px var(--color1), inset 0 0 10px var(--color2);
+                        }
+                    `
+                })
+            },
+
+            // 4. Retro Pixel
+            {
+                name: 'Retro Pixel',
+                description: '8-bit pixel art style with retro gaming aesthetics',
+                category: 'official',
+                author: 'Pup Cid',
+                tags: 'retro,pixel,8bit,gaming,arcade',
+                version: '1.0.0',
+                config_json: JSON.stringify({
+                    meta: {
+                        name: 'Retro Pixel',
+                        preview: 'retro-pixel.png'
+                    },
+                    global: {
+                        font_family: '"Press Start 2P", "Courier New", monospace',
+                        font_size: '12px',
+                        spacing: '16px',
+                        border_radius: '0px',
+                        shadow: '8px 8px 0px rgba(0,0,0,0.3)',
+                        background: '#1a1a1a',
+                        text_color: '#ffffff',
+                        pixel_perfect: true
+                    },
+                    goal_bar: {
+                        height: 70,
+                        padding: '12px 16px',
+                        background: '#2a2a2a',
+                        border: '4px solid #ffffff',
+                        border_radius: '0px',
+                        shadow: '8px 8px 0px rgba(0,0,0,0.5)',
+                        progress_height: 24,
+                        progress_border_radius: '0px',
+                        progress_background: '#1a1a1a',
+                        progress_border: '2px solid #666666',
+                        label_template: '{current}/{target}',
+                        text_shadow: '2px 2px 0px rgba(0,0,0,0.8)'
+                    },
+                    per_goal: {
+                        coin: {
+                            fill_color1: '#ffcc00',
+                            fill_color2: '#ff9900',
+                            border_color: '#ffcc00'
+                        },
+                        likes: {
+                            fill_color1: '#00ff66',
+                            fill_color2: '#00cc44',
+                            border_color: '#00ff66'
+                        },
+                        follower: {
+                            fill_color1: '#00ccff',
+                            fill_color2: '#0099cc',
+                            border_color: '#00ccff'
+                        },
+                        custom: {
+                            fill_color1: '#cc66ff',
+                            fill_color2: '#9933cc',
+                            border_color: '#cc66ff'
+                        }
+                    },
+                    animations: {
+                        entrance: 'pixelSlide',
+                        progress: 'step',
+                        completion: 'pixelBurst',
+                        confetti: true,
+                        pixel_mode: true
+                    },
+                    custom_css: `
+                        * {
+                            image-rendering: pixelated;
+                            image-rendering: -moz-crisp-edges;
+                            image-rendering: crisp-edges;
+                        }
+                        .progress-fill {
+                            background-image: repeating-linear-gradient(
+                                0deg,
+                                var(--color1),
+                                var(--color1) 4px,
+                                var(--color2) 4px,
+                                var(--color2) 8px
+                            );
+                        }
+                    `
+                })
+            },
+
+            // 5. Modern Glassmorphism
+            {
+                name: 'Modern Glass',
+                description: 'Modern glassmorphism design with frosted glass effect and subtle gradients',
+                category: 'official',
+                author: 'Pup Cid',
+                tags: 'modern,glass,frosted,elegant,minimal',
+                version: '1.0.0',
+                config_json: JSON.stringify({
+                    meta: {
+                        name: 'Modern Glass',
+                        preview: 'modern-glass.png'
+                    },
+                    global: {
+                        font_family: 'SF Pro Display, -apple-system, sans-serif',
+                        font_size: '16px',
+                        font_weight: '600',
+                        spacing: '16px',
+                        border_radius: '20px',
+                        shadow: '0 8px 32px rgba(0,0,0,0.1)',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        text_color: '#ffffff',
+                        backdrop_filter: 'blur(20px) saturate(180%)'
+                    },
+                    goal_bar: {
+                        height: 72,
+                        padding: '16px 24px',
+                        background: 'rgba(255, 255, 255, 0.15)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        border_radius: '20px',
+                        shadow: '0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3)',
+                        backdrop_filter: 'blur(20px) saturate(180%)',
+                        progress_height: 28,
+                        progress_border_radius: '14px',
+                        progress_background: 'rgba(255, 255, 255, 0.1)',
+                        label_template: '{current} / {target}'
+                    },
+                    per_goal: {
+                        coin: {
+                            fill_color1: 'rgba(251,191,36,0.9)',
+                            fill_color2: 'rgba(245,158,11,0.9)',
+                            glass_tint: 'rgba(251,191,36,0.1)'
+                        },
+                        likes: {
+                            fill_color1: 'rgba(74,222,128,0.9)',
+                            fill_color2: 'rgba(34,197,94,0.9)',
+                            glass_tint: 'rgba(34,197,94,0.1)'
+                        },
+                        follower: {
+                            fill_color1: 'rgba(96,165,250,0.9)',
+                            fill_color2: 'rgba(59,130,246,0.9)',
+                            glass_tint: 'rgba(59,130,246,0.1)'
+                        },
+                        custom: {
+                            fill_color1: 'rgba(167,139,250,0.9)',
+                            fill_color2: 'rgba(139,92,246,0.9)',
+                            glass_tint: 'rgba(139,92,246,0.1)'
+                        }
+                    },
+                    animations: {
+                        entrance: 'fadeInScale',
+                        progress: 'smooth',
+                        completion: 'glassShimmer',
+                        confetti: true,
+                        backdrop_blur: true
+                    },
+                    custom_css: `
+                        .goal-wrapper {
+                            backdrop-filter: blur(20px) saturate(180%);
+                            -webkit-backdrop-filter: blur(20px) saturate(180%);
+                        }
+                        .goal-wrapper::before {
+                            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+                        }
+                        .progress-fill {
+                            backdrop-filter: blur(10px);
+                            -webkit-backdrop-filter: blur(10px);
+                        }
+                    `
+                })
+            },
+
+            // 6. Cyberpunk 2077
+            {
+                name: 'Cyberpunk 2077',
+                description: 'Cyberpunk 2077-inspired design with yellow accents, glitch effects, and futuristic UI',
+                category: 'official',
+                author: 'Pup Cid',
+                tags: 'cyberpunk,futuristic,glitch,yellow,tech',
+                version: '1.0.0',
+                config_json: JSON.stringify({
+                    meta: {
+                        name: 'Cyberpunk 2077',
+                        preview: 'cyberpunk-2077.png'
+                    },
+                    global: {
+                        font_family: 'Rajdhani, "Roboto Mono", monospace',
+                        font_size: '17px',
+                        font_weight: '700',
+                        spacing: '18px',
+                        border_radius: '2px',
+                        shadow: '0 0 20px rgba(252,211,77,0.3), 0 4px 16px rgba(0,0,0,0.8)',
+                        background: 'linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(20,20,35,0.95) 100%)',
+                        text_color: '#fcd34d',
+                        accent_color: '#fcd34d'
+                    },
+                    goal_bar: {
+                        height: 78,
+                        padding: '14px 22px',
+                        background: 'linear-gradient(135deg, rgba(10,10,20,0.98) 0%, rgba(20,20,35,0.98) 100%)',
+                        border: '2px solid #fcd34d',
+                        border_left_width: '6px',
+                        border_radius: '2px',
+                        shadow: '0 0 20px rgba(252,211,77,0.4), inset 0 0 30px rgba(252,211,77,0.05)',
+                        progress_height: 30,
+                        progress_border_radius: '1px',
+                        progress_background: 'rgba(15,15,25,0.9)',
+                        label_template: '// {current} / {target} //',
+                        text_shadow: '0 0 8px rgba(252,211,77,0.8)'
+                    },
+                    per_goal: {
+                        coin: {
+                            fill_color1: '#fcd34d',
+                            fill_color2: '#f59e0b',
+                            border_color: '#fcd34d',
+                            accent_line: '#fcd34d'
+                        },
+                        likes: {
+                            fill_color1: '#06b6d4',
+                            fill_color2: '#0891b2',
+                            border_color: '#06b6d4',
+                            accent_line: '#06b6d4'
+                        },
+                        follower: {
+                            fill_color1: '#ec4899',
+                            fill_color2: '#db2777',
+                            border_color: '#ec4899',
+                            accent_line: '#ec4899'
+                        },
+                        custom: {
+                            fill_color1: '#a78bfa',
+                            fill_color2: '#8b5cf6',
+                            border_color: '#a78bfa',
+                            accent_line: '#a78bfa'
+                        }
+                    },
+                    animations: {
+                        entrance: 'glitchSlide',
+                        progress: 'digitalFlicker',
+                        completion: 'systemOverload',
+                        confetti: true,
+                        glitch_effect: true,
+                        scanlines: true
+                    },
+                    custom_css: `
+                        .goal-wrapper::after {
+                            content: '';
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background: repeating-linear-gradient(
+                                0deg,
+                                rgba(0,0,0,0.1) 0px,
+                                transparent 1px,
+                                transparent 2px,
+                                rgba(0,0,0,0.1) 3px
+                            );
+                            pointer-events: none;
+                        }
+                        .goal-name::before {
+                            content: '>';
+                            margin-right: 8px;
+                            color: #fcd34d;
+                            animation: blink 1s step-end infinite;
+                        }
+                        @keyframes blink {
+                            0%, 100% { opacity: 1; }
+                            50% { opacity: 0; }
+                        }
+                    `
+                })
+            }
+        ];
+
+        const stmt = db.prepare(`
+            INSERT OR IGNORE INTO goals_templates
+            (name, description, category, author, tags, version, config_json, usage_count, is_favorite)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const template of defaultTemplates) {
+            stmt.run(
+                template.name,
+                template.description,
+                template.category,
+                template.author,
+                template.tags,
+                template.version,
+                template.config_json,
+                0, // usage_count
+                0  // is_favorite
+            );
+        }
+
+        this.api.log(`✅ Initialized ${defaultTemplates.length} default templates`, 'info');
     }
 
     /**
@@ -243,12 +850,24 @@ class GoalsPlugin extends EventEmitter {
                     goalType: row.goal_type,
                     enabled: Boolean(row.enabled),
                     name: row.name,
+                    description: row.description || '',
                     startValue: row.start_value,
                     currentValue: row.current_value,
                     targetValue: row.target_value,
                     progressionMode: row.progression_mode,
                     incrementAmount: row.increment_amount,
+                    // Layout fields
+                    position_x: row.position_x || 10,
+                    position_y: row.position_y || 10,
+                    width: row.width || 500,
+                    height: row.height || 100,
+                    z_index: row.z_index || 100,
+                    // Design fields
                     style: row.style_json ? JSON.parse(row.style_json) : {},
+                    design: row.design_json ? JSON.parse(row.design_json) : {},
+                    animation: row.animation_json ? JSON.parse(row.animation_json) : {},
+                    template_id: row.template_id || null,
+                    // Timestamps
                     createdAt: row.created_at,
                     updatedAt: row.updated_at
                 };
@@ -686,6 +1305,7 @@ class GoalsPlugin extends EventEmitter {
                         goalType: goal.goalType,
                         enabled: goal.enabled,
                         name: goal.name,
+                        description: goal.description,
                         currentValue: goal.currentValue,
                         targetValue: goal.targetValue,
                         startValue: goal.startValue,
@@ -694,7 +1314,17 @@ class GoalsPlugin extends EventEmitter {
                         isCompleted: goal.isCompleted,
                         progressionMode: goal.progressionMode,
                         incrementAmount: goal.incrementAmount,
-                        style: goal.style
+                        // Layout
+                        position_x: goal.position_x,
+                        position_y: goal.position_y,
+                        width: goal.width,
+                        height: goal.height,
+                        z_index: goal.z_index,
+                        // Design
+                        style: goal.style,
+                        design: goal.design,
+                        animation: goal.animation,
+                        template_id: goal.template_id
                     });
                 });
 
@@ -725,6 +1355,7 @@ class GoalsPlugin extends EventEmitter {
                     goalType: goal.goalType,
                     enabled: goal.enabled,
                     name: goal.name,
+                    description: goal.description,
                     currentValue: goal.currentValue,
                     targetValue: goal.targetValue,
                     startValue: goal.startValue,
@@ -733,7 +1364,17 @@ class GoalsPlugin extends EventEmitter {
                     isCompleted: goal.isCompleted,
                     progressionMode: goal.progressionMode,
                     incrementAmount: goal.incrementAmount,
-                    style: goal.style
+                    // Layout
+                    position_x: goal.position_x,
+                    position_y: goal.position_y,
+                    width: goal.width,
+                    height: goal.height,
+                    z_index: goal.z_index,
+                    // Design
+                    style: goal.style,
+                    design: goal.design,
+                    animation: goal.animation,
+                    template_id: goal.template_id
                 }
             });
         });
@@ -955,6 +1596,479 @@ class GoalsPlugin extends EventEmitter {
 
             } catch (error) {
                 this.api.log(`Error fetching goal history: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ========================================
+        // TEMPLATE MANAGEMENT ROUTES
+        // ========================================
+
+        // Get all templates
+        this.api.registerRoute('get', '/api/goals/templates', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const category = req.query.category || null;
+                const tags = req.query.tags || null;
+
+                let query = 'SELECT * FROM goals_templates';
+                const params = [];
+
+                if (category) {
+                    query += ' WHERE category = ?';
+                    params.push(category);
+                }
+
+                if (tags) {
+                    const tagArray = tags.split(',');
+                    const tagConditions = tagArray.map(() => 'tags LIKE ?').join(' OR ');
+                    query += category ? ' AND (' + tagConditions + ')' : ' WHERE (' + tagConditions + ')';
+                    tagArray.forEach(tag => params.push(`%${tag}%`));
+                }
+
+                query += ' ORDER BY is_favorite DESC, usage_count DESC, name ASC';
+
+                const stmt = db.prepare(query);
+                const templates = stmt.all(...params);
+
+                // Parse config_json for each template
+                const templatesWithConfig = templates.map(t => ({
+                    ...t,
+                    config: JSON.parse(t.config_json)
+                }));
+
+                res.json({ success: true, templates: templatesWithConfig });
+            } catch (error) {
+                this.api.log(`Error fetching templates: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get single template
+        this.api.registerRoute('get', '/api/goals/templates/:id', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare('SELECT * FROM goals_templates WHERE id = ?');
+                const template = stmt.get(req.params.id);
+
+                if (!template) {
+                    return res.status(404).json({ success: false, error: 'Template not found' });
+                }
+
+                template.config = JSON.parse(template.config_json);
+                res.json({ success: true, template });
+            } catch (error) {
+                this.api.log(`Error fetching template: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Create custom template
+        this.api.registerRoute('post', '/api/goals/templates', (req, res) => {
+            try {
+                const { name, description, category, tags, config } = req.body;
+
+                if (!name || !config) {
+                    return res.status(400).json({ success: false, error: 'Name and config are required' });
+                }
+
+                const db = this.api.getDatabase();
+                const stmt = db.prepare(`
+                    INSERT INTO goals_templates (name, description, category, author, tags, version, config_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `);
+
+                const result = stmt.run(
+                    name,
+                    description || '',
+                    category || 'custom',
+                    'user',
+                    tags || '',
+                    '1.0.0',
+                    JSON.stringify(config)
+                );
+
+                res.json({ success: true, templateId: result.lastInsertRowid });
+            } catch (error) {
+                this.api.log(`Error creating template: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update template
+        this.api.registerRoute('put', '/api/goals/templates/:id', (req, res) => {
+            try {
+                const { name, description, tags, config, is_favorite } = req.body;
+                const db = this.api.getDatabase();
+
+                const updates = [];
+                const params = [];
+
+                if (name !== undefined) {
+                    updates.push('name = ?');
+                    params.push(name);
+                }
+                if (description !== undefined) {
+                    updates.push('description = ?');
+                    params.push(description);
+                }
+                if (tags !== undefined) {
+                    updates.push('tags = ?');
+                    params.push(tags);
+                }
+                if (config !== undefined) {
+                    updates.push('config_json = ?');
+                    params.push(JSON.stringify(config));
+                }
+                if (is_favorite !== undefined) {
+                    updates.push('is_favorite = ?');
+                    params.push(is_favorite ? 1 : 0);
+                }
+
+                updates.push('updated_at = CURRENT_TIMESTAMP');
+                params.push(req.params.id);
+
+                const stmt = db.prepare(`
+                    UPDATE goals_templates
+                    SET ${updates.join(', ')}
+                    WHERE id = ?
+                `);
+
+                stmt.run(...params);
+                res.json({ success: true });
+            } catch (error) {
+                this.api.log(`Error updating template: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Delete template
+        this.api.registerRoute('delete', '/api/goals/templates/:id', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+
+                // Check if template is official (prevent deletion)
+                const checkStmt = db.prepare('SELECT category FROM goals_templates WHERE id = ?');
+                const template = checkStmt.get(req.params.id);
+
+                if (!template) {
+                    return res.status(404).json({ success: false, error: 'Template not found' });
+                }
+
+                if (template.category === 'official') {
+                    return res.status(403).json({ success: false, error: 'Cannot delete official templates' });
+                }
+
+                const stmt = db.prepare('DELETE FROM goals_templates WHERE id = ?');
+                stmt.run(req.params.id);
+
+                res.json({ success: true });
+            } catch (error) {
+                this.api.log(`Error deleting template: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Apply template to goal(s)
+        this.api.registerRoute('post', '/api/goals/templates/:id/apply', (req, res) => {
+            try {
+                const { goalTypes } = req.body; // Array of goal types or 'all'
+                const templateId = req.params.id;
+
+                const db = this.api.getDatabase();
+
+                // Get template
+                const templateStmt = db.prepare('SELECT * FROM goals_templates WHERE id = ?');
+                const template = templateStmt.get(templateId);
+
+                if (!template) {
+                    return res.status(404).json({ success: false, error: 'Template not found' });
+                }
+
+                const config = JSON.parse(template.config_json);
+
+                // Increment usage count
+                const usageStmt = db.prepare('UPDATE goals_templates SET usage_count = usage_count + 1 WHERE id = ?');
+                usageStmt.run(templateId);
+
+                // Apply template to goals
+                const applyToGoals = goalTypes === 'all' ?
+                    Array.from(this.goals.keys()) :
+                    (Array.isArray(goalTypes) ? goalTypes : [goalTypes]);
+
+                for (const goalType of applyToGoals) {
+                    const goalConfig = config.per_goal[goalType] || {};
+
+                    // Merge global template settings with per-goal overrides
+                    const mergedStyle = {
+                        ...config.goal_bar,
+                        ...goalConfig
+                    };
+
+                    // Update goal in database
+                    const updateStmt = db.prepare(`
+                        UPDATE goals_config
+                        SET style_json = ?,
+                            design_json = ?,
+                            animation_json = ?,
+                            template_id = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE goal_type = ?
+                    `);
+
+                    updateStmt.run(
+                        JSON.stringify(mergedStyle),
+                        JSON.stringify(config.global || {}),
+                        JSON.stringify(config.animations || {}),
+                        templateId,
+                        goalType
+                    );
+                }
+
+                // Reload goals
+                this.loadGoals();
+
+                // Broadcast update to all clients
+                this.io.emit('goals:template-applied', { templateId, goalTypes: applyToGoals });
+
+                res.json({ success: true, appliedTo: applyToGoals.length });
+            } catch (error) {
+                this.api.log(`Error applying template: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ========================================
+        // HUD CONFIGURATION ROUTES
+        // ========================================
+
+        // Get HUD config
+        this.api.registerRoute('get', '/api/goals/hud/config', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare('SELECT * FROM goals_hud_config WHERE id = 1');
+                const config = stmt.get();
+
+                if (!config) {
+                    return res.json({
+                        success: true,
+                        config: {
+                            enabled: true,
+                            resolution_width: 1920,
+                            resolution_height: 1080,
+                            layout: {},
+                            global_style: {},
+                            animations: {},
+                            performance: {}
+                        }
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    config: {
+                        id: config.id,
+                        enabled: Boolean(config.enabled),
+                        resolution_width: config.resolution_width,
+                        resolution_height: config.resolution_height,
+                        layout: config.layout_json ? JSON.parse(config.layout_json) : {},
+                        global_style: config.global_style_json ? JSON.parse(config.global_style_json) : {},
+                        animations: config.animations_json ? JSON.parse(config.animations_json) : {},
+                        performance: config.performance_json ? JSON.parse(config.performance_json) : {}
+                    }
+                });
+            } catch (error) {
+                this.api.log(`Error fetching HUD config: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update HUD config
+        this.api.registerRoute('put', '/api/goals/hud/config', (req, res) => {
+            try {
+                const { enabled, resolution_width, resolution_height, layout, global_style, animations, performance } = req.body;
+                const db = this.api.getDatabase();
+
+                const updates = [];
+                const params = [];
+
+                if (enabled !== undefined) {
+                    updates.push('enabled = ?');
+                    params.push(enabled ? 1 : 0);
+                }
+                if (resolution_width !== undefined) {
+                    updates.push('resolution_width = ?');
+                    params.push(resolution_width);
+                }
+                if (resolution_height !== undefined) {
+                    updates.push('resolution_height = ?');
+                    params.push(resolution_height);
+                }
+                if (layout !== undefined) {
+                    updates.push('layout_json = ?');
+                    params.push(JSON.stringify(layout));
+                }
+                if (global_style !== undefined) {
+                    updates.push('global_style_json = ?');
+                    params.push(JSON.stringify(global_style));
+                }
+                if (animations !== undefined) {
+                    updates.push('animations_json = ?');
+                    params.push(JSON.stringify(animations));
+                }
+                if (performance !== undefined) {
+                    updates.push('performance_json = ?');
+                    params.push(JSON.stringify(performance));
+                }
+
+                updates.push('updated_at = CURRENT_TIMESTAMP');
+
+                const stmt = db.prepare(`
+                    UPDATE goals_hud_config
+                    SET ${updates.join(', ')}
+                    WHERE id = 1
+                `);
+
+                stmt.run(...params);
+
+                // Broadcast HUD config update
+                this.io.emit('goals:hud-config-updated', req.body);
+
+                res.json({ success: true });
+            } catch (error) {
+                this.api.log(`Error updating HUD config: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ========================================
+        // GOAL POSITION & SIZE ROUTES
+        // ========================================
+
+        // Update goal position and size
+        this.api.registerRoute('patch', '/api/goals/:goalType/layout', (req, res) => {
+            try {
+                const goalType = req.params.goalType;
+                const { position_x, position_y, width, height, z_index } = req.body;
+
+                const db = this.api.getDatabase();
+                const updates = [];
+                const params = [];
+
+                if (position_x !== undefined) {
+                    updates.push('position_x = ?');
+                    params.push(position_x);
+                }
+                if (position_y !== undefined) {
+                    updates.push('position_y = ?');
+                    params.push(position_y);
+                }
+                if (width !== undefined) {
+                    updates.push('width = ?');
+                    params.push(width);
+                }
+                if (height !== undefined) {
+                    updates.push('height = ?');
+                    params.push(height);
+                }
+                if (z_index !== undefined) {
+                    updates.push('z_index = ?');
+                    params.push(z_index);
+                }
+
+                updates.push('updated_at = CURRENT_TIMESTAMP');
+                params.push(goalType);
+
+                const stmt = db.prepare(`
+                    UPDATE goals_config
+                    SET ${updates.join(', ')}
+                    WHERE goal_type = ?
+                `);
+
+                stmt.run(...params);
+
+                // Reload goal
+                this.loadGoals();
+                const goal = this.goals.get(goalType);
+
+                // Broadcast update
+                this.io.emit('goals:layout-updated', {
+                    goalType,
+                    position_x,
+                    position_y,
+                    width,
+                    height,
+                    z_index
+                });
+
+                res.json({ success: true, goal });
+            } catch (error) {
+                this.api.log(`Error updating goal layout: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Batch update multiple goal layouts
+        this.api.registerRoute('post', '/api/goals/layouts/batch', (req, res) => {
+            try {
+                const { updates } = req.body; // Array of {goalType, position_x, position_y, width, height, z_index}
+
+                if (!Array.isArray(updates)) {
+                    return res.status(400).json({ success: false, error: 'Updates must be an array' });
+                }
+
+                const db = this.api.getDatabase();
+
+                for (const update of updates) {
+                    const { goalType, position_x, position_y, width, height, z_index } = update;
+
+                    const fields = [];
+                    const params = [];
+
+                    if (position_x !== undefined) {
+                        fields.push('position_x = ?');
+                        params.push(position_x);
+                    }
+                    if (position_y !== undefined) {
+                        fields.push('position_y = ?');
+                        params.push(position_y);
+                    }
+                    if (width !== undefined) {
+                        fields.push('width = ?');
+                        params.push(width);
+                    }
+                    if (height !== undefined) {
+                        fields.push('height = ?');
+                        params.push(height);
+                    }
+                    if (z_index !== undefined) {
+                        fields.push('z_index = ?');
+                        params.push(z_index);
+                    }
+
+                    if (fields.length > 0) {
+                        fields.push('updated_at = CURRENT_TIMESTAMP');
+                        params.push(goalType);
+
+                        const stmt = db.prepare(`
+                            UPDATE goals_config
+                            SET ${fields.join(', ')}
+                            WHERE goal_type = ?
+                        `);
+
+                        stmt.run(...params);
+                    }
+                }
+
+                // Reload goals
+                this.loadGoals();
+
+                // Broadcast batch update
+                this.io.emit('goals:layouts-batch-updated', { updates });
+
+                res.json({ success: true, updated: updates.length });
+            } catch (error) {
+                this.api.log(`Error batch updating layouts: ${error.message}`, 'error');
                 res.status(500).json({ success: false, error: error.message });
             }
         });
