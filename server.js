@@ -74,26 +74,9 @@ app.use((req, res, next) => {
     const isOverlayRoute = false;
 
     // Dashboard needs relaxed CSP for inline event handlers (onclick, etc.)
-    // Production-ready CSP for all admin routes (including dashboard)
-    const isDashboard = req.path.includes('/dashboard.html');
+    const isDashboard = req.path === '/' || req.path.includes('/dashboard.html');
 
-    if (!isOverlayRoute) {
-        res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Strict CSP for admin routes - no inline scripts/styles, local resources only
-        res.header('Content-Security-Policy',
-            `default-src 'self'; ` +
-            `script-src 'self'; ` +
-            `style-src 'self' 'unsafe-inline'; ` +
-            `img-src 'self' data: blob: https:; ` +
-            `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss:; ` +
-            `media-src 'self' blob: data:; ` +
-            `object-src 'none'; ` +
-            `base-uri 'self'; ` +
-            `form-action 'self'; ` +
-            `frame-ancestors 'self';`
-        );
-    } else if (isDashboard) {
+    if (isDashboard) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
         // Dashboard CSP: Allow inline event handlers (onclick) for functionality
         res.header('Content-Security-Policy',
@@ -111,8 +94,21 @@ app.use((req, res, next) => {
             `frame-ancestors 'self';`
         );
     } else {
-        // CSP für Overlays (muss permissiv bleiben)
-        res.header('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' ws: wss: http: https: data: blob:; frame-ancestors 'self' *;");
+        res.header('X-Frame-Options', 'SAMEORIGIN');
+        // Strict CSP for other routes
+        res.header('Content-Security-Policy',
+            `default-src 'self'; ` +
+            `script-src 'self'; ` +
+            `style-src 'self' 'unsafe-inline'; ` +
+            `img-src 'self' data: blob: https:; ` +
+            `font-src 'self' data:; ` +
+            `connect-src 'self' ws: wss:; ` +
+            `media-src 'self' blob: data:; ` +
+            `object-src 'none'; ` +
+            `base-uri 'self'; ` +
+            `form-action 'self'; ` +
+            `frame-ancestors 'self';`
+        );
     }
 
     next();
