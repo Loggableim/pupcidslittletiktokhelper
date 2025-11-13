@@ -1653,11 +1653,11 @@ const PORT = process.env.PORT || 3000;
                 logger.info('✅ OSC-Bridge injected into Flows');
             }
 
-            // TTS Core V2 Plugin Injektion
-            const ttsPlugin = pluginLoader.getPluginInstance('tts_core_v2');
+            // TTS Plugin Injektion
+            const ttsPlugin = pluginLoader.getPluginInstance('tts');
             if (ttsPlugin) {
                 flows.ttsEngine = ttsPlugin;
-                logger.info('✅ TTS Core V2 injected into Flows');
+                logger.info('✅ TTS injected into Flows');
             }
         } else {
             logger.info('ℹ️  No plugins found in /plugins directory');

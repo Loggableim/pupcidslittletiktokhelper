@@ -217,7 +217,7 @@ function initializeSocketListeners() {
 
     // ========== AUDIO PLAYBACK (Dashboard) ==========
     // TTS Playback im Dashboard
-    socket.on('tts-v2:play', (data) => {
+    socket.on('tts:play', (data) => {
         playDashboardTTS(data);
     });
 
