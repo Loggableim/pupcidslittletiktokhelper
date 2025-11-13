@@ -605,7 +605,64 @@ class DatabaseManager {
         return row ? { ...row, enabled: Boolean(row.enabled) } : null;
     }
 
-    // HUD Element functions removed - will be reintegrated as plugin
+    getAllHudElements() {
+        const stmt = this.db.prepare('SELECT * FROM hud_elements ORDER BY element_id');
+        const rows = stmt.all();
+        return rows.map(row => ({ ...row, enabled: Boolean(row.enabled) }));
+    }
+
+    setHudElement(elementId, config) {
+        const stmt = this.db.prepare(`
+            INSERT INTO hud_elements (element_id, enabled, position_x, position_y, position_unit, width, height, anchor, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(element_id) DO UPDATE SET
+                enabled = excluded.enabled,
+                position_x = excluded.position_x,
+                position_y = excluded.position_y,
+                position_unit = excluded.position_unit,
+                width = excluded.width,
+                height = excluded.height,
+                anchor = excluded.anchor,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+        stmt.run(
+            elementId,
+            config.enabled ? 1 : 0,
+            config.position_x,
+            config.position_y,
+            config.position_unit || 'px',
+            config.width || 0,
+            config.height || 0,
+            config.anchor || 'top-left'
+        );
+    }
+
+    updateHudElementPosition(elementId, positionX, positionY, unit = 'px', anchor = 'top-left') {
+        const stmt = this.db.prepare(`
+            UPDATE hud_elements
+            SET position_x = ?, position_y = ?, position_unit = ?, anchor = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE element_id = ?
+        `);
+        stmt.run(positionX, positionY, unit, anchor, elementId);
+    }
+
+    updateHudElementSize(elementId, width, height) {
+        const stmt = this.db.prepare(`
+            UPDATE hud_elements
+            SET width = ?, height = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE element_id = ?
+        `);
+        stmt.run(width, height, elementId);
+    }
+
+    toggleHudElement(elementId, enabled) {
+        const stmt = this.db.prepare(`
+            UPDATE hud_elements
+            SET enabled = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE element_id = ?
+        `);
+        stmt.run(enabled ? 1 : 0, elementId);
+    }
 
     /**
      * Initialize default Emoji Rain configuration
