@@ -19,11 +19,11 @@
         }
 
         .goals-container {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            padding: 0;
+            position: relative;
             width: 100vw;
+            height: 100vh;
+            overflow: hidden;
         }
 
         .goal-bar {
@@ -257,8 +257,11 @@
 </head>
 <body>
     <div class="goals-container" id="goalsContainer">
-        <!-- Goals will be rendered here -->
+        <!-- Goals will be rendered here with absolute positioning -->
     </div>
+
+    <!-- Dynamic custom CSS from templates -->
+    <style id="customTemplateCSS"></style>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -269,9 +272,11 @@
         const filterGoalTypes = urlParams.get('goals')?.split(',') || null; // e.g., ?goals=coin,likes
         const showIcons = urlParams.get('icons') !== 'false'; // Show icons by default
         const showPercent = urlParams.get('percent') !== 'false'; // Show percent by default
+        const useAbsolutePositioning = urlParams.get('absolute') !== 'false'; // Use absolute positioning by default
 
         // Goals state
         let goals = {};
+        let hudConfig = { enabled: true };
 
         // Icons for each goal type
         const icons = {
@@ -318,6 +323,34 @@
             }
         });
 
+        // NEW: Receive layout update
+        socket.on('goals:layout-updated', (data) => {
+            console.log('Layout updated:', data);
+            if (goals[data.goalType]) {
+                // Update goal layout properties
+                if (data.position_x !== undefined) goals[data.goalType].position_x = data.position_x;
+                if (data.position_y !== undefined) goals[data.goalType].position_y = data.position_y;
+                if (data.width !== undefined) goals[data.goalType].width = data.width;
+                if (data.height !== undefined) goals[data.goalType].height = data.height;
+                if (data.z_index !== undefined) goals[data.goalType].z_index = data.z_index;
+                renderGoals();
+            }
+        });
+
+        // NEW: Receive template application
+        socket.on('goals:template-applied', (data) => {
+            console.log('Template applied:', data);
+            // Reload all goals to get new styles
+            socket.emit('goals:get-all');
+        });
+
+        // NEW: Receive HUD config update
+        socket.on('goals:hud-config-updated', (data) => {
+            console.log('HUD config updated:', data);
+            hudConfig = { ...hudConfig, ...data };
+            renderGoals();
+        });
+
         // Receive goal completion event
         socket.on('goals:completed', (data) => {
             console.log('Goal completed:', data);
@@ -356,6 +389,21 @@
 
             if (!goal.enabled) {
                 div.classList.add('hidden');
+            }
+
+            // NEW: Apply absolute positioning if enabled
+            if (useAbsolutePositioning) {
+                div.style.position = 'absolute';
+                div.style.left = `${goal.position_x || 10}px`;
+                div.style.top = `${goal.position_y || 10}px`;
+                div.style.width = `${goal.width || 500}px`;
+                div.style.height = `${goal.height || 100}px`;
+                div.style.zIndex = goal.z_index || 100;
+            }
+
+            // Apply custom design styles if available
+            if (goal.design && typeof goal.design === 'object') {
+                applyDesignStyles(div, goal.design);
             }
 
             const color1 = goal.style?.fill_color1 || '#60a5fa';
@@ -463,6 +511,59 @@
                         confetti.remove();
                     }, 5000);
                 }, i * 20);
+            }
+        }
+
+        // NEW: Apply design styles from design_json
+        function applyDesignStyles(element, design) {
+            if (!design) return;
+
+            // Apply font family
+            if (design.font_family) {
+                element.style.fontFamily = design.font_family;
+            }
+
+            // Apply font size
+            if (design.font_size) {
+                element.style.fontSize = design.font_size;
+            }
+
+            // Apply text color
+            if (design.text_color) {
+                element.style.color = design.text_color;
+            }
+
+            // Apply background
+            if (design.background) {
+                const wrapper = element.querySelector('.goal-wrapper');
+                if (wrapper) {
+                    wrapper.style.background = design.background;
+                }
+            }
+
+            // Apply backdrop filter (for glassmorphism)
+            if (design.backdrop_filter) {
+                const wrapper = element.querySelector('.goal-wrapper');
+                if (wrapper) {
+                    wrapper.style.backdropFilter = design.backdrop_filter;
+                    wrapper.style.webkitBackdropFilter = design.backdrop_filter;
+                }
+            }
+
+            // Apply border radius
+            if (design.border_radius) {
+                const wrapper = element.querySelector('.goal-wrapper');
+                if (wrapper) {
+                    wrapper.style.borderRadius = design.border_radius;
+                }
+            }
+
+            // Apply shadow
+            if (design.shadow) {
+                const wrapper = element.querySelector('.goal-wrapper');
+                if (wrapper) {
+                    wrapper.style.boxShadow = design.shadow;
+                }
             }
         }
 
