@@ -1,11 +1,11 @@
 {
   "id": "emoji-rain",
   "name": "Emoji Rain",
-  "version": "1.0.0",
-  "description": "Physics-based emoji rain effect for TikTok events (gifts, likes, follows, etc.)",
+  "version": "2.0.0",
+  "description": "Enhanced physics-based emoji rain with OBS HUD support, Game-Quality graphics, and 60 FPS performance",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": false,
+  "enabled": true,
   "permissions": [
     "socket.io",
     "routes",
