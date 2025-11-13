@@ -2001,7 +2001,7 @@ class GoalsPlugin extends EventEmitter {
                 this.loadGoals();
                 const goal = this.goals.get(goalType);
 
-                // Broadcast update
+                // Broadcast update to ALL clients (not just specific rooms)
                 this.api.emit('goals:layout-updated', {
                     goalType,
                     position_x,
@@ -2010,6 +2010,8 @@ class GoalsPlugin extends EventEmitter {
                     height,
                     z_index
                 });
+
+                this.api.log(`Broadcasting layout update for ${goalType}: (${position_x}, ${position_y})`, 'info');
 
                 res.json({ success: true, goal });
             } catch (error) {

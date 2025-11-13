@@ -290,8 +290,13 @@
 
         // Receive all goals
         socket.on('goals:all', (data) => {
+            console.log('Received all goals:', data);
             if (data && data.goals) {
+                // Clear existing goals
+                goals = {};
+
                 data.goals.forEach(goal => {
+                    console.log(`Loading goal ${goal.goalType} with position (${goal.position_x}, ${goal.position_y})`);
                     goals[goal.goalType] = goal;
                 });
                 renderGoals();
@@ -332,7 +337,11 @@
                 if (data.width !== undefined) goals[data.goalType].width = data.width;
                 if (data.height !== undefined) goals[data.goalType].height = data.height;
                 if (data.z_index !== undefined) goals[data.goalType].z_index = data.z_index;
+                console.log(`Updated ${data.goalType} position to (${data.position_x}, ${data.position_y})`);
                 renderGoals();
+            } else {
+                console.warn(`Goal ${data.goalType} not found in local state, reloading all goals`);
+                socket.emit('goals:get-all');
             }
         });
 
@@ -398,6 +407,8 @@
                 div.style.width = `${goal.width || 500}px`;
                 div.style.height = `${goal.height || 100}px`;
                 div.style.zIndex = goal.z_index || 100;
+
+                console.log(`Rendered ${goal.goalType} at position (${goal.position_x || 10}, ${goal.position_y || 10})`);
             }
 
             // Apply custom design styles if available
