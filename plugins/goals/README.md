@@ -1,3 +1,4 @@
+# 🎯 Live Goals Plugin
 # 🎯 TikFinity Goals Plugin
 
 Complete TikTok LIVE Goals system with TikFinity Event API integration, real-time tracking, and customizable overlays.

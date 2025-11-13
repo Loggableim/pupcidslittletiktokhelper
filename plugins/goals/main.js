@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const EventEmitter = require('events');
 
 /**
+ * Live Goals Plugin
  * TikFinity Goals Plugin
  *
  * Complete goals system with 4 goal types:
@@ -37,6 +38,7 @@ class GoalsPlugin extends EventEmitter {
     }
 
     async init() {
+        this.api.log('Initializing Live Goals Plugin...', 'info');
         this.api.log('Initializing TikFinity Goals Plugin...', 'info');
 
         // Initialize database
@@ -60,6 +62,7 @@ class GoalsPlugin extends EventEmitter {
         // Register Flow Actions
         this.registerFlowActions();
 
+        this.api.log('✅ Live Goals Plugin initialized', 'info');
         this.api.log('✅ TikFinity Goals Plugin initialized', 'info');
     }
 
