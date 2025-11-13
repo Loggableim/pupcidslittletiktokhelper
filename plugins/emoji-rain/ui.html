@@ -1094,35 +1094,76 @@
             }
         }
 
-        // Initialize
-        console.log('🚀 [EMOJI RAIN UI] Initializing Emoji Rain UI...');
-        loadConfig();
-        loadUploadedImages();
-        console.log('✅ [EMOJI RAIN UI] Initialization started');
+        // ========== INITIALIZATION ==========
 
-        // ========== EVENT LISTENERS (CSP-compliant) ==========
+        function initializeEventListeners() {
+            console.log('🔗 [EMOJI RAIN UI] Registering event listeners...');
 
-        // Resolution preset selector
-        document.getElementById('obs_hud_preset').addEventListener('change', applyResolutionPreset);
-
-        // Upload images button
-        document.getElementById('upload-images-btn').addEventListener('click', uploadImages);
-
-        // Save config button
-        document.getElementById('save-config-btn').addEventListener('click', saveConfig);
-
-        // Test emoji rain button
-        document.getElementById('test-emoji-rain-btn').addEventListener('click', testEmojiRain);
-
-        // Delete image buttons (event delegation)
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('delete-btn')) {
-                const filename = e.target.getAttribute('data-filename');
-                if (filename) {
-                    deleteImage(filename);
-                }
+            // Resolution preset selector
+            const presetSelect = document.getElementById('obs_hud_preset');
+            if (presetSelect) {
+                presetSelect.addEventListener('change', applyResolutionPreset);
+                console.log('✅ obs_hud_preset listener registered');
+            } else {
+                console.error('❌ obs_hud_preset element not found!');
             }
-        });
+
+            // Upload images button
+            const uploadBtn = document.getElementById('upload-images-btn');
+            if (uploadBtn) {
+                uploadBtn.addEventListener('click', uploadImages);
+                console.log('✅ upload-images-btn listener registered');
+            } else {
+                console.error('❌ upload-images-btn element not found!');
+            }
+
+            // Save config button
+            const saveBtn = document.getElementById('save-config-btn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveConfig);
+                console.log('✅ save-config-btn listener registered');
+            } else {
+                console.error('❌ save-config-btn element not found!');
+            }
+
+            // Test emoji rain button
+            const testBtn = document.getElementById('test-emoji-rain-btn');
+            if (testBtn) {
+                testBtn.addEventListener('click', testEmojiRain);
+                console.log('✅ test-emoji-rain-btn listener registered');
+            } else {
+                console.error('❌ test-emoji-rain-btn element not found!');
+            }
+
+            // Delete image buttons (event delegation)
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('delete-btn')) {
+                    const filename = e.target.getAttribute('data-filename');
+                    if (filename) {
+                        deleteImage(filename);
+                    }
+                }
+            });
+            console.log('✅ delete-btn delegation registered');
+
+            console.log('✅ [EMOJI RAIN UI] All event listeners registered');
+        }
+
+        function initialize() {
+            console.log('🚀 [EMOJI RAIN UI] Initializing Emoji Rain UI...');
+            loadConfig();
+            loadUploadedImages();
+            initializeEventListeners();
+            console.log('✅ [EMOJI RAIN UI] Initialization complete');
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initialize);
+        } else {
+            // DOM already loaded
+            initialize();
+        }
     </script>
 </body>
 </html>
