@@ -650,22 +650,37 @@ class GoalsPlugin extends EventEmitter {
 
         // Get all goals
         this.api.registerRoute('get', '/api/goals', (req, res) => {
-            const goalsArray = Array.from(this.goals.values()).map(goal => ({
-                goalType: goal.goalType,
-                enabled: goal.enabled,
-                name: goal.name,
-                currentValue: goal.currentValue,
-                targetValue: goal.targetValue,
-                startValue: goal.startValue,
-                percent: goal.percent,
-                remaining: goal.remaining,
-                isCompleted: goal.isCompleted,
-                progressionMode: goal.progressionMode,
-                incrementAmount: goal.incrementAmount,
-                style: goal.style
-            }));
+            try {
+                // Ensure this.goals is a Map
+                if (!(this.goals instanceof Map)) {
+                    this.api.log('Warning: this.goals is not a Map, reinitializing', 'warn');
+                    this.goals = new Map();
+                    this.loadGoals();
+                }
 
-            res.json({ success: true, goals: goalsArray });
+                // Convert Map to Array
+                const goalsArray = Array.from(this.goals.values()).map(goal => ({
+                    goalType: goal.goalType,
+                    enabled: goal.enabled,
+                    name: goal.name,
+                    currentValue: goal.currentValue,
+                    targetValue: goal.targetValue,
+                    startValue: goal.startValue,
+                    percent: goal.percent,
+                    remaining: goal.remaining,
+                    isCompleted: goal.isCompleted,
+                    progressionMode: goal.progressionMode,
+                    incrementAmount: goal.incrementAmount,
+                    style: goal.style
+                }));
+
+                this.api.log(`Returning ${goalsArray.length} goals to client`, 'debug');
+
+                res.json({ success: true, goals: goalsArray });
+            } catch (error) {
+                this.api.log(`Error in /api/goals route: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message, goals: [] });
+            }
         });
 
         // Get single goal
