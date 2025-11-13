@@ -917,7 +917,7 @@ class GoalsPlugin extends EventEmitter {
                 this.api.log('✅ Connected to Event API', 'info');
 
                 // Broadcast connection status via Socket.IO
-                this.api.io.emit('goals:event-api:connected', { connected: true });
+                this.api.emit('goals:event-api:connected', { connected: true });
             });
 
             this.eventApiWs.on('message', (data) => {
@@ -938,7 +938,7 @@ class GoalsPlugin extends EventEmitter {
                 this.api.log('Event API WebSocket connection closed', 'warn');
 
                 // Broadcast connection status via Socket.IO
-                this.api.io.emit('goals:event-api:connected', { connected: false });
+                this.api.emit('goals:event-api:connected', { connected: false });
 
                 // Auto-reconnect if enabled
                 if (config.auto_reconnect && this.eventApiReconnectAttempts < this.maxEventApiReconnectAttempts) {
@@ -1082,7 +1082,7 @@ class GoalsPlugin extends EventEmitter {
         this.api.log(`🎯 Goal completed: ${goal.name} (${goal.currentValue}/${goal.targetValue})`, 'info');
 
         // Broadcast completion event via Socket.IO
-        this.api.io.emit('goals:completed', {
+        this.api.emit('goals:completed', {
             goalType: goal.goalType,
             name: goal.name,
             currentValue: goal.currentValue,
@@ -1189,7 +1189,7 @@ class GoalsPlugin extends EventEmitter {
      * Broadcast goal update to overlays via Socket.IO
      */
     broadcastGoalUpdate(goal) {
-        this.api.io.emit('goals:update', {
+        this.api.emit('goals:update', {
             goalType: goal.goalType,
             enabled: goal.enabled,
             name: goal.name,
@@ -1402,11 +1402,24 @@ class GoalsPlugin extends EventEmitter {
                     }
                 }
 
-                // Handle style separately (JSON)
-                if (updates.style) {
+                // Handle style separately (JSON) - support both style and style_json
+                if (updates.style || updates.style_json !== undefined) {
                     updateFields.push('style_json = ?');
-                    updateValues.push(JSON.stringify(updates.style));
-                    goal.style = updates.style;
+
+                    // Prefer style over style_json
+                    if (updates.style) {
+                        updateValues.push(JSON.stringify(updates.style));
+                        goal.style = updates.style;
+                    } else {
+                        // Ensure it's a string
+                        const styleJson = typeof updates.style_json === 'string'
+                            ? updates.style_json
+                            : JSON.stringify(updates.style_json);
+                        updateValues.push(styleJson);
+                        goal.style = typeof updates.style_json === 'string'
+                            ? JSON.parse(updates.style_json)
+                            : updates.style_json;
+                    }
                 }
 
                 if (updateFields.length > 0) {
@@ -1826,7 +1839,7 @@ class GoalsPlugin extends EventEmitter {
                 this.loadGoals();
 
                 // Broadcast update to all clients
-                this.io.emit('goals:template-applied', { templateId, goalTypes: applyToGoals });
+                this.api.emit('goals:template-applied', { templateId, goalTypes: applyToGoals });
 
                 res.json({ success: true, appliedTo: applyToGoals.length });
             } catch (error) {
@@ -1929,7 +1942,7 @@ class GoalsPlugin extends EventEmitter {
                 stmt.run(...params);
 
                 // Broadcast HUD config update
-                this.io.emit('goals:hud-config-updated', req.body);
+                this.api.emit('goals:hud-config-updated', req.body);
 
                 res.json({ success: true });
             } catch (error) {
@@ -1989,7 +2002,7 @@ class GoalsPlugin extends EventEmitter {
                 const goal = this.goals.get(goalType);
 
                 // Broadcast update
-                this.io.emit('goals:layout-updated', {
+                this.api.emit('goals:layout-updated', {
                     goalType,
                     position_x,
                     position_y,
@@ -2061,7 +2074,7 @@ class GoalsPlugin extends EventEmitter {
                 this.loadGoals();
 
                 // Broadcast batch update
-                this.io.emit('goals:layouts-batch-updated', { updates });
+                this.api.emit('goals:layouts-batch-updated', { updates });
 
                 res.json({ success: true, updated: updates.length });
             } catch (error) {
