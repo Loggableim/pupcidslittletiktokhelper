@@ -100,6 +100,7 @@
             font-size: 1.3rem;
             color: #ffffff;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            transition: color 0.3s ease;
         }
 
         .goal-values {
@@ -112,6 +113,16 @@
             font-weight: 700;
             color: var(--color1, #60a5fa);
             font-size: 1.1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .goal-current.value-changed {
+            animation: valueFlash 0.6s ease;
+        }
+
+        @keyframes valueFlash {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
         }
 
         .goal-target {
@@ -134,6 +145,7 @@
             transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            will-change: width;
         }
 
         .progress-fill::before {
@@ -290,8 +302,13 @@
 
         // Receive all goals
         socket.on('goals:all', (data) => {
+            console.log('Received all goals:', data);
             if (data && data.goals) {
+                // Clear existing goals
+                goals = {};
+
                 data.goals.forEach(goal => {
+                    console.log(`Loading goal ${goal.goalType} with position (${goal.position_x}, ${goal.position_y})`);
                     goals[goal.goalType] = goal;
                 });
                 renderGoals();
@@ -308,8 +325,8 @@
             const oldGoal = goals[data.goalType];
             goals[data.goalType] = data;
 
-            // Re-render goals
-            renderGoals();
+            // IMPORTANT: Only update values, don't re-render entire DOM
+            updateGoalValues(data.goalType, data);
 
             // Animate value change
             if (oldGoal && oldGoal.currentValue !== data.currentValue) {
@@ -332,7 +349,11 @@
                 if (data.width !== undefined) goals[data.goalType].width = data.width;
                 if (data.height !== undefined) goals[data.goalType].height = data.height;
                 if (data.z_index !== undefined) goals[data.goalType].z_index = data.z_index;
+                console.log(`Updated ${data.goalType} position to (${data.position_x}, ${data.position_y})`);
                 renderGoals();
+            } else {
+                console.warn(`Goal ${data.goalType} not found in local state, reloading all goals`);
+                socket.emit('goals:get-all');
             }
         });
 
@@ -398,6 +419,8 @@
                 div.style.width = `${goal.width || 500}px`;
                 div.style.height = `${goal.height || 100}px`;
                 div.style.zIndex = goal.z_index || 100;
+
+                console.log(`Rendered ${goal.goalType} at position (${goal.position_x || 10}, ${goal.position_y || 10})`);
             }
 
             // Apply custom design styles if available
@@ -441,6 +464,57 @@
             `;
 
             return div;
+        }
+
+        // Update goal values without re-rendering entire DOM (prevents flickering)
+        function updateGoalValues(goalType, goal) {
+            const goalElement = document.getElementById(`goal-${goalType}`);
+            if (!goalElement) {
+                console.warn(`Goal element ${goalType} not found, re-rendering all goals`);
+                renderGoals();
+                return;
+            }
+
+            // Update current value
+            const currentValueElement = document.getElementById(`current-${goalType}`);
+            if (currentValueElement) {
+                currentValueElement.textContent = goal.currentValue.toLocaleString();
+            }
+
+            // Update target value
+            const targetValueElement = goalElement.querySelector('.goal-target');
+            if (targetValueElement) {
+                targetValueElement.textContent = `/ ${goal.targetValue.toLocaleString()}`;
+            }
+
+            // Update percent
+            const percentElement = goalElement.querySelector('.goal-percent');
+            if (percentElement) {
+                percentElement.textContent = `${goal.percent}%`;
+            }
+
+            // Update progress bar width (smooth transition via CSS)
+            const progressFillElement = goalElement.querySelector('.goal-progress-fill');
+            if (progressFillElement) {
+                progressFillElement.style.width = `${goal.percent}%`;
+            }
+
+            // Update completed state
+            const wrapperElement = goalElement.querySelector('.goal-wrapper');
+            if (wrapperElement) {
+                if (goal.isCompleted) {
+                    wrapperElement.classList.add('completed');
+                } else {
+                    wrapperElement.classList.remove('completed');
+                }
+            }
+
+            // Update enabled/hidden state
+            if (!goal.enabled) {
+                goalElement.classList.add('hidden');
+            } else {
+                goalElement.classList.remove('hidden');
+            }
         }
 
         // Animate value change
