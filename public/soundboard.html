@@ -345,6 +345,20 @@
   <script>
     // ========== WebSocket & State ==========
     const socket = io();
+
+    // Socket.IO Connection Logging
+    socket.on('connect', () => {
+      console.log('✅ [Soundboard] Socket.IO connected');
+    });
+
+    socket.on('disconnect', () => {
+      console.warn('⚠️ [Soundboard] Socket.IO disconnected');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('❌ [Soundboard] Socket.IO connection error:', error);
+    });
+
     let catalog = [];
     let assignments = {};
     let pickerTarget = null;
@@ -394,6 +408,8 @@
     });
 
     socket.on('soundboard:play', (data) => {
+      console.log('🔊 [Soundboard] Received soundboard:play event:', data);
+      pushLog(`🔊 Event empfangen: ${data.label || data.url}`);
       playSound(data.url, data.volume, data.label);
     });
 
@@ -454,7 +470,14 @@
         a.volume = Math.max(0, Math.min(1, volumeValue)); // Clamp between 0 and 1
 
         // Add to DOM pool for reliable playback
-        const pool = document.getElementById('soundboard-audio-pool');
+        let pool = document.getElementById('soundboard-audio-pool');
+        if (!pool) {
+          console.warn('⚠️ [Soundboard] Audio pool not found, creating it...');
+          pool = document.createElement('div');
+          pool.id = 'soundboard-audio-pool';
+          pool.style.display = 'none';
+          document.body.appendChild(pool);
+        }
         pool.appendChild(a);
 
         // Enhanced error handling
@@ -521,7 +544,14 @@
       a.volume = Math.max(0, Math.min(1, volumeValue));
 
       // Add to DOM pool
-      const pool = document.getElementById('soundboard-audio-pool');
+      let pool = document.getElementById('soundboard-audio-pool');
+      if (!pool) {
+        console.warn('⚠️ [Soundboard Queue] Audio pool not found, creating it...');
+        pool = document.createElement('div');
+        pool.id = 'soundboard-audio-pool';
+        pool.style.display = 'none';
+        document.body.appendChild(pool);
+      }
       pool.appendChild(a);
 
       a.onended = () => {
