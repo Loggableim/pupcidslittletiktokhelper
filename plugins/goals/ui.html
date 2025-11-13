@@ -457,15 +457,32 @@
         async function loadGoals() {
             try {
                 const response = await fetch('/api/goals');
-                const data = await response.json();
 
-                if (data.success) {
+                // Check if response is OK
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Received non-JSON response:', text.substring(0, 200));
+                    throw new Error('Server returned non-JSON response');
+                }
+
+                const data = await response.json();
+                console.log('Goals API response:', data);
+
+                if (data.success && Array.isArray(data.goals)) {
                     goals = data.goals;
                     renderGoals();
+                } else {
+                    console.error('Invalid data structure:', data);
+                    showNotification('Invalid goals data received', 'error');
                 }
             } catch (error) {
                 console.error('Error loading goals:', error);
-                showNotification('Error loading goals', 'error');
+                showNotification(`Error loading goals: ${error.message}`, 'error');
             }
         }
 
@@ -473,6 +490,17 @@
         function renderGoals() {
             const grid = document.getElementById('goalsGrid');
             grid.innerHTML = '';
+
+            if (!Array.isArray(goals)) {
+                console.error('goals is not an array:', goals);
+                grid.innerHTML = '<div style="color: red; padding: 20px;">Error: Goals data is invalid</div>';
+                return;
+            }
+
+            if (goals.length === 0) {
+                grid.innerHTML = '<div style="color: #94a3b8; padding: 20px; text-align: center;">No goals configured yet. Plugin is initializing...</div>';
+                return;
+            }
 
             goals.forEach(goal => {
                 const card = createGoalCard(goal);
