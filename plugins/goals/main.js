@@ -651,6 +651,10 @@ class GoalsPlugin extends EventEmitter {
         // Get all goals
         this.api.registerRoute('get', '/api/goals', (req, res) => {
             try {
+                this.api.log(`[DEBUG] /api/goals called`, 'info');
+                this.api.log(`[DEBUG] this.goals type: ${this.goals.constructor.name}`, 'info');
+                this.api.log(`[DEBUG] this.goals size: ${this.goals.size}`, 'info');
+
                 // Ensure this.goals is a Map
                 if (!(this.goals instanceof Map)) {
                     this.api.log('Warning: this.goals is not a Map, reinitializing', 'warn');
@@ -658,27 +662,33 @@ class GoalsPlugin extends EventEmitter {
                     this.loadGoals();
                 }
 
-                // Convert Map to Array
-                const goalsArray = Array.from(this.goals.values()).map(goal => ({
-                    goalType: goal.goalType,
-                    enabled: goal.enabled,
-                    name: goal.name,
-                    currentValue: goal.currentValue,
-                    targetValue: goal.targetValue,
-                    startValue: goal.startValue,
-                    percent: goal.percent,
-                    remaining: goal.remaining,
-                    isCompleted: goal.isCompleted,
-                    progressionMode: goal.progressionMode,
-                    incrementAmount: goal.incrementAmount,
-                    style: goal.style
-                }));
+                // Convert Map to Array - METHOD 1: Direct array creation
+                const goalsArray = [];
+                this.goals.forEach((goal, key) => {
+                    goalsArray.push({
+                        goalType: goal.goalType,
+                        enabled: goal.enabled,
+                        name: goal.name,
+                        currentValue: goal.currentValue,
+                        targetValue: goal.targetValue,
+                        startValue: goal.startValue,
+                        percent: goal.percent,
+                        remaining: goal.remaining,
+                        isCompleted: goal.isCompleted,
+                        progressionMode: goal.progressionMode,
+                        incrementAmount: goal.incrementAmount,
+                        style: goal.style
+                    });
+                });
 
-                this.api.log(`Returning ${goalsArray.length} goals to client`, 'debug');
+                this.api.log(`[DEBUG] goalsArray length: ${goalsArray.length}`, 'info');
+                this.api.log(`[DEBUG] goalsArray is Array: ${Array.isArray(goalsArray)}`, 'info');
+                this.api.log(`[DEBUG] Returning goals to client`, 'info');
 
                 res.json({ success: true, goals: goalsArray });
             } catch (error) {
                 this.api.log(`Error in /api/goals route: ${error.message}`, 'error');
+                this.api.log(`Error stack: ${error.stack}`, 'error');
                 res.status(500).json({ success: false, error: error.message, goals: [] });
             }
         });

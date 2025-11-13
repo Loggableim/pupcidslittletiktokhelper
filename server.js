@@ -945,7 +945,16 @@ app.post('/api/gift-catalog/update', apiLimiter, async (req, res) => {
 });
 
 // ========== GOALS ROUTES ==========
+// DISABLED: Old goals routes - now using Goals Plugin instead
+// The Goals Plugin (plugins/goals/) provides a complete replacement with:
+// - Coin, Likes, Follower, and Custom goal types
+// - Event API integration
+// - Real-time overlays
+// - Advanced progression modes
+//
+// All /api/goals/* routes are now handled by the plugin
 
+/* COMMENTED OUT - OLD GOALS SYSTEM
 // Get all goals
 app.get('/api/goals', apiLimiter, (req, res) => {
     try {
@@ -1088,6 +1097,7 @@ app.post('/api/goals/reset', apiLimiter, async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+END OF OLD GOALS ROUTES */
 
 // ========== OBS WEBSOCKET ROUTES ==========
 
