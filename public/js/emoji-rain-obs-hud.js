@@ -164,7 +164,10 @@
             if (config.enable_glow) {
                 emoji.element.classList.add('glowing');
                 setTimeout(() => {
-                    emoji.element.classList.remove('glowing');
+                    // Check if element still exists before removing class
+                    if (emoji.element) {
+                        emoji.element.classList.remove('glowing');
+                    }
                 }, 300);
             }
 
@@ -174,7 +177,10 @@
             }
 
             setTimeout(() => {
-                emoji.element.classList.remove('bouncing');
+                // Check if element still exists before removing class
+                if (emoji.element) {
+                    emoji.element.classList.remove('bouncing');
+                }
             }, 500);
         }
 
