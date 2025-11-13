@@ -197,8 +197,9 @@
                 fpsUpdateTime = currentTime;
             }
 
-            // Run physics engine step
-            Engine.update(engine, deltaTime);
+            // Run physics engine step (clamp delta to prevent warnings)
+            const clampedDelta = Math.min(deltaTime, TARGET_FRAME_TIME);
+            Engine.update(engine, clampedDelta);
 
             // Apply wind force to all emojis
             windForce += (Math.random() - 0.5) * config.physics_wind_variation;
