@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const EventEmitter = require('events');
 
 /**
- * TikFinity Goals Plugin
+ * Live Goals Plugin
  *
  * Complete goals system with 4 goal types:
  * - Coin Goal: Tracks gift coins
@@ -37,7 +37,7 @@ class GoalsPlugin extends EventEmitter {
     }
 
     async init() {
-        this.api.log('Initializing TikFinity Goals Plugin...', 'info');
+        this.api.log('Initializing Live Goals Plugin...', 'info');
 
         // Initialize database
         this.initializeDatabase();
@@ -60,7 +60,7 @@ class GoalsPlugin extends EventEmitter {
         // Register Flow Actions
         this.registerFlowActions();
 
-        this.api.log('✅ TikFinity Goals Plugin initialized', 'info');
+        this.api.log('✅ Live Goals Plugin initialized', 'info');
     }
 
     /**
