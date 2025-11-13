@@ -169,6 +169,8 @@
                 <button class="tab-btn" data-tab="soundboard" data-plugin="soundboard">🔊 Soundboard</button>
                 <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
                 <button class="tab-btn" data-tab="multiGuest" data-plugin="vdoninja">👥 Multi-Guest</button>
+                <!-- Emoji Rain Tab -->
+                <button class="tab-btn" data-tab="emojiRain" data-plugin="emoji-rain">🌧️ Emoji Rain</button>
                 <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
@@ -660,6 +662,32 @@
                         <p>Lade Plugins...</p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Tab: Emoji Rain -->
+        <div id="tab-emojiRain" class="tab-content" data-plugin="emoji-rain">
+            <!-- Emoji Rain v2.0 Header -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">🌧️ Emoji Rain v2.0 - Enhanced Edition</h2>
+                    <a href="/emoji-rain/ui" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <div class="text-sm text-gray-400">
+                    Physics-based Emoji Rain • OBS HUD Support • Game-Quality Graphics • 60 FPS Performance • Glow & Particle Effects
+                </div>
+            </div>
+
+            <!-- Emoji Rain UI Iframe -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe
+                    src="/emoji-rain/ui"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="Emoji Rain Configuration">
+                </iframe>
             </div>
         </div>
 
