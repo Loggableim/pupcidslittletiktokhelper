@@ -353,6 +353,7 @@
 
         <div class="nav-buttons">
             <a href="/dashboard.html" class="nav-button">← Zurück zum Dashboard</a>
+            <a href="/emoji-rain/obs-hud" class="nav-button" target="_blank" style="background: rgba(76,175,80,0.3); border-color: rgba(76,175,80,0.5);">🎮 OBS HUD öffnen</a>
         </div>
 
         <!-- Enable/Disable Toggle -->
@@ -367,9 +368,92 @@
             </div>
         </div>
 
-        <!-- Canvas Settings -->
+        <!-- OBS HUD Settings -->
+        <div class="config-section" style="border: 2px solid rgba(76,175,80,0.5); background: rgba(76,175,80,0.1);">
+            <h2>🎮 OBS HUD Einstellungen</h2>
+            <div class="help-text" style="margin-bottom: 20px; font-size: 1em; opacity: 1;">
+                Separate hochwertige Overlay-Seite für OBS mit fester Auflösung und Game-Quality Grafik
+            </div>
+
+            <div class="form-group">
+                <label for="obs_hud_enabled" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="obs_hud_enabled" style="width: auto;">
+                    OBS HUD aktivieren
+                </label>
+                <div class="help-text">Aktiviert die separate OBS HUD Seite mit fester Auflösung</div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="obs_hud_preset">Auflösungs-Preset</label>
+                    <select id="obs_hud_preset" onchange="applyResolutionPreset()">
+                        <option value="custom">Custom</option>
+                        <option value="720p">720p (1280x720)</option>
+                        <option value="1080p" selected>1080p (1920x1080)</option>
+                        <option value="1440p">1440p (2560x1440)</option>
+                        <option value="4k">4K (3840x2160)</option>
+                    </select>
+                    <div class="help-text">Wähle eine Standard-Auflösung oder Custom</div>
+                </div>
+                <div class="form-group">
+                    <label for="obs_hud_width">OBS HUD Breite (px)</label>
+                    <input type="number" id="obs_hud_width" min="640" max="7680" step="1">
+                    <div class="help-text">Feste Breite für OBS Browser Source</div>
+                </div>
+                <div class="form-group">
+                    <label for="obs_hud_height">OBS HUD Höhe (px)</label>
+                    <input type="number" id="obs_hud_height" min="360" max="4320" step="1">
+                    <div class="help-text">Feste Höhe für OBS Browser Source</div>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="enable_glow" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="enable_glow" style="width: auto;">
+                        Glow-Effekte aktivieren
+                    </label>
+                    <div class="help-text">Leuchtende Effekte bei Aufprall</div>
+                </div>
+                <div class="form-group">
+                    <label for="enable_particles" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="enable_particles" style="width: auto;">
+                        Partikel-Effekte aktivieren
+                    </label>
+                    <div class="help-text">Partikel beim Aufprall spawnen</div>
+                </div>
+                <div class="form-group">
+                    <label for="enable_depth" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="enable_depth" style="width: auto;">
+                        Tiefeneffekte aktivieren
+                    </label>
+                    <div class="help-text">Schatten und 3D-Tiefe</div>
+                </div>
+                <div class="form-group">
+                    <label for="target_fps">Ziel-FPS</label>
+                    <input type="number" id="target_fps" min="30" max="120" step="10" value="60">
+                    <div class="help-text">Performance-Ziel (Standard: 60 FPS)</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                <strong>🔗 OBS Setup:</strong><br>
+                <div style="margin-top: 10px; font-family: monospace; font-size: 0.9em;">
+                    1. In OBS: Neue Browser Source hinzufügen<br>
+                    2. URL eingeben: <span style="color: #4CAF50;">http://localhost:3000/emoji-rain/obs-hud</span><br>
+                    3. Breite & Höhe auf gewählte Auflösung setzen<br>
+                    4. "Shutdown source when not visible" aktivieren (für bessere Performance)<br>
+                    5. "Refresh browser when scene becomes active" aktivieren
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Settings (Standard Overlay) -->
         <div class="config-section">
-            <h2>📐 Canvas Einstellungen</h2>
+            <h2>📐 Canvas Einstellungen (Standard Overlay)</h2>
+            <div class="help-text" style="margin-bottom: 15px;">
+                Diese Einstellungen gelten für das Standard-Overlay (/emoji-rain/overlay)
+            </div>
             <div class="form-grid">
                 <div class="form-group">
                     <label for="width_px">Breite (px)</label>
@@ -584,10 +668,48 @@
             }
         }
 
+        // Resolution presets
+        const resolutionPresets = {
+            '720p': { width: 1280, height: 720 },
+            '1080p': { width: 1920, height: 1080 },
+            '1440p': { width: 2560, height: 1440 },
+            '4k': { width: 3840, height: 2160 }
+        };
+
+        // Apply resolution preset
+        function applyResolutionPreset() {
+            const preset = document.getElementById('obs_hud_preset').value;
+            if (preset !== 'custom' && resolutionPresets[preset]) {
+                document.getElementById('obs_hud_width').value = resolutionPresets[preset].width;
+                document.getElementById('obs_hud_height').value = resolutionPresets[preset].height;
+            }
+        }
+
         // Update UI with loaded config
         function updateUI() {
             document.getElementById('enabled-toggle').checked = config.enabled;
             updateEnabledStatus();
+
+            // OBS HUD settings
+            document.getElementById('obs_hud_enabled').checked = config.obs_hud_enabled !== false;
+            document.getElementById('obs_hud_width').value = config.obs_hud_width || 1920;
+            document.getElementById('obs_hud_height').value = config.obs_hud_height || 1080;
+            document.getElementById('enable_glow').checked = config.enable_glow !== false;
+            document.getElementById('enable_particles').checked = config.enable_particles !== false;
+            document.getElementById('enable_depth').checked = config.enable_depth !== false;
+            document.getElementById('target_fps').value = config.target_fps || 60;
+
+            // Detect preset
+            const width = config.obs_hud_width || 1920;
+            const height = config.obs_hud_height || 1080;
+            let detectedPreset = 'custom';
+            for (const [preset, res] of Object.entries(resolutionPresets)) {
+                if (res.width === width && res.height === height) {
+                    detectedPreset = preset;
+                    break;
+                }
+            }
+            document.getElementById('obs_hud_preset').value = detectedPreset;
 
             // Canvas settings
             document.getElementById('width_px').value = config.width_px || 1280;
@@ -643,6 +765,15 @@
 
             const newConfig = {
                 enabled: document.getElementById('enabled-toggle').checked,
+                // OBS HUD settings
+                obs_hud_enabled: document.getElementById('obs_hud_enabled').checked,
+                obs_hud_width: parseInt(document.getElementById('obs_hud_width').value),
+                obs_hud_height: parseInt(document.getElementById('obs_hud_height').value),
+                enable_glow: document.getElementById('enable_glow').checked,
+                enable_particles: document.getElementById('enable_particles').checked,
+                enable_depth: document.getElementById('enable_depth').checked,
+                target_fps: parseInt(document.getElementById('target_fps').value),
+                // Standard canvas settings
                 width_px: parseInt(document.getElementById('width_px').value),
                 height_px: parseInt(document.getElementById('height_px').value),
                 emoji_set: document.getElementById('emoji_set').value.split(',').map(e => e.trim()).filter(e => e),

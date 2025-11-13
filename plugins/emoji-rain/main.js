@@ -72,6 +72,12 @@ class EmojiRainPlugin {
             res.sendFile(overlayPath);
         });
 
+        // Serve OBS HUD overlay (high-quality, fixed resolution)
+        this.api.registerRoute('get', '/emoji-rain/obs-hud', (req, res) => {
+            const obsHudPath = path.join(__dirname, 'obs-hud.html');
+            res.sendFile(obsHudPath);
+        });
+
         // Serve uploaded emoji images
         this.api.registerRoute('get', '/emoji-rain/uploads/:filename', (req, res) => {
             const filename = req.params.filename;

@@ -39,6 +39,10 @@
             user-select: none;
             transform-origin: center;
             transition: opacity 0.5s ease;
+            will-change: transform, opacity;
+            /* Hardware acceleration */
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
         }
 
         .emoji-sprite.fading {
@@ -195,11 +199,7 @@
             // Listen for collision with ground for bubble effect
             Events.on(engine, 'collisionStart', handleCollision);
 
-            // Run the engine
-            Engine.run(engine);
-
-            // Update loop
-            requestAnimationFrame(updateLoop);
+            console.log(`✅ Physics initialized at ${canvasWidth}x${canvasHeight}`);
         }
 
         // Handle collision events (for bubble animation)
@@ -266,8 +266,37 @@
             console.log(`📐 Canvas resized to ${canvasWidth}x${canvasHeight}`);
         }
 
-        // Main update loop
-        function updateLoop() {
+        // Performance tracking
+        let lastUpdateTime = performance.now();
+        let frameCount = 0;
+        let fps = 60;
+        let fpsUpdateTime = performance.now();
+        const TARGET_FRAME_TIME = 1000 / 60; // 60 FPS target
+
+        // Main update loop with optimized performance
+        function updateLoop(currentTime) {
+            // Calculate delta time
+            const deltaTime = currentTime - lastUpdateTime;
+
+            // Throttle to target FPS (60 FPS)
+            if (deltaTime < TARGET_FRAME_TIME) {
+                requestAnimationFrame(updateLoop);
+                return;
+            }
+
+            lastUpdateTime = currentTime - (deltaTime % TARGET_FRAME_TIME);
+
+            // Update FPS counter
+            frameCount++;
+            if (currentTime - fpsUpdateTime >= 1000) {
+                fps = Math.round(frameCount * 1000 / (currentTime - fpsUpdateTime));
+                frameCount = 0;
+                fpsUpdateTime = currentTime;
+            }
+
+            // Run physics engine step
+            Engine.update(engine, deltaTime);
+
             // Apply wind force to all emojis
             windForce += (Math.random() - 0.5) * config.physics_wind_variation;
             windForce = Math.max(-config.physics_wind_strength, Math.min(config.physics_wind_strength, windForce));
@@ -287,36 +316,31 @@
                         y: velocity.y * (1 - config.physics_air)
                     });
 
-                    // Update DOM element position and rotation
+                    // Update DOM element position and rotation (optimized with transform3d)
                     if (emoji.element) {
-                        emoji.element.style.left = emoji.body.position.x + 'px';
-                        emoji.element.style.top = emoji.body.position.y + 'px';
-
-                        // Apply rotation
+                        const px = emoji.body.position.x;
+                        const py = emoji.body.position.y;
                         const rotation = emoji.body.angle + emoji.rotation;
                         emoji.rotation += config.emoji_rotation_speed;
-                        emoji.element.style.transform = `translate(-50%, -50%) rotate(${rotation}rad)`;
+
+                        // Use transform3d for hardware acceleration
+                        emoji.element.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) rotate(${rotation}rad)`;
                     }
                 }
 
                 // Check lifetime
                 if (emoji.spawnTime && config.emoji_lifetime_ms > 0) {
-                    const age = Date.now() - emoji.spawnTime;
+                    const age = currentTime - emoji.spawnTime;
                     if (age > config.emoji_lifetime_ms && !emoji.fading) {
                         fadeOutEmoji(emoji);
                     }
                 }
             });
 
-            // Remove faded emojis
-            emojis = emojis.filter(emoji => {
-                if (emoji.removed) {
-                    return false;
-                }
-                return true;
-            });
+            // Remove faded emojis (optimized filter)
+            emojis = emojis.filter(emoji => !emoji.removed);
 
-            // Limit max emojis
+            // Limit max emojis (remove oldest first)
             while (emojis.length > config.max_emojis_on_screen) {
                 const oldest = emojis[0];
                 removeEmoji(oldest);
@@ -372,8 +396,11 @@
                 element.style.fontSize = size + 'px';
             }
 
-            element.style.left = x + 'px';
-            element.style.top = y + 'px';
+            // Use transform3d for better performance
+            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+            element.style.left = '0';
+            element.style.top = '0';
+
             document.getElementById('canvas-container').appendChild(element);
 
             // Track emoji
@@ -383,7 +410,7 @@
                 emoji: emoji,
                 size: size,
                 rotation: 0,
-                spawnTime: Date.now(),
+                spawnTime: performance.now(),
                 fading: false,
                 removed: false,
                 hasBouncedEffect: false
@@ -549,6 +576,9 @@
             // Initialize socket
             initSocket();
 
+            // Start update loop
+            requestAnimationFrame(updateLoop);
+
             console.log('✅ Emoji Rain Overlay ready!');
         }
 
@@ -573,6 +603,19 @@
                 }
                 console.log('Debug mode: ' + debugMode);
             }
+        });
+
+        // Cleanup on page unload (prevent memory leaks)
+        window.addEventListener('beforeunload', () => {
+            // Clean up all emojis
+            emojis.forEach(emoji => removeEmoji(emoji));
+
+            // Stop physics engine
+            if (engine) {
+                Engine.clear(engine);
+            }
+
+            console.log('🧹 Cleanup completed');
         });
     </script>
 </body>
