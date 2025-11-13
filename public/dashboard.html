@@ -169,6 +169,14 @@
                 <button class="tab-btn" data-tab="soundboard" data-plugin="soundboard">🔊 Soundboard</button>
                 <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
                 <button class="tab-btn" data-tab="multiGuest" data-plugin="vdoninja">👥 Multi-Guest</button>
+                <!-- Emoji Rain Tab -->
+                <button class="tab-btn" data-tab="emojiRain" data-plugin="emoji-rain">🌧️ Emoji Rain</button>
+                <!-- Gift Milestone Tab -->
+                <button class="tab-btn" data-tab="giftMilestone" data-plugin="gift-milestone">🎁 Gift Milestone</button>
+                <!-- Multi-Cam Switcher Tab -->
+                <button class="tab-btn" data-tab="multicam" data-plugin="multicam">🎥 Multi-Cam</button>
+                <!-- OSC-Bridge Tab -->
+                <button class="tab-btn" data-tab="oscBridge" data-plugin="osc-bridge">🎮 OSC-Bridge</button>
                 <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
@@ -660,6 +668,110 @@
                         <p>Lade Plugins...</p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Tab: Emoji Rain -->
+        <div id="tab-emojiRain" class="tab-content" data-plugin="emoji-rain">
+            <!-- Emoji Rain v2.0 Header -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">🌧️ Emoji Rain v2.0 - Enhanced Edition</h2>
+                    <a href="/emoji-rain/ui" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <div class="text-sm text-gray-400">
+                    Physics-based Emoji Rain • OBS HUD Support • Game-Quality Graphics • 60 FPS Performance • Glow & Particle Effects
+                </div>
+            </div>
+
+            <!-- Emoji Rain UI Iframe -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe
+                    src="/emoji-rain/ui"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="Emoji Rain Configuration">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Tab: Gift Milestone -->
+        <div id="tab-giftMilestone" class="tab-content" data-plugin="gift-milestone">
+            <!-- Gift Milestone Header -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">🎁 Gift Milestone Celebration</h2>
+                    <a href="/gift-milestone/ui" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <div class="text-sm text-gray-400">
+                    Celebrate coin milestones with custom animations (GIF, MP4) and audio
+                </div>
+            </div>
+
+            <!-- Gift Milestone UI Iframe -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe
+                    src="/gift-milestone/ui"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="Gift Milestone Configuration">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Tab: Multi-Cam Switcher -->
+        <div id="tab-multicam" class="tab-content" data-plugin="multicam">
+            <!-- Multi-Cam Header -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">🎥 Multi-Cam Switcher</h2>
+                    <a href="/plugins/multicam/ui.html" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <div class="text-sm text-gray-400">
+                    Switch OBS scenes via gifts or chat commands • Supports Spout feeds and multiple cameras
+                </div>
+            </div>
+
+            <!-- Multi-Cam UI Iframe -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe
+                    src="/plugins/multicam/ui.html"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="Multi-Cam Switcher Configuration">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Tab: OSC-Bridge -->
+        <div id="tab-oscBridge" class="tab-content" data-plugin="osc-bridge">
+            <!-- OSC-Bridge Header -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">🎮 OSC-Bridge (VRChat)</h2>
+                    <a href="/plugins/osc-bridge/ui.html" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <div class="text-sm text-gray-400">
+                    Bidirectional OSC bridge for VRChat integration • TikTok events to avatar parameters
+                </div>
+            </div>
+
+            <!-- OSC-Bridge UI Iframe -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe
+                    src="/plugins/osc-bridge/ui.html"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="OSC-Bridge Configuration">
+                </iframe>
             </div>
         </div>
 

@@ -668,75 +668,155 @@ class DatabaseManager {
      * Initialize default Emoji Rain configuration
      */
     initializeEmojiRainDefaults() {
+        console.log('🔧 [DATABASE] initializeEmojiRainDefaults() called');
+
         const defaultConfig = {
+            // OBS HUD Settings
+            obs_hud_enabled: true,
+            obs_hud_width: 1920,
+            obs_hud_height: 1080,
+            enable_glow: true,
+            enable_particles: true,
+            enable_depth: true,
+            target_fps: 60,
+
+            // Standard Canvas Settings
             width_px: 1280,
             height_px: 720,
-            transparent_bg: true,
-            bg_color: "rgba(0,0,0,0)",
+
+            // Emoji Set
             emoji_set: ["💧","💙","💚","💜","❤️","🩵","✨","🌟","🔥","🎉"],
-            assign_per_user: true,
-            enforce_color: false,
-            emoji_color: "#ffffff",
+
+            // Custom Images
+            use_custom_images: false,
+            image_urls: [],
+
+            // Effect
+            effect: 'bounce', // 'bounce' | 'bubble' | 'none'
+
+            // Physics Settings
             physics_gravity_y: 1.0,
             physics_air: 0.02,
-            physics_wind_force: 0.00005,
-            physics_side_walls: true,
-            physics_floor: false,
-            physics_restitution: 0.05,
-            spin_min: -0.5,
-            spin_max: 0.5,
-            size_min_px: 28,
-            size_max_px: 64,
-            spawn_per_like: 1.0,
-            max_burst: 20,
-            max_queue: 200,
-            max_active: 140,
-            drop_despawn_s: 8.0,
-            debug_overlay: false,
-            show_username: false,
-            username_font: "600 14px Inter, system-ui, Arial, sans-serif",
-            username_color: "#ffffff",
-            username_shadow: "0 2px 8px rgba(0,0,0,.75)",
-            hue_rotate_deg: 0,
-            saturate: 1.0,
-            brightness: 1.0,
-            contrast: 1.0,
-            drop_shadow_css: "0 6px 14px rgba(0,0,0,.35)",
-            gift_scale_enabled: true,
-            gift_scale_strategy: "sqrt",
-            gift_scale_per_100_coins: 0.25,
-            gift_min_scale: 1.0,
-            gift_max_scale: 3.0,
-            gift_spawn_per_gift: 1.0,
-            like_scale_per_count: 0.1,
-            like_min_scale: 1.0,
-            like_max_scale: 2.0
+            physics_friction: 0.1,
+            physics_restitution: 0.6,
+            physics_wind_strength: 0.0005,
+            physics_wind_variation: 0.0003,
+
+            // Appearance Settings
+            emoji_min_size_px: 40,
+            emoji_max_size_px: 80,
+            emoji_rotation_speed: 0.05,
+            emoji_lifetime_ms: 8000,
+            emoji_fade_duration_ms: 1000,
+            max_emojis_on_screen: 200,
+
+            // Scaling Rules
+            like_count_divisor: 10,
+            like_min_emojis: 1,
+            like_max_emojis: 20,
+            gift_base_emojis: 3,
+            gift_coin_multiplier: 0.1,
+            gift_max_emojis: 50
         };
 
-        const stmt = this.db.prepare(`
-            INSERT OR IGNORE INTO emoji_rain_config (id, enabled, config_json)
-            VALUES (1, 1, ?)
-        `);
-        stmt.run(JSON.stringify(defaultConfig));
+        // Check if row exists
+        const checkStmt = this.db.prepare('SELECT * FROM emoji_rain_config WHERE id = 1');
+        const existing = checkStmt.get();
+
+        console.log('🔍 [DATABASE] Existing config:', existing ? 'found' : 'not found');
+
+        if (existing) {
+            // Migrate old config to new format
+            console.log('🔄 [DATABASE] Migrating existing config...');
+            try {
+                const oldConfig = JSON.parse(existing.config_json);
+                console.log('🔍 [DATABASE] Old config keys:', Object.keys(oldConfig).join(', '));
+
+                // Merge old config with new defaults (new defaults take precedence for new fields)
+                const migratedConfig = {
+                    ...defaultConfig,
+                    // Keep old values if they exist
+                    ...(oldConfig.width_px && { width_px: oldConfig.width_px }),
+                    ...(oldConfig.height_px && { height_px: oldConfig.height_px }),
+                    ...(oldConfig.emoji_set && { emoji_set: oldConfig.emoji_set }),
+                    ...(oldConfig.physics_gravity_y !== undefined && { physics_gravity_y: oldConfig.physics_gravity_y }),
+                    ...(oldConfig.physics_air !== undefined && { physics_air: oldConfig.physics_air }),
+                    ...(oldConfig.physics_restitution !== undefined && { physics_restitution: oldConfig.physics_restitution }),
+                    // Map old field names to new ones
+                    ...(oldConfig.size_min_px && { emoji_min_size_px: oldConfig.size_min_px }),
+                    ...(oldConfig.size_max_px && { emoji_max_size_px: oldConfig.size_max_px }),
+                    ...(oldConfig.drop_despawn_s && { emoji_lifetime_ms: oldConfig.drop_despawn_s * 1000 }),
+                    ...(oldConfig.max_active && { max_emojis_on_screen: oldConfig.max_active }),
+                    ...(oldConfig.physics_wind_force !== undefined && { physics_wind_strength: oldConfig.physics_wind_force })
+                };
+
+                const updateStmt = this.db.prepare(`
+                    UPDATE emoji_rain_config
+                    SET config_json = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = 1
+                `);
+                updateStmt.run(JSON.stringify(migratedConfig));
+                console.log('✅ [DATABASE] Config migrated successfully');
+                console.log('✅ [DATABASE] Migrated config emoji_set:', migratedConfig.emoji_set);
+            } catch (error) {
+                console.error('❌ [DATABASE] Error migrating emoji rain config:', error);
+                // If migration fails, just insert defaults
+                const updateStmt = this.db.prepare(`
+                    UPDATE emoji_rain_config
+                    SET config_json = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = 1
+                `);
+                updateStmt.run(JSON.stringify(defaultConfig));
+            }
+        } else {
+            // Insert new default config
+            console.log('➕ [DATABASE] Inserting new default config...');
+            const stmt = this.db.prepare(`
+                INSERT INTO emoji_rain_config (id, enabled, config_json)
+                VALUES (1, 1, ?)
+            `);
+            stmt.run(JSON.stringify(defaultConfig));
+            console.log('✅ [DATABASE] Default config inserted successfully');
+            console.log('✅ [DATABASE] Default emoji_set:', defaultConfig.emoji_set);
+        }
     }
 
     /**
      * Get Emoji Rain configuration
      */
     getEmojiRainConfig() {
+        console.log('🔍 [DATABASE] getEmojiRainConfig() called');
         const stmt = this.db.prepare('SELECT * FROM emoji_rain_config WHERE id = 1');
         const row = stmt.get();
 
+        console.log('🔍 [DATABASE] Row retrieved:', row ? 'exists' : 'null');
+
         if (!row) {
             // Fallback: initialize and return
+            console.log('⚠️ [DATABASE] No config found, initializing defaults...');
             this.initializeEmojiRainDefaults();
             return this.getEmojiRainConfig();
         }
 
-        return {
+        console.log('🔍 [DATABASE] row.enabled:', row.enabled);
+        console.log('🔍 [DATABASE] row.config_json length:', row.config_json ? row.config_json.length : 0);
+
+        // Return flat config object with enabled flag
+        const configData = JSON.parse(row.config_json);
+        console.log('🔍 [DATABASE] Parsed config_json:', JSON.stringify(configData).substring(0, 200));
+        console.log('🔍 [DATABASE] configData.emoji_set:', configData.emoji_set);
+        console.log('🔍 [DATABASE] configData.emoji_set type:', typeof configData.emoji_set, Array.isArray(configData.emoji_set));
+
+        const result = {
             enabled: Boolean(row.enabled),
-            config: JSON.parse(row.config_json)
+            ...configData
         };
+
+        console.log('✅ [DATABASE] Returning config with', Object.keys(result).length, 'keys');
+        console.log('✅ [DATABASE] result.enabled:', result.enabled);
+        console.log('✅ [DATABASE] result.emoji_set:', result.emoji_set);
+
+        return result;
     }
 
     /**
@@ -744,19 +824,27 @@ class DatabaseManager {
      */
     updateEmojiRainConfig(config, enabled = null) {
         const current = this.getEmojiRainConfig();
-        const newEnabled = enabled !== null ? (enabled ? 1 : 0) : (current.enabled ? 1 : 0);
-        const newConfig = { ...current.config, ...config };
+
+        // Extract enabled from current config
+        const { enabled: currentEnabled, ...currentConfigData } = current;
+
+        // Determine new enabled state
+        const newEnabled = enabled !== null ? (enabled ? 1 : 0) : (currentEnabled ? 1 : 0);
+
+        // Merge configs (exclude 'enabled' from config object as it's stored separately)
+        const { enabled: _, ...newConfigData } = config;
+        const mergedConfig = { ...currentConfigData, ...newConfigData };
 
         const stmt = this.db.prepare(`
             UPDATE emoji_rain_config
             SET config_json = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = 1
         `);
-        stmt.run(JSON.stringify(newConfig), newEnabled);
+        stmt.run(JSON.stringify(mergedConfig), newEnabled);
 
         return {
             enabled: Boolean(newEnabled),
-            config: newConfig
+            ...mergedConfig
         };
     }
 
