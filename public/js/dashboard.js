@@ -31,6 +31,19 @@ function initializeTabs() {
             switchTab(tabName);
         });
     });
+
+    // Restore last active tab from localStorage
+    const savedTab = localStorage.getItem('dashboard-active-tab');
+    if (savedTab) {
+        // Check if the saved tab button exists (plugin might be disabled)
+        const tabButton = document.querySelector(`[data-tab="${savedTab}"]`);
+        if (tabButton && tabButton.style.display !== 'none') {
+            switchTab(savedTab);
+        } else {
+            // Fallback to events tab if saved tab is not available
+            switchTab('events');
+        }
+    }
 }
 
 function switchTab(tabName) {
@@ -45,6 +58,9 @@ function switchTab(tabName) {
     });
 
     currentTab = tabName;
+
+    // Save active tab to localStorage
+    localStorage.setItem('dashboard-active-tab', tabName);
 
     // Tab-spezifische Aktionen
     if (tabName === 'flows') {
