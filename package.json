@@ -9,13 +9,13 @@
     "dev": "nodemon server.js",
     "build:css": "tailwindcss -i ./public/css/tailwind.input.css -o ./public/css/tailwind.output.css --minify",
     "watch:css": "tailwindcss -i ./public/css/tailwind.input.css -o ./public/css/tailwind.output.css --watch",
-    "build": "npm run build:css && tauri build",
-    "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "tauri:build:win": "tauri build --target x86_64-pc-windows-msvc",
-    "tauri:build:mac": "tauri build --target universal-apple-darwin",
-    "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu"
+    "build": "npm run build:css && npx tauri build",
+    "tauri": "npx tauri",
+    "tauri:dev": "npx tauri dev",
+    "tauri:build": "npx tauri build",
+    "tauri:build:win": "npx tauri build --target x86_64-pc-windows-msvc",
+    "tauri:build:mac": "npx tauri build --target universal-apple-darwin",
+    "tauri:build:linux": "npx tauri build --target x86_64-unknown-linux-gnu"
   },
   "keywords": [
     "tiktok",
