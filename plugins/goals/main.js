@@ -297,8 +297,8 @@ class GoalsPlugin extends EventEmitter {
                 this.tikfinityReconnectAttempts = 0;
                 this.api.log('✅ Connected to TikFinity Event API', 'info');
 
-                // Emit connection status
-                this.api.emit('goals:tikfinity:connected', { connected: true });
+                // Broadcast connection status via Socket.IO
+                this.api.io.emit('goals:tikfinity:connected', { connected: true });
             });
 
             this.tikfinityWs.on('message', (data) => {
@@ -318,8 +318,8 @@ class GoalsPlugin extends EventEmitter {
                 this.tikfinityConnected = false;
                 this.api.log('TikFinity WebSocket connection closed', 'warn');
 
-                // Emit connection status
-                this.api.emit('goals:tikfinity:connected', { connected: false });
+                // Broadcast connection status via Socket.IO
+                this.api.io.emit('goals:tikfinity:connected', { connected: false });
 
                 // Auto-reconnect if enabled
                 if (config.auto_reconnect && this.tikfinityReconnectAttempts < this.maxTikfinityReconnectAttempts) {
@@ -462,8 +462,8 @@ class GoalsPlugin extends EventEmitter {
     async handleGoalCompleted(goal) {
         this.api.log(`🎯 Goal completed: ${goal.name} (${goal.currentValue}/${goal.targetValue})`, 'info');
 
-        // Emit completion event
-        this.api.emit('goals:completed', {
+        // Broadcast completion event via Socket.IO
+        this.api.io.emit('goals:completed', {
             goalType: goal.goalType,
             name: goal.name,
             currentValue: goal.currentValue,
@@ -567,10 +567,10 @@ class GoalsPlugin extends EventEmitter {
     }
 
     /**
-     * Broadcast goal update to overlays
+     * Broadcast goal update to overlays via Socket.IO
      */
     broadcastGoalUpdate(goal) {
-        this.api.emit('goals:update', {
+        this.api.io.emit('goals:update', {
             goalType: goal.goalType,
             enabled: goal.enabled,
             name: goal.name,
@@ -614,7 +614,21 @@ class GoalsPlugin extends EventEmitter {
             if (goalType && this.goals.has(goalType)) {
                 socket.join(`goal:${goalType}`);
                 const goal = this.goals.get(goalType);
-                this.broadcastGoalUpdate(goal);
+                // Send current state only to subscribing socket
+                socket.emit('goals:update', {
+                    goalType: goal.goalType,
+                    enabled: goal.enabled,
+                    name: goal.name,
+                    currentValue: goal.currentValue,
+                    targetValue: goal.targetValue,
+                    startValue: goal.startValue,
+                    percent: goal.percent,
+                    remaining: goal.remaining,
+                    isCompleted: goal.isCompleted,
+                    progressionMode: goal.progressionMode,
+                    incrementAmount: goal.incrementAmount,
+                    style: goal.style
+                });
             }
         });
 
