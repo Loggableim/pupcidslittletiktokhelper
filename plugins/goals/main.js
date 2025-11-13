@@ -3,7 +3,6 @@ const EventEmitter = require('events');
 
 /**
  * Live Goals Plugin
- * TikFinity Goals Plugin
  *
  * Complete goals system with 4 goal types:
  * - Coin Goal: Tracks gift coins
@@ -12,7 +11,7 @@ const EventEmitter = require('events');
  * - Custom Goal: Manually controlled value
  *
  * Features:
- * - TikFinity Event API integration (ws://localhost:21213)
+ * - Event API integration (ws://localhost:21213)
  * - Real-time overlay updates
  * - Flow actions for goal manipulation
  * - Customizable goal progression (fixed/add/double/hide)
@@ -23,12 +22,12 @@ class GoalsPlugin extends EventEmitter {
         super();
         this.api = api;
 
-        // TikFinity WebSocket Client
-        this.tikfinityWs = null;
-        this.tikfinityConnected = false;
-        this.tikfinityReconnectAttempts = 0;
-        this.maxTikfinityReconnectAttempts = 10;
-        this.tikfinityReconnectDelay = 5000; // 5 seconds
+        // Event API WebSocket Client
+        this.eventApiWs = null;
+        this.eventApiConnected = false;
+        this.eventApiReconnectAttempts = 0;
+        this.maxEventApiReconnectAttempts = 10;
+        this.eventApiReconnectDelay = 5000; // 5 seconds
 
         // Goal state cache
         this.goals = new Map();
@@ -39,7 +38,6 @@ class GoalsPlugin extends EventEmitter {
 
     async init() {
         this.api.log('Initializing Live Goals Plugin...', 'info');
-        this.api.log('Initializing TikFinity Goals Plugin...', 'info');
 
         // Initialize database
         this.initializeDatabase();
@@ -56,14 +54,13 @@ class GoalsPlugin extends EventEmitter {
         // Register Socket.IO handlers
         this.registerSocketHandlers();
 
-        // Connect to TikFinity Event API
-        this.connectToTikFinity();
+        // Connect to Event API
+        this.connectToEventApi();
 
         // Register Flow Actions
         this.registerFlowActions();
 
         this.api.log('✅ Live Goals Plugin initialized', 'info');
-        this.api.log('✅ TikFinity Goals Plugin initialized', 'info');
     }
 
     /**
@@ -196,9 +193,9 @@ class GoalsPlugin extends EventEmitter {
                 )
             `);
 
-            // TikFinity connection settings
+            // Event API connection settings
             db.exec(`
-                CREATE TABLE IF NOT EXISTS goals_tikfinity_config (
+                CREATE TABLE IF NOT EXISTS goals_event_api_config (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     enabled INTEGER DEFAULT 1,
                     websocket_url TEXT DEFAULT 'ws://localhost:21213',
@@ -211,12 +208,12 @@ class GoalsPlugin extends EventEmitter {
             // Initialize default goals if not exist
             this.initializeDefaultGoals(db);
 
-            // Initialize TikFinity config if not exist
-            const tikfinityStmt = db.prepare(`
-                INSERT OR IGNORE INTO goals_tikfinity_config (id, enabled, websocket_url, auto_reconnect)
+            // Initialize Event API config if not exist
+            const eventApiStmt = db.prepare(`
+                INSERT OR IGNORE INTO goals_event_api_config (id, enabled, websocket_url, auto_reconnect)
                 VALUES (1, 1, 'ws://localhost:21213', 1)
             `);
-            tikfinityStmt.run();
+            eventApiStmt.run();
 
             // Initialize default templates
             this.initializeDefaultTemplates(db);
@@ -895,78 +892,78 @@ class GoalsPlugin extends EventEmitter {
     }
 
     /**
-     * Connect to TikFinity Event API WebSocket
+     * Connect to Event API WebSocket
      */
-    connectToTikFinity() {
+    connectToEventApi() {
         try {
             const db = this.api.getDatabase();
-            const configStmt = db.prepare('SELECT * FROM goals_tikfinity_config WHERE id = 1');
+            const configStmt = db.prepare('SELECT * FROM goals_event_api_config WHERE id = 1');
             const config = configStmt.get();
 
             if (!config || !config.enabled) {
-                this.api.log('TikFinity integration is disabled', 'info');
+                this.api.log('Event API integration is disabled', 'info');
                 return;
             }
 
             const wsUrl = config.websocket_url || 'ws://localhost:21213';
 
-            this.api.log(`Connecting to TikFinity Event API at ${wsUrl}...`, 'info');
+            this.api.log(`Connecting to Event API at ${wsUrl}...`, 'info');
 
-            this.tikfinityWs = new WebSocket(wsUrl);
+            this.eventApiWs = new WebSocket(wsUrl);
 
-            this.tikfinityWs.on('open', () => {
-                this.tikfinityConnected = true;
-                this.tikfinityReconnectAttempts = 0;
-                this.api.log('✅ Connected to TikFinity Event API', 'info');
+            this.eventApiWs.on('open', () => {
+                this.eventApiConnected = true;
+                this.eventApiReconnectAttempts = 0;
+                this.api.log('✅ Connected to Event API', 'info');
 
                 // Broadcast connection status via Socket.IO
                 this.api.io.emit('goals:event-api:connected', { connected: true });
             });
 
-            this.tikfinityWs.on('message', (data) => {
+            this.eventApiWs.on('message', (data) => {
                 try {
                     const event = JSON.parse(data.toString());
-                    this.handleTikFinityEvent(event);
+                    this.handleEventApiEvent(event);
                 } catch (error) {
-                    this.api.log(`Error parsing TikFinity event: ${error.message}`, 'error');
+                    this.api.log(`Error parsing Event API event: ${error.message}`, 'error');
                 }
             });
 
-            this.tikfinityWs.on('error', (error) => {
-                this.api.log(`TikFinity WebSocket error: ${error.message}`, 'error');
+            this.eventApiWs.on('error', (error) => {
+                this.api.log(`Event API WebSocket error: ${error.message}`, 'error');
             });
 
-            this.tikfinityWs.on('close', () => {
-                this.tikfinityConnected = false;
-                this.api.log('TikFinity WebSocket connection closed', 'warn');
+            this.eventApiWs.on('close', () => {
+                this.eventApiConnected = false;
+                this.api.log('Event API WebSocket connection closed', 'warn');
 
                 // Broadcast connection status via Socket.IO
                 this.api.io.emit('goals:event-api:connected', { connected: false });
 
                 // Auto-reconnect if enabled
-                if (config.auto_reconnect && this.tikfinityReconnectAttempts < this.maxTikfinityReconnectAttempts) {
-                    this.tikfinityReconnectAttempts++;
-                    const delay = this.tikfinityReconnectDelay * this.tikfinityReconnectAttempts;
+                if (config.auto_reconnect && this.eventApiReconnectAttempts < this.maxEventApiReconnectAttempts) {
+                    this.eventApiReconnectAttempts++;
+                    const delay = this.eventApiReconnectDelay * this.eventApiReconnectAttempts;
 
-                    this.api.log(`Attempting to reconnect to TikFinity in ${delay / 1000}s (attempt ${this.tikfinityReconnectAttempts}/${this.maxTikfinityReconnectAttempts})`, 'info');
+                    this.api.log(`Attempting to reconnect to Event API in ${delay / 1000}s (attempt ${this.eventApiReconnectAttempts}/${this.maxEventApiReconnectAttempts})`, 'info');
 
                     setTimeout(() => {
-                        this.connectToTikFinity();
+                        this.connectToEventApi();
                     }, delay);
                 }
             });
 
         } catch (error) {
-            this.api.log(`Error connecting to TikFinity: ${error.message}`, 'error');
+            this.api.log(`Error connecting to Event API: ${error.message}`, 'error');
         }
     }
 
     /**
-     * Handle TikFinity WebSocket events
+     * Handle Event API WebSocket events
      */
-    handleTikFinityEvent(event) {
+    handleEventApiEvent(event) {
         try {
-            // TikFinity event structure varies, but commonly:
+            // Event API event structure:
             // { type: 'gift', data: { coins: 100 } }
             // { type: 'like', data: { count: 1 } }
             // { type: 'follow', data: { username: 'user123' } }
@@ -981,12 +978,12 @@ class GoalsPlugin extends EventEmitter {
             }
 
         } catch (error) {
-            this.api.log(`Error handling TikFinity event: ${error.message}`, 'error');
+            this.api.log(`Error handling Event API event: ${error.message}`, 'error');
         }
     }
 
     /**
-     * Register TikTok event handlers (fallback if TikFinity is not available)
+     * Register TikTok event handlers (fallback if Event API is not available)
      */
     registerTikTokEventHandlers() {
         // Gift event - increment coin goal
@@ -1523,8 +1520,8 @@ class GoalsPlugin extends EventEmitter {
         this.api.registerRoute('get', '/api/goals/event-api/status', (req, res) => {
             res.json({
                 success: true,
-                connected: this.tikfinityConnected,
-                reconnectAttempts: this.tikfinityReconnectAttempts
+                connected: this.eventApiConnected,
+                reconnectAttempts: this.eventApiReconnectAttempts
             });
         });
 
@@ -1553,7 +1550,7 @@ class GoalsPlugin extends EventEmitter {
                 if (updates.length > 0) {
                     updates.push('updated_at = CURRENT_TIMESTAMP');
                     const stmt = db.prepare(`
-                        UPDATE goals_tikfinity_config
+                        UPDATE goals_event_api_config
                         SET ${updates.join(', ')}
                         WHERE id = 1
                     `);
@@ -1562,17 +1559,17 @@ class GoalsPlugin extends EventEmitter {
 
                 // Reconnect if URL changed or enabled state changed
                 if (websocket_url !== undefined || enabled !== undefined) {
-                    if (this.tikfinityWs) {
-                        this.tikfinityWs.close();
+                    if (this.eventApiWs) {
+                        this.eventApiWs.close();
                     }
-                    this.tikfinityReconnectAttempts = 0;
-                    setTimeout(() => this.connectToTikFinity(), 1000);
+                    this.eventApiReconnectAttempts = 0;
+                    setTimeout(() => this.connectToEventApi(), 1000);
                 }
 
-                res.json({ success: true, message: 'TikFinity config updated' });
+                res.json({ success: true, message: 'Event API config updated' });
 
             } catch (error) {
-                this.api.log(`Error updating TikFinity config: ${error.message}`, 'error');
+                this.api.log(`Error updating Event API config: ${error.message}`, 'error');
                 res.status(500).json({ success: false, error: error.message });
             }
         });
@@ -2140,10 +2137,10 @@ class GoalsPlugin extends EventEmitter {
      * Cleanup on plugin destruction
      */
     async destroy() {
-        // Close TikFinity WebSocket
-        if (this.tikfinityWs) {
-            this.tikfinityWs.close();
-            this.tikfinityWs = null;
+        // Close Event API WebSocket
+        if (this.eventApiWs) {
+            this.eventApiWs.close();
+            this.eventApiWs = null;
         }
 
         this.api.log('🎯 Goals Plugin destroyed', 'info');
