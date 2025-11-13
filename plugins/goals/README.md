@@ -1,7 +1,6 @@
 # 🎯 Live Goals Plugin
-# 🎯 TikFinity Goals Plugin
 
-Complete TikTok LIVE Goals system with TikFinity Event API integration, real-time tracking, and customizable overlays.
+Complete TikTok LIVE Goals system with Event API integration, real-time tracking, and customizable overlays.
 
 ## Features
 
@@ -9,8 +8,8 @@ Complete TikTok LIVE Goals system with TikFinity Event API integration, real-tim
 
 1. **Coin Goal** 💰
    - Tracks all gift coins received
-   - Uses TikFinity Event API (ws://localhost:21213) for real-time updates
-   - Fallback to internal TikTok events if TikFinity is unavailable
+   - Uses Event API (ws://localhost:21213) for real-time updates
+   - Fallback to internal TikTok events if Event API is unavailable
 
 2. **Likes Goal** ❤️
    - Real-time like counting
@@ -46,9 +45,9 @@ Each goal type supports:
 
 ### 🔄 Real-Time Updates
 
-- **TikFinity Event API Integration**: Connects to `ws://localhost:21213` for enhanced event tracking
-- **Auto-Reconnect**: Automatically reconnects if TikFinity connection is lost
-- **Fallback System**: Uses internal TikTok events if TikFinity is unavailable
+- **Event API Integration**: Connects to `ws://localhost:21213` for enhanced event tracking
+- **Auto-Reconnect**: Automatically reconnects if Event API connection is lost
+- **Fallback System**: Uses internal TikTok events if Event API is unavailable
 - **Socket.IO Broadcasting**: Real-time updates to all connected overlays
 
 ### 🎬 Overlay Features
@@ -85,18 +84,18 @@ Access the full settings interface at `/goals/ui`:
 - Set current and target values
 - Configure progression modes
 - Customize colors and styling
-- Monitor TikFinity connection status
+- Monitor Event API connection status
 - Manual value adjustments
 - Reset goals
 
-### TikFinity Integration
+### Event API Integration
 
-1. **Install TikFinity** (if not already installed)
-2. **Start TikFinity Event API** on `ws://localhost:21213`
+1. **Install Event API** (if not already installed)
+2. **Start Event API** on `ws://localhost:21213`
 3. **Plugin Auto-Connects**: The plugin will automatically connect
 4. **Monitor Status**: Check connection status in the settings UI
 
-If TikFinity is not available, the plugin will fall back to internal TikTok event handling.
+If Event API is not available, the plugin will fall back to internal TikTok event handling.
 
 ### OBS Setup
 
@@ -177,12 +176,12 @@ Content-Type: application/json
 }
 ```
 
-### TikFinity Status
+### Event API Status
 ```http
 GET /api/goals/tikfinity/status
 ```
 
-### Update TikFinity Config
+### Update Event API Config
 ```http
 POST /api/goals/tikfinity/config
 Content-Type: application/json
@@ -233,9 +232,9 @@ socket.on('goals:completed', (data) => {
   // data includes: goalType, name, currentValue, targetValue
 });
 
-// TikFinity connection status
+// Event API connection status
 socket.on('goals:tikfinity:connected', (data) => {
-  console.log('TikFinity connected:', data.connected);
+  console.log('Event API connected:', data.connected);
 });
 ```
 
@@ -263,8 +262,8 @@ Logs all goal events:
 - `metadata`: Additional event data
 
 ### goals_tikfinity_config
-TikFinity connection settings:
-- `enabled`: Enable TikFinity integration
+Event API connection settings:
+- `enabled`: Enable Event API integration
 - `websocket_url`: WebSocket URL (default: ws://localhost:21213)
 - `auto_reconnect`: Auto-reconnect on disconnect
 
@@ -297,9 +296,9 @@ Use goals in your automation flows:
 
 ## Troubleshooting
 
-### TikFinity Not Connecting
+### Event API Not Connecting
 
-1. Ensure TikFinity is running
+1. Ensure Event API is running
 2. Check WebSocket URL in settings (default: `ws://localhost:21213`)
 3. Verify no firewall blocking the connection
 4. Check console logs for connection errors

@@ -73,12 +73,14 @@ app.use((req, res, next) => {
     // No overlay routes anymore (OBS integration will be added later)
     const isOverlayRoute = false;
 
-    // Dashboard needs relaxed CSP for inline event handlers (onclick, etc.)
+    // Dashboard and plugin UIs need relaxed CSP for inline scripts
     const isDashboard = req.path === '/' || req.path.includes('/dashboard.html');
+    const isPluginUI = req.path.includes('/goals/ui') || req.path.includes('/emoji-rain/ui') ||
+                       req.path.includes('/gift-milestone/ui') || req.path.includes('/plugins/');
 
-    if (isDashboard) {
+    if (isDashboard || isPluginUI) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Dashboard CSP: Allow inline event handlers (onclick) for functionality
+        // Dashboard & Plugin UI CSP: Allow inline scripts for functionality
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
             `script-src 'self' 'unsafe-inline'; ` +
