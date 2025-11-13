@@ -1,5 +1,4 @@
 # 🎯 Live Goals Plugin
-# 🎯 TikFinity Goals Plugin
 
 Complete TikTok LIVE Goals system with Event API integration, real-time tracking, and customizable overlays.
 
@@ -262,7 +261,7 @@ Logs all goal events:
 - `delta`: Change amount
 - `metadata`: Additional event data
 
-### goals_tikfinity_config
+### goals_event_api_config
 Event API connection settings:
 - `enabled`: Enable Event API integration
 - `websocket_url`: WebSocket URL (default: ws://localhost:21213)

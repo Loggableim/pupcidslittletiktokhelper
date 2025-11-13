@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikFinity Goals - Advanced Settings</title>
+    <title>Live Goals - Advanced Settings</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * {
@@ -618,7 +618,7 @@
         <!-- ===== SIDEBAR ===== -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="sidebar-logo">TikFinity Goals</div>
+                <div class="sidebar-logo">Live Goals</div>
                 <div class="sidebar-subtitle">Advanced Live Goals System</div>
             </div>
 
@@ -671,9 +671,9 @@
 
                 <div class="nav-section">
                     <div class="nav-section-title">Integration</div>
-                    <div class="nav-item" data-view="tikfinity">
+                    <div class="nav-item" data-view="eventapi">
                         <span class="nav-item-icon">🔌</span>
-                        <span class="nav-item-text">TikFinity API</span>
+                        <span class="nav-item-text">Event API</span>
                     </div>
                 </div>
             </nav>
@@ -889,8 +889,8 @@
                 loadHudSettingsView();
             } else if (viewName === 'animations') {
                 loadAnimationsView();
-            } else if (viewName === 'tikfinity') {
-                loadTikFinityView();
+            } else if (viewName === 'eventapi') {
+                loadEventApiView();
             }
         }
 
@@ -1193,15 +1193,15 @@
             `;
         }
 
-        function loadTikFinityView() {
+        function loadEventApiView() {
             document.getElementById('dynamicContent').innerHTML = `
                 <div class="settings-section">
                     <div class="section-title">
                         <span class="section-title-icon">🔌</span>
-                        <span>TikFinity Event API</span>
+                        <span>Event API</span>
                     </div>
                     <p style="color: var(--text-secondary);">
-                        TikFinity integration settings coming soon...
+                        Event API integration settings coming soon...
                     </p>
                 </div>
             `;
@@ -1475,7 +1475,7 @@
 
         // ===== INITIALIZE =====
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('TikFinity Goals UI loaded');
+            console.log('Live Goals UI loaded');
         });
     </script>
 </body>
