@@ -44,3 +44,14 @@ temp/
 
 # Plugin runtime data
 plugins/*/data/
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Tauri update signing keys (NEVER COMMIT THESE!)
+*.key
+.tauri/
+
+# Tauri WiX build files (Windows installer)
+src-tauri/WixTools/

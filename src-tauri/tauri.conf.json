@@ -1,0 +1,113 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run start:web",
+    "beforeBuildCommand": "npm run build:css",
+    "devPath": "http://localhost:3000",
+    "distDir": "../public",
+    "withGlobalTauri": true
+  },
+  "package": {
+    "productName": "TikTok Stream Tool",
+    "version": "1.0.3"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      },
+      "window": {
+        "all": false,
+        "close": true,
+        "hide": true,
+        "show": true,
+        "maximize": true,
+        "minimize": true,
+        "unmaximize": true,
+        "unminimize": true,
+        "startDragging": true
+      },
+      "notification": {
+        "all": true
+      },
+      "path": {
+        "all": true
+      },
+      "fs": {
+        "all": true,
+        "scope": ["$APPDATA/*", "$APPDATA/**"]
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": ["nsis", "dmg", "appimage", "deb"],
+      "identifier": "com.tiktok-stream-tool.app",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": "",
+        "wix": {
+          "language": "en-US"
+        },
+        "nsis": {
+          "installMode": "perUser",
+          "languages": ["en-US"],
+          "displayLanguageSelector": false,
+          "installerIcon": "icons/icon.ico"
+        }
+      },
+      "macOS": {
+        "frameworks": [],
+        "minimumSystemVersion": "10.13",
+        "exceptionDomain": "",
+        "signingIdentity": null,
+        "entitlements": null
+      },
+      "linux": {
+        "deb": {
+          "depends": []
+        }
+      }
+    },
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: wss:; media-src 'self' blob: data:;"
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/Loggableim/pupcidslittletiktokhelper/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "WILL_BE_GENERATED_LATER"
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "TikTok Stream Tool",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1200,
+        "minHeight": 700,
+        "center": true,
+        "decorations": true,
+        "skipTaskbar": false,
+        "transparent": false,
+        "visible": true
+      }
+    ],
+    "systemTray": {
+      "iconPath": "icons/tray-icon.png",
+      "iconAsTemplate": true,
+      "menuOnLeftClick": false
+    }
+  }
+}

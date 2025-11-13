@@ -4,11 +4,18 @@
   "description": "Professional TikTok LIVE streaming tool with overlays, alerts, TTS and automation",
   "main": "server.js",
   "scripts": {
+    "start:web": "node server.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build:css": "tailwindcss -i ./public/css/tailwind.input.css -o ./public/css/tailwind.output.css --minify",
     "watch:css": "tailwindcss -i ./public/css/tailwind.input.css -o ./public/css/tailwind.output.css --watch",
-    "build": "npm run build:css"
+    "build": "npm run build:css && tauri build",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:win": "tauri build --target x86_64-pc-windows-msvc",
+    "tauri:build:mac": "tauri build --target universal-apple-darwin",
+    "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu"
   },
   "keywords": [
     "tiktok",
@@ -24,6 +31,7 @@
     "node": ">=18.0.0 <24.0.0"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.9.0",
     "auto-launch": "^5.0.6",
     "axios": "^1.6.5",
     "better-sqlite3": "^11.9.0",
@@ -45,6 +53,7 @@
     "zip-lib": "^1.1.2"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.9.4",
     "autoprefixer": "^10.4.22",
     "nodemon": "^3.0.2",
     "postcss": "^8.5.6",
