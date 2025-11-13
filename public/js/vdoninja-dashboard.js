@@ -23,8 +23,25 @@ document.addEventListener('DOMContentLoaded', () => {
     initVDONinja();
 });
 
-function initVDONinja() {
+async function initVDONinja() {
     console.log('🎥 Initializing VDO.Ninja Dashboard Client...');
+
+    // Check if VDO.Ninja plugin is enabled
+    try {
+        const response = await fetch('/api/plugins');
+        const data = await response.json();
+
+        if (data.success) {
+            const vdoPlugin = data.plugins.find(p => p.id === 'vdoninja');
+            if (!vdoPlugin || !vdoPlugin.enabled) {
+                console.log('⏸️ VDO.Ninja plugin is disabled, skipping initialization');
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error checking plugin status:', error);
+        return;
+    }
 
     // Load existing rooms for dropdown
     loadExistingRooms();
