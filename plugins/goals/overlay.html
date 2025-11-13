@@ -313,8 +313,8 @@
             const oldGoal = goals[data.goalType];
             goals[data.goalType] = data;
 
-            // Re-render goals
-            renderGoals();
+            // IMPORTANT: Only update values, don't re-render entire DOM
+            updateGoalValues(data.goalType, data);
 
             // Animate value change
             if (oldGoal && oldGoal.currentValue !== data.currentValue) {
@@ -452,6 +452,57 @@
             `;
 
             return div;
+        }
+
+        // Update goal values without re-rendering entire DOM (prevents flickering)
+        function updateGoalValues(goalType, goal) {
+            const goalElement = document.getElementById(`goal-${goalType}`);
+            if (!goalElement) {
+                console.warn(`Goal element ${goalType} not found, re-rendering all goals`);
+                renderGoals();
+                return;
+            }
+
+            // Update current value
+            const currentValueElement = document.getElementById(`current-${goalType}`);
+            if (currentValueElement) {
+                currentValueElement.textContent = goal.currentValue.toLocaleString();
+            }
+
+            // Update target value
+            const targetValueElement = goalElement.querySelector('.goal-target');
+            if (targetValueElement) {
+                targetValueElement.textContent = `/ ${goal.targetValue.toLocaleString()}`;
+            }
+
+            // Update percent
+            const percentElement = goalElement.querySelector('.goal-percent');
+            if (percentElement) {
+                percentElement.textContent = `${goal.percent}%`;
+            }
+
+            // Update progress bar width (smooth transition via CSS)
+            const progressFillElement = goalElement.querySelector('.goal-progress-fill');
+            if (progressFillElement) {
+                progressFillElement.style.width = `${goal.percent}%`;
+            }
+
+            // Update completed state
+            const wrapperElement = goalElement.querySelector('.goal-wrapper');
+            if (wrapperElement) {
+                if (goal.isCompleted) {
+                    wrapperElement.classList.add('completed');
+                } else {
+                    wrapperElement.classList.remove('completed');
+                }
+            }
+
+            // Update enabled/hidden state
+            if (!goal.enabled) {
+                goalElement.classList.add('hidden');
+            } else {
+                goalElement.classList.remove('hidden');
+            }
         }
 
         // Animate value change
