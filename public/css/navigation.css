@@ -412,7 +412,7 @@ body {
 .content-view {
     display: none;
     width: 100%;
-    padding: 1.5rem;
+    padding: 1rem;
     min-width: 0; /* Allow flex shrinking */
     animation: fadeIn 0.3s ease;
 }
@@ -880,7 +880,7 @@ input:checked + .toggle-slider:before {
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: 1rem;
     box-sizing: border-box;
 }
 
@@ -888,7 +888,7 @@ input:checked + .toggle-slider:before {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     gap: 1rem;
     flex-wrap: wrap;
 }
@@ -1344,8 +1344,7 @@ input:checked + .toggle-slider:before {
 .iframe-container {
     width: 100%;
     min-width: 0; /* Allow flex shrinking */
-    flex: 1; /* Use flexbox instead of fixed height calculation */
-    min-height: 400px;
+    flex: 0 1 auto; /* Let container size based on content, not fill space */
     display: flex; /* Enable flexbox for proper iframe sizing */
     flex-direction: column; /* Stack children vertically */
     border-radius: 10px;
@@ -1356,8 +1355,7 @@ input:checked + .toggle-slider:before {
 
 .iframe-container iframe {
     width: 100%;
-    flex: 1; /* Let iframe fill available space */
-    min-height: 0; /* Critical for flexbox sizing */
+    height: 500px;
     border: none;
     display: block;
 }
