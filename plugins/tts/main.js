@@ -172,6 +172,22 @@ class TTSPlugin {
             try {
                 const updates = req.body;
 
+                // Validate defaultVoice is compatible with defaultEngine
+                if (updates.defaultVoice && updates.defaultEngine) {
+                    const engineVoices = updates.defaultEngine === 'tiktok'
+                        ? TikTokEngine.getVoices()
+                        : (updates.defaultEngine === 'google' && this.engines.google
+                            ? GoogleEngine.getVoices()
+                            : {});
+
+                    if (!engineVoices[updates.defaultVoice]) {
+                        return res.status(400).json({
+                            success: false,
+                            error: `Voice '${updates.defaultVoice}' is not available for engine '${updates.defaultEngine}'`
+                        });
+                    }
+                }
+
                 // Update config (skip googleApiKey - it has dedicated handling below)
                 Object.keys(updates).forEach(key => {
                     if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey') {
@@ -671,7 +687,14 @@ class TTSPlugin {
                 this._logDebug('SPEAK_STEP4', 'Google engine not available, falling back to TikTok');
                 this.logger.warn(`Google TTS requested but not available, falling back to TikTok`);
                 selectedEngine = 'tiktok';
-                selectedVoice = TikTokEngine.getDefaultVoiceForLanguage('en');
+                // Keep the selectedVoice if it's valid for TikTok, otherwise use language detection
+                const tiktokVoices = TikTokEngine.getVoices();
+                if (!selectedVoice || !tiktokVoices[selectedVoice]) {
+                    // Try to detect language from text
+                    const langResult = this.languageDetector.detectAndGetVoice(finalText, TikTokEngine);
+                    selectedVoice = langResult?.voiceId || this.config.defaultVoice;
+                    this._logDebug('SPEAK_STEP4', 'Voice reset for TikTok fallback', { selectedVoice });
+                }
             }
 
             // Step 5: Generate TTS (no caching)
@@ -705,13 +728,25 @@ class TTSPlugin {
                 this.logger.error(`TTS engine ${selectedEngine} failed: ${engineError.message}, trying fallback`);
 
                 if (selectedEngine === 'google' && this.engines.tiktok) {
+                    // Try to keep the voice if it's valid for TikTok, otherwise detect language
+                    let fallbackVoice = selectedVoice;
+                    const tiktokVoices = TikTokEngine.getVoices();
+                    if (!fallbackVoice || !tiktokVoices[fallbackVoice]) {
+                        // Try to detect language from text
+                        const langResult = this.languageDetector.detectAndGetVoice(finalText, TikTokEngine);
+                        fallbackVoice = langResult?.voiceId || this.config.defaultVoice;
+                        this._logDebug('SPEAK_STEP5', 'Voice adjusted for TikTok fallback', { fallbackVoice });
+                    }
+
                     audioData = await this.engines.tiktok.synthesize(
                         finalText,
-                        TikTokEngine.getDefaultVoiceForLanguage('en')
+                        fallbackVoice
                     );
                     selectedEngine = 'tiktok';
+                    selectedVoice = fallbackVoice;
                     this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
                         fallbackEngine: 'tiktok',
+                        fallbackVoice,
                         audioDataLength: audioData?.length || 0
                     });
                 } else {

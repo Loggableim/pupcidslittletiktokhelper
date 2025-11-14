@@ -370,9 +370,16 @@ function populateVoiceSelect() {
 
     select.appendChild(optgroup);
 
-    // Set current default voice
-    if (currentConfig.defaultVoice) {
+    // Set current default voice - ONLY if it belongs to the selected engine
+    if (currentConfig.defaultVoice && engineVoices[currentConfig.defaultVoice]) {
         select.value = currentConfig.defaultVoice;
+    } else if (currentConfig.defaultVoice && !engineVoices[currentConfig.defaultVoice]) {
+        // Voice doesn't belong to this engine - reset to first available voice
+        const firstVoiceId = Object.keys(engineVoices)[0];
+        if (firstVoiceId) {
+            select.value = firstVoiceId;
+            console.warn(`Default voice '${currentConfig.defaultVoice}' not available for engine '${engine}', reset to '${firstVoiceId}'`);
+        }
     }
 }
 
@@ -858,7 +865,18 @@ function setupEventListeners() {
     const engineSelect = document.getElementById('defaultEngine');
     if (engineSelect) {
         engineSelect.addEventListener('change', () => {
+            const previousVoice = document.getElementById('defaultVoice')?.value;
+            const previousEngine = currentConfig.defaultEngine;
             populateVoiceSelect();
+            const newVoice = document.getElementById('defaultVoice')?.value;
+
+            // Notify user if voice was automatically changed due to engine switch
+            if (previousVoice && previousVoice !== newVoice && previousEngine !== engineSelect.value) {
+                showNotification(
+                    `Voice was reset from '${previousVoice}' to '${newVoice}' because it's not compatible with the selected engine. Please review and save.`,
+                    'warning'
+                );
+            }
         });
     }
 
