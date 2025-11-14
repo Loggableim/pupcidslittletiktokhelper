@@ -280,10 +280,18 @@ function populateConfig(config) {
     }
 
     // Load Speechify API key
-    if (config.speechifyApiKey && config.speechifyApiKey !== '***REDACTED***') {
-        const speechifyKeyInput = document.getElementById('speechifyApiKey');
-        if (speechifyKeyInput) {
-            speechifyKeyInput.value = config.speechifyApiKey;
+    const speechifyKeyInput = document.getElementById('speechifyApiKey');
+    if (speechifyKeyInput) {
+        if (config.speechifyApiKey) {
+            if (config.speechifyApiKey === '***REDACTED***') {
+                speechifyKeyInput.placeholder = 'API key configured (hidden for security)';
+                speechifyKeyInput.value = '';
+            } else {
+                speechifyKeyInput.value = config.speechifyApiKey;
+            }
+        } else {
+            speechifyKeyInput.placeholder = 'Enter API key...';
+            speechifyKeyInput.value = '';
         }
     }
 }
@@ -316,7 +324,7 @@ async function saveConfig() {
 
         // Get Speechify API key
         const speechifyApiKey = document.getElementById('speechifyApiKey')?.value?.trim();
-        if (speechifyApiKey) {
+        if (speechifyApiKey && speechifyApiKey !== '***REDACTED***') {
             config.speechifyApiKey = speechifyApiKey;
         }
 
