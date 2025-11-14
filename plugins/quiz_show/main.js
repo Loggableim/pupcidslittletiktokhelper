@@ -118,6 +118,34 @@ class QuizShowPlugin {
     }
 
     registerRoutes() {
+        const path = require('path');
+
+        // Serve UI HTML files
+        this.api.registerRoute('get', '/quiz-show/ui', (req, res) => {
+            res.sendFile(path.join(__dirname, 'quiz_show.html'));
+        });
+
+        this.api.registerRoute('get', '/quiz-show/overlay', (req, res) => {
+            res.sendFile(path.join(__dirname, 'quiz_show_overlay.html'));
+        });
+
+        // Serve static assets
+        this.api.registerRoute('get', '/quiz-show/quiz_show.js', (req, res) => {
+            res.sendFile(path.join(__dirname, 'quiz_show.js'));
+        });
+
+        this.api.registerRoute('get', '/quiz-show/quiz_show.css', (req, res) => {
+            res.sendFile(path.join(__dirname, 'quiz_show.css'));
+        });
+
+        this.api.registerRoute('get', '/quiz-show/quiz_show_overlay.js', (req, res) => {
+            res.sendFile(path.join(__dirname, 'quiz_show_overlay.js'));
+        });
+
+        this.api.registerRoute('get', '/quiz-show/quiz_show_overlay.css', (req, res) => {
+            res.sendFile(path.join(__dirname, 'quiz_show_overlay.css'));
+        });
+
         // Get current state
         this.api.registerRoute('get', '/api/quiz-show/state', (req, res) => {
             res.json({
