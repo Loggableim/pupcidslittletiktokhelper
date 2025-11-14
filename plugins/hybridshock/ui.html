@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HybridShock Integration - Admin Panel</title>
+    <link rel="stylesheet" href="/css/tailwind.output.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            background: #111827;
+            color: #f9fafb;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .tab-btn.active {
+            color: #60a5fa;
+            border-bottom-color: #60a5fa;
+        }
+
+        .tab-btn:hover {
+            color: #93c5fd;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: #10b98120;
+            color: #10b981;
+        }
+
+        .status-disconnected {
+            background: #ef444420;
+            color: #ef4444;
+        }
+
+        .status-connecting {
+            background: #f59e0b20;
+            color: #f59e0b;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .mapping-card {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #3b82f6;
+            transition: all 0.2s;
+        }
+
+        .mapping-card:hover {
+            background: #374151;
+            transform: translateX(4px);
+        }
+
+        .mapping-card.disabled {
+            opacity: 0.5;
+            border-left-color: #6b7280;
+        }
+
+        .log-entry {
+            background: #1f2937;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry.success {
+            border-left: 3px solid #10b981;
+        }
+
+        .log-entry.failed {
+            border-left: 3px solid #ef4444;
+        }
+
+        .log-entry.info {
+            border-left: 3px solid #3b82f6;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #4b5563;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #f9fafb;
+        }
+
+        .stat-icon {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .input-field {
+            background: #374151;
+            border: 1px solid #4b5563;
+            color: #f9fafb;
+            padding: 10px 16px;
+            border-radius: 6px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1f2937;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1f2937;
+            border: 1px solid #4b5563;
+            border-radius: 8px;
+            padding: 16px 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .queue-item {
+            background: #374151;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .queue-item.processing {
+            border-left: 3px solid #f59e0b;
+        }
+
+        .queue-item.success {
+            border-left: 3px solid #10b981;
+        }
+
+        .queue-item.failed {
+            border-left: 3px solid #ef4444;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #374151;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h1 class="text-3xl font-bold text-white">⚡ HybridShock Integration</h1>
+                <p class="text-gray-400 mt-2">Bridge zwischen TikTok Live Events und HybridShock API</p>
+            </div>
+            <div id="connectionStatus"></div>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="flex gap-3">
+            <button id="btnStart" class="btn-success">▶️ Start</button>
+            <button id="btnStop" class="btn-danger">⏸️ Stop</button>
+            <button id="btnRestart" class="btn-secondary">🔄 Restart</button>
+            <button id="btnTestConnection" class="btn-primary">🔌 Test Connection</button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="bg-gray-800 rounded-lg mb-6">
+        <div class="flex border-b border-gray-700">
+            <button class="tab-btn active" data-tab="connection">🔌 Connection</button>
+            <button class="tab-btn" data-tab="mappings">🔀 Event Mappings</button>
+            <button class="tab-btn" data-tab="queue">📦 Action Queue</button>
+            <button class="tab-btn" data-tab="logs">📋 Logs</button>
+            <button class="tab-btn" data-tab="stats">📊 Statistics</button>
+            <button class="tab-btn" data-tab="debug">🔧 Debug</button>
+        </div>
+
+        <!-- Tab: Connection -->
+        <div id="tab-connection" class="tab-content active p-6">
+            <h2 class="text-2xl font-bold mb-6">Connection Settings</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- HTTP Settings -->
+                <div class="bg-gray-900 rounded-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">HTTP API Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">HTTP Host</label>
+                            <input type="text" id="configHttpHost" class="input-field" value="127.0.0.1">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">HTTP Port</label>
+                            <input type="number" id="configHttpPort" class="input-field" value="8832">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WebSocket Settings -->
+                <div class="bg-gray-900 rounded-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">WebSocket Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">WebSocket Host</label>
+                            <input type="text" id="configWsHost" class="input-field" value="127.0.0.1">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">WebSocket Port</label>
+                            <input type="number" id="configWsPort" class="input-field" value="8833">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Queue Settings -->
+            <div class="bg-gray-900 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Queue & Rate-Limiting</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Max Actions/Second</label>
+                        <input type="number" id="configMaxActionsPerSecond" class="input-field" value="10">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Max Queue Size</label>
+                        <input type="number" id="configMaxQueueSize" class="input-field" value="1000">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Max Retries</label>
+                        <input type="number" id="configMaxRetries" class="input-field" value="3">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Settings -->
+            <div class="bg-gray-900 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Advanced Settings</h3>
+                <div class="space-y-4">
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" id="configAutoConnect" class="w-5 h-5">
+                        <span>Auto-Connect on Plugin Start</span>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" id="configAutoReconnect" class="w-5 h-5" checked>
+                        <span>Auto-Reconnect on Connection Loss</span>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" id="configEnableDebugMode" class="w-5 h-5">
+                        <span>Enable Debug Mode (Verbose Logging)</span>
+                    </label>
+                </div>
+            </div>
+
+            <button id="btnSaveConfig" class="btn-primary w-full">💾 Save Configuration</button>
+        </div>
+
+        <!-- Tab: Mappings -->
+        <div id="tab-mappings" class="tab-content p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Event Mappings</h2>
+                <div class="flex gap-3">
+                    <button id="btnCreateMapping" class="btn-success">➕ Create Mapping</button>
+                    <button id="btnExportMappings" class="btn-secondary">📤 Export</button>
+                    <button id="btnImportMappings" class="btn-secondary">📥 Import</button>
+                </div>
+            </div>
+
+            <div id="mappingsList"></div>
+        </div>
+
+        <!-- Tab: Queue -->
+        <div id="tab-queue" class="tab-content p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Action Queue Monitor</h2>
+                <button id="btnClearQueue" class="btn-danger">🗑️ Clear Queue</button>
+            </div>
+
+            <!-- Queue Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card">
+                    <div class="stat-label">Queue Size</div>
+                    <div class="stat-value" id="queueSize">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Current Rate</div>
+                    <div class="stat-value" id="queueRate">0/s</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Processing</div>
+                    <div class="stat-value" id="queueProcessing">No</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg. Time</div>
+                    <div class="stat-value" id="queueAvgTime">0ms</div>
+                </div>
+            </div>
+
+            <!-- Dead Letter Queue -->
+            <div class="bg-gray-900 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Failed Actions (Dead Letter Queue)</h3>
+                <div id="deadLetterQueue"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Logs -->
+        <div id="tab-logs" class="tab-content p-6">
+            <h2 class="text-2xl font-bold mb-6">Event & Action Logs</h2>
+
+            <!-- Event Logs -->
+            <div class="bg-gray-900 rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">TikTok Events</h3>
+                    <button id="btnRefreshEventLogs" class="btn-secondary">🔄 Refresh</button>
+                </div>
+                <div id="eventLogsList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+            </div>
+
+            <!-- Action Logs -->
+            <div class="bg-gray-900 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">HybridShock Actions</h3>
+                    <button id="btnRefreshActionLogs" class="btn-secondary">🔄 Refresh</button>
+                </div>
+                <div id="actionLogsList" class="space-y-2 max-h-96 overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Statistics -->
+        <div id="tab-stats" class="tab-content p-6">
+            <h2 class="text-2xl font-bold mb-6">Statistics Dashboard</h2>
+
+            <!-- Overall Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="stat-card">
+                    <div class="stat-icon">📥</div>
+                    <div class="stat-label">TikTok Events</div>
+                    <div class="stat-value" id="statTikTokEvents">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📤</div>
+                    <div class="stat-label">Actions Triggered</div>
+                    <div class="stat-value" id="statActionsTriggered">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-label">Success Rate</div>
+                    <div class="stat-value" id="statSuccessRate">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-label">Uptime</div>
+                    <div class="stat-value" id="statUptime">0s</div>
+                </div>
+            </div>
+
+            <!-- Event Breakdown -->
+            <div class="bg-gray-900 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Event Breakdown</h3>
+                <div id="eventBreakdown"></div>
+            </div>
+
+            <!-- Action Breakdown -->
+            <div class="bg-gray-900 rounded-lg p-6">
+                <h3 class="text-lg font-semibold mb-4">Action Breakdown</h3>
+                <div id="actionBreakdown"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Debug -->
+        <div id="tab-debug" class="tab-content p-6">
+            <h2 class="text-2xl font-bold mb-6">Debug Tools</h2>
+
+            <!-- Manual Action Trigger -->
+            <div class="bg-gray-900 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Manual Action Trigger</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Category</label>
+                        <input type="text" id="debugCategory" class="input-field" placeholder="e.g. shock, message">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Action</label>
+                        <input type="text" id="debugAction" class="input-field" placeholder="e.g. pulse, hello">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">Context (JSON)</label>
+                    <textarea id="debugContext" class="input-field" rows="5" placeholder='{"key": "value"}'></textarea>
+                </div>
+                <button id="btnTriggerAction" class="btn-primary">🚀 Trigger Action</button>
+            </div>
+
+            <!-- HybridShock Features -->
+            <div class="bg-gray-900 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">HybridShock API Features</h3>
+                    <button id="btnLoadFeatures" class="btn-secondary">🔄 Load Features</button>
+                </div>
+                <div id="featuresDisplay"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Create/Edit Mapping -->
+    <div id="mappingModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-6" id="mappingModalTitle">Create Event Mapping</h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Mapping Name</label>
+                    <input type="text" id="mappingName" class="input-field" placeholder="e.g. Rose Gift to Hello Message">
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Description</label>
+                    <input type="text" id="mappingDescription" class="input-field" placeholder="Optional description">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">TikTok Event Type</label>
+                        <select id="mappingTikTokEvent" class="input-field">
+                            <option value="gift">Gift</option>
+                            <option value="chat">Chat</option>
+                            <option value="follow">Follow</option>
+                            <option value="share">Share</option>
+                            <option value="like">Like</option>
+                            <option value="subscribe">Subscribe</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">HybridShock Category</label>
+                        <input type="text" id="mappingCategory" class="input-field" placeholder="e.g. shock, message">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">HybridShock Action</label>
+                        <input type="text" id="mappingAction" class="input-field" placeholder="e.g. pulse, hello">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Context Template (JSON)</label>
+                    <textarea id="mappingContextTemplate" class="input-field" rows="5" placeholder='{"username": "{username}", "message": "{giftName}"}'></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Available placeholders: {username}, {giftName}, {coins}, {message}, etc.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Delay (ms)</label>
+                        <input type="number" id="mappingDelay" class="input-field" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Cooldown (ms)</label>
+                        <input type="number" id="mappingCooldown" class="input-field" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Priority</label>
+                        <input type="number" id="mappingPriority" class="input-field" value="0">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" id="mappingEnabled" class="w-5 h-5" checked>
+                        <span>Enabled</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button id="btnSaveMapping" class="btn-primary flex-1">💾 Save Mapping</button>
+                <button id="btnCancelMapping" class="btn-secondary">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentMappingId = null;
+
+        // Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            initTabs();
+            loadConfig();
+            loadStatus();
+            loadMappings();
+            setupEventHandlers();
+            setupSocketHandlers();
+
+            // Auto-refresh
+            setInterval(loadStatus, 2000);
+            setInterval(loadMappings, 10000);
+        });
+
+        // Tab-System
+        function initTabs() {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.tab;
+
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                    btn.classList.add('active');
+                    document.getElementById(`tab-${tab}`).classList.add('active');
+                });
+            });
+        }
+
+        // Config laden
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/hybridshock/config');
+                const data = await response.json();
+
+                if (data.success) {
+                    const config = data.data;
+                    document.getElementById('configHttpHost').value = config.httpHost;
+                    document.getElementById('configHttpPort').value = config.httpPort;
+                    document.getElementById('configWsHost').value = config.wsHost;
+                    document.getElementById('configWsPort').value = config.wsPort;
+                    document.getElementById('configMaxActionsPerSecond').value = config.maxActionsPerSecond;
+                    document.getElementById('configMaxQueueSize').value = config.maxQueueSize;
+                    document.getElementById('configMaxRetries').value = config.maxRetries;
+                    document.getElementById('configAutoConnect').checked = config.autoConnect;
+                    document.getElementById('configAutoReconnect').checked = config.autoReconnect;
+                    document.getElementById('configEnableDebugMode').checked = config.enableDebugMode;
+                }
+            } catch (error) {
+                showToast('Failed to load config', 'error');
+            }
+        }
+
+        // Status laden
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/hybridshock/status');
+                const data = await response.json();
+
+                if (data.success) {
+                    updateStatus(data.data);
+                }
+            } catch (error) {
+                console.error('Failed to load status:', error);
+            }
+        }
+
+        // Status aktualisieren
+        function updateStatus(status) {
+            // Connection Status
+            const statusEl = document.getElementById('connectionStatus');
+            const isConnected = status.client?.connected;
+            const isConnecting = status.client?.connecting;
+
+            let statusClass = 'status-disconnected';
+            let statusText = '⚫ Disconnected';
+
+            if (isConnected) {
+                statusClass = 'status-connected';
+                statusText = '🟢 Connected';
+            } else if (isConnecting) {
+                statusClass = 'status-connecting';
+                statusText = '🟡 Connecting...';
+            }
+
+            statusEl.innerHTML = `<div class="status-indicator ${statusClass}"><span class="status-dot"></span>${statusText}</div>`;
+
+            // Queue Stats
+            if (status.queue) {
+                document.getElementById('queueSize').textContent = status.queue.queueSize || 0;
+                document.getElementById('queueRate').textContent = `${status.queue.currentRate || 0}/s`;
+                document.getElementById('queueProcessing').textContent = status.queue.processing ? 'Yes' : 'No';
+                document.getElementById('queueAvgTime').textContent = `${status.queue.stats?.averageProcessingTime || 0}ms`;
+            }
+
+            // Overall Stats
+            if (status.stats) {
+                document.getElementById('statTikTokEvents').textContent = status.stats.tiktokEventsReceived || 0;
+                document.getElementById('statActionsTriggered').textContent = status.stats.actionsTriggered || 0;
+
+                const successRate = status.stats.actionsTriggered > 0
+                    ? ((status.stats.actionsTriggered - status.stats.actionsFailed) / status.stats.actionsTriggered * 100).toFixed(1)
+                    : 0;
+                document.getElementById('statSuccessRate').textContent = `${successRate}%`;
+
+                const uptime = status.stats.uptime || 0;
+                document.getElementById('statUptime').textContent = formatDuration(uptime);
+            }
+        }
+
+        // Mappings laden
+        async function loadMappings() {
+            try {
+                const response = await fetch('/api/hybridshock/mappings');
+                const data = await response.json();
+
+                if (data.success) {
+                    renderMappings(data.data);
+                }
+            } catch (error) {
+                console.error('Failed to load mappings:', error);
+            }
+        }
+
+        // Mappings rendern
+        function renderMappings(mappings) {
+            const container = document.getElementById('mappingsList');
+
+            if (mappings.length === 0) {
+                container.innerHTML = '<p class="text-gray-400">No mappings created yet. Click "Create Mapping" to get started.</p>';
+                return;
+            }
+
+            container.innerHTML = mappings.map(mapping => `
+                <div class="mapping-card ${mapping.enabled ? '' : 'disabled'}">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="font-semibold text-lg">${mapping.name}</h3>
+                            ${mapping.description ? `<p class="text-sm text-gray-400 mt-1">${mapping.description}</p>` : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="toggleMapping(${mapping.id}, ${!mapping.enabled})" class="btn-secondary text-sm px-3 py-1">
+                                ${mapping.enabled ? '🔴 Disable' : '🟢 Enable'}
+                            </button>
+                            <button onclick="editMapping(${mapping.id})" class="btn-primary text-sm px-3 py-1">✏️ Edit</button>
+                            <button onclick="deleteMapping(${mapping.id})" class="btn-danger text-sm px-3 py-1">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-4 text-sm">
+                        <div>
+                            <span class="text-gray-400">TikTok Event:</span>
+                            <span class="ml-2 font-medium">${mapping.tiktokEventType}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">HybridShock Action:</span>
+                            <span class="ml-2 font-medium">${mapping.hybridshockCategory}/${mapping.hybridshockAction}</span>
+                        </div>
+                        ${mapping.delay > 0 ? `<div><span class="text-gray-400">Delay:</span> <span class="ml-2">${mapping.delay}ms</span></div>` : ''}
+                        ${mapping.cooldown > 0 ? `<div><span class="text-gray-400">Cooldown:</span> <span class="ml-2">${mapping.cooldown}ms</span></div>` : ''}
+                        ${mapping.priority > 0 ? `<div><span class="text-gray-400">Priority:</span> <span class="ml-2">${mapping.priority}</span></div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Event-Handlers
+        function setupEventHandlers() {
+            // Start/Stop
+            document.getElementById('btnStart').addEventListener('click', async () => {
+                await fetch('/api/hybridshock/start', { method: 'POST' });
+                showToast('Plugin started', 'success');
+            });
+
+            document.getElementById('btnStop').addEventListener('click', async () => {
+                await fetch('/api/hybridshock/stop', { method: 'POST' });
+                showToast('Plugin stopped', 'success');
+            });
+
+            document.getElementById('btnRestart').addEventListener('click', async () => {
+                await fetch('/api/hybridshock/restart', { method: 'POST' });
+                showToast('Plugin restarting...', 'info');
+            });
+
+            document.getElementById('btnTestConnection').addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/hybridshock/test');
+                    const data = await response.json();
+
+                    if (data.success && data.data.http) {
+                        showToast('✅ Connection successful!', 'success');
+                    } else {
+                        showToast('❌ Connection failed', 'error');
+                    }
+                } catch (error) {
+                    showToast('❌ Connection test failed', 'error');
+                }
+            });
+
+            // Save Config
+            document.getElementById('btnSaveConfig').addEventListener('click', async () => {
+                const config = {
+                    httpHost: document.getElementById('configHttpHost').value,
+                    httpPort: parseInt(document.getElementById('configHttpPort').value),
+                    wsHost: document.getElementById('configWsHost').value,
+                    wsPort: parseInt(document.getElementById('configWsPort').value),
+                    maxActionsPerSecond: parseInt(document.getElementById('configMaxActionsPerSecond').value),
+                    maxQueueSize: parseInt(document.getElementById('configMaxQueueSize').value),
+                    maxRetries: parseInt(document.getElementById('configMaxRetries').value),
+                    autoConnect: document.getElementById('configAutoConnect').checked,
+                    autoReconnect: document.getElementById('configAutoReconnect').checked,
+                    enableDebugMode: document.getElementById('configEnableDebugMode').checked
+                };
+
+                try {
+                    await fetch('/api/hybridshock/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(config)
+                    });
+                    showToast('Configuration saved!', 'success');
+                } catch (error) {
+                    showToast('Failed to save config', 'error');
+                }
+            });
+
+            // Create Mapping
+            document.getElementById('btnCreateMapping').addEventListener('click', () => {
+                currentMappingId = null;
+                document.getElementById('mappingModalTitle').textContent = 'Create Event Mapping';
+                clearMappingForm();
+                showModal('mappingModal');
+            });
+
+            // Save Mapping
+            document.getElementById('btnSaveMapping').addEventListener('click', saveMapping);
+
+            // Cancel Mapping
+            document.getElementById('btnCancelMapping').addEventListener('click', () => {
+                hideModal('mappingModal');
+            });
+
+            // Export Mappings
+            document.getElementById('btnExportMappings').addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/hybridshock/mappings/export');
+                    const data = await response.json();
+
+                    const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `hybridshock-mappings-${Date.now()}.json`;
+                    a.click();
+
+                    showToast('Mappings exported!', 'success');
+                } catch (error) {
+                    showToast('Export failed', 'error');
+                }
+            });
+
+            // Debug: Trigger Action
+            document.getElementById('btnTriggerAction').addEventListener('click', async () => {
+                const category = document.getElementById('debugCategory').value;
+                const action = document.getElementById('debugAction').value;
+                const contextText = document.getElementById('debugContext').value;
+
+                let context = {};
+                try {
+                    if (contextText) {
+                        context = JSON.parse(contextText);
+                    }
+                } catch (error) {
+                    showToast('Invalid JSON in context', 'error');
+                    return;
+                }
+
+                try {
+                    await fetch('/api/hybridshock/action/trigger', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ category, action, context })
+                    });
+                    showToast('Action triggered!', 'success');
+                } catch (error) {
+                    showToast('Failed to trigger action', 'error');
+                }
+            });
+
+            // Load Features
+            document.getElementById('btnLoadFeatures').addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/hybridshock/features');
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const container = document.getElementById('featuresDisplay');
+                        container.innerHTML = `
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-semibold mb-2">Categories</h4>
+                                    <pre class="bg-gray-800 p-4 rounded text-xs overflow-x-auto">${JSON.stringify(data.data.categories, null, 2)}</pre>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-2">Actions</h4>
+                                    <pre class="bg-gray-800 p-4 rounded text-xs overflow-x-auto">${JSON.stringify(data.data.actions, null, 2)}</pre>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-2">Events</h4>
+                                    <pre class="bg-gray-800 p-4 rounded text-xs overflow-x-auto">${JSON.stringify(data.data.events, null, 2)}</pre>
+                                </div>
+                            </div>
+                        `;
+                        showToast('Features loaded!', 'success');
+                    }
+                } catch (error) {
+                    showToast('Failed to load features', 'error');
+                }
+            });
+
+            // Refresh Logs
+            document.getElementById('btnRefreshEventLogs').addEventListener('click', loadEventLogs);
+            document.getElementById('btnRefreshActionLogs').addEventListener('click', loadActionLogs);
+        }
+
+        // Socket.IO Handlers
+        function setupSocketHandlers() {
+            socket.on('hybridshock:status', (status) => {
+                updateStatus(status);
+            });
+
+            socket.on('hybridshock:tiktok-event', (event) => {
+                console.log('TikTok Event:', event);
+            });
+
+            socket.on('hybridshock:event', (event) => {
+                console.log('HybridShock Event:', event);
+            });
+        }
+
+        // Mapping Functions
+        async function saveMapping() {
+            const mapping = {
+                name: document.getElementById('mappingName').value,
+                description: document.getElementById('mappingDescription').value,
+                tiktokEventType: document.getElementById('mappingTikTokEvent').value,
+                hybridshockCategory: document.getElementById('mappingCategory').value,
+                hybridshockAction: document.getElementById('mappingAction').value,
+                delay: parseInt(document.getElementById('mappingDelay').value) || 0,
+                cooldown: parseInt(document.getElementById('mappingCooldown').value) || 0,
+                priority: parseInt(document.getElementById('mappingPriority').value) || 0,
+                enabled: document.getElementById('mappingEnabled').checked
+            };
+
+            // Context Template
+            const contextText = document.getElementById('mappingContextTemplate').value;
+            try {
+                mapping.contextTemplate = contextText ? JSON.parse(contextText) : {};
+            } catch (error) {
+                showToast('Invalid JSON in context template', 'error');
+                return;
+            }
+
+            try {
+                const url = currentMappingId
+                    ? `/api/hybridshock/mappings/${currentMappingId}`
+                    : '/api/hybridshock/mappings';
+                const method = currentMappingId ? 'PUT' : 'POST';
+
+                await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(mapping)
+                });
+
+                hideModal('mappingModal');
+                loadMappings();
+                showToast('Mapping saved!', 'success');
+            } catch (error) {
+                showToast('Failed to save mapping', 'error');
+            }
+        }
+
+        async function editMapping(id) {
+            try {
+                const response = await fetch('/api/hybridshock/mappings');
+                const data = await response.json();
+
+                if (data.success) {
+                    const mapping = data.data.find(m => m.id === id);
+                    if (mapping) {
+                        currentMappingId = id;
+                        document.getElementById('mappingModalTitle').textContent = 'Edit Event Mapping';
+                        document.getElementById('mappingName').value = mapping.name;
+                        document.getElementById('mappingDescription').value = mapping.description || '';
+                        document.getElementById('mappingTikTokEvent').value = mapping.tiktokEventType;
+                        document.getElementById('mappingCategory').value = mapping.hybridshockCategory;
+                        document.getElementById('mappingAction').value = mapping.hybridshockAction;
+                        document.getElementById('mappingContextTemplate').value = JSON.stringify(mapping.contextTemplate, null, 2);
+                        document.getElementById('mappingDelay').value = mapping.delay;
+                        document.getElementById('mappingCooldown').value = mapping.cooldown;
+                        document.getElementById('mappingPriority').value = mapping.priority;
+                        document.getElementById('mappingEnabled').checked = mapping.enabled;
+                        showModal('mappingModal');
+                    }
+                }
+            } catch (error) {
+                showToast('Failed to load mapping', 'error');
+            }
+        }
+
+        async function deleteMapping(id) {
+            if (!confirm('Are you sure you want to delete this mapping?')) {
+                return;
+            }
+
+            try {
+                await fetch(`/api/hybridshock/mappings/${id}`, { method: 'DELETE' });
+                loadMappings();
+                showToast('Mapping deleted!', 'success');
+            } catch (error) {
+                showToast('Failed to delete mapping', 'error');
+            }
+        }
+
+        async function toggleMapping(id, enabled) {
+            try {
+                const response = await fetch('/api/hybridshock/mappings');
+                const data = await response.json();
+
+                if (data.success) {
+                    const mapping = data.data.find(m => m.id === id);
+                    if (mapping) {
+                        mapping.enabled = enabled;
+                        await fetch(`/api/hybridshock/mappings/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(mapping)
+                        });
+                        loadMappings();
+                        showToast(`Mapping ${enabled ? 'enabled' : 'disabled'}!`, 'success');
+                    }
+                }
+            } catch (error) {
+                showToast('Failed to toggle mapping', 'error');
+            }
+        }
+
+        function clearMappingForm() {
+            document.getElementById('mappingName').value = '';
+            document.getElementById('mappingDescription').value = '';
+            document.getElementById('mappingCategory').value = '';
+            document.getElementById('mappingAction').value = '';
+            document.getElementById('mappingContextTemplate').value = '';
+            document.getElementById('mappingDelay').value = '0';
+            document.getElementById('mappingCooldown').value = '0';
+            document.getElementById('mappingPriority').value = '0';
+            document.getElementById('mappingEnabled').checked = true;
+        }
+
+        // Logs
+        async function loadEventLogs() {
+            try {
+                const response = await fetch('/api/hybridshock/logs/events?limit=50');
+                const data = await response.json();
+
+                if (data.success) {
+                    const container = document.getElementById('eventLogsList');
+                    container.innerHTML = data.data.map(log => {
+                        const eventData = JSON.parse(log.event_data);
+                        return `
+                            <div class="log-entry info">
+                                <div class="flex justify-between mb-2">
+                                    <span class="font-semibold">${log.event_type} (${log.event_source})</span>
+                                    <span class="text-xs text-gray-400">${new Date(log.timestamp).toLocaleString()}</span>
+                                </div>
+                                <pre class="text-xs text-gray-300">${JSON.stringify(eventData, null, 2)}</pre>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load event logs:', error);
+            }
+        }
+
+        async function loadActionLogs() {
+            try {
+                const response = await fetch('/api/hybridshock/logs/actions?limit=50');
+                const data = await response.json();
+
+                if (data.success) {
+                    const container = document.getElementById('actionLogsList');
+                    container.innerHTML = data.data.map(log => {
+                        return `
+                            <div class="log-entry ${log.status}">
+                                <div class="flex justify-between mb-2">
+                                    <span class="font-semibold">${log.category}/${log.action}</span>
+                                    <span class="text-xs text-gray-400">${new Date(log.timestamp).toLocaleString()}</span>
+                                </div>
+                                <div class="text-xs">
+                                    <div>Status: <span class="font-medium">${log.status}</span></div>
+                                    ${log.processing_time ? `<div>Processing Time: ${log.processing_time}ms</div>` : ''}
+                                    ${log.error_message ? `<div class="text-red-400">Error: ${log.error_message}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load action logs:', error);
+            }
+        }
+
+        // Utilities
+        function showModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function hideModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        function formatDuration(ms) {
+            if (ms < 1000) return `${ms}ms`;
+            if (ms < 60000) return `${Math.floor(ms / 1000)}s`;
+            if (ms < 3600000) return `${Math.floor(ms / 60000)}m`;
+            return `${Math.floor(ms / 3600000)}h`;
+        }
+    </script>
+</body>
+</html>
