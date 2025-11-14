@@ -88,14 +88,20 @@ Access the full settings interface at `/goals/ui`:
 - Manual value adjustments
 - Reset goals
 
-### Event API Integration
+### Event API Integration (Optional)
 
+**The Event API is completely optional.** The Goals Plugin works perfectly without it by using TikTok's internal event system.
+
+If you want to use Event API:
 1. **Install Event API** (if not already installed)
 2. **Start Event API** on `ws://localhost:21213`
 3. **Plugin Auto-Connects**: The plugin will automatically connect
 4. **Monitor Status**: Check connection status in the settings UI
 
-If Event API is not available, the plugin will fall back to internal TikTok event handling.
+**If Event API is not available:**
+- The plugin automatically falls back to internal TikTok event handling
+- All features continue to work normally
+- You may see a warning message in the logs about Event API not being available (this is normal and can be ignored)
 
 ### OBS Setup
 
@@ -298,11 +304,29 @@ Use goals in your automation flows:
 
 ### Event API Not Connecting
 
-1. Ensure Event API is running
+**Important:** The Event API is optional. If you see WebSocket connection errors, this is normal if you don't have Event API running.
+
+**If you see this error:**
+```
+[error]: [Plugin:goals] Event API WebSocket error: ... (Code: ECONNREFUSED)
+[warn]: Event API may not be running at ws://localhost:21213. Using TikTok events fallback.
+```
+
+**This means:**
+- The Goals Plugin tried to connect to Event API but it's not running
+- **This is completely fine!** The plugin will use TikTok's internal events instead
+- All features will work normally
+
+**If you want to use Event API:**
+1. Ensure Event API is running on the configured port
 2. Check WebSocket URL in settings (default: `ws://localhost:21213`)
 3. Verify no firewall blocking the connection
-4. Check console logs for connection errors
-5. Plugin will auto-reconnect up to 10 times
+4. Plugin will auto-reconnect up to 10 times with exponential backoff
+
+**To disable Event API warnings:**
+1. Go to Goals settings UI
+2. Disable Event API integration in settings
+3. Save changes
 
 ### Goals Not Updating in Overlay
 

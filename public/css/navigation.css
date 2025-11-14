@@ -418,7 +418,10 @@ body {
 }
 
 .content-view.active {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0; /* Critical for flexbox sizing */
 }
 
 @keyframes fadeIn {
@@ -882,6 +885,11 @@ input:checked + .toggle-slider:before {
     border-radius: 12px;
     padding: 1.5rem;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    flex: 1; /* Allow section to grow and fill available space */
+    min-height: 0; /* Critical for flexbox sizing */
+    overflow: hidden; /* Prevent section from overflowing */
 }
 
 .view-header {
@@ -891,6 +899,7 @@ input:checked + .toggle-slider:before {
     margin-bottom: 1.5rem;
     gap: 1rem;
     flex-wrap: wrap;
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .view-title {
