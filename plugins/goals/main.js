@@ -211,6 +211,17 @@ class GoalsPlugin extends EventEmitter {
                 )
             `);
 
+            // Settings table for plugin configuration
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    description TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
             // Initialize default goals if not exist
             this.initializeDefaultGoals(db);
 
@@ -220,6 +231,18 @@ class GoalsPlugin extends EventEmitter {
                 VALUES (1, 1, 'ws://localhost:21213', 1)
             `);
             eventApiStmt.run();
+
+            // Initialize default settings
+            const settingsStmt = db.prepare(`
+                INSERT OR IGNORE INTO settings (key, value, description)
+                VALUES (?, ?, ?)
+            `);
+            // Goals initialization mode: 'persist' (keep DB values), 'reset' (start from 0), 'stream' (use current stream stats)
+            settingsStmt.run(
+                'goals_init_mode',
+                'persist',
+                'Goal initialization mode: persist (keep values), reset (start from 0), stream (use stream stats)'
+            );
 
             // Initialize default templates
             this.initializeDefaultTemplates(db);
@@ -1059,9 +1082,14 @@ class GoalsPlugin extends EventEmitter {
             const db = this.api.getDatabase();
 
             // Get initialization mode from settings (default: 'persist')
-            const initModeStmt = db.prepare(`SELECT value FROM settings WHERE key = 'goals_init_mode'`);
-            const initModeRow = initModeStmt.get();
-            const initMode = initModeRow?.value || 'persist';
+            let initMode = 'persist';
+            try {
+                const initModeStmt = db.prepare(`SELECT value FROM settings WHERE key = 'goals_init_mode'`);
+                const initModeRow = initModeStmt.get();
+                initMode = initModeRow?.value || 'persist';
+            } catch (settingsError) {
+                this.api.log(`Warning: Could not read goals_init_mode from settings, using default 'persist': ${settingsError.message}`, 'warn');
+            }
 
             this.api.log(`🎯 Initializing goals with mode: ${initMode}`, 'info');
 
@@ -1633,6 +1661,97 @@ class GoalsPlugin extends EventEmitter {
 
             res.json({ success: true, message: `Goal ${enabled ? 'enabled' : 'disabled'}`, goal });
         });
+
+        // ========================================
+        // SETTINGS ROUTES
+        // ========================================
+
+        // Get all settings
+        this.api.registerRoute('get', '/api/goals/settings', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare('SELECT * FROM settings');
+                const settings = stmt.all();
+
+                // Convert array to object for easier access
+                const settingsObj = {};
+                settings.forEach(setting => {
+                    settingsObj[setting.key] = {
+                        value: setting.value,
+                        description: setting.description
+                    };
+                });
+
+                res.json({ success: true, settings: settingsObj });
+            } catch (error) {
+                this.api.log(`Error fetching settings: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get specific setting
+        this.api.registerRoute('get', '/api/goals/settings/:key', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare('SELECT * FROM settings WHERE key = ?');
+                const setting = stmt.get(req.params.key);
+
+                if (!setting) {
+                    return res.status(404).json({ success: false, error: 'Setting not found' });
+                }
+
+                res.json({
+                    success: true,
+                    setting: {
+                        key: setting.key,
+                        value: setting.value,
+                        description: setting.description
+                    }
+                });
+            } catch (error) {
+                this.api.log(`Error fetching setting: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update setting
+        this.api.registerRoute('put', '/api/goals/settings/:key', (req, res) => {
+            try {
+                const { value } = req.body;
+
+                if (value === undefined) {
+                    return res.status(400).json({ success: false, error: 'value is required' });
+                }
+
+                // Validate goals_init_mode values
+                if (req.params.key === 'goals_init_mode') {
+                    if (!['persist', 'reset', 'stream'].includes(value)) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'goals_init_mode must be one of: persist, reset, stream'
+                        });
+                    }
+                }
+
+                const db = this.api.getDatabase();
+                const stmt = db.prepare(`
+                    INSERT OR REPLACE INTO settings (key, value, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                `);
+                stmt.run(req.params.key, value);
+
+                this.api.log(`Setting ${req.params.key} updated to: ${value}`, 'info');
+
+                res.json({ success: true, message: 'Setting updated' });
+            } catch (error) {
+                this.api.log(`Error updating setting: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ========================================
+        // EVENT API ROUTES
+        // ========================================
 
         // Get Event API connection status
         this.api.registerRoute('get', '/api/goals/event-api/status', (req, res) => {
