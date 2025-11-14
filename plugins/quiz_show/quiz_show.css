@@ -895,3 +895,137 @@ code {
         width: 100%;
     }
 }
+
+/* HUD Overlay Configuration */
+.hud-config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.hud-config-grid .panel.full-width {
+    grid-column: 1 / -1;
+}
+
+.preview-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.preview-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.preview-info label {
+    font-weight: 600;
+}
+
+.preview-info select {
+    max-width: 200px;
+}
+
+.preview-wrapper {
+    width: 100%;
+    height: 500px;
+    border: 2px solid #1e293b;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+    position: relative;
+}
+
+.preview-wrapper iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    transform-origin: top left;
+}
+
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+}
+
+.color-input {
+    width: 100%;
+    height: 50px;
+    border: 2px solid #1e293b;
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+}
+
+.color-input:hover {
+    border-color: #3b82f6;
+}
+
+.css-editor {
+    width: 100%;
+    min-height: 300px;
+    background: #1e293b;
+    border: 2px solid #334155;
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #f8fafc;
+    resize: vertical;
+}
+
+.css-editor:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.form-range {
+    width: 100%;
+    height: 6px;
+    background: #1e293b;
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.form-range::-webkit-slider-thumb:hover {
+    background: #60a5fa;
+    transform: scale(1.2);
+}
+
+.form-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.form-range::-moz-range-thumb:hover {
+    background: #60a5fa;
+    transform: scale(1.2);
+}
+
+.range-value {
+    text-align: center;
+    margin-top: 8px;
+    font-weight: 600;
+    color: #3b82f6;
+    font-size: 14px;
+}

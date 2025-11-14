@@ -356,6 +356,79 @@ class QuizShowPlugin {
                 res.status(500).json({ success: false, error: error.message });
             }
         });
+
+        // Get HUD configuration
+        this.api.registerRoute('get', '/api/quiz-show/hud-config', (req, res) => {
+            try {
+                const hudConfig = this.api.getConfig('hudConfig') || this.getDefaultHUDConfig();
+                res.json({ success: true, config: hudConfig });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update HUD configuration
+        this.api.registerRoute('post', '/api/quiz-show/hud-config', async (req, res) => {
+            try {
+                const hudConfig = req.body;
+                await this.api.setConfig('hudConfig', hudConfig);
+
+                // Broadcast update to all overlays
+                this.api.emit('quiz-show:hud-config-updated', hudConfig);
+
+                res.json({ success: true, config: hudConfig });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Reset HUD configuration
+        this.api.registerRoute('post', '/api/quiz-show/hud-config/reset', async (req, res) => {
+            try {
+                const defaultConfig = this.getDefaultHUDConfig();
+                await this.api.setConfig('hudConfig', defaultConfig);
+
+                // Broadcast update to all overlays
+                this.api.emit('quiz-show:hud-config-updated', defaultConfig);
+
+                res.json({ success: true, config: defaultConfig });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+    }
+
+    getDefaultHUDConfig() {
+        return {
+            theme: 'dark',
+            questionAnimation: 'slide-in-bottom',
+            correctAnimation: 'glow-pulse',
+            wrongAnimation: 'shake',
+            timerVariant: 'circular',
+            answersLayout: 'grid',
+            animationSpeed: 1,
+            glowIntensity: 1,
+            customCSS: '',
+            streamWidth: 1920,
+            streamHeight: 1080,
+            positions: {
+                question: { top: null, left: null, width: '100%', maxWidth: '1200px' },
+                answers: { top: null, left: null, width: '100%', maxWidth: '1200px' },
+                timer: { top: null, left: null }
+            },
+            colors: {
+                primary: '#3b82f6',
+                secondary: '#8b5cf6',
+                success: '#10b981',
+                danger: '#ef4444',
+                warning: '#f59e0b'
+            },
+            fonts: {
+                family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                sizeQuestion: '2.2rem',
+                sizeAnswer: '1.1rem'
+            }
+        };
     }
 
     registerSocketEvents() {
