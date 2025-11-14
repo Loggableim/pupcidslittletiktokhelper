@@ -1348,7 +1348,8 @@
             try {
                 const response = await fetch(`/api/goals/${goalType}/toggle`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
                 });
 
                 const data = await response.json();
@@ -1365,13 +1366,12 @@
             const name = document.getElementById(`goalName-${goalType}`).value;
             const target = parseInt(document.getElementById(`goalTarget-${goalType}`).value);
             const current = parseInt(document.getElementById(`goalCurrent-${goalType}`).value);
-            const enabled = document.getElementById(`goalEnabled-${goalType}`).checked;
 
             try {
                 const response = await fetch(`/api/goals/${goalType}/config`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, target_value: target, current_value: current, enabled })
+                    body: JSON.stringify({ name, target_value: target, current_value: current })
                 });
 
                 const data = await response.json();
@@ -1551,9 +1551,11 @@
         // Quick toggle goal
         async function quickToggleGoal(goalType) {
             try {
+                const newEnabled = !goals[goalType].enabled;
                 const response = await fetch(`/api/goals/${goalType}/toggle`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: newEnabled })
                 });
 
                 const data = await response.json();
@@ -1574,7 +1576,7 @@
                 const response = await fetch(`/api/goals/${goalType}/increment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: 1 })
+                    body: JSON.stringify({ delta: 1 })
                 });
 
                 const data = await response.json();
