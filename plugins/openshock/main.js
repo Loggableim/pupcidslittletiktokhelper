@@ -239,11 +239,17 @@ class OpenShockPlugin {
      * Helper-Klassen initialisieren
      */
     _initializeHelpers() {
-        // OpenShock API Client
-        this.openShockClient = new OpenShockClient({
-            apiKey: this.config.apiKey,
-            baseUrl: this.config.baseUrl
-        });
+        // OpenShock API Client (nur wenn API Key vorhanden)
+        if (this.config.apiKey && this.config.apiKey.trim() !== '') {
+            this.openShockClient = new OpenShockClient({
+                apiKey: this.config.apiKey,
+                baseUrl: this.config.baseUrl
+            });
+            this.api.log('OpenShock API Client initialized', 'info');
+        } else {
+            this.openShockClient = null;
+            this.api.log('OpenShock API Client NOT initialized (no API key configured)', 'warn');
+        }
 
         // Mapping Engine
         this.mappingEngine = new MappingEngine({
