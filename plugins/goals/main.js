@@ -946,13 +946,23 @@ class GoalsPlugin extends EventEmitter {
             const config = configStmt.get();
 
             if (!config || !config.enabled) {
-                this.api.log('Event API integration is disabled', 'info');
+                this.api.log('Event API integration is disabled. Using TikTok events fallback.', 'info');
                 return;
             }
 
             const wsUrl = config.websocket_url || 'ws://localhost:21213';
 
             this.api.log(`Connecting to Event API at ${wsUrl}...`, 'info');
+
+            // Close existing connection if any
+            if (this.eventApiWs) {
+                try {
+                    this.eventApiWs.close();
+                } catch (e) {
+                    // Ignore close errors
+                }
+                this.eventApiWs = null;
+            }
 
             this.eventApiWs = new WebSocket(wsUrl);
 
@@ -970,17 +980,29 @@ class GoalsPlugin extends EventEmitter {
                     const event = JSON.parse(data.toString());
                     this.handleEventApiEvent(event);
                 } catch (error) {
-                    this.api.log(`Error parsing Event API event: ${error.message}`, 'error');
+                    this.api.log(`Error parsing Event API event: ${error?.message || error || 'Unknown error'}`, 'error');
                 }
             });
 
             this.eventApiWs.on('error', (error) => {
-                this.api.log(`Event API WebSocket error: ${error.message}`, 'error');
+                // Enhanced error logging with better error details
+                const errorMessage = error?.message || error?.code || String(error) || 'Unknown error';
+                const errorCode = error?.code || 'NO_CODE';
+
+                if (this.eventApiReconnectAttempts === 0) {
+                    // Only log detailed error on first attempt to avoid spam
+                    this.api.log(`Event API WebSocket error: ${errorMessage} (Code: ${errorCode})`, 'error');
+                    this.api.log(`Event API may not be running at ${wsUrl}. Using TikTok events fallback.`, 'warn');
+                } else {
+                    // Subsequent errors are less verbose
+                    this.api.log(`Event API reconnection attempt ${this.eventApiReconnectAttempts} failed: ${errorMessage}`, 'warn');
+                }
             });
 
-            this.eventApiWs.on('close', () => {
+            this.eventApiWs.on('close', (code, reason) => {
                 this.eventApiConnected = false;
-                this.api.log('Event API WebSocket connection closed', 'warn');
+                const reasonStr = reason ? reason.toString() : 'No reason provided';
+                this.api.log(`Event API WebSocket connection closed (Code: ${code}, Reason: ${reasonStr})`, 'warn');
 
                 // Broadcast connection status via Socket.IO
                 this.api.emit('goals:event-api:connected', { connected: false });
@@ -990,16 +1012,23 @@ class GoalsPlugin extends EventEmitter {
                     this.eventApiReconnectAttempts++;
                     const delay = this.eventApiReconnectDelay * this.eventApiReconnectAttempts;
 
-                    this.api.log(`Attempting to reconnect to Event API in ${delay / 1000}s (attempt ${this.eventApiReconnectAttempts}/${this.maxEventApiReconnectAttempts})`, 'info');
+                    if (this.eventApiReconnectAttempts === 1) {
+                        this.api.log(`Event API disconnected. Will attempt to reconnect in ${delay / 1000}s (attempt ${this.eventApiReconnectAttempts}/${this.maxEventApiReconnectAttempts})`, 'info');
+                    } else {
+                        this.api.log(`Reconnect attempt ${this.eventApiReconnectAttempts}/${this.maxEventApiReconnectAttempts} in ${delay / 1000}s`, 'info');
+                    }
 
                     setTimeout(() => {
                         this.connectToEventApi();
                     }, delay);
+                } else if (this.eventApiReconnectAttempts >= this.maxEventApiReconnectAttempts) {
+                    this.api.log(`Event API reconnection failed after ${this.maxEventApiReconnectAttempts} attempts. Using TikTok events fallback.`, 'warn');
                 }
             });
 
         } catch (error) {
-            this.api.log(`Error connecting to Event API: ${error.message}`, 'error');
+            this.api.log(`Error connecting to Event API: ${error?.message || error || 'Unknown error'}`, 'error');
+            this.api.log('Goals plugin will continue using TikTok events fallback.', 'info');
         }
     }
 
@@ -2394,8 +2423,15 @@ class GoalsPlugin extends EventEmitter {
     async destroy() {
         // Close Event API WebSocket
         if (this.eventApiWs) {
-            this.eventApiWs.close();
-            this.eventApiWs = null;
+            try {
+                this.eventApiWs.removeAllListeners();
+                this.eventApiWs.close();
+            } catch (error) {
+                this.api.log(`Error closing Event API WebSocket: ${error?.message || error || 'Unknown error'}`, 'warn');
+            } finally {
+                this.eventApiWs = null;
+                this.eventApiConnected = false;
+            }
         }
 
         this.api.log('🎯 Goals Plugin destroyed', 'info');
