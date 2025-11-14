@@ -179,6 +179,8 @@
                 <button class="tab-btn" data-tab="oscBridge" data-plugin="osc-bridge">🎮 OSC-Bridge</button>
                 <!-- HybridShock Integration Tab -->
                 <button class="tab-btn" data-tab="hybridshock" data-plugin="hybridshock">⚡ HybridShock</button>
+                <!-- OpenShock Integration Tab -->
+                <button class="tab-btn" data-tab="openshock" data-plugin="openshock">⚡ OpenShock</button>
                 <!-- Live Goals Tab -->
                 <button class="tab-btn" data-tab="liveGoals" data-plugin="goals">🎯 Live Goals</button>
                 <!-- Quiz Show Tab -->
@@ -805,6 +807,32 @@
                     src="/hybridshock/ui"
                     style="width: 100%; height: 100%; border: none;"
                     title="HybridShock Configuration">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Tab: OpenShock Integration -->
+        <div id="tab-openshock" class="tab-content" data-plugin="openshock">
+            <!-- OpenShock Header -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">⚡ OpenShock Integration</h2>
+                    <a href="/openshock/ui" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <div class="text-sm text-gray-400">
+                    Vollständige OpenShock API-Integration mit Event-Mapping, Pattern-System, Multi-Level Safety, Queue-Management und professionellem Overlay
+                </div>
+            </div>
+
+            <!-- OpenShock UI Iframe -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe
+                    src="/openshock/ui"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="OpenShock Configuration">
                 </iframe>
             </div>
         </div>
