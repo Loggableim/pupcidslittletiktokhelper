@@ -403,8 +403,8 @@ body {
     flex: 1;
     width: 100%;
     min-width: 0; /* Allow flex shrinking */
-    min-height: 0; /* Critical for flexbox scrolling to work properly */
-    overflow-y: auto;
+    min-height: 0; /* Critical for flexbox sizing */
+    overflow-y: auto; /* Allow scrolling for dashboard-like views */
     overflow-x: hidden;
     background: var(--color-bg-primary);
 }
@@ -412,13 +412,21 @@ body {
 .content-view {
     display: none;
     width: 100%;
+    min-height: 100%; /* At least full container height */
     padding: 1rem;
     min-width: 0; /* Allow flex shrinking */
     animation: fadeIn 0.3s ease;
+    box-sizing: border-box;
 }
 
 .content-view.active {
-    display: block;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Dashboard view should scroll naturally */
+#view-dashboard {
+    min-height: auto;
 }
 
 @keyframes fadeIn {
@@ -876,12 +884,16 @@ input:checked + .toggle-slider:before {
 
 .view-section {
     width: 100%;
+    flex: 1; /* Fill available space in content-view */
     min-width: 0; /* Allow flex shrinking */
+    min-height: 0; /* Critical for flexbox sizing */
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 1rem;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
 .view-header {
@@ -891,6 +903,7 @@ input:checked + .toggle-slider:before {
     margin-bottom: 1rem;
     gap: 1rem;
     flex-wrap: wrap;
+    flex-shrink: 0;
 }
 
 .view-title {
@@ -1344,7 +1357,8 @@ input:checked + .toggle-slider:before {
 .iframe-container {
     width: 100%;
     min-width: 0; /* Allow flex shrinking */
-    flex: 0 1 auto; /* Let container size based on content, not fill space */
+    flex: 1; /* Fill remaining space after header */
+    min-height: 0; /* Critical for flexbox sizing */
     display: flex; /* Enable flexbox for proper iframe sizing */
     flex-direction: column; /* Stack children vertically */
     border-radius: 10px;
@@ -1355,7 +1369,7 @@ input:checked + .toggle-slider:before {
 
 .iframe-container iframe {
     width: 100%;
-    height: 500px;
+    height: 100%; /* Fill container height */
     border: none;
     display: block;
 }
