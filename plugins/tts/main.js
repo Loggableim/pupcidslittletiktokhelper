@@ -41,14 +41,20 @@ class TTSPlugin {
         }
 
         // Initialize Speechify engine if API key is configured
-        if (this.config.speechifyApiKey) {
-            this.engines.speechify = new SpeechifyEngine(
-                this.config.speechifyApiKey,
-                this.logger,
-                this.config
-            );
-            this.logger.info('TTS: Speechify TTS engine initialized');
-            this._logDebug('INIT', 'Speechify TTS engine initialized', { hasApiKey: true });
+        if (this.config.speechifyApiKey && this.config.speechifyApiKey.trim() !== '') {
+            try {
+                this.engines.speechify = new SpeechifyEngine(
+                    this.config.speechifyApiKey,
+                    this.logger,
+                    this.config
+                );
+                this.logger.info('TTS: Speechify TTS engine initialized');
+                this._logDebug('INIT', 'Speechify TTS engine initialized', { hasApiKey: true });
+            } catch (error) {
+                this.logger.error(`Failed to initialize Speechify engine: ${error.message}`);
+                this._logDebug('INIT', 'Speechify TTS engine initialization FAILED', { error: error.message });
+                this.engines.speechify = null;
+            }
         } else {
             this._logDebug('INIT', 'Speechify TTS engine NOT initialized', { hasApiKey: false });
         }
@@ -234,17 +240,22 @@ class TTSPlugin {
                 }
 
                 // Update Speechify API key if provided (and not the placeholder)
-                if (updates.speechifyApiKey && updates.speechifyApiKey !== '***REDACTED***') {
+                if (updates.speechifyApiKey && updates.speechifyApiKey !== '***REDACTED***' && updates.speechifyApiKey.trim() !== '') {
                     this.config.speechifyApiKey = updates.speechifyApiKey;
-                    if (!this.engines.speechify) {
-                        this.engines.speechify = new SpeechifyEngine(
-                            updates.speechifyApiKey,
-                            this.logger,
-                            this.config
-                        );
-                        this.logger.info('Speechify TTS engine initialized via config update');
-                    } else {
-                        this.engines.speechify.setApiKey(updates.speechifyApiKey);
+                    try {
+                        if (!this.engines.speechify) {
+                            this.engines.speechify = new SpeechifyEngine(
+                                updates.speechifyApiKey,
+                                this.logger,
+                                this.config
+                            );
+                            this.logger.info('Speechify TTS engine initialized via config update');
+                        } else {
+                            this.engines.speechify.setApiKey(updates.speechifyApiKey);
+                        }
+                    } catch (error) {
+                        this.logger.error(`Failed to initialize/update Speechify engine: ${error.message}`);
+                        this.engines.speechify = null;
                     }
                 }
 
