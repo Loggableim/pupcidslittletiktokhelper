@@ -177,6 +177,11 @@ class HybridShockPlugin {
             ON hybridshock_action_log(status, timestamp DESC)
         `);
 
+        db.exec(`
+            CREATE INDEX IF NOT EXISTS idx_action_log_timestamp
+            ON hybridshock_action_log(timestamp DESC)
+        `);
+
         this.api.log('Database tables initialized', 'info');
     }
 
@@ -227,9 +232,70 @@ class HybridShockPlugin {
     }
 
     /**
+     * Config validieren
+     */
+    validateConfig(config) {
+        const errors = [];
+
+        // Port validation
+        if (config.httpPort !== undefined) {
+            const port = parseInt(config.httpPort);
+            if (isNaN(port) || port < 1 || port > 65535) {
+                errors.push('httpPort must be between 1 and 65535');
+            }
+        }
+        if (config.wsPort !== undefined) {
+            const port = parseInt(config.wsPort);
+            if (isNaN(port) || port < 1 || port > 65535) {
+                errors.push('wsPort must be between 1 and 65535');
+            }
+        }
+
+        // Rate limiting validation
+        if (config.maxActionsPerSecond !== undefined) {
+            const rate = parseInt(config.maxActionsPerSecond);
+            if (isNaN(rate) || rate < 1 || rate > 1000) {
+                errors.push('maxActionsPerSecond must be between 1 and 1000');
+            }
+        }
+
+        // Queue size validation
+        if (config.maxQueueSize !== undefined) {
+            const size = parseInt(config.maxQueueSize);
+            if (isNaN(size) || size < 1 || size > 100000) {
+                errors.push('maxQueueSize must be between 1 and 100000');
+            }
+        }
+
+        // Retry validation
+        if (config.maxRetries !== undefined) {
+            const retries = parseInt(config.maxRetries);
+            if (isNaN(retries) || retries < 0 || retries > 10) {
+                errors.push('maxRetries must be between 0 and 10');
+            }
+        }
+
+        // Host validation
+        if (config.httpHost !== undefined && typeof config.httpHost !== 'string') {
+            errors.push('httpHost must be a string');
+        }
+        if (config.wsHost !== undefined && typeof config.wsHost !== 'string') {
+            errors.push('wsHost must be a string');
+        }
+
+        return errors;
+    }
+
+    /**
      * Config aktualisieren
      */
     async updateConfig(newConfig) {
+        // Validate configuration
+        const errors = this.validateConfig(newConfig);
+        if (errors.length > 0) {
+            throw new Error(`Invalid configuration: ${errors.join(', ')}`);
+        }
+
         this.config = { ...this.config, ...newConfig };
         await this.api.setConfig('config', this.config);
 
