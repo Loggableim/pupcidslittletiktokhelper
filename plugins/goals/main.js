@@ -34,6 +34,9 @@ class GoalsPlugin extends EventEmitter {
 
         // Goal type definitions
         this.goalTypes = ['coin', 'likes', 'follower', 'custom'];
+
+        // Track if we've initialized from stream stats (prevent multiple initializations)
+        this.hasInitializedFromStream = false;
     }
 
     async init() {
@@ -53,6 +56,9 @@ class GoalsPlugin extends EventEmitter {
 
         // Register Socket.IO handlers
         this.registerSocketHandlers();
+
+        // Register TikTok status event for stream connection
+        this.registerTikTokStatusHandler();
 
         // Connect to Event API
         this.connectToEventApi();
@@ -1005,6 +1011,105 @@ class GoalsPlugin extends EventEmitter {
         });
 
         this.api.log('✅ TikTok event handlers registered', 'info');
+    }
+
+    /**
+     * Register TikTok status handler to initialize counters from stream stats
+     * NEW: Initialize goals with current stream stats when connecting to a live stream
+     */
+    registerTikTokStatusHandler() {
+        const io = this.api.getSocketIO();
+
+        // Listen for TikTok connection events
+        io.on('connection', (socket) => {
+            // Listen for status changes (connected/disconnected)
+            socket.on('tiktok:status', (statusData) => {
+                if (statusData.status === 'connected') {
+                    // Reset initialization flag on new connection
+                    this.hasInitializedFromStream = false;
+                    this.api.log('🔗 TikTok connected, ready to initialize goals from stream', 'info');
+                } else if (statusData.status === 'disconnected') {
+                    // Reset flag when disconnected
+                    this.hasInitializedFromStream = false;
+                }
+            });
+
+            // Listen for stats updates
+            socket.on('tiktok:stats', (stats) => {
+                // Initialize from first stats update after connection
+                if (!this.hasInitializedFromStream) {
+                    this.initializeFromStreamStats(stats);
+                }
+            });
+        });
+
+        this.api.log('✅ TikTok status handler registered', 'info');
+    }
+
+    /**
+     * Initialize goal counters from current stream statistics
+     * This allows goals to reflect the actual stream state when the plugin starts mid-stream
+     */
+    async initializeFromStreamStats(stats) {
+        if (!stats || this.hasInitializedFromStream) return;
+
+        try {
+            this.hasInitializedFromStream = true; // Mark as initialized
+
+            const db = this.api.getDatabase();
+
+            // Get initialization mode from settings (default: 'persist')
+            const initModeStmt = db.prepare(`SELECT value FROM settings WHERE key = 'goals_init_mode'`);
+            const initModeRow = initModeStmt.get();
+            const initMode = initModeRow?.value || 'persist';
+
+            this.api.log(`🎯 Initializing goals with mode: ${initMode}`, 'info');
+
+            // Modes:
+            // 'persist' - Keep database values (default behavior)
+            // 'reset' - Always start from 0
+            // 'stream' - Use current stream stats (adopt existing stream values)
+
+            if (initMode === 'reset') {
+                // Reset all goals to start_value (usually 0)
+                const likesGoal = this.goals.get('likes');
+                const coinGoal = this.goals.get('coin');
+
+                if (likesGoal) {
+                    await this.setGoalValue('likes', likesGoal.startValue);
+                }
+                if (coinGoal) {
+                    await this.setGoalValue('coin', coinGoal.startValue);
+                }
+
+                this.api.log('🔄 Goals reset to start values (reset mode)', 'info');
+
+            } else if (initMode === 'stream' && stats) {
+                // Initialize from stream stats
+                // Use current stream values as the starting point
+                const likesGoal = this.goals.get('likes');
+                const coinGoal = this.goals.get('coin');
+
+                if (likesGoal && stats.likes !== undefined) {
+                    // Set to current stream value
+                    await this.setGoalValue('likes', stats.likes);
+                    this.api.log(`📊 Likes goal initialized from stream: ${stats.likes}`, 'info');
+                }
+
+                if (coinGoal && stats.totalCoins !== undefined) {
+                    await this.setGoalValue('coin', stats.totalCoins);
+                    this.api.log(`📊 Coins goal initialized from stream: ${stats.totalCoins}`, 'info');
+                }
+
+            } else {
+                // 'persist' mode: keep database values
+                this.api.log('💾 Goals keeping persisted values (persist mode)', 'info');
+            }
+
+        } catch (error) {
+            this.api.log(`Error initializing from stream stats: ${error.message}`, 'error');
+            this.hasInitializedFromStream = false; // Reset flag on error
+        }
     }
 
     /**
