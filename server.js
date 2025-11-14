@@ -77,7 +77,8 @@ app.use((req, res, next) => {
     const isDashboard = req.path === '/' || req.path.includes('/dashboard.html');
     const isPluginUI = req.path.includes('/goals/ui') || req.path.includes('/goals/overlay') ||
                        req.path.includes('/emoji-rain/ui') || req.path.includes('/gift-milestone/ui') ||
-                       req.path.includes('/plugins/');
+                       req.path.includes('/plugins/') ||
+                       req.path.includes('/openshock/');
 
     if (isDashboard || isPluginUI) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
