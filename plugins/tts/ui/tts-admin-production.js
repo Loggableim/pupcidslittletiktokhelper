@@ -545,7 +545,7 @@ async function handleUserAction(event) {
                 await unblacklistUser(userId);
                 break;
             case 'assign-voice':
-                await assignVoiceDialog(userId, username);
+                assignVoiceDialog(userId, username);
                 break;
         }
     } catch (error) {
@@ -632,6 +632,8 @@ let modalState = {
 };
 
 function assignVoiceDialog(userId, username) {
+    console.log('[TTS] Opening voice assignment dialog for:', { userId, username });
+
     modalState.userId = userId;
     modalState.username = username;
     modalState.selectedVoiceId = null;
@@ -642,11 +644,25 @@ function assignVoiceDialog(userId, username) {
     const engineSelect = document.getElementById('modalEngine');
     const voiceSearch = document.getElementById('modalVoiceSearch');
 
+    console.log('[TTS] Modal elements found:', {
+        modal: !!modal,
+        usernameEl: !!usernameEl,
+        engineSelect: !!engineSelect,
+        voiceSearch: !!voiceSearch
+    });
+
+    if (!modal) {
+        console.error('[TTS] Modal element not found! Cannot open voice assignment dialog.');
+        showNotification('Error: Voice assignment dialog not available', 'error');
+        return;
+    }
+
     if (usernameEl) usernameEl.textContent = username;
     if (engineSelect) {
         engineSelect.value = 'tiktok';
         engineSelect.onchange = () => {
             modalState.selectedEngine = engineSelect.value;
+            console.log('[TTS] Engine changed to:', modalState.selectedEngine);
             renderModalVoiceList();
         };
     }
@@ -655,9 +671,11 @@ function assignVoiceDialog(userId, username) {
         voiceSearch.oninput = renderModalVoiceList;
     }
 
+    console.log('[TTS] Rendering voice list...');
     renderModalVoiceList();
 
-    if (modal) modal.classList.remove('hidden');
+    console.log('[TTS] Opening modal...');
+    modal.classList.remove('hidden');
 
     const confirmBtn = document.getElementById('confirmVoiceAssignment');
     if (confirmBtn) {
@@ -666,10 +684,13 @@ function assignVoiceDialog(userId, username) {
                 showNotification('Please select a voice', 'error');
                 return;
             }
+            console.log('[TTS] Assigning voice:', modalState.selectedVoiceId, 'to user:', username);
             await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine);
             closeVoiceAssignmentModal();
         };
     }
+
+    console.log('[TTS] Voice assignment dialog opened successfully');
 }
 
 function closeVoiceAssignmentModal() {
@@ -680,14 +701,25 @@ function closeVoiceAssignmentModal() {
 
 function renderModalVoiceList() {
     const list = document.getElementById('modalVoiceList');
-    if (!list) return;
+    if (!list) {
+        console.warn('[TTS] modalVoiceList element not found');
+        return;
+    }
 
     const engine = modalState.selectedEngine;
     const voiceList = voices[engine];
     const searchTerm = document.getElementById('modalVoiceSearch')?.value.toLowerCase() || '';
 
+    console.log('[TTS] Rendering voice list:', {
+        engine,
+        voiceCount: voiceList ? Object.keys(voiceList).length : 0,
+        searchTerm,
+        allVoices: Object.keys(voices)
+    });
+
     if (!voiceList || Object.keys(voiceList).length === 0) {
         list.innerHTML = '<div class="text-gray-400 text-center py-4">No voices available for this engine</div>';
+        console.warn('[TTS] No voices available for engine:', engine);
         return;
     }
 
