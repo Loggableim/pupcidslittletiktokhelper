@@ -279,14 +279,13 @@ body {
 
 .main-content {
     margin-left: var(--sidebar-width-expanded);
-    height: 100vh; /* Fixed height to enable proper scrolling */
     width: calc(100% - var(--sidebar-width-expanded));
+    height: 100%; /* Fill parent container height */
     display: flex;
     flex-direction: column;
-    flex: 1;
+    min-height: 0; /* Critical for flexbox sizing */
     min-width: 0; /* Allow flex shrinking */
     transition: all var(--transition-speed) ease;
-    /* overflow: hidden removed - was blocking all content scrolling */
 }
 
 .sidebar-collapsed ~ .main-content {
@@ -404,18 +403,15 @@ body {
     width: 100%;
     min-width: 0; /* Allow flex shrinking */
     min-height: 0; /* Critical for flexbox sizing */
-    overflow: hidden; /* No scrolling - let views handle it */
+    overflow-y: auto; /* Enable scrolling for content */
+    overflow-x: hidden;
     background: var(--color-bg-primary);
-    position: relative;
 }
 
 .content-view {
     display: none;
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
-    height: 100%;
+    min-height: 100%; /* Fill at least the container height */
     padding: 1rem;
     box-sizing: border-box;
     animation: fadeIn 0.3s ease;
@@ -424,11 +420,6 @@ body {
 .content-view.active {
     display: flex;
     flex-direction: column;
-}
-
-/* Dashboard view needs scrolling for its content */
-#view-dashboard {
-    overflow-y: auto;
 }
 
 @keyframes fadeIn {
@@ -886,9 +877,7 @@ input:checked + .toggle-slider:before {
 
 .view-section {
     width: 100%;
-    flex: 1; /* Fill available space in content-view */
     min-width: 0; /* Allow flex shrinking */
-    min-height: 0; /* Critical for flexbox sizing */
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: 12px;
@@ -896,6 +885,7 @@ input:checked + .toggle-slider:before {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* Prevent content overflow */
 }
 
 .view-header {
@@ -1361,6 +1351,7 @@ input:checked + .toggle-slider:before {
     min-width: 0; /* Allow flex shrinking */
     flex: 1; /* Fill remaining space after header */
     min-height: 0; /* Critical for flexbox sizing */
+    height: 100%; /* Use full available height */
     display: flex; /* Enable flexbox for proper iframe sizing */
     flex-direction: column; /* Stack children vertically */
     border-radius: 10px;
@@ -1374,6 +1365,7 @@ input:checked + .toggle-slider:before {
     height: 100%; /* Fill container height */
     border: none;
     display: block;
+    border-radius: 10px;
 }
 
 /* ============================================
