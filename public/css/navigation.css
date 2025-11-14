@@ -286,7 +286,7 @@ body {
     flex: 1;
     min-width: 0; /* Allow flex shrinking */
     transition: all var(--transition-speed) ease;
-    overflow: hidden; /* Prevent main-content from scrolling, only content-container should scroll */
+    /* overflow: hidden removed - was blocking all content scrolling */
 }
 
 .sidebar-collapsed ~ .main-content {
@@ -403,6 +403,7 @@ body {
     flex: 1;
     width: 100%;
     min-width: 0; /* Allow flex shrinking */
+    min-height: 0; /* Critical for flexbox scrolling to work properly */
     overflow-y: auto;
     overflow-x: hidden;
     background: var(--color-bg-primary);
@@ -1343,8 +1344,10 @@ input:checked + .toggle-slider:before {
 .iframe-container {
     width: 100%;
     min-width: 0; /* Allow flex shrinking */
-    height: calc(100vh - 280px);
+    flex: 1; /* Use flexbox instead of fixed height calculation */
     min-height: 400px;
+    display: flex; /* Enable flexbox for proper iframe sizing */
+    flex-direction: column; /* Stack children vertically */
     border-radius: 10px;
     overflow: hidden;
     border: 1px solid var(--color-border);
@@ -1353,7 +1356,8 @@ input:checked + .toggle-slider:before {
 
 .iframe-container iframe {
     width: 100%;
-    height: 100%;
+    flex: 1; /* Let iframe fill available space */
+    min-height: 0; /* Critical for flexbox sizing */
     border: none;
     display: block;
 }

@@ -1,5 +1,5 @@
-// Socket.io Verbindung
-const socket = io();
+// Socket.io Verbindung - delayed until DOM ready to avoid race conditions
+let socket = null;
 
 // State
 let currentTab = 'events';
@@ -8,6 +8,9 @@ let settings = {};
 
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize socket connection after DOM is ready
+    socket = io();
+
     // Initialize UI first, dann Plugins checken (non-blocking)
     initializeButtons();
     initializeSocketListeners();
@@ -135,6 +138,43 @@ function initializeButtons() {
         ttsSpeed.addEventListener('input', (e) => {
             const label = document.getElementById('tts-speed-label');
             if (label) label.textContent = e.target.value;
+        });
+    }
+
+    // Auto-start toggle
+    const autostartCheckbox = document.getElementById('autostart-enabled');
+    if (autostartCheckbox) {
+        autostartCheckbox.addEventListener('change', (e) => {
+            toggleAutoStart(e.target.checked);
+        });
+    }
+
+    // Preset management buttons
+    const exportBtn = document.getElementById('export-preset-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportPreset);
+    }
+
+    const importBtn = document.getElementById('import-preset-btn');
+    if (importBtn) {
+        importBtn.addEventListener('click', importPreset);
+    }
+
+    // Resource Monitor - Save button
+    const saveResourceMonitorBtn = document.getElementById('save-resource-monitor-settings');
+    if (saveResourceMonitorBtn) {
+        saveResourceMonitorBtn.addEventListener('click', saveResourceMonitorSettings);
+    }
+
+    // Resource Monitor - Interval slider live update
+    const resourceMonitorInterval = document.getElementById('resource-monitor-interval');
+    if (resourceMonitorInterval) {
+        resourceMonitorInterval.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            const label = document.getElementById('resource-monitor-interval-label');
+            if (label) {
+                label.textContent = (value / 1000).toFixed(1) + 's';
+            }
         });
     }
 }
@@ -1684,55 +1724,9 @@ async function toggleAutoStart(enabled) {
     }
 }
 
-// Initialize auto-start event listener
-document.addEventListener('DOMContentLoaded', () => {
-    // Load auto-start settings when settings tab is opened
-    const settingsTabBtn = document.querySelector('[data-tab="settings"]');
-    if (settingsTabBtn) {
-        settingsTabBtn.addEventListener('click', () => {
-            loadAutoStartSettings();
-            loadResourceMonitorSettings();
-        });
-    }
-
-    // Auto-start toggle
-    const autostartCheckbox = document.getElementById('autostart-enabled');
-    if (autostartCheckbox) {
-        autostartCheckbox.addEventListener('change', (e) => {
-            toggleAutoStart(e.target.checked);
-        });
-    }
-
-    // Export preset button
-    const exportBtn = document.getElementById('export-preset-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportPreset);
-    }
-
-    // Import preset button
-    const importBtn = document.getElementById('import-preset-btn');
-    if (importBtn) {
-        importBtn.addEventListener('click', importPreset);
-    }
-
-    // Resource Monitor - Save button
-    const saveResourceMonitorBtn = document.getElementById('save-resource-monitor-settings');
-    if (saveResourceMonitorBtn) {
-        saveResourceMonitorBtn.addEventListener('click', saveResourceMonitorSettings);
-    }
-
-    // Resource Monitor - Interval slider live update
-    const resourceMonitorInterval = document.getElementById('resource-monitor-interval');
-    if (resourceMonitorInterval) {
-        resourceMonitorInterval.addEventListener('input', (e) => {
-            const value = parseInt(e.target.value);
-            const label = document.getElementById('resource-monitor-interval-label');
-            if (label) {
-                label.textContent = (value / 1000).toFixed(1) + 's';
-            }
-        });
-    }
-});
+// REMOVED: Duplicate DOMContentLoaded listener consolidated into main initialization above
+// NOTE: Settings loading is now handled by navigation.js when view switches to 'settings'
+// Event listeners moved to initializeButtons() function for proper consolidation
 
 // ========== PRESET IMPORT/EXPORT FUNCTIONALITY ==========
 

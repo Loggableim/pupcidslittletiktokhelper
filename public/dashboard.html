@@ -1063,6 +1063,8 @@
     <div id="dashboard-soundboard-pool"></div>
 
     <!-- Scripts -->
+    <!-- Audio unlock must load first to handle autoplay restrictions -->
+    <script src="/js/audio-unlock.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/navigation.js"></script>
     <script src="/js/vdoninja-dashboard.js"></script>
@@ -1070,9 +1072,15 @@
     <script src="/js/update-checker.js"></script>
     <script src="/js/audio-settings.js"></script>
 
-    <!-- Initialize Lucide Icons -->
+    <!-- Initialize Lucide Icons after DOM is ready -->
     <script>
-        lucide.createIcons();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            });
+        } else {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
     </script>
 </body>
 </html>
