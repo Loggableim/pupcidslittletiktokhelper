@@ -70,7 +70,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger)
                         const exists = allPlugins.find(p => p.id === manifest.id);
 
                         if (!exists) {
-                            // Plugin ist nicht geladen (disabled)
+                            // Plugin ist nicht geladen - Status aus State-Datei lesen
                             const state = pluginLoader.state[manifest.id] || {};
                             allPlugins.push({
                                 id: manifest.id,
@@ -79,7 +79,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger)
                                 version: manifest.version,
                                 author: manifest.author,
                                 type: manifest.type,
-                                enabled: false,
+                                enabled: state.enabled === true,
                                 loadedAt: null
                             });
                         }
