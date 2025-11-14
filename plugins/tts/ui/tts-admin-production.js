@@ -367,6 +367,7 @@ async function loadVoices() {
 
         voices = data.voices;
         populateVoiceSelect();
+        populateManualVoiceSelect(); // Also populate manual assignment dropdown
 
     } catch (error) {
         console.error('Failed to load voices:', error);
@@ -434,6 +435,97 @@ function populateVoiceSelect() {
             select.value = firstVoiceId;
             console.warn(`Default voice '${currentConfig.defaultVoice}' not available for engine '${engine}', reset to '${firstVoiceId}'`);
         }
+    }
+}
+
+/**
+ * Populate manual voice assignment dropdown
+ */
+function populateManualVoiceSelect() {
+    const select = document.getElementById('manualVoice');
+    if (!select) return;
+
+    select.innerHTML = '';
+
+    const engine = document.getElementById('manualEngine')?.value || 'tiktok';
+    const engineVoices = voices[engine];
+
+    if (!engineVoices) {
+        select.innerHTML = '<option value="">No voices available</option>';
+        return;
+    }
+
+    // Sort voices by name
+    const sortedVoices = Object.entries(engineVoices).sort((a, b) => {
+        return a[1].name.localeCompare(b[1].name);
+    });
+
+    sortedVoices.forEach(([id, voice]) => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = voice.name || id;
+        select.appendChild(option);
+    });
+
+    console.log(`[TTS] Populated manual voice select with ${sortedVoices.length} voices for engine '${engine}'`);
+}
+
+/**
+ * Assign voice manually (username input)
+ */
+async function assignManualVoice() {
+    const usernameInput = document.getElementById('manualUsername');
+    const engineSelect = document.getElementById('manualEngine');
+    const voiceSelect = document.getElementById('manualVoice');
+
+    if (!usernameInput || !engineSelect || !voiceSelect) {
+        showNotification('Form elements not found', 'error');
+        return;
+    }
+
+    const username = usernameInput.value.trim();
+    const engine = engineSelect.value;
+    const voiceId = voiceSelect.value;
+
+    // Validation
+    if (!username) {
+        showNotification('Please enter a username', 'warning');
+        usernameInput.focus();
+        return;
+    }
+
+    if (!voiceId) {
+        showNotification('Please select a voice', 'warning');
+        return;
+    }
+
+    console.log(`[TTS] Assigning voice '${voiceId}' (${engine}) to user '${username}'`);
+
+    try {
+        // Use username as userId (TikTok uses uniqueId as userId)
+        const userId = username;
+
+        const data = await postJSON(`/api/tts/users/${encodeURIComponent(userId)}/voice`, {
+            username,
+            voiceId,
+            engine
+        });
+
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to assign voice');
+        }
+
+        showNotification(`✓ Voice '${voiceId}' assigned to ${username}`, 'success');
+
+        // Clear form
+        usernameInput.value = '';
+
+        // Reload user list to show the newly assigned user
+        await loadUsers(currentFilter);
+
+    } catch (error) {
+        console.error('Failed to assign voice manually:', error);
+        showNotification(`Failed to assign voice: ${error.message}`, 'error');
     }
 }
 
@@ -1057,6 +1149,30 @@ function setupEventListeners() {
                     `Voice was reset from '${previousVoice}' to '${newVoice}' because it's not compatible with the selected engine. Please review and save.`,
                     'warning'
                 );
+            }
+        });
+    }
+
+    // Manual voice assignment
+    const manualEngineSelect = document.getElementById('manualEngine');
+    if (manualEngineSelect) {
+        manualEngineSelect.addEventListener('change', () => {
+            populateManualVoiceSelect();
+        });
+    }
+
+    const assignManualVoiceBtn = document.getElementById('assignManualVoiceBtn');
+    if (assignManualVoiceBtn) {
+        assignManualVoiceBtn.addEventListener('click', assignManualVoice);
+    }
+
+    // Allow Enter key in username field to trigger assignment
+    const manualUsernameInput = document.getElementById('manualUsername');
+    if (manualUsernameInput) {
+        manualUsernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                assignManualVoice();
             }
         });
     }
