@@ -472,6 +472,7 @@ function populateManualVoiceSelect() {
 
 /**
  * Assign voice manually (username input)
+ * IMPORTANT: Use username (uniqueId) as userId for consistency with TikTok events
  */
 async function assignManualVoice() {
     const usernameInput = document.getElementById('manualUsername');
@@ -502,11 +503,12 @@ async function assignManualVoice() {
     console.log(`[TTS] Assigning voice '${voiceId}' (${engine}) to user '${username}'`);
 
     try {
-        // Use username as userId (TikTok uses uniqueId as userId)
+        // CRITICAL: Use username as userId to match TikTok's uniqueId
+        // TikTok uses uniqueId (username) as the primary identifier
         const userId = username;
 
         const data = await postJSON(`/api/tts/users/${encodeURIComponent(userId)}/voice`, {
-            username,
+            username: username,  // Store the same value for consistency
             voiceId,
             engine
         });
@@ -515,7 +517,7 @@ async function assignManualVoice() {
             throw new Error(data.error || 'Failed to assign voice');
         }
 
-        showNotification(`✓ Voice '${voiceId}' assigned to ${username}`, 'success');
+        showNotification(`✓ Voice '${voiceId}' (${engine}) assigned to ${username}`, 'success');
 
         // Clear form
         usernameInput.value = '';
@@ -575,17 +577,20 @@ function renderUsers() {
     const list = document.getElementById('userList');
     if (!list) return;
 
-    const searchTerm = document.getElementById('userSearch')?.value.toLowerCase() || '';
-
-    const filtered = currentUsers.filter(user =>
-        user.username.toLowerCase().includes(searchTerm) ||
-        user.user_id.toLowerCase().includes(searchTerm)
-    );
+    // No search filter - removed as requested
+    const filtered = currentUsers;
 
     if (filtered.length === 0) {
-        list.innerHTML = '<div class="text-gray-400 text-center py-8">No users found</div>';
+        list.innerHTML = '<div class="text-gray-400 text-center py-8">No users found. Users are automatically created when they first use TTS.</div>';
         return;
     }
+
+    console.log(`[TTS] Rendering ${filtered.length} users:`, filtered.map(u => ({
+        user_id: u.user_id,
+        username: u.username,
+        voice: u.assigned_voice_id,
+        engine: u.assigned_engine
+    })));
 
     list.innerHTML = filtered.map(user => {
         const allowButton = !user.allow_tts
@@ -601,7 +606,10 @@ function renderUsers() {
                 <div class="flex-1">
                     <div class="font-bold">${escapeHtml(user.username)}</div>
                     <div class="text-sm text-gray-400">
-                        ${user.assigned_voice_id ? `Voice: ${escapeHtml(user.assigned_voice_id)}` : 'No voice assigned'}
+                        User ID: ${escapeHtml(user.user_id)}
+                    </div>
+                    <div class="text-sm text-gray-300 mt-1">
+                        ${user.assigned_voice_id ? `🎤 Voice: <strong>${escapeHtml(user.assigned_voice_id)}</strong> (${escapeHtml(user.assigned_engine || 'unknown')})` : '🔇 No voice assigned'}
                     </div>
                     <div class="text-xs text-gray-500 mt-1">
                         ${user.allow_tts ? '<span class="text-green-400">✓ Allowed</span>' : ''}
@@ -1174,14 +1182,6 @@ function setupEventListeners() {
                 e.preventDefault();
                 assignManualVoice();
             }
-        });
-    }
-
-    // User search
-    const userSearchInput = document.getElementById('userSearch');
-    if (userSearchInput) {
-        userSearchInput.addEventListener('input', () => {
-            renderUsers();
         });
     }
 

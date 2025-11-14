@@ -207,8 +207,9 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Username</label>
-                        <input type="text" id="manualUsername" placeholder="Enter username..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-sm font-medium mb-2">Username (TikTok uniqueId)</label>
+                        <input type="text" id="manualUsername" placeholder="Enter TikTok username..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                        <p class="text-xs text-gray-400 mt-1">Enter the exact TikTok username (case-sensitive)</p>
                     </div>
 
                     <div>
@@ -245,10 +246,6 @@
                         <button data-filter="blacklisted" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Blacklisted</button>
                         <button data-filter="voice_assigned" class="filter-btn px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">Voice Assigned</button>
                     </div>
-                </div>
-
-                <div class="mb-4">
-                    <input type="text" id="userSearch" placeholder="Search users..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
                 </div>
 
                 <div id="userList" class="space-y-2">
