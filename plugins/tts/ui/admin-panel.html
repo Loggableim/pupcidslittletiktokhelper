@@ -61,6 +61,7 @@
                             <select id="defaultEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
                                 <option value="tiktok">TikTok TTS (Free)</option>
                                 <option value="google">Google Cloud TTS (Requires API Key)</option>
+                                <option value="speechify">Speechify TTS (Premium, Requires API Key)</option>
                             </select>
                         </div>
 
@@ -71,10 +72,26 @@
                             </select>
                         </div>
 
-                        <div>
+                        <div id="google-api-key-section">
                             <label class="block text-sm font-medium mb-2">Google Cloud API Key (Optional)</label>
-                            <input type="password" id="googleApiKey" placeholder="Enter API key..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                            <div class="flex gap-2">
+                                <input type="password" id="googleApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <button type="button" id="toggle-google-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                             <p class="text-xs text-gray-400 mt-1">Leave empty to use TikTok TTS only</p>
+                        </div>
+
+                        <div id="speechify-api-key-section">
+                            <label class="block text-sm font-medium mb-2">Speechify API Key (Optional)</label>
+                            <div class="flex gap-2">
+                                <input type="password" id="speechifyApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <button type="button" id="toggle-speechify-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://speechify.com/api" target="_blank" class="text-blue-400 hover:text-blue-300">speechify.com/api</a>. Pricing: $10 per 1M characters. 1000+ voices in 60+ languages.</p>
                         </div>
                     </div>
                 </div>

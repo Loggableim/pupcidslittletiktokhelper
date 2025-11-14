@@ -278,6 +278,14 @@ function populateConfig(config) {
             apiKeyInput.value = '';
         }
     }
+
+    // Load Speechify API key
+    if (config.speechifyApiKey && config.speechifyApiKey !== '***REDACTED***') {
+        const speechifyKeyInput = document.getElementById('speechifyApiKey');
+        if (speechifyKeyInput) {
+            speechifyKeyInput.value = config.speechifyApiKey;
+        }
+    }
 }
 
 async function saveConfig() {
@@ -304,6 +312,12 @@ async function saveConfig() {
         const apiKey = document.getElementById('googleApiKey').value;
         if (apiKey && apiKey !== '***HIDDEN***') {
             config.googleApiKey = apiKey;
+        }
+
+        // Get Speechify API key
+        const speechifyApiKey = document.getElementById('speechifyApiKey')?.value?.trim();
+        if (speechifyApiKey) {
+            config.speechifyApiKey = speechifyApiKey;
         }
 
         // Save to server
@@ -359,9 +373,32 @@ function populateVoiceSelect() {
     }
 
     const optgroup = document.createElement('optgroup');
-    optgroup.label = engine === 'tiktok' ? 'TikTok TTS' : 'Google Cloud TTS';
+    let voiceLabel;
+    let sortedVoiceIds;
 
-    Object.entries(engineVoices).forEach(([id, voice]) => {
+    if (engine === 'tiktok') {
+        voiceLabel = 'TikTok TTS';
+        sortedVoiceIds = Object.keys(engineVoices);
+    } else if (engine === 'google') {
+        voiceLabel = 'Google Cloud TTS';
+        sortedVoiceIds = Object.keys(engineVoices);
+    } else if (engine === 'speechify') {
+        voiceLabel = '🎙️ Speechify';
+        // Speechify voices sorted by language then name
+        sortedVoiceIds = Object.keys(engineVoices).sort((a, b) => {
+            const langCompare = engineVoices[a].language.localeCompare(engineVoices[b].language);
+            if (langCompare !== 0) return langCompare;
+            return engineVoices[a].name.localeCompare(engineVoices[b].name);
+        });
+    } else {
+        voiceLabel = engine.toUpperCase() + ' TTS';
+        sortedVoiceIds = Object.keys(engineVoices);
+    }
+
+    optgroup.label = voiceLabel;
+
+    sortedVoiceIds.forEach(id => {
+        const voice = engineVoices[id];
         const option = document.createElement('option');
         option.value = id;
         option.textContent = voice.name || id;
@@ -579,7 +616,7 @@ async function unblacklistUser(userId) {
 }
 
 async function assignVoiceDialog(userId, username) {
-    const engine = prompt('Select engine:\n1. tiktok\n2. google', 'tiktok');
+    const engine = prompt('Select engine:\n1. tiktok\n2. google\n3. speechify', 'tiktok');
     if (!engine) return;
 
     const voiceList = voices[engine];
@@ -865,13 +902,25 @@ function setupEventListeners() {
     const engineSelect = document.getElementById('defaultEngine');
     if (engineSelect) {
         engineSelect.addEventListener('change', () => {
+            const selectedEngine = engineSelect.value;
             const previousVoice = document.getElementById('defaultVoice')?.value;
             const previousEngine = currentConfig.defaultEngine;
             populateVoiceSelect();
             const newVoice = document.getElementById('defaultVoice')?.value;
 
+            // Show/hide API key sections
+            const googleKeySection = document.getElementById('google-api-key-section');
+            const speechifyKeySection = document.getElementById('speechify-api-key-section');
+
+            if (googleKeySection) {
+                googleKeySection.style.display = (selectedEngine === 'google') ? 'block' : 'none';
+            }
+            if (speechifyKeySection) {
+                speechifyKeySection.style.display = (selectedEngine === 'speechify') ? 'block' : 'none';
+            }
+
             // Notify user if voice was automatically changed due to engine switch
-            if (previousVoice && previousVoice !== newVoice && previousEngine !== engineSelect.value) {
+            if (previousVoice && previousVoice !== newVoice && previousEngine !== selectedEngine) {
                 showNotification(
                     `Voice was reset from '${previousVoice}' to '${newVoice}' because it's not compatible with the selected engine. Please review and save.`,
                     'warning'
@@ -933,6 +982,30 @@ function setupEventListeners() {
             filterDebugLogs(btn.dataset.category);
         });
     });
+
+    // Toggle Google API key visibility
+    const toggleGoogleKey = document.getElementById('toggle-google-key');
+    const googleKeyInput = document.getElementById('googleApiKey');
+    if (toggleGoogleKey && googleKeyInput) {
+        toggleGoogleKey.addEventListener('click', () => {
+            const type = googleKeyInput.type === 'password' ? 'text' : 'password';
+            googleKeyInput.type = type;
+            toggleGoogleKey.querySelector('i').classList.toggle('fa-eye');
+            toggleGoogleKey.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // Toggle Speechify API key visibility
+    const toggleSpeechifyKey = document.getElementById('toggle-speechify-key');
+    const speechifyKeyInput = document.getElementById('speechifyApiKey');
+    if (toggleSpeechifyKey && speechifyKeyInput) {
+        toggleSpeechifyKey.addEventListener('click', () => {
+            const type = speechifyKeyInput.type === 'password' ? 'text' : 'password';
+            speechifyKeyInput.type = type;
+            toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye');
+            toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    }
 }
 
 // ============================================================================

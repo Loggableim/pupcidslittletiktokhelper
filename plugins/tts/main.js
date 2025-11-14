@@ -1,6 +1,7 @@
 const path = require('path');
 const TikTokEngine = require('./engines/tiktok-engine');
 const GoogleEngine = require('./engines/google-engine');
+const SpeechifyEngine = require('./engines/speechify-engine');
 const LanguageDetector = require('./utils/language-detector');
 const ProfanityFilter = require('./utils/profanity-filter');
 const PermissionManager = require('./utils/permission-manager');
@@ -26,7 +27,8 @@ class TTSPlugin {
         // Initialize engines
         this.engines = {
             tiktok: new TikTokEngine(this.logger),
-            google: null // Initialized if API key is available
+            google: null, // Initialized if API key is available
+            speechify: null // Initialized if API key is available
         };
 
         // Initialize Google engine if API key is configured
@@ -36,6 +38,19 @@ class TTSPlugin {
             this._logDebug('INIT', 'Google TTS engine initialized', { hasApiKey: true });
         } else {
             this._logDebug('INIT', 'Google TTS engine NOT initialized', { hasApiKey: false });
+        }
+
+        // Initialize Speechify engine if API key is configured
+        if (this.config.speechifyApiKey) {
+            this.engines.speechify = new SpeechifyEngine(
+                this.config.speechifyApiKey,
+                this.logger,
+                this.config
+            );
+            this.logger.info('TTS: Speechify TTS engine initialized');
+            this._logDebug('INIT', 'Speechify TTS engine initialized', { hasApiKey: true });
+        } else {
+            this._logDebug('INIT', 'Speechify TTS engine NOT initialized', { hasApiKey: false });
         }
 
         // Initialize utilities
@@ -130,6 +145,7 @@ class TTSPlugin {
             duckOtherAudio: false,
             duckVolume: 0.3,
             googleApiKey: null,
+            speechifyApiKey: null,
             enabledForChat: true,
             autoLanguageDetection: true
         };
@@ -162,23 +178,28 @@ class TTSPlugin {
                 success: true,
                 config: {
                     ...this.config,
-                    googleApiKey: this.config.googleApiKey ? '***HIDDEN***' : null
+                    googleApiKey: this.config.googleApiKey ? '***HIDDEN***' : null,
+                    speechifyApiKey: this.config.speechifyApiKey ? '***REDACTED***' : null
                 }
             });
         });
 
         // Update TTS configuration
-        this.api.registerRoute('POST', '/api/tts/config', (req, res) => {
+        this.api.registerRoute('POST', '/api/tts/config', async (req, res) => {
             try {
                 const updates = req.body;
 
                 // Validate defaultVoice is compatible with defaultEngine
                 if (updates.defaultVoice && updates.defaultEngine) {
-                    const engineVoices = updates.defaultEngine === 'tiktok'
-                        ? TikTokEngine.getVoices()
-                        : (updates.defaultEngine === 'google' && this.engines.google
-                            ? GoogleEngine.getVoices()
-                            : {});
+                    let engineVoices = {};
+
+                    if (updates.defaultEngine === 'tiktok') {
+                        engineVoices = TikTokEngine.getVoices();
+                    } else if (updates.defaultEngine === 'google' && this.engines.google) {
+                        engineVoices = GoogleEngine.getVoices();
+                    } else if (updates.defaultEngine === 'speechify' && this.engines.speechify) {
+                        engineVoices = await this.engines.speechify.getVoices();
+                    }
 
                     if (!engineVoices[updates.defaultVoice]) {
                         return res.status(400).json({
@@ -188,9 +209,9 @@ class TTSPlugin {
                     }
                 }
 
-                // Update config (skip googleApiKey - it has dedicated handling below)
+                // Update config (skip API keys - they have dedicated handling below)
                 Object.keys(updates).forEach(key => {
-                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey') {
+                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey' && key !== 'speechifyApiKey') {
                         this.config[key] = updates[key];
                     }
                 });
@@ -203,6 +224,21 @@ class TTSPlugin {
                         this.logger.info('Google TTS engine initialized via config update');
                     } else {
                         this.engines.google.setApiKey(updates.googleApiKey);
+                    }
+                }
+
+                // Update Speechify API key if provided (and not the placeholder)
+                if (updates.speechifyApiKey && updates.speechifyApiKey !== '***REDACTED***') {
+                    this.config.speechifyApiKey = updates.speechifyApiKey;
+                    if (!this.engines.speechify) {
+                        this.engines.speechify = new SpeechifyEngine(
+                            updates.speechifyApiKey,
+                            this.logger,
+                            this.config
+                        );
+                        this.logger.info('Speechify TTS engine initialized via config update');
+                    } else {
+                        this.engines.speechify.setApiKey(updates.speechifyApiKey);
                     }
                 }
 
@@ -222,7 +258,7 @@ class TTSPlugin {
         });
 
         // Get available voices
-        this.api.registerRoute('GET', '/api/tts/voices', (req, res) => {
+        this.api.registerRoute('GET', '/api/tts/voices', async (req, res) => {
             const engine = req.query.engine || 'all';
 
             const voices = {};
@@ -233,6 +269,15 @@ class TTSPlugin {
 
             if ((engine === 'all' || engine === 'google') && this.engines.google) {
                 voices.google = GoogleEngine.getVoices();
+            }
+
+            if ((engine === 'all' || engine === 'speechify') && this.engines.speechify) {
+                try {
+                    voices.speechify = await this.engines.speechify.getVoices();
+                } catch (error) {
+                    this.logger.error('Failed to load Speechify voices', { error: error.message });
+                    voices.speechify = {};
+                }
             }
 
             res.json({ success: true, voices });
@@ -410,7 +455,8 @@ class TTSPlugin {
                     },
                     engines: {
                         tiktok: !!this.engines.tiktok,
-                        google: !!this.engines.google
+                        google: !!this.engines.google,
+                        speechify: !!this.engines.speechify
                     },
                     queue: this.queueManager.getInfo(),
                     debugEnabled: this.debugEnabled,
@@ -653,9 +699,12 @@ class TTSPlugin {
 
             // Auto language detection if no voice assigned
             if (!selectedVoice && this.config.autoLanguageDetection) {
-                const engineClass = selectedEngine === 'google' && this.engines.google
-                    ? GoogleEngine
-                    : TikTokEngine;
+                let engineClass = TikTokEngine;
+                if (selectedEngine === 'speechify' && this.engines.speechify) {
+                    engineClass = SpeechifyEngine;
+                } else if (selectedEngine === 'google' && this.engines.google) {
+                    engineClass = GoogleEngine;
+                }
 
                 this._logDebug('SPEAK_STEP4', 'Detecting language', {
                     text: finalText.substring(0, 50),
@@ -683,6 +732,30 @@ class TTSPlugin {
             }
 
             // Validate engine availability
+            if (selectedEngine === 'speechify' && !this.engines.speechify) {
+                this._logDebug('SPEAK_STEP4', 'Speechify engine not available, falling back to Google/TikTok');
+                this.logger.warn(`Speechify TTS requested but not available, falling back`);
+
+                // Fallback to Google if available, otherwise TikTok
+                if (this.engines.google) {
+                    selectedEngine = 'google';
+                    const googleVoices = GoogleEngine.getVoices();
+                    if (!selectedVoice || !googleVoices[selectedVoice]) {
+                        const langResult = this.languageDetector.detectAndGetVoice(finalText, GoogleEngine);
+                        selectedVoice = langResult?.voiceId || this.config.defaultVoice;
+                        this._logDebug('SPEAK_STEP4', 'Voice reset for Google fallback', { selectedVoice });
+                    }
+                } else {
+                    selectedEngine = 'tiktok';
+                    const tiktokVoices = TikTokEngine.getVoices();
+                    if (!selectedVoice || !tiktokVoices[selectedVoice]) {
+                        const langResult = this.languageDetector.detectAndGetVoice(finalText, TikTokEngine);
+                        selectedVoice = langResult?.voiceId || this.config.defaultVoice;
+                        this._logDebug('SPEAK_STEP4', 'Voice reset for TikTok fallback', { selectedVoice });
+                    }
+                }
+            }
+
             if (selectedEngine === 'google' && !this.engines.google) {
                 this._logDebug('SPEAK_STEP4', 'Google engine not available, falling back to TikTok');
                 this.logger.warn(`Google TTS requested but not available, falling back to TikTok`);
@@ -727,7 +800,48 @@ class TTSPlugin {
                 });
                 this.logger.error(`TTS engine ${selectedEngine} failed: ${engineError.message}, trying fallback`);
 
-                if (selectedEngine === 'google' && this.engines.tiktok) {
+                // Fallback chain: Speechify → Google → TikTok
+                if (selectedEngine === 'speechify') {
+                    // Try Google first, then TikTok
+                    if (this.engines.google) {
+                        let fallbackVoice = selectedVoice;
+                        const googleVoices = GoogleEngine.getVoices();
+                        if (!fallbackVoice || !googleVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, GoogleEngine);
+                            fallbackVoice = langResult?.voiceId || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for Google fallback', { fallbackVoice });
+                        }
+
+                        audioData = await this.engines.google.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'google';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'google',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else if (this.engines.tiktok) {
+                        let fallbackVoice = selectedVoice;
+                        const tiktokVoices = TikTokEngine.getVoices();
+                        if (!fallbackVoice || !tiktokVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, TikTokEngine);
+                            fallbackVoice = langResult?.voiceId || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for TikTok fallback', { fallbackVoice });
+                        }
+
+                        audioData = await this.engines.tiktok.synthesize(finalText, fallbackVoice);
+                        selectedEngine = 'tiktok';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'tiktok',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else {
+                        this._logDebug('SPEAK_ERROR', 'No fallback available', { error: engineError.message });
+                        throw engineError;
+                    }
+                } else if (selectedEngine === 'google' && this.engines.tiktok) {
                     // Try to keep the voice if it's valid for TikTok, otherwise detect language
                     let fallbackVoice = selectedVoice;
                     const tiktokVoices = TikTokEngine.getVoices();
