@@ -522,16 +522,23 @@ class TTSPlugin {
                 // Extract text from either 'message' or 'comment' field
                 const chatText = data.message || data.comment;
 
+                // IMPORTANT: Use uniqueId as the primary userId for consistency
+                // uniqueId is the TikTok username and is stable across sessions
+                const userId = data.uniqueId || data.nickname || data.userId;
+                const username = data.uniqueId || data.nickname;
+
                 this._logDebug('TIKTOK_EVENT', 'Chat event received', {
                     uniqueId: data.uniqueId,
                     nickname: data.nickname,
                     message: chatText,
                     teamMemberLevel: data.teamMemberLevel,
                     isSubscriber: data.isSubscriber,
-                    userId: data.userId
+                    userId: data.userId,
+                    normalizedUserId: userId,
+                    normalizedUsername: username
                 });
 
-                this.logger.info(`TTS: Received chat event from ${data.uniqueId || data.nickname}: "${chatText}"`);
+                this.logger.info(`TTS: Received chat event from ${username}: "${chatText}"`);
 
                 // Only process if chat TTS is enabled
                 if (!this.config.enabledForChat) {
@@ -543,8 +550,8 @@ class TTSPlugin {
                 // Speak chat message
                 const result = await this.speak({
                     text: chatText,
-                    userId: data.userId || data.uniqueId,
-                    username: data.uniqueId || data.nickname,
+                    userId: userId,
+                    username: username,
                     source: 'chat',
                     teamLevel: data.teamMemberLevel || 0,
                     isSubscriber: data.isSubscriber || false
@@ -697,13 +704,25 @@ class TTSPlugin {
             let selectedVoice = voiceId || userSettings?.assigned_voice_id;
 
             this._logDebug('SPEAK_STEP4', 'Voice/Engine selection', {
+                userId: userId,
+                username: username,
+                userSettingsFound: !!userSettings,
+                userSettingsRaw: userSettings ? {
+                    user_id: userSettings.user_id,
+                    username: userSettings.username,
+                    assigned_voice_id: userSettings.assigned_voice_id,
+                    assigned_engine: userSettings.assigned_engine,
+                    allow_tts: userSettings.allow_tts
+                } : null,
                 requestedEngine: engine,
                 assignedEngine: userSettings?.assigned_engine,
                 selectedEngine,
                 requestedVoice: voiceId,
                 assignedVoice: userSettings?.assigned_voice_id,
                 selectedVoice,
-                autoLanguageDetection: this.config.autoLanguageDetection
+                autoLanguageDetection: this.config.autoLanguageDetection,
+                defaultEngine: this.config.defaultEngine,
+                defaultVoice: this.config.defaultVoice
             });
 
             // Auto language detection if no voice assigned
