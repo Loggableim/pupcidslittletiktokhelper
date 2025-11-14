@@ -404,6 +404,8 @@ let modalState = {
 };
 
 function assignVoiceDialog(userId, username) {
+    console.log('[TTS] Opening voice assignment dialog for:', { userId, username });
+
     modalState.userId = userId;
     modalState.username = username;
     modalState.selectedVoiceId = null;
@@ -414,11 +416,25 @@ function assignVoiceDialog(userId, username) {
     const engineSelect = document.getElementById('modalEngine');
     const voiceSearch = document.getElementById('modalVoiceSearch');
 
+    console.log('[TTS] Modal elements found:', {
+        modal: !!modal,
+        usernameEl: !!usernameEl,
+        engineSelect: !!engineSelect,
+        voiceSearch: !!voiceSearch
+    });
+
+    if (!modal) {
+        console.error('[TTS] Modal element not found! Cannot open voice assignment dialog.');
+        showNotification('Error: Voice assignment dialog not available', 'error');
+        return;
+    }
+
     if (usernameEl) usernameEl.textContent = username;
     if (engineSelect) {
         engineSelect.value = 'tiktok';
         engineSelect.onchange = () => {
             modalState.selectedEngine = engineSelect.value;
+            console.log('[TTS] Engine changed to:', modalState.selectedEngine);
             renderModalVoiceList();
         };
     }
@@ -427,9 +443,11 @@ function assignVoiceDialog(userId, username) {
         voiceSearch.oninput = renderModalVoiceList;
     }
 
+    console.log('[TTS] Rendering voice list...');
     renderModalVoiceList();
 
-    if (modal) modal.classList.remove('hidden');
+    console.log('[TTS] Opening modal...');
+    modal.classList.remove('hidden');
 
     const confirmBtn = document.getElementById('confirmVoiceAssignment');
     if (confirmBtn) {
@@ -438,10 +456,13 @@ function assignVoiceDialog(userId, username) {
                 showNotification('Please select a voice', 'error');
                 return;
             }
+            console.log('[TTS] Assigning voice:', modalState.selectedVoiceId, 'to user:', username);
             await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine);
             closeVoiceAssignmentModal();
         };
     }
+
+    console.log('[TTS] Voice assignment dialog opened successfully');
 }
 
 function closeVoiceAssignmentModal() {
