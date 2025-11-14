@@ -172,6 +172,21 @@ HybridShock Plugin
 }
 ```
 
+### WebSocket Communication-Settings (NEU!)
+
+```javascript
+{
+  "preferWebSocket": false,           // true = WebSocket für Features (statt HTTP)
+  "useWebSocketForActions": false     // true = Actions über WebSocket senden (statt HTTP POST)
+}
+```
+
+**Vorteile von WebSocket:**
+- ✅ Geringere Latenz (keine HTTP-Overhead)
+- ✅ Bidirektionale Kommunikation
+- ✅ Server kann Features pushen (statt Pull via HTTP)
+- ✅ Echtzeit-Updates für Categories/Actions/Events
+
 ### Queue-Settings
 
 ```javascript
@@ -196,6 +211,110 @@ HybridShock Plugin
   "logRetentionDays": 30         // Log-Retention (Tage)
 }
 ```
+
+## 🌐 WebSocket-Kommunikation (NEU!)
+
+### WebSocket-Request/Response-Pattern
+
+Das Plugin unterstützt **bidirektionale WebSocket-Kommunikation** mit Request/Response-Pattern:
+
+#### **Client → Server Requests:**
+
+```javascript
+// Events abrufen
+ws.send(JSON.stringify({
+    type: 'getEvents',
+    requestId: 'req_123'
+}));
+
+// Categories abrufen
+ws.send(JSON.stringify({
+    type: 'getCategories',
+    requestId: 'req_124'
+}));
+
+// Actions abrufen
+ws.send(JSON.stringify({
+    type: 'getActions',
+    requestId: 'req_125'
+}));
+
+// Action senden
+ws.send(JSON.stringify({
+    type: 'sendAction',
+    category: 'shock',
+    action: 'pulse',
+    context: { intensity: 50 },
+    requestId: 'req_126'
+}));
+```
+
+#### **Server → Client Responses:**
+
+```javascript
+// Response mit Request-ID
+{
+    requestId: 'req_123',
+    data: [...events...]
+}
+
+// Error-Response
+{
+    requestId: 'req_123',
+    error: 'Failed to get events'
+}
+```
+
+#### **Server → Client Push-Events:**
+
+Der HybridShock-Server kann auch **unaufgefordert** Events pushen:
+
+```javascript
+// Categories Update (wenn sich Categories ändern)
+{
+    type: 'categories',
+    categories: [...]
+}
+
+// Actions Update (wenn sich Actions ändern)
+{
+    type: 'actions',
+    actions: [...]
+}
+
+// Events Update (wenn sich Events ändern)
+{
+    type: 'events',
+    events: [...]
+}
+
+// Combined Features Update
+{
+    type: 'features',
+    categories: [...],
+    actions: [...],
+    events: [...]
+}
+
+// HybridShock Event (z.B. shock:completed)
+{
+    type: 'event',
+    data: {
+        eventType: 'shock:completed',
+        timestamp: 1234567890
+    }
+}
+```
+
+### Vorteile des WebSocket-Ansatzes
+
+✅ **Geringere Latenz** - Keine HTTP-Request-Overhead
+✅ **Push-Notifications** - Server kann Updates pushen statt Polling
+✅ **Bidirektional** - Beide Richtungen gleichzeitig
+✅ **Echtzeit** - Sofortige Updates bei Änderungen
+✅ **Effizienter** - Weniger Netzwerk-Traffic
+
+---
 
 ## 🔗 API-Referenz
 

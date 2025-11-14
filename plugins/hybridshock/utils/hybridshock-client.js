@@ -59,6 +59,10 @@ class HybridShockClient extends EventEmitter {
             uptime: 0
         };
 
+        // WebSocket Request/Response-Tracking
+        this.pendingRequests = new Map();
+        this.requestIdCounter = 0;
+
         // HTTP Client
         this.httpClient = axios.create({
             baseURL: `http://${this.config.httpHost}:${this.config.httpPort}`,
@@ -164,10 +168,66 @@ class HybridShockClient extends EventEmitter {
         try {
             const message = JSON.parse(data.toString());
 
+            // Response mit Request-ID (für Request/Response-Pattern)
+            if (message.requestId && this.pendingRequests.has(message.requestId)) {
+                const { resolve, reject } = this.pendingRequests.get(message.requestId);
+                this.pendingRequests.delete(message.requestId);
+
+                if (message.error) {
+                    reject(new Error(message.error));
+                } else {
+                    resolve(message.data || message);
+                }
+                return;
+            }
+
             // Event von HybridShock empfangen
             if (message.type === 'event') {
                 this.stats.eventsReceived++;
                 this.emit('hybridshock:event', message.data);
+            }
+
+            // Categories Update Event (vom Server gepusht)
+            else if (message.type === 'categories' || message.type === 'categoriesUpdate') {
+                this.categories = message.data || message.categories || [];
+                this.emit('categories:update', this.categories);
+                this.log(`Categories updated: ${this.categories.length} categories`, 'info');
+            }
+
+            // Actions Update Event (vom Server gepusht)
+            else if (message.type === 'actions' || message.type === 'actionsUpdate') {
+                this.actions = message.data || message.actions || [];
+                this.emit('actions:update', this.actions);
+                this.log(`Actions updated: ${this.actions.length} actions`, 'info');
+            }
+
+            // Events Update Event (vom Server gepusht)
+            else if (message.type === 'events' || message.type === 'eventsUpdate') {
+                this.events = message.data || message.events || [];
+                this.emit('events:update', this.events);
+                this.log(`Events updated: ${this.events.length} events`, 'info');
+            }
+
+            // Features Update (kombiniert: categories + actions + events)
+            else if (message.type === 'features' || message.type === 'featuresUpdate') {
+                if (message.categories) {
+                    this.categories = message.categories;
+                    this.emit('categories:update', this.categories);
+                }
+                if (message.actions) {
+                    this.actions = message.actions;
+                    this.emit('actions:update', this.actions);
+                }
+                if (message.events) {
+                    this.events = message.events;
+                    this.emit('events:update', this.events);
+                }
+                this.emit('features:update', {
+                    categories: this.categories,
+                    actions: this.actions,
+                    events: this.events
+                });
+                this.log('Features updated from server', 'info');
             }
 
             // Response auf Action
@@ -444,6 +504,169 @@ class HybridShockClient extends EventEmitter {
 
         this.ws.send(JSON.stringify(message));
         this.stats.messagesSent++;
+    }
+
+    /**
+     * WebSocket: Request senden mit Response-Erwartung (Promise-basiert)
+     * @param {object} message - Message-Objekt
+     * @param {number} timeout - Timeout in Millisekunden (default: 10000)
+     * @returns {Promise} - Resolves mit Response-Data
+     */
+    sendWebSocketRequest(message, timeout = 10000) {
+        return new Promise((resolve, reject) => {
+            if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                reject(new Error('WebSocket not connected'));
+                return;
+            }
+
+            // Generiere eindeutige Request-ID
+            const requestId = `req_${this.requestIdCounter++}_${Date.now()}`;
+            message.requestId = requestId;
+
+            // Speichere Promise-Handler
+            this.pendingRequests.set(requestId, { resolve, reject });
+
+            // Timeout setzen
+            const timeoutId = setTimeout(() => {
+                if (this.pendingRequests.has(requestId)) {
+                    this.pendingRequests.delete(requestId);
+                    reject(new Error('WebSocket request timeout'));
+                }
+            }, timeout);
+
+            // Cleanup bei Resolve/Reject
+            const originalResolve = resolve;
+            const originalReject = reject;
+
+            this.pendingRequests.set(requestId, {
+                resolve: (data) => {
+                    clearTimeout(timeoutId);
+                    originalResolve(data);
+                },
+                reject: (error) => {
+                    clearTimeout(timeoutId);
+                    originalReject(error);
+                }
+            });
+
+            // Message senden
+            this.ws.send(JSON.stringify(message));
+            this.stats.messagesSent++;
+        });
+    }
+
+    /**
+     * WebSocket: App-Info abrufen (Alternative zu HTTP)
+     * @returns {Promise<object>}
+     */
+    async getAppInfoViaWebSocket() {
+        try {
+            const data = await this.sendWebSocketRequest({
+                type: 'getAppInfo'
+            });
+            this.appInfo = data;
+            return data;
+        } catch (error) {
+            throw new Error(`Failed to get app info via WebSocket: ${error.message}`);
+        }
+    }
+
+    /**
+     * WebSocket: Kategorien abrufen (Alternative zu HTTP)
+     * @returns {Promise<array>}
+     */
+    async getCategoriesViaWebSocket() {
+        try {
+            const data = await this.sendWebSocketRequest({
+                type: 'getCategories'
+            });
+            this.categories = data;
+            return data;
+        } catch (error) {
+            throw new Error(`Failed to get categories via WebSocket: ${error.message}`);
+        }
+    }
+
+    /**
+     * WebSocket: Actions abrufen (Alternative zu HTTP)
+     * @returns {Promise<array>}
+     */
+    async getActionsViaWebSocket() {
+        try {
+            const data = await this.sendWebSocketRequest({
+                type: 'getActions'
+            });
+            this.actions = data;
+            return data;
+        } catch (error) {
+            throw new Error(`Failed to get actions via WebSocket: ${error.message}`);
+        }
+    }
+
+    /**
+     * WebSocket: Events abrufen (Alternative zu HTTP)
+     * @returns {Promise<array>}
+     */
+    async getEventsViaWebSocket() {
+        try {
+            const data = await this.sendWebSocketRequest({
+                type: 'getEvents'
+            });
+            this.events = data;
+            return data;
+        } catch (error) {
+            throw new Error(`Failed to get events via WebSocket: ${error.message}`);
+        }
+    }
+
+    /**
+     * WebSocket: Action senden (Alternative zu HTTP)
+     * @param {string} category - Kategorie
+     * @param {string} action - Action
+     * @param {object} context - Context-Objekt
+     * @returns {Promise<object>}
+     */
+    async sendActionViaWebSocket(category, action, context = {}) {
+        try {
+            const data = await this.sendWebSocketRequest({
+                type: 'sendAction',
+                category,
+                action,
+                context
+            });
+
+            this.stats.actionsSent++;
+
+            this.emit('action:sent', {
+                category,
+                action,
+                context,
+                response: data,
+                via: 'websocket'
+            });
+
+            return data;
+        } catch (error) {
+            throw new Error(`Failed to send action via WebSocket: ${error.message}`);
+        }
+    }
+
+    /**
+     * WebSocket: Alle Features abrufen (kombiniert)
+     * @returns {Promise<object>}
+     */
+    async getAllFeaturesViaWebSocket() {
+        try {
+            const [categories, actions, events] = await Promise.all([
+                this.getCategoriesViaWebSocket(),
+                this.getActionsViaWebSocket(),
+                this.getEventsViaWebSocket()
+            ]);
+
+            return { categories, actions, events };
+        } catch (error) {
+            throw new Error(`Failed to get features via WebSocket: ${error.message}`);
+        }
     }
 
     /**
