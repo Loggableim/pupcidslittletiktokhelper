@@ -222,6 +222,22 @@ class GoalsPlugin extends EventEmitter {
                 )
             `);
 
+            // Migration: Add description column if it doesn't exist (for existing databases)
+            try {
+                const tableInfo = db.prepare("PRAGMA table_info(settings)").all();
+                const hasDescriptionColumn = tableInfo.some(col => col.name === 'description');
+
+                if (!hasDescriptionColumn) {
+                    this.api.log('📦 Migrating settings table: adding description column', 'info');
+                    db.exec('ALTER TABLE settings ADD COLUMN description TEXT');
+                }
+            } catch (migrationError) {
+                // If table doesn't exist yet, that's fine - it was just created
+                if (!migrationError.message.includes('no such table')) {
+                    this.api.log(`Migration warning: ${migrationError.message}`, 'warn');
+                }
+            }
+
             // Initialize default goals if not exist
             this.initializeDefaultGoals(db);
 
