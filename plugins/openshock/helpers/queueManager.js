@@ -5,7 +5,7 @@
  * and comprehensive statistics tracking.
  */
 
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 class QueueManager {
   /**
@@ -84,7 +84,7 @@ class QueueManager {
 
       // Create queue item
       const queueItem = {
-        id: `queue-${uuidv4()}`,
+        id: `queue-${crypto.randomUUID()}`,
         priority,
         command,
         userId,
