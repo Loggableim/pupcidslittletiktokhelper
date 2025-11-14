@@ -377,6 +377,50 @@
         </div>
     </div>
 
+    <!-- Voice Assignment Modal -->
+    <div id="voiceAssignmentModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">🎤 Assign Voice</h2>
+                <button onclick="closeVoiceAssignmentModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <div class="mb-4">
+                <p class="text-gray-300">Assigning voice for: <span id="modalUsername" class="font-bold text-blue-400"></span></p>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold mb-2">Engine</label>
+                <select id="modalEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                    <option value="tiktok">TikTok (Free)</option>
+                    <option value="google">Google Cloud TTS (Premium)</option>
+                    <option value="speechify">Speechify (Premium)</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold mb-2">Search Voice</label>
+                <input type="text" id="modalVoiceSearch" placeholder="Search voices..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 mb-2">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold mb-2">Select Voice</label>
+                <div id="modalVoiceList" class="bg-gray-700 rounded p-4 max-h-64 overflow-y-auto space-y-2">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeVoiceAssignmentModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                    Cancel
+                </button>
+                <button id="confirmVoiceAssignment" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                    Assign Voice
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="/plugins/tts/ui/tts-admin-production.js"></script>
 </body>

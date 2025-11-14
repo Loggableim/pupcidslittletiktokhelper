@@ -395,22 +395,101 @@ async function unblacklistUser(userId) {
     }
 }
 
-function assignVoiceDialog(userId, username) {
-    const engine = prompt('Select engine:\n1. tiktok\n2. google', 'tiktok');
-    if (!engine) return;
+// Voice Assignment Modal State
+let modalState = {
+    userId: null,
+    username: null,
+    selectedVoiceId: null,
+    selectedEngine: 'tiktok'
+};
 
+function assignVoiceDialog(userId, username) {
+    modalState.userId = userId;
+    modalState.username = username;
+    modalState.selectedVoiceId = null;
+    modalState.selectedEngine = 'tiktok';
+
+    const modal = document.getElementById('voiceAssignmentModal');
+    const usernameEl = document.getElementById('modalUsername');
+    const engineSelect = document.getElementById('modalEngine');
+    const voiceSearch = document.getElementById('modalVoiceSearch');
+
+    if (usernameEl) usernameEl.textContent = username;
+    if (engineSelect) {
+        engineSelect.value = 'tiktok';
+        engineSelect.onchange = () => {
+            modalState.selectedEngine = engineSelect.value;
+            renderModalVoiceList();
+        };
+    }
+    if (voiceSearch) {
+        voiceSearch.value = '';
+        voiceSearch.oninput = renderModalVoiceList;
+    }
+
+    renderModalVoiceList();
+
+    if (modal) modal.classList.remove('hidden');
+
+    const confirmBtn = document.getElementById('confirmVoiceAssignment');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            if (!modalState.selectedVoiceId) {
+                showNotification('Please select a voice', 'error');
+                return;
+            }
+            await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine);
+            closeVoiceAssignmentModal();
+        };
+    }
+}
+
+function closeVoiceAssignmentModal() {
+    const modal = document.getElementById('voiceAssignmentModal');
+    if (modal) modal.classList.add('hidden');
+    modalState = { userId: null, username: null, selectedVoiceId: null, selectedEngine: 'tiktok' };
+}
+
+function renderModalVoiceList() {
+    const list = document.getElementById('modalVoiceList');
+    if (!list) return;
+
+    const engine = modalState.selectedEngine;
     const voiceList = voices[engine];
-    if (!voiceList) {
-        alert('Engine not available');
+    const searchTerm = document.getElementById('modalVoiceSearch')?.value.toLowerCase() || '';
+
+    if (!voiceList || Object.keys(voiceList).length === 0) {
+        list.innerHTML = '<div class="text-gray-400 text-center py-4">No voices available for this engine</div>';
         return;
     }
 
-    const voiceOptions = Object.keys(voiceList).map((id, i) => `${i + 1}. ${id} - ${voiceList[id].name}`).join('\n');
-    const voiceId = prompt(`Select voice:\n${voiceOptions}\n\nEnter voice ID:`, '');
+    const filteredVoices = Object.entries(voiceList).filter(([id, voice]) =>
+        id.toLowerCase().includes(searchTerm) ||
+        voice.name.toLowerCase().includes(searchTerm) ||
+        (voice.language && voice.language.toLowerCase().includes(searchTerm))
+    );
 
-    if (!voiceId) return;
+    if (filteredVoices.length === 0) {
+        list.innerHTML = '<div class="text-gray-400 text-center py-4">No voices match your search</div>';
+        return;
+    }
 
-    assignVoice(userId, username, voiceId, engine);
+    list.innerHTML = filteredVoices.map(([id, voice]) => `
+        <div
+            onclick="selectModalVoice('${escapeHtml(id)}')"
+            class="voice-option p-3 rounded cursor-pointer hover:bg-gray-600 ${modalState.selectedVoiceId === id ? 'bg-blue-600' : 'bg-gray-800'}"
+            data-voice-id="${escapeHtml(id)}"
+        >
+            <div class="font-bold">${escapeHtml(id)}</div>
+            <div class="text-sm text-gray-300">${escapeHtml(voice.name)}</div>
+            ${voice.language ? `<div class="text-xs text-gray-400">${escapeHtml(voice.language)}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+function selectModalVoice(voiceId) {
+    modalState.selectedVoiceId = voiceId;
+    renderModalVoiceList();
 }
 
 async function assignVoice(userId, username, voiceId, engine) {
@@ -421,12 +500,17 @@ async function assignVoice(userId, username, voiceId, engine) {
             body: JSON.stringify({ username, voiceId, engine })
         });
 
-        if (res.ok) {
-            showNotification(`Voice assigned to ${username}`, 'success');
-            loadUsers(currentFilter);
+        const data = await res.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to assign voice');
         }
+
+        showNotification(`Voice assigned to ${username}`, 'success');
+        loadUsers(currentFilter);
     } catch (error) {
-        showNotification('Failed to assign voice', 'error');
+        console.error('Failed to assign voice:', error);
+        showNotification(`Failed to assign voice: ${error.message}`, 'error');
     }
 }
 
