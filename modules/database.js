@@ -1,4 +1,5 @@
 const Database = require('better-sqlite3');
+const { safeJsonParse } = require('./error-handler');
 
 class DatabaseManager {
     constructor(dbPath) {
@@ -350,8 +351,8 @@ class DatabaseManager {
         const rows = stmt.all();
         return rows.map(row => ({
             ...row,
-            trigger_condition: row.trigger_condition ? JSON.parse(row.trigger_condition) : null,
-            actions: JSON.parse(row.actions),
+            trigger_condition: row.trigger_condition ? safeJsonParse(row.trigger_condition, null) : null,
+            actions: safeJsonParse(row.actions, []),
             enabled: Boolean(row.enabled)
         }));
     }
@@ -362,8 +363,8 @@ class DatabaseManager {
         if (!row) return null;
         return {
             ...row,
-            trigger_condition: row.trigger_condition ? JSON.parse(row.trigger_condition) : null,
-            actions: JSON.parse(row.actions),
+            trigger_condition: row.trigger_condition ? safeJsonParse(row.trigger_condition, null) : null,
+            actions: safeJsonParse(row.actions, []),
             enabled: Boolean(row.enabled)
         };
     }
@@ -373,8 +374,8 @@ class DatabaseManager {
         const rows = stmt.all();
         return rows.map(row => ({
             ...row,
-            trigger_condition: row.trigger_condition ? JSON.parse(row.trigger_condition) : null,
-            actions: JSON.parse(row.actions),
+            trigger_condition: row.trigger_condition ? safeJsonParse(row.trigger_condition, null) : null,
+            actions: safeJsonParse(row.actions, []),
             enabled: Boolean(row.enabled)
         }));
     }
@@ -538,7 +539,7 @@ class DatabaseManager {
         const rows = stmt.all();
         return rows.map(row => ({
             ...row,
-            config: JSON.parse(row.config)
+            config: safeJsonParse(row.config, {})
         }));
     }
 
@@ -548,7 +549,7 @@ class DatabaseManager {
         if (!row) return null;
         return {
             ...row,
-            config: JSON.parse(row.config)
+            config: safeJsonParse(row.config, {})
         };
     }
 
