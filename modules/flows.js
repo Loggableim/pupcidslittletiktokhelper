@@ -60,6 +60,12 @@ class FlowEngine {
 
     async processEvent(eventType, eventData) {
         try {
+            // Check if flows are globally enabled
+            const flowsEnabled = this.db.getSetting('flows_enabled');
+            if (flowsEnabled === 'false') {
+                return; // Flows are globally disabled
+            }
+
             // Alle aktiven Flows abrufen
             const flows = this.db.getEnabledFlows();
 
