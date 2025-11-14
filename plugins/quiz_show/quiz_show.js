@@ -779,6 +779,207 @@
         return div.innerHTML;
     }
 
+    // ============================================
+    // HUD OVERLAY CONFIGURATION
+    // ============================================
+
+    let hudConfig = {};
+
+    async function loadHUDConfig() {
+        try {
+            const response = await fetch('/api/quiz-show/hud-config');
+            const data = await response.json();
+
+            if (data.success && data.config) {
+                hudConfig = data.config;
+                applyHUDConfigToForm();
+            }
+        } catch (error) {
+            console.error('Error loading HUD config:', error);
+        }
+    }
+
+    function applyHUDConfigToForm() {
+        // Theme & Style
+        document.getElementById('hudTheme').value = hudConfig.theme || 'dark';
+        document.getElementById('answersLayout').value = hudConfig.answersLayout || 'grid';
+        document.getElementById('animationSpeed').value = hudConfig.animationSpeed || 1;
+        document.getElementById('animationSpeedValue').textContent = (hudConfig.animationSpeed || 1).toFixed(1);
+        document.getElementById('glowIntensity').value = hudConfig.glowIntensity || 1;
+        document.getElementById('glowIntensityValue').textContent = (hudConfig.glowIntensity || 1).toFixed(1);
+
+        // Animations
+        document.getElementById('questionAnimation').value = hudConfig.questionAnimation || 'slide-in-bottom';
+        document.getElementById('correctAnimation').value = hudConfig.correctAnimation || 'glow-pulse';
+        document.getElementById('wrongAnimation').value = hudConfig.wrongAnimation || 'shake';
+
+        // Timer
+        document.getElementById('timerVariant').value = hudConfig.timerVariant || 'circular';
+
+        // Colors
+        if (hudConfig.colors) {
+            document.getElementById('colorPrimary').value = hudConfig.colors.primary || '#3b82f6';
+            document.getElementById('colorSecondary').value = hudConfig.colors.secondary || '#8b5cf6';
+            document.getElementById('colorSuccess').value = hudConfig.colors.success || '#10b981';
+            document.getElementById('colorWarning').value = hudConfig.colors.warning || '#f59e0b';
+            document.getElementById('colorDanger').value = hudConfig.colors.danger || '#ef4444';
+        }
+
+        // Fonts
+        if (hudConfig.fonts) {
+            document.getElementById('fontFamily').value = hudConfig.fonts.family || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            document.getElementById('fontSizeQuestion').value = hudConfig.fonts.sizeQuestion || '2.2rem';
+            document.getElementById('fontSizeAnswer').value = hudConfig.fonts.sizeAnswer || '1.1rem';
+        }
+
+        // Custom CSS
+        document.getElementById('customCSS').value = hudConfig.customCSS || '';
+
+        // Stream Resolution
+        const resolution = `${hudConfig.streamWidth || 1920}x${hudConfig.streamHeight || 1080}`;
+        document.getElementById('streamResolution').value = resolution;
+        updatePreviewScale(resolution);
+    }
+
+    function getHUDConfigFromForm() {
+        const resolution = document.getElementById('streamResolution').value.split('x');
+
+        return {
+            theme: document.getElementById('hudTheme').value,
+            questionAnimation: document.getElementById('questionAnimation').value,
+            correctAnimation: document.getElementById('correctAnimation').value,
+            wrongAnimation: document.getElementById('wrongAnimation').value,
+            timerVariant: document.getElementById('timerVariant').value,
+            answersLayout: document.getElementById('answersLayout').value,
+            animationSpeed: parseFloat(document.getElementById('animationSpeed').value),
+            glowIntensity: parseFloat(document.getElementById('glowIntensity').value),
+            customCSS: document.getElementById('customCSS').value,
+            streamWidth: parseInt(resolution[0]),
+            streamHeight: parseInt(resolution[1]),
+            positions: hudConfig.positions || {},
+            colors: {
+                primary: document.getElementById('colorPrimary').value,
+                secondary: document.getElementById('colorSecondary').value,
+                success: document.getElementById('colorSuccess').value,
+                warning: document.getElementById('colorWarning').value,
+                danger: document.getElementById('colorDanger').value
+            },
+            fonts: {
+                family: document.getElementById('fontFamily').value,
+                sizeQuestion: document.getElementById('fontSizeQuestion').value,
+                sizeAnswer: document.getElementById('fontSizeAnswer').value
+            }
+        };
+    }
+
+    async function saveHUDConfig() {
+        try {
+            const config = getHUDConfigFromForm();
+
+            const response = await fetch('/api/quiz-show/hud-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                hudConfig = data.config;
+                showMessage('hudSaveMessage', 'HUD-Konfiguration erfolgreich gespeichert!', 'success');
+                refreshPreview();
+            } else {
+                showMessage('hudSaveMessage', 'Fehler beim Speichern: ' + data.error, 'error');
+            }
+        } catch (error) {
+            showMessage('hudSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+        }
+    }
+
+    async function resetHUDConfig() {
+        if (!confirm('Möchten Sie die HUD-Konfiguration wirklich auf Standard zurücksetzen? Alle Positionen und Einstellungen gehen verloren.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/quiz-show/hud-config/reset', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                hudConfig = data.config;
+                applyHUDConfigToForm();
+                showMessage('hudSaveMessage', 'HUD-Konfiguration auf Standard zurückgesetzt!', 'success');
+                refreshPreview();
+            } else {
+                showMessage('hudSaveMessage', 'Fehler beim Zurücksetzen: ' + data.error, 'error');
+            }
+        } catch (error) {
+            showMessage('hudSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+        }
+    }
+
+    function refreshPreview() {
+        const iframe = document.getElementById('overlayPreview');
+        iframe.src = iframe.src;
+    }
+
+    function updatePreviewScale(resolution) {
+        const [width, height] = resolution.split('x').map(Number);
+        const wrapper = document.getElementById('previewWrapper');
+        const iframe = document.getElementById('overlayPreview');
+
+        // Calculate scale to fit preview
+        const wrapperWidth = wrapper.clientWidth;
+        const wrapperHeight = 500;
+        const scale = Math.min(wrapperWidth / width, wrapperHeight / height);
+
+        iframe.style.width = width + 'px';
+        iframe.style.height = height + 'px';
+        iframe.style.transform = `scale(${scale})`;
+
+        wrapper.style.height = (height * scale) + 'px';
+    }
+
+    function openOverlay() {
+        window.open('/quiz-show/overlay', 'QuizShowOverlay', 'width=1920,height=1080');
+    }
+
+    // HUD Tab Event Listeners
+    if (document.getElementById('saveHUDConfigBtn')) {
+        document.getElementById('saveHUDConfigBtn').addEventListener('click', saveHUDConfig);
+        document.getElementById('resetHUDConfigBtn').addEventListener('click', resetHUDConfig);
+        document.getElementById('openOverlayBtn').addEventListener('click', openOverlay);
+        document.getElementById('refreshPreviewBtn').addEventListener('click', refreshPreview);
+
+        // Range sliders
+        document.getElementById('animationSpeed').addEventListener('input', (e) => {
+            document.getElementById('animationSpeedValue').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        document.getElementById('glowIntensity').addEventListener('input', (e) => {
+            document.getElementById('glowIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        document.getElementById('streamResolution').addEventListener('change', (e) => {
+            updatePreviewScale(e.target.value);
+        });
+
+        // Load HUD config when HUD tab is opened
+        const hudTab = document.querySelector('[data-tab="hud"]');
+        if (hudTab) {
+            hudTab.addEventListener('click', () => {
+                setTimeout(() => {
+                    loadHUDConfig();
+                }, 100);
+            });
+        }
+    }
+
     // Expose functions to window for onclick handlers
     window.quizShow = {
         editQuestion,
