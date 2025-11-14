@@ -140,6 +140,18 @@ class EmojiRainPlugin {
             }
         });
 
+        // Get emoji rain status
+        this.api.registerRoute('get', '/api/emoji-rain/status', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const config = db.getEmojiRainConfig();
+                res.json({ success: true, enabled: config.enabled });
+            } catch (error) {
+                this.api.log(`Error getting emoji rain status: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // Toggle emoji rain
         this.api.registerRoute('post', '/api/emoji-rain/toggle', (req, res) => {
             const { enabled } = req.body;

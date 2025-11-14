@@ -16,6 +16,7 @@
         initializeNavigation();
         initializeShortcuts();
         initializePluginVisibility();
+        initializeQuickActions();
 
         // Re-initialize Lucide icons
         if (typeof lucide !== 'undefined') {
@@ -273,42 +274,179 @@
     }
 
     // ========== QUICK ACTIONS ==========
-    function initializeQuickActions() {
+    async function initializeQuickActions() {
+        // Load initial states
+        await loadQuickActionStates();
+
         // TTS Toggle
         const ttsToggle = document.getElementById('quick-tts-toggle');
         if (ttsToggle) {
-            ttsToggle.addEventListener('change', (e) => {
-                console.log('TTS:', e.target.checked ? 'Enabled' : 'Disabled');
-                // TODO: Implement actual TTS enable/disable
+            ttsToggle.addEventListener('change', async (e) => {
+                const enabled = e.target.checked;
+                console.log('TTS:', enabled ? 'Enabled' : 'Disabled');
+
+                try {
+                    const response = await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tts_enabled: enabled ? 'true' : 'false' })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showQuickActionNotification('TTS', enabled);
+                    } else {
+                        // Revert toggle on error
+                        ttsToggle.checked = !enabled;
+                        console.error('Failed to toggle TTS:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Error toggling TTS:', error);
+                    ttsToggle.checked = !enabled;
+                }
             });
         }
 
         // Soundboard Toggle
         const soundboardToggle = document.getElementById('quick-soundboard-toggle');
         if (soundboardToggle) {
-            soundboardToggle.addEventListener('change', (e) => {
-                console.log('Soundboard:', e.target.checked ? 'Enabled' : 'Disabled');
-                // TODO: Implement actual soundboard enable/disable
+            soundboardToggle.addEventListener('change', async (e) => {
+                const enabled = e.target.checked;
+                console.log('Soundboard:', enabled ? 'Enabled' : 'Disabled');
+
+                try {
+                    const response = await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ soundboard_enabled: enabled ? 'true' : 'false' })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showQuickActionNotification('Soundboard', enabled);
+                    } else {
+                        // Revert toggle on error
+                        soundboardToggle.checked = !enabled;
+                        console.error('Failed to toggle Soundboard:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Error toggling Soundboard:', error);
+                    soundboardToggle.checked = !enabled;
+                }
             });
         }
 
         // Flows Toggle
         const flowsToggle = document.getElementById('quick-flows-toggle');
         if (flowsToggle) {
-            flowsToggle.addEventListener('change', (e) => {
-                console.log('Flows:', e.target.checked ? 'Enabled' : 'Disabled');
-                // TODO: Implement actual flows enable/disable
+            flowsToggle.addEventListener('change', async (e) => {
+                const enabled = e.target.checked;
+                console.log('Flows:', enabled ? 'Enabled' : 'Disabled');
+
+                try {
+                    const response = await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ flows_enabled: enabled ? 'true' : 'false' })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showQuickActionNotification('Flows', enabled);
+                    } else {
+                        // Revert toggle on error
+                        flowsToggle.checked = !enabled;
+                        console.error('Failed to toggle Flows:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Error toggling Flows:', error);
+                    flowsToggle.checked = !enabled;
+                }
             });
         }
 
         // Emoji Rain Toggle
         const emojiRainToggle = document.getElementById('quick-emoji-rain-toggle');
         if (emojiRainToggle) {
-            emojiRainToggle.addEventListener('change', (e) => {
-                console.log('Emoji Rain:', e.target.checked ? 'Enabled' : 'Disabled');
-                // TODO: Implement actual emoji rain enable/disable
+            emojiRainToggle.addEventListener('change', async (e) => {
+                const enabled = e.target.checked;
+                console.log('Emoji Rain:', enabled ? 'Enabled' : 'Disabled');
+
+                try {
+                    const response = await fetch('/api/emoji-rain/toggle', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showQuickActionNotification('Emoji Rain', enabled);
+                    } else {
+                        // Revert toggle on error
+                        emojiRainToggle.checked = !enabled;
+                        console.error('Failed to toggle Emoji Rain:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Error toggling Emoji Rain:', error);
+                    emojiRainToggle.checked = !enabled;
+                }
             });
         }
+    }
+
+    // Load initial states for Quick Actions
+    async function loadQuickActionStates() {
+        try {
+            // Load settings for TTS, Soundboard, and Flows
+            const settingsResponse = await fetch('/api/settings');
+            const settings = await settingsResponse.json();
+
+            // Set TTS toggle state
+            const ttsToggle = document.getElementById('quick-tts-toggle');
+            if (ttsToggle) {
+                ttsToggle.checked = settings.tts_enabled !== 'false'; // Default to true
+            }
+
+            // Set Soundboard toggle state
+            const soundboardToggle = document.getElementById('quick-soundboard-toggle');
+            if (soundboardToggle) {
+                soundboardToggle.checked = settings.soundboard_enabled !== 'false'; // Default to true
+            }
+
+            // Set Flows toggle state
+            const flowsToggle = document.getElementById('quick-flows-toggle');
+            if (flowsToggle) {
+                flowsToggle.checked = settings.flows_enabled !== 'false'; // Default to true
+            }
+
+            // Load Emoji Rain state from plugin
+            try {
+                const emojiRainResponse = await fetch('/api/emoji-rain/status');
+                const emojiRainData = await emojiRainResponse.json();
+
+                const emojiRainToggle = document.getElementById('quick-emoji-rain-toggle');
+                if (emojiRainToggle && emojiRainData.success) {
+                    emojiRainToggle.checked = emojiRainData.enabled !== false; // Default to true
+                }
+            } catch (error) {
+                // Emoji Rain plugin might not be loaded, default to checked
+                console.log('Emoji Rain status not available, using default');
+            }
+
+        } catch (error) {
+            console.error('Error loading Quick Action states:', error);
+        }
+    }
+
+    // Show notification for Quick Action toggle
+    function showQuickActionNotification(actionName, enabled) {
+        const status = enabled ? 'aktiviert' : 'deaktiviert';
+        const icon = enabled ? '✅' : '⏸️';
+        console.log(`${icon} ${actionName} ${status}`);
+
+        // Could add a toast notification here in the future
+        // For now, just log to console
     }
 
     // ========== PLUGIN VISIBILITY ==========

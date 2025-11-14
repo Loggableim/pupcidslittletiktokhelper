@@ -540,6 +540,15 @@ class TTSPlugin {
 
                 this.logger.info(`TTS: Received chat event from ${username}: "${chatText}"`);
 
+                // Check if TTS is globally enabled
+                const db = this.api.getDatabase();
+                const ttsEnabled = db.getSetting('tts_enabled');
+                if (ttsEnabled === 'false') {
+                    this._logDebug('TIKTOK_EVENT', 'TTS globally disabled', { tts_enabled: false });
+                    this.logger.warn('TTS: TTS is globally disabled via Quick Actions');
+                    return;
+                }
+
                 // Only process if chat TTS is enabled
                 if (!this.config.enabledForChat) {
                     this._logDebug('TIKTOK_EVENT', 'Chat TTS disabled in config', { enabledForChat: false });

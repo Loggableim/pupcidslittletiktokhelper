@@ -259,8 +259,11 @@ class DatabaseManager {
         const defaults = {
             'alert_gift_min_coins': '100',
             'theme': 'dark',
-            // Soundboard Einstellungen
+            // Quick Actions Einstellungen
+            'tts_enabled': 'true',
             'soundboard_enabled': 'true',
+            'flows_enabled': 'true',
+            // Soundboard Einstellungen
             'soundboard_play_mode': 'overlap', // overlap or sequential (managed in frontend)
             'soundboard_max_queue_length': '10',
             'soundboard_like_threshold': '0',
