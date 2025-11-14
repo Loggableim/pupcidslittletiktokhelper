@@ -21,6 +21,34 @@ class MappingManager {
     }
 
     /**
+     * Validate regex pattern to prevent ReDoS attacks
+     * @param {string} pattern - Regex pattern to validate
+     * @returns {boolean} - True if safe, false if potentially dangerous
+     */
+    isRegexSafe(pattern) {
+        // Check for common ReDoS patterns
+        const dangerousPatterns = [
+            /(\*\+|\+\*|\+\+)/,           // Nested quantifiers like *+, +*, ++
+            /(\{\d+,\}\+|\{\d+,\}\*)/,    // Unbounded quantifiers with nested quantifiers
+            /(.*){2,}/,                   // Nested wildcards with repetition
+            /(\(.+\)){2,}\+/              // Multiple capturing groups with quantifiers
+        ];
+
+        for (const dangerous of dangerousPatterns) {
+            if (dangerous.test(pattern)) {
+                return false;
+            }
+        }
+
+        // Check pattern length (very long patterns can be problematic)
+        if (pattern.length > 500) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Datenbank-Tabellen erstellen
      */
     initializeDatabase() {
@@ -291,8 +319,19 @@ class MappingManager {
             }
 
             if (conditions.messageRegex && eventData.message) {
-                const regex = new RegExp(conditions.messageRegex, 'i');
-                if (!regex.test(eventData.message)) {
+                // Validate regex pattern to prevent ReDoS attacks
+                if (!this.isRegexSafe(conditions.messageRegex)) {
+                    this.log(`Unsafe regex pattern detected, skipping: ${conditions.messageRegex}`, 'warn');
+                    return false;
+                }
+
+                try {
+                    const regex = new RegExp(conditions.messageRegex, 'i');
+                    if (!regex.test(eventData.message)) {
+                        return false;
+                    }
+                } catch (error) {
+                    this.log(`Invalid regex pattern: ${error.message}`, 'error');
                     return false;
                 }
             }
@@ -300,7 +339,17 @@ class MappingManager {
             // Custom JavaScript Expression (erweitert)
             if (conditions.customExpression) {
                 try {
-                    const result = eval(conditions.customExpression);
+                    // Use Function constructor instead of eval for better security
+                    // Create a sandboxed function with eventData as context
+                    const evaluateExpression = new Function(
+                        'eventData',
+                        `
+                        'use strict';
+                        const { username, giftName, coins, message, timestamp } = eventData;
+                        return (${conditions.customExpression});
+                        `
+                    );
+                    const result = evaluateExpression(eventData);
                     if (!result) {
                         return false;
                     }

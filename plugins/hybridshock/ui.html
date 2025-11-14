@@ -825,18 +825,42 @@
         function setupEventHandlers() {
             // Start/Stop
             document.getElementById('btnStart').addEventListener('click', async () => {
-                await fetch('/api/hybridshock/start', { method: 'POST' });
-                showToast('Plugin started', 'success');
+                try {
+                    const response = await fetch('/api/hybridshock/start', { method: 'POST' });
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Failed to start plugin');
+                    }
+                    showToast('Plugin started', 'success');
+                } catch (error) {
+                    showToast(`Failed to start: ${error.message}`, 'error');
+                }
             });
 
             document.getElementById('btnStop').addEventListener('click', async () => {
-                await fetch('/api/hybridshock/stop', { method: 'POST' });
-                showToast('Plugin stopped', 'success');
+                try {
+                    const response = await fetch('/api/hybridshock/stop', { method: 'POST' });
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Failed to stop plugin');
+                    }
+                    showToast('Plugin stopped', 'success');
+                } catch (error) {
+                    showToast(`Failed to stop: ${error.message}`, 'error');
+                }
             });
 
             document.getElementById('btnRestart').addEventListener('click', async () => {
-                await fetch('/api/hybridshock/restart', { method: 'POST' });
-                showToast('Plugin restarting...', 'info');
+                try {
+                    const response = await fetch('/api/hybridshock/restart', { method: 'POST' });
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Failed to restart plugin');
+                    }
+                    showToast('Plugin restarting...', 'info');
+                } catch (error) {
+                    showToast(`Failed to restart: ${error.message}`, 'error');
+                }
             });
 
             document.getElementById('btnTestConnection').addEventListener('click', async () => {
@@ -872,14 +896,20 @@
                 };
 
                 try {
-                    await fetch('/api/hybridshock/config', {
+                    const response = await fetch('/api/hybridshock/config', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(config)
                     });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Failed to save configuration');
+                    }
+
                     showToast('Configuration saved!', 'success');
                 } catch (error) {
-                    showToast('Failed to save config', 'error');
+                    showToast(`Failed to save config: ${error.message}`, 'error');
                 }
             });
 

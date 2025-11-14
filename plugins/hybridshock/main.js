@@ -103,12 +103,18 @@ class HybridShockPlugin {
             // TikTok Event-Handler registrieren
             this.registerTikTokEventHandlers();
 
-            // Auto-Connect wenn aktiviert
+            // Auto-Connect wenn aktiviert (non-blocking)
             if (this.config.autoConnect) {
-                await this.start();
+                this.start().catch(err => {
+                    this.api.log(`Auto-connect failed: ${err.message}`, 'warn');
+                });
             }
 
             this.api.log('✅ HybridShock Plugin initialized successfully', 'info');
+
+            // Broadcast initial status to GUI
+            this.broadcastStatus();
+
             return true;
 
         } catch (error) {
@@ -171,6 +177,11 @@ class HybridShockPlugin {
             ON hybridshock_action_log(status, timestamp DESC)
         `);
 
+        db.exec(`
+            CREATE INDEX IF NOT EXISTS idx_action_log_timestamp
+            ON hybridshock_action_log(timestamp DESC)
+        `);
+
         this.api.log('Database tables initialized', 'info');
     }
 
@@ -221,9 +232,70 @@ class HybridShockPlugin {
     }
 
     /**
+     * Config validieren
+     */
+    validateConfig(config) {
+        const errors = [];
+
+        // Port validation
+        if (config.httpPort !== undefined) {
+            const port = parseInt(config.httpPort);
+            if (isNaN(port) || port < 1 || port > 65535) {
+                errors.push('httpPort must be between 1 and 65535');
+            }
+        }
+        if (config.wsPort !== undefined) {
+            const port = parseInt(config.wsPort);
+            if (isNaN(port) || port < 1 || port > 65535) {
+                errors.push('wsPort must be between 1 and 65535');
+            }
+        }
+
+        // Rate limiting validation
+        if (config.maxActionsPerSecond !== undefined) {
+            const rate = parseInt(config.maxActionsPerSecond);
+            if (isNaN(rate) || rate < 1 || rate > 1000) {
+                errors.push('maxActionsPerSecond must be between 1 and 1000');
+            }
+        }
+
+        // Queue size validation
+        if (config.maxQueueSize !== undefined) {
+            const size = parseInt(config.maxQueueSize);
+            if (isNaN(size) || size < 1 || size > 100000) {
+                errors.push('maxQueueSize must be between 1 and 100000');
+            }
+        }
+
+        // Retry validation
+        if (config.maxRetries !== undefined) {
+            const retries = parseInt(config.maxRetries);
+            if (isNaN(retries) || retries < 0 || retries > 10) {
+                errors.push('maxRetries must be between 0 and 10');
+            }
+        }
+
+        // Host validation
+        if (config.httpHost !== undefined && typeof config.httpHost !== 'string') {
+            errors.push('httpHost must be a string');
+        }
+        if (config.wsHost !== undefined && typeof config.wsHost !== 'string') {
+            errors.push('wsHost must be a string');
+        }
+
+        return errors;
+    }
+
+    /**
      * Config aktualisieren
      */
     async updateConfig(newConfig) {
+        // Validate configuration
+        const errors = this.validateConfig(newConfig);
+        if (errors.length > 0) {
+            throw new Error(`Invalid configuration: ${errors.join(', ')}`);
+        }
+
         this.config = { ...this.config, ...newConfig };
         await this.api.setConfig('config', this.config);
 
@@ -301,11 +373,6 @@ class HybridShockPlugin {
             if (this.config.enableDebugMode) {
                 const via = data.via || 'http';
                 this.api.log(`Action sent (${via}): ${data.category}/${data.action}`, 'debug');
-        // Action Response
-        this.client.on('action:sent', (data) => {
-            if (this.config.enableDebugMode) {
-                const via = data.via || 'http';
-                this.api.log(`Action sent (${via}): ${data.category}/${data.action}`, 'debug');
             }
         });
 
@@ -325,7 +392,7 @@ class HybridShockPlugin {
                 let result;
 
                 // WebSocket oder HTTP verwenden?
-                if (this.config.useWebSocketForActions && this.client.isConnected) {
+                if (this.config.useWebSocketForActions && this.client && this.client.isConnected) {
                     result = await this.client.sendActionViaWebSocket(
                         action.category,
                         action.action,
@@ -338,11 +405,6 @@ class HybridShockPlugin {
                         action.context
                     );
                 }
-                const result = await this.client.sendAction(
-                    action.category,
-                    action.action,
-                    action.context
-                );
 
                 // Log
                 if (this.config.enableActionLog) {
@@ -895,14 +957,21 @@ class HybridShockPlugin {
             return;
         }
 
-        this.api.log('▶️ Starting HybridShock plugin...', 'info');
+        try {
+            this.api.log('▶️ Starting HybridShock plugin...', 'info');
 
-        this.isRunning = true;
-        this.stats.startTime = Date.now();
+            this.isRunning = true;
+            this.stats.startTime = Date.now();
 
-        await this.client.connect();
+            await this.client.connect();
 
-        this.broadcastStatus();
+            this.broadcastStatus();
+        } catch (error) {
+            this.isRunning = false;
+            this.api.log(`❌ Failed to start HybridShock plugin: ${error.message}`, 'error');
+            this.broadcastStatus();
+            throw error;
+        }
     }
 
     /**
@@ -1014,6 +1083,9 @@ class HybridShockPlugin {
      */
     async destroy() {
         this.api.log('🛑 HybridShock Plugin shutting down...', 'info');
+
+        // Broadcast final status before shutdown
+        this.broadcastStatus();
 
         await this.stop();
 

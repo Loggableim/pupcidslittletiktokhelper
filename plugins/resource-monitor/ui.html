@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Monitor - Real-Time System Performance</title>
+    <link rel="stylesheet" href="/css/tailwind.output.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #111827;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes valueChange {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.15);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .card {
+            background: rgba(31, 41, 55, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            animation: slideIn 0.5s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+        }
+
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .metric-value.value-changed {
+            animation: valueChange 0.3s ease-in-out;
+        }
+
+        .progress-bar {
+            height: 24px;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        .progress-fill.green {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .progress-fill.yellow {
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+        }
+
+        .progress-fill.red {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        /* Circular Progress */
+        .circular-progress {
+            position: relative;
+            width: 180px;
+            height: 180px;
+        }
+
+        .circular-progress svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .circular-progress-bg {
+            fill: none;
+            stroke: rgba(30, 41, 59, 0.8);
+            stroke-width: 12;
+        }
+
+        .circular-progress-fill {
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .circular-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 120px;
+            margin-top: 16px;
+        }
+
+        .chart-container-large {
+            position: relative;
+            height: 200px;
+            margin-top: 16px;
+        }
+
+        /* Collapsible Section */
+        .collapsible {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .collapsible.expanded {
+            max-height: 2000px;
+        }
+
+        /* Warning Badge */
+        .warning-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            animation: pulse 2s infinite;
+        }
+
+        .warning-badge.critical {
+            background: #ef4444;
+            color: white;
+        }
+
+        .warning-badge.warning {
+            background: #fbbf24;
+            color: #1f2937;
+        }
+
+        .warning-badge.good {
+            background: #10b981;
+            color: white;
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+            border-radius: 8px;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #4b5563;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #3b82f6;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Compact Mode */
+        .compact-mode .card {
+            padding: 16px;
+        }
+
+        .compact-mode .metric-value {
+            font-size: 2rem;
+        }
+
+        .compact-mode .chart-container {
+            height: 80px;
+        }
+
+        /* Responsive Grid */
+        @media (max-width: 768px) {
+            .metric-value {
+                font-size: 2rem;
+            }
+
+            .circular-progress {
+                width: 140px;
+                height: 140px;
+            }
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Core Grid */
+        .core-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .core-item {
+            background: rgba(17, 24, 39, 0.6);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Memory Breakdown */
+        .memory-breakdown {
+            display: grid;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .memory-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(17, 24, 39, 0.4);
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        /* Process List */
+        .process-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .process-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.875rem;
+        }
+
+        .process-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Export Button */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="min-h-screen p-4 md:p-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 class="text-4xl font-bold text-white mb-2">Resource Monitor</h1>
+                    <p class="text-gray-400">Real-time system performance tracking</p>
+                </div>
+                <div class="flex gap-3 items-center flex-wrap">
+                    <!-- Compact Mode Toggle -->
+                    <div class="flex items-center gap-3 bg-gray-800 px-4 py-2 rounded-lg">
+                        <span class="text-sm text-gray-400">Compact Mode</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="compact-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Export Button -->
+                    <button class="btn btn-primary flex items-center gap-2" onclick="exportMetrics()">
+                        <span>📊</span> Export Data
+                    </button>
+
+                    <!-- Settings Link -->
+                    <a href="/dashboard.html#settings" class="btn btn-secondary flex items-center gap-2">
+                        <span>⚙️</span> Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warnings Section -->
+        <div id="warnings-section" class="mb-6 hidden">
+            <div class="card border-yellow-600 bg-yellow-900 bg-opacity-20">
+                <h3 class="text-xl font-semibold text-yellow-400 mb-3">⚠️ Performance Warnings</h3>
+                <div id="warnings-list" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Main Metrics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- CPU Card -->
+            <div class="card">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-white mb-1">CPU Usage</h2>
+                        <p class="text-sm text-gray-400" id="cpu-model">Loading...</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-white transition" onclick="toggleSection('cpu-details')">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- CPU Circular Progress -->
+                <div class="flex justify-center mb-4">
+                    <div class="circular-progress">
+                        <svg viewBox="0 0 200 200">
+                            <circle class="circular-progress-bg" cx="100" cy="100" r="90"></circle>
+                            <circle id="cpu-progress-circle" class="circular-progress-fill" cx="100" cy="100" r="90"
+                                    stroke="#10b981" stroke-dasharray="565.48" stroke-dashoffset="565.48"></circle>
+                        </svg>
+                        <div class="circular-progress-text">
+                            <div id="cpu-percentage" class="metric-value text-white">0%</div>
+                            <div class="text-sm text-gray-400" id="cpu-status">Good</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CPU Progress Bar -->
+                <div class="progress-bar mb-4">
+                    <div id="cpu-progress-bar" class="progress-fill green" style="width: 0%"></div>
+                </div>
+
+                <!-- CPU Stats -->
+                <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+                    <div class="tooltip">
+                        <div class="text-gray-400">Cores</div>
+                        <div class="font-semibold text-white" id="cpu-cores">-</div>
+                        <span class="tooltip-text">Physical + Logical Cores</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Temperature</div>
+                        <div class="font-semibold text-white" id="cpu-temp">-</div>
+                        <span class="tooltip-text">CPU Temperature</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Peak Usage</div>
+                        <div class="font-semibold text-white" id="cpu-peak">0%</div>
+                        <span class="tooltip-text">Highest recorded usage</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Avg Usage</div>
+                        <div class="font-semibold text-white" id="cpu-avg">0%</div>
+                        <span class="tooltip-text">Average over 60s</span>
+                    </div>
+                </div>
+
+                <!-- CPU Chart -->
+                <div class="chart-container">
+                    <canvas id="cpu-chart"></canvas>
+                </div>
+
+                <!-- Expandable: Per-Core Breakdown -->
+                <div id="cpu-details" class="collapsible">
+                    <hr class="border-gray-700 my-4">
+                    <h3 class="text-lg font-semibold text-white mb-3">Per-Core Usage</h3>
+                    <div id="cpu-cores-grid" class="core-grid"></div>
+                </div>
+            </div>
+
+            <!-- RAM Card -->
+            <div class="card">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-white mb-1">RAM Usage</h2>
+                        <p class="text-sm text-gray-400" id="ram-total">Loading...</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-white transition" onclick="toggleSection('ram-details')">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- RAM Circular Progress -->
+                <div class="flex justify-center mb-4">
+                    <div class="circular-progress">
+                        <svg viewBox="0 0 200 200">
+                            <circle class="circular-progress-bg" cx="100" cy="100" r="90"></circle>
+                            <circle id="ram-progress-circle" class="circular-progress-fill" cx="100" cy="100" r="90"
+                                    stroke="#10b981" stroke-dasharray="565.48" stroke-dashoffset="565.48"></circle>
+                        </svg>
+                        <div class="circular-progress-text">
+                            <div id="ram-percentage" class="metric-value text-white">0%</div>
+                            <div class="text-sm text-gray-400" id="ram-used">0 GB</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RAM Progress Bar -->
+                <div class="progress-bar mb-4">
+                    <div id="ram-progress-bar" class="progress-fill green" style="width: 0%"></div>
+                </div>
+
+                <!-- RAM Stats -->
+                <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+                    <div class="tooltip">
+                        <div class="text-gray-400">Used</div>
+                        <div class="font-semibold text-white" id="ram-used-stat">-</div>
+                        <span class="tooltip-text">Currently used RAM</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Free</div>
+                        <div class="font-semibold text-white" id="ram-free">-</div>
+                        <span class="tooltip-text">Available RAM</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Peak Usage</div>
+                        <div class="font-semibold text-white" id="ram-peak">0%</div>
+                        <span class="tooltip-text">Highest recorded usage</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Process RAM</div>
+                        <div class="font-semibold text-white" id="ram-process">-</div>
+                        <span class="tooltip-text">Current process memory</span>
+                    </div>
+                </div>
+
+                <!-- RAM Chart -->
+                <div class="chart-container">
+                    <canvas id="ram-chart"></canvas>
+                </div>
+
+                <!-- Expandable: Memory Breakdown -->
+                <div id="ram-details" class="collapsible">
+                    <hr class="border-gray-700 my-4">
+                    <h3 class="text-lg font-semibold text-white mb-3">Memory Breakdown</h3>
+                    <div id="ram-breakdown" class="memory-breakdown"></div>
+                </div>
+            </div>
+
+            <!-- GPU Card -->
+            <div class="card">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-white mb-1">GPU Status</h2>
+                        <p class="text-sm text-gray-400" id="gpu-model">Loading...</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-white transition" onclick="toggleSection('gpu-details')">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- GPU Circular Progress -->
+                <div class="flex justify-center mb-4">
+                    <div class="circular-progress">
+                        <svg viewBox="0 0 200 200">
+                            <circle class="circular-progress-bg" cx="100" cy="100" r="90"></circle>
+                            <circle id="gpu-progress-circle" class="circular-progress-fill" cx="100" cy="100" r="90"
+                                    stroke="#6b7280" stroke-dasharray="565.48" stroke-dashoffset="565.48"></circle>
+                        </svg>
+                        <div class="circular-progress-text">
+                            <div id="gpu-percentage" class="metric-value text-white">N/A</div>
+                            <div class="text-sm text-gray-400" id="gpu-status">Disabled</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GPU Progress Bar -->
+                <div class="progress-bar mb-4">
+                    <div id="gpu-progress-bar" class="progress-fill" style="width: 0%; background: #6b7280"></div>
+                </div>
+
+                <!-- GPU Stats -->
+                <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+                    <div class="tooltip">
+                        <div class="text-gray-400">VRAM Used</div>
+                        <div class="font-semibold text-white" id="gpu-vram-used">-</div>
+                        <span class="tooltip-text">Video RAM in use</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">VRAM Total</div>
+                        <div class="font-semibold text-white" id="gpu-vram-total">-</div>
+                        <span class="tooltip-text">Total Video RAM</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Temperature</div>
+                        <div class="font-semibold text-white" id="gpu-temp">-</div>
+                        <span class="tooltip-text">GPU Temperature</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Acceleration</div>
+                        <div class="font-semibold text-white" id="gpu-acceleration">Disabled</div>
+                        <span class="tooltip-text">Hardware acceleration status</span>
+                    </div>
+                </div>
+
+                <!-- GPU Chart -->
+                <div class="chart-container">
+                    <canvas id="gpu-chart"></canvas>
+                </div>
+
+                <!-- Expandable: GPU Details -->
+                <div id="gpu-details" class="collapsible">
+                    <hr class="border-gray-700 my-4">
+                    <h3 class="text-lg font-semibold text-white mb-3">GPU Information</h3>
+                    <div id="gpu-info" class="text-sm text-gray-400 space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Processes Section -->
+        <div class="card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-white">Top Processes by Memory</h2>
+                <button class="text-gray-400 hover:text-white transition" onclick="toggleSection('processes-list')">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="processes-list" class="collapsible expanded">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-400 border-b border-gray-700">
+                                <th class="pb-3 pr-4">Process</th>
+                                <th class="pb-3 pr-4">PID</th>
+                                <th class="pb-3 pr-4">CPU %</th>
+                                <th class="pb-3">Memory</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processes-table" class="text-gray-300">
+                            <tr><td colspan="4" class="text-center py-8 text-gray-500">Loading processes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="mt-6 text-center">
+            <div id="connection-status" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-full text-sm">
+                <div id="status-indicator" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                <span id="status-text" class="text-gray-400">Connecting to server...</span>
+            </div>
+            <div class="text-xs text-gray-500 mt-2">
+                Update interval: <span id="update-interval">-</span>ms | Last update: <span id="last-update">-</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IO connection
+        const socket = io();
+
+        // State
+        let metrics = {
+            cpu: { usage: 0, cores: [], temp: null, model: '', peak: 0, history: [] },
+            ram: { used: 0, total: 0, percent: 0, process: 0, peak: 0, history: [], breakdown: {} },
+            gpu: { usage: null, vram: { used: 0, total: 0 }, temp: null, model: '', enabled: false, history: [] },
+            processes: []
+        };
+
+        let charts = {
+            cpu: null,
+            ram: null,
+            gpu: null
+        };
+
+        let compactMode = false;
+        let lastUpdateTime = Date.now();
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            setupEventListeners();
+            requestMetrics();
+
+            // Request metrics every 2 seconds
+            setInterval(requestMetrics, 2000);
+        });
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Compact mode toggle
+            document.getElementById('compact-toggle').addEventListener('change', (e) => {
+                compactMode = e.target.checked;
+                document.getElementById('app').classList.toggle('compact-mode', compactMode);
+            });
+
+            // Socket events
+            socket.on('connect', () => {
+                updateConnectionStatus(true);
+            });
+
+            socket.on('disconnect', () => {
+                updateConnectionStatus(false);
+            });
+
+            socket.on('resource-monitor:metrics', (data) => {
+                updateMetrics(data);
+            });
+        }
+
+        // Request metrics from server
+        function requestMetrics() {
+            socket.emit('resource-monitor:request-metrics');
+        }
+
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('status-indicator');
+            const text = document.getElementById('status-text');
+
+            if (connected) {
+                indicator.className = 'w-3 h-3 rounded-full bg-green-500';
+                text.textContent = 'Connected';
+                text.className = 'text-green-400';
+            } else {
+                indicator.className = 'w-3 h-3 rounded-full bg-red-500';
+                text.textContent = 'Disconnected';
+                text.className = 'text-red-400';
+            }
+        }
+
+        // Update metrics
+        function updateMetrics(data) {
+            if (!data) return;
+
+            lastUpdateTime = Date.now();
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+            document.getElementById('update-interval').textContent = data.updateInterval || 2000;
+
+            // Update CPU
+            if (data.cpu) {
+                updateCPU(data.cpu);
+            }
+
+            // Update RAM
+            if (data.ram) {
+                updateRAM(data.ram);
+            }
+
+            // Update GPU
+            if (data.gpu) {
+                updateGPU(data.gpu);
+            }
+
+            // Update processes
+            if (data.processes) {
+                updateProcesses(data.processes);
+            }
+
+            // Check for warnings
+            checkWarnings();
+        }
+
+        // Update CPU display
+        function updateCPU(cpu) {
+            const usage = Math.round(cpu.usage || 0);
+
+            // Update percentage with animation
+            const percentEl = document.getElementById('cpu-percentage');
+            if (parseInt(percentEl.textContent) !== usage) {
+                percentEl.classList.add('value-changed');
+                setTimeout(() => percentEl.classList.remove('value-changed'), 300);
+            }
+            percentEl.textContent = usage + '%';
+
+            // Update model
+            if (cpu.model) {
+                document.getElementById('cpu-model').textContent = cpu.model;
+            }
+
+            // Update cores
+            document.getElementById('cpu-cores').textContent = `${cpu.physicalCores || 0} / ${cpu.logicalCores || 0}`;
+
+            // Update temperature
+            document.getElementById('cpu-temp').textContent = cpu.temp ? `${cpu.temp}°C` : 'N/A';
+
+            // Update progress bars and circles
+            const color = getColorClass(usage, 5, 8);
+            updateProgressBar('cpu-progress-bar', usage, color);
+            updateCircularProgress('cpu-progress-circle', usage, color);
+
+            // Update status
+            document.getElementById('cpu-status').textContent = getStatusText(usage, 5, 8);
+
+            // Track peak
+            if (usage > metrics.cpu.peak) {
+                metrics.cpu.peak = usage;
+                document.getElementById('cpu-peak').textContent = usage + '%';
+            }
+
+            // Update history
+            metrics.cpu.history.push(usage);
+            if (metrics.cpu.history.length > 60) {
+                metrics.cpu.history.shift();
+            }
+
+            // Calculate average
+            const avg = Math.round(metrics.cpu.history.reduce((a, b) => a + b, 0) / metrics.cpu.history.length);
+            document.getElementById('cpu-avg').textContent = avg + '%';
+
+            // Update chart
+            updateChart('cpu', metrics.cpu.history, color);
+
+            // Update per-core display
+            if (cpu.cores && cpu.cores.length > 0) {
+                updateCoresGrid(cpu.cores);
+            }
+        }
+
+        // Update RAM display
+        function updateRAM(ram) {
+            const percent = Math.round(ram.percent || 0);
+            const used = formatBytes(ram.used || 0);
+            const total = formatBytes(ram.total || 0);
+            const free = formatBytes(ram.free || 0);
+
+            // Update percentage with animation
+            const percentEl = document.getElementById('ram-percentage');
+            if (parseInt(percentEl.textContent) !== percent) {
+                percentEl.classList.add('value-changed');
+                setTimeout(() => percentEl.classList.remove('value-changed'), 300);
+            }
+            percentEl.textContent = percent + '%';
+
+            // Update used display
+            document.getElementById('ram-used').textContent = used;
+            document.getElementById('ram-total').textContent = `Total: ${total}`;
+            document.getElementById('ram-used-stat').textContent = used;
+            document.getElementById('ram-free').textContent = free;
+            document.getElementById('ram-process').textContent = formatBytes(ram.processMemory || 0);
+
+            // Update progress bars and circles
+            const color = getColorClass(percent, 70, 85);
+            updateProgressBar('ram-progress-bar', percent, color);
+            updateCircularProgress('ram-progress-circle', percent, color);
+
+            // Track peak
+            if (percent > metrics.ram.peak) {
+                metrics.ram.peak = percent;
+                document.getElementById('ram-peak').textContent = percent + '%';
+            }
+
+            // Update history
+            metrics.ram.history.push(percent);
+            if (metrics.ram.history.length > 60) {
+                metrics.ram.history.shift();
+            }
+
+            // Update chart
+            updateChart('ram', metrics.ram.history, color);
+
+            // Update memory breakdown
+            if (ram.breakdown) {
+                updateMemoryBreakdown(ram.breakdown);
+            }
+        }
+
+        // Update GPU display
+        function updateGPU(gpu) {
+            if (!gpu || !gpu.enabled) {
+                document.getElementById('gpu-percentage').textContent = 'N/A';
+                document.getElementById('gpu-status').textContent = 'Disabled';
+                document.getElementById('gpu-model').textContent = 'GPU Acceleration: Disabled';
+                document.getElementById('gpu-acceleration').textContent = 'Disabled';
+                return;
+            }
+
+            const usage = Math.round(gpu.usage || 0);
+
+            // Update percentage
+            const percentEl = document.getElementById('gpu-percentage');
+            if (parseInt(percentEl.textContent) !== usage) {
+                percentEl.classList.add('value-changed');
+                setTimeout(() => percentEl.classList.remove('value-changed'), 300);
+            }
+            percentEl.textContent = usage + '%';
+
+            // Update model
+            if (gpu.model) {
+                document.getElementById('gpu-model').textContent = gpu.model;
+            }
+
+            // Update VRAM
+            document.getElementById('gpu-vram-used').textContent = formatBytes(gpu.vram?.used || 0);
+            document.getElementById('gpu-vram-total').textContent = formatBytes(gpu.vram?.total || 0);
+
+            // Update temperature
+            document.getElementById('gpu-temp').textContent = gpu.temp ? `${gpu.temp}°C` : 'N/A';
+
+            // Update acceleration status
+            document.getElementById('gpu-acceleration').textContent = gpu.enabled ? 'Enabled' : 'Disabled';
+            document.getElementById('gpu-status').textContent = 'Active';
+
+            // Update progress bars and circles
+            const color = getColorClass(usage, 70, 85);
+            updateProgressBar('gpu-progress-bar', usage, color);
+            updateCircularProgress('gpu-progress-circle', usage, color);
+
+            // Update history
+            metrics.gpu.history.push(usage);
+            if (metrics.gpu.history.length > 60) {
+                metrics.gpu.history.shift();
+            }
+
+            // Update chart
+            updateChart('gpu', metrics.gpu.history, color);
+
+            // Update GPU info
+            updateGPUInfo(gpu);
+        }
+
+        // Update processes table
+        function updateProcesses(processes) {
+            const tbody = document.getElementById('processes-table');
+
+            if (!processes || processes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-gray-500">No process data available</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = processes.slice(0, 10).map(proc => `
+                <tr class="border-b border-gray-700 hover:bg-gray-700 transition">
+                    <td class="py-3 pr-4">${proc.name || 'Unknown'}</td>
+                    <td class="py-3 pr-4">${proc.pid || '-'}</td>
+                    <td class="py-3 pr-4">${proc.cpu ? proc.cpu.toFixed(1) + '%' : '-'}</td>
+                    <td class="py-3">${formatBytes(proc.memory || 0)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Update cores grid
+        function updateCoresGrid(cores) {
+            const grid = document.getElementById('cpu-cores-grid');
+            grid.innerHTML = cores.map((usage, i) => {
+                const percent = Math.round(usage);
+                const color = getColorClass(percent, 5, 8);
+                return `
+                    <div class="core-item">
+                        <div class="text-xs text-gray-400 mb-1">Core ${i}</div>
+                        <div class="font-semibold text-white mb-2">${percent}%</div>
+                        <div class="h-2 bg-gray-900 rounded overflow-hidden">
+                            <div class="h-full progress-fill ${color}" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update memory breakdown
+        function updateMemoryBreakdown(breakdown) {
+            const container = document.getElementById('ram-breakdown');
+            container.innerHTML = Object.entries(breakdown).map(([key, value]) => `
+                <div class="memory-item">
+                    <span class="text-gray-400">${formatKey(key)}</span>
+                    <span class="text-white font-semibold">${formatBytes(value)}</span>
+                </div>
+            `).join('');
+        }
+
+        // Update GPU info
+        function updateGPUInfo(gpu) {
+            const info = document.getElementById('gpu-info');
+            const details = [
+                { label: 'Model', value: gpu.model || 'Unknown' },
+                { label: 'Driver Version', value: gpu.driver || 'N/A' },
+                { label: 'Vendor', value: gpu.vendor || 'N/A' },
+                { label: 'Memory Type', value: gpu.memoryType || 'N/A' }
+            ];
+
+            info.innerHTML = details.map(({ label, value }) => `
+                <div class="flex justify-between">
+                    <span class="text-gray-400">${label}:</span>
+                    <span class="text-white">${value}</span>
+                </div>
+            `).join('');
+        }
+
+        // Check for warnings
+        function checkWarnings() {
+            const warnings = [];
+
+            // CPU warnings
+            if (metrics.cpu.history.length > 0) {
+                const avgCPU = metrics.cpu.history.reduce((a, b) => a + b, 0) / metrics.cpu.history.length;
+                if (avgCPU > 8) {
+                    warnings.push({
+                        type: 'critical',
+                        message: `CPU usage is critically high: ${Math.round(avgCPU)}% (target: <5%)`
+                    });
+                } else if (avgCPU > 5) {
+                    warnings.push({
+                        type: 'warning',
+                        message: `CPU usage is above target: ${Math.round(avgCPU)}% (target: <5%)`
+                    });
+                }
+            }
+
+            // RAM warnings
+            if (metrics.ram.history.length > 0) {
+                const currentRAM = metrics.ram.history[metrics.ram.history.length - 1];
+                if (currentRAM > 85) {
+                    warnings.push({
+                        type: 'critical',
+                        message: `RAM usage is critically high: ${currentRAM}%`
+                    });
+                } else if (currentRAM > 70) {
+                    warnings.push({
+                        type: 'warning',
+                        message: `RAM usage is high: ${currentRAM}%`
+                    });
+                }
+            }
+
+            // Display warnings
+            const section = document.getElementById('warnings-section');
+            const list = document.getElementById('warnings-list');
+
+            if (warnings.length > 0) {
+                section.classList.remove('hidden');
+                list.innerHTML = warnings.map(w => `
+                    <div class="warning-badge ${w.type}">
+                        <span>${w.type === 'critical' ? '🔴' : '⚠️'}</span>
+                        <span>${w.message}</span>
+                    </div>
+                `).join('');
+            } else {
+                section.classList.add('hidden');
+            }
+        }
+
+        // Initialize charts
+        function initCharts() {
+            const chartConfig = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            display: true,
+                            min: 0,
+                            max: 100,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#9ca3af', font: { size: 10 } }
+                        }
+                    },
+                    elements: {
+                        line: { tension: 0.4, borderWidth: 2 },
+                        point: { radius: 0 }
+                    },
+                    animation: { duration: 500 }
+                }
+            };
+
+            // Create charts
+            ['cpu', 'ram', 'gpu'].forEach(type => {
+                const ctx = document.getElementById(`${type}-chart`).getContext('2d');
+                charts[type] = new Chart(ctx, {
+                    ...chartConfig,
+                    data: {
+                        labels: Array(60).fill(''),
+                        datasets: [{
+                            data: Array(60).fill(0),
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true
+                        }]
+                    }
+                });
+            });
+        }
+
+        // Update chart
+        function updateChart(type, data, colorClass) {
+            if (!charts[type]) return;
+
+            const colors = {
+                green: { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+                yellow: { border: '#fbbf24', bg: 'rgba(251, 191, 36, 0.1)' },
+                red: { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
+            };
+
+            const color = colors[colorClass] || colors.green;
+
+            charts[type].data.labels = Array(data.length).fill('');
+            charts[type].data.datasets[0].data = data;
+            charts[type].data.datasets[0].borderColor = color.border;
+            charts[type].data.datasets[0].backgroundColor = color.bg;
+            charts[type].update('none');
+        }
+
+        // Update progress bar
+        function updateProgressBar(id, percent, colorClass) {
+            const el = document.getElementById(id);
+            el.style.width = percent + '%';
+            el.className = `progress-fill ${colorClass}`;
+        }
+
+        // Update circular progress
+        function updateCircularProgress(id, percent, colorClass) {
+            const circle = document.getElementById(id);
+            const circumference = 565.48;
+            const offset = circumference - (percent / 100) * circumference;
+
+            circle.style.strokeDashoffset = offset;
+
+            const colors = {
+                green: '#10b981',
+                yellow: '#fbbf24',
+                red: '#ef4444'
+            };
+
+            circle.setAttribute('stroke', colors[colorClass] || colors.green);
+        }
+
+        // Get color class based on thresholds
+        function getColorClass(value, yellowThreshold, redThreshold) {
+            if (value > redThreshold) return 'red';
+            if (value > yellowThreshold) return 'yellow';
+            return 'green';
+        }
+
+        // Get status text
+        function getStatusText(value, yellowThreshold, redThreshold) {
+            if (value > redThreshold) return 'Critical';
+            if (value > yellowThreshold) return 'Warning';
+            return 'Good';
+        }
+
+        // Format bytes
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Format key
+        function formatKey(key) {
+            return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        }
+
+        // Toggle section
+        function toggleSection(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('expanded');
+        }
+
+        // Export metrics
+        function exportMetrics() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                cpu: {
+                    current: metrics.cpu.history[metrics.cpu.history.length - 1],
+                    peak: metrics.cpu.peak,
+                    average: Math.round(metrics.cpu.history.reduce((a, b) => a + b, 0) / metrics.cpu.history.length),
+                    history: metrics.cpu.history
+                },
+                ram: {
+                    current: metrics.ram.history[metrics.ram.history.length - 1],
+                    peak: metrics.ram.peak,
+                    average: Math.round(metrics.ram.history.reduce((a, b) => a + b, 0) / metrics.ram.history.length),
+                    history: metrics.ram.history
+                },
+                gpu: {
+                    current: metrics.gpu.history[metrics.gpu.history.length - 1],
+                    history: metrics.gpu.history
+                },
+                processes: metrics.processes
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `resource-monitor-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
