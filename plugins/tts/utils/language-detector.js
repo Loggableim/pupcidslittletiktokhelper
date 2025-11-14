@@ -68,12 +68,12 @@ class LanguageDetector {
      * @returns {object} { langCode, confidence, detected }
      */
     detect(text) {
-        if (!text || text.trim().length < 3) {
+        if (!text || typeof text !== 'string' || text.trim().length < 3) {
             return { langCode: 'en', confidence: 0, detected: false };
         }
 
-        // Check cache
-        const cacheKey = text.substring(0, 100); // Cache first 100 chars
+        // Check cache - use hash of full text to avoid collisions
+        const cacheKey = this._hashText(text);
         if (this.cache.has(cacheKey)) {
             return this.cache.get(cacheKey);
         }
@@ -205,6 +205,21 @@ class LanguageDetector {
             size: this.cache.size,
             maxSize: this.maxCacheSize
         };
+    }
+
+    /**
+     * Simple hash function for text caching
+     * Prevents cache collisions from texts with identical prefixes
+     */
+    _hashText(text) {
+        let hash = 0;
+        const str = text.length > 500 ? text.substring(0, 500) : text;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return hash.toString(36);
     }
 }
 

@@ -1,6 +1,19 @@
 // TTS Admin Panel JavaScript
 let socket = null;
 
+/**
+ * HTML escape function to prevent XSS attacks
+ */
+function escapeHtml(unsafe) {
+    if (unsafe == null) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Initialize Socket.io with error handling
 try {
     if (typeof io !== 'undefined') {
@@ -277,9 +290,9 @@ function renderUsers() {
     list.innerHTML = filtered.map(user => `
         <div class="bg-gray-700 rounded p-4 flex justify-between items-center fade-in">
             <div class="flex-1">
-                <div class="font-bold">${user.username}</div>
+                <div class="font-bold">${escapeHtml(user.username)}</div>
                 <div class="text-sm text-gray-400">
-                    ${user.assigned_voice_id ? `Voice: ${user.assigned_voice_id}` : 'No voice assigned'}
+                    ${user.assigned_voice_id ? `Voice: ${escapeHtml(user.assigned_voice_id)}` : 'No voice assigned'}
                 </div>
                 <div class="text-xs text-gray-500 mt-1">
                     ${user.allow_tts ? '<span class="text-green-400">✓ Allowed</span>' : ''}
@@ -288,24 +301,24 @@ function renderUsers() {
             </div>
             <div class="flex space-x-2">
                 ${!user.allow_tts ? `
-                    <button onclick="allowUser('${user.user_id}', '${user.username}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
+                    <button onclick="allowUser('${escapeHtml(user.user_id)}', '${escapeHtml(user.username)}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
                         Allow
                     </button>
                 ` : `
-                    <button onclick="denyUser('${user.user_id}', '${user.username}')" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm">
+                    <button onclick="denyUser('${escapeHtml(user.user_id)}', '${escapeHtml(user.username)}')" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm">
                         Revoke
                     </button>
                 `}
                 ${!user.is_blacklisted ? `
-                    <button onclick="blacklistUser('${user.user_id}', '${user.username}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                    <button onclick="blacklistUser('${escapeHtml(user.user_id)}', '${escapeHtml(user.username)}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
                         Blacklist
                     </button>
                 ` : `
-                    <button onclick="unblacklistUser('${user.user_id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                    <button onclick="unblacklistUser('${escapeHtml(user.user_id)}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
                         Unblacklist
                     </button>
                 `}
-                <button onclick="assignVoiceDialog('${user.user_id}', '${user.username}')" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm">
+                <button onclick="assignVoiceDialog('${escapeHtml(user.user_id)}', '${escapeHtml(user.username)}')" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm">
                     ${user.assigned_voice_id ? 'Change' : 'Assign'} Voice
                 </button>
             </div>

@@ -117,7 +117,16 @@ class ProfanityFilter {
      * @returns {object} { filtered: string, hasProfanity: boolean, matches: array }
      */
     filter(text, langCode = null) {
-        if (!text || this.mode === 'off') {
+        // Check if text exists first to avoid returning null
+        if (!text) {
+            return {
+                filtered: '',
+                hasProfanity: false,
+                matches: []
+            };
+        }
+
+        if (this.mode === 'off') {
             return {
                 filtered: text,
                 hasProfanity: false,

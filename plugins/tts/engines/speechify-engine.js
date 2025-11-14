@@ -42,6 +42,7 @@ class SpeechifyEngine {
         this.cachedVoices = null;
         this.cacheTimestamp = null;
         this.cacheTTL = 3600000; // 1 hour in milliseconds
+        this.voicesFetchPromise = null; // Promise deduplication
 
         // Usage Tracking
         this.usageStats = {
@@ -71,7 +72,29 @@ class SpeechifyEngine {
             return this.cachedVoices;
         }
 
-        // Fetch voices from API
+        // If a fetch is already in progress, return that promise
+        if (this.voicesFetchPromise) {
+            this.logger.info('Speechify: Returning in-progress voices fetch');
+            return this.voicesFetchPromise;
+        }
+
+        // Start new fetch and store the promise
+        this.voicesFetchPromise = this._fetchVoices();
+
+        try {
+            const voices = await this.voicesFetchPromise;
+            return voices;
+        } finally {
+            // Clear the promise when done (success or failure)
+            this.voicesFetchPromise = null;
+        }
+    }
+
+    /**
+     * Internal method to fetch voices from API
+     * @returns {Promise<Object>}
+     */
+    async _fetchVoices() {
         try {
             this.logger.info('Speechify: Fetching voices from API');
 

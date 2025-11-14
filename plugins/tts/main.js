@@ -1056,8 +1056,18 @@ class TTSPlugin {
      */
     async destroy() {
         try {
+            // Stop queue processing
             this.queueManager.stopProcessing();
-            this.logger.info('TTS Plugin destroyed');
+
+            // Clear debug logs to free memory
+            this.debugLogs = [];
+
+            // Clear caches in utilities
+            if (this.permissionManager) {
+                this.permissionManager.clearCache();
+            }
+
+            this.logger.info('TTS Plugin destroyed and resources cleaned up');
         } catch (error) {
             this.logger.error(`TTS Plugin destroy error: ${error.message}`);
         }
