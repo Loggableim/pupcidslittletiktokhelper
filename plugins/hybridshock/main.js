@@ -301,10 +301,6 @@ class HybridShockPlugin {
             if (this.config.enableDebugMode) {
                 const via = data.via || 'http';
                 this.api.log(`Action sent (${via}): ${data.category}/${data.action}`, 'debug');
-        // Action Response
-        this.client.on('action:sent', (data) => {
-            if (this.config.enableDebugMode) {
-                this.api.log(`Action sent: ${data.category}/${data.action}`, 'debug');
             }
         });
 
@@ -337,11 +333,6 @@ class HybridShockPlugin {
                         action.context
                     );
                 }
-                const result = await this.client.sendAction(
-                    action.category,
-                    action.action,
-                    action.context
-                );
 
                 // Log
                 if (this.config.enableActionLog) {
