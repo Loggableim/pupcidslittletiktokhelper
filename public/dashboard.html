@@ -183,6 +183,8 @@
                 <button class="tab-btn" data-tab="liveGoals" data-plugin="goals">🎯 Live Goals</button>
                 <!-- Resource Monitor Tab -->
                 <button class="tab-btn" data-tab="resourceMonitor" data-plugin="resource-monitor">🖥️ Resources</button>
+                <!-- Quiz Show Tab -->
+                <button class="tab-btn" data-tab="quizShow" data-plugin="quiz-show">🎯 Quiz Show</button>
                 <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
@@ -852,6 +854,28 @@
                 <iframe src="/resource-monitor/ui"
                         style="width: 100%; height: 100%; border: none;"
                         title="Resource Monitor">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Tab: Quiz Show -->
+        <div id="tab-quizShow" class="tab-content" data-plugin="quiz-show">
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">🎯 Quiz Show - Wer wird Millionär</h2>
+                    <a href="/plugins/quiz_show/quiz_show.html" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm transition-colors">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <p class="text-gray-400 text-sm">
+                    Interactive quiz show for TikTok livestreams with question database, joker system, and leaderboard
+                </p>
+            </div>
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe src="/plugins/quiz_show/quiz_show.html"
+                        style="width: 100%; height: 100%; border: none;"
+                        title="Quiz Show">
                 </iframe>
             </div>
         </div>
