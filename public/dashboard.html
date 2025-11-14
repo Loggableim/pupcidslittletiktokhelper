@@ -177,6 +177,8 @@
                 <button class="tab-btn" data-tab="multicam" data-plugin="multicam">🎥 Multi-Cam</button>
                 <!-- OSC-Bridge Tab -->
                 <button class="tab-btn" data-tab="oscBridge" data-plugin="osc-bridge">🎮 OSC-Bridge</button>
+                <!-- HybridShock Integration Tab -->
+                <button class="tab-btn" data-tab="hybridshock" data-plugin="hybridshock">⚡ HybridShock</button>
                 <!-- Live Goals Tab -->
                 <button class="tab-btn" data-tab="liveGoals" data-plugin="goals">🎯 Live Goals</button>
                 <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
@@ -773,6 +775,32 @@
                     src="/plugins/osc-bridge/ui.html"
                     style="width: 100%; height: 100%; border: none;"
                     title="OSC-Bridge Configuration">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Tab: HybridShock Integration -->
+        <div id="tab-hybridshock" class="tab-content" data-plugin="hybridshock">
+            <!-- HybridShock Header -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">⚡ HybridShock Integration</h2>
+                    <a href="/hybridshock/ui" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <div class="text-sm text-gray-400">
+                    Bidirektionale Bridge zwischen TikTok Live Events und HybridShock API • WebSocket + HTTP Integration • Event-Mapping-System • Action-Queue mit Rate-Limiting
+                </div>
+            </div>
+
+            <!-- HybridShock UI Iframe -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe
+                    src="/hybridshock/ui"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="HybridShock Configuration">
                 </iframe>
             </div>
         </div>
