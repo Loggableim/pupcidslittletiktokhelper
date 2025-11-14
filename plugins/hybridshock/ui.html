@@ -406,6 +406,14 @@
                         <span>Auto-Reconnect on Connection Loss</span>
                     </label>
                     <label class="flex items-center gap-3">
+                        <input type="checkbox" id="configUseWebSocketForActions" class="w-5 h-5">
+                        <span>Use WebSocket for Actions (instead of HTTP POST)</span>
+                    </label>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" id="configPreferWebSocket" class="w-5 h-5">
+                        <span>Prefer WebSocket for Features (Categories/Actions/Events)</span>
+                    </label>
+                    <label class="flex items-center gap-3">
                         <input type="checkbox" id="configEnableDebugMode" class="w-5 h-5">
                         <span>Enable Debug Mode (Verbose Logging)</span>
                     </label>
@@ -689,6 +697,8 @@
                     document.getElementById('configMaxRetries').value = config.maxRetries;
                     document.getElementById('configAutoConnect').checked = config.autoConnect;
                     document.getElementById('configAutoReconnect').checked = config.autoReconnect;
+                    document.getElementById('configUseWebSocketForActions').checked = config.useWebSocketForActions || false;
+                    document.getElementById('configPreferWebSocket').checked = config.preferWebSocket || false;
                     document.getElementById('configEnableDebugMode').checked = config.enableDebugMode;
                 }
             } catch (error) {
@@ -853,6 +863,8 @@
                     maxRetries: parseInt(document.getElementById('configMaxRetries').value),
                     autoConnect: document.getElementById('configAutoConnect').checked,
                     autoReconnect: document.getElementById('configAutoReconnect').checked,
+                    useWebSocketForActions: document.getElementById('configUseWebSocketForActions').checked,
+                    preferWebSocket: document.getElementById('configPreferWebSocket').checked,
                     enableDebugMode: document.getElementById('configEnableDebugMode').checked
                 };
 

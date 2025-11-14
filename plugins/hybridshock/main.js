@@ -191,6 +191,10 @@ class HybridShockPlugin {
             reconnectInterval: 5000,
             heartbeatInterval: 30000,
 
+            // Communication Preferences
+            preferWebSocket: false,  // false = HTTP (default), true = WebSocket für Actions/Features
+            useWebSocketForActions: false,  // Actions über WebSocket statt HTTP senden
+
             // Queue Settings
             maxActionsPerSecond: 10,
             maxQueueSize: 1000,
@@ -268,10 +272,35 @@ class HybridShockPlugin {
             this.handleHybridShockEvent(event);
         });
 
+        // Categories Update Event (vom Server gepusht)
+        this.client.on('categories:update', (categories) => {
+            this.api.log(`Categories updated: ${categories.length} categories received`, 'info');
+            this.api.emit('hybridshock:categories-update', categories);
+        });
+
+        // Actions Update Event (vom Server gepusht)
+        this.client.on('actions:update', (actions) => {
+            this.api.log(`Actions updated: ${actions.length} actions received`, 'info');
+            this.api.emit('hybridshock:actions-update', actions);
+        });
+
+        // Events Update Event (vom Server gepusht)
+        this.client.on('events:update', (events) => {
+            this.api.log(`Events updated: ${events.length} events received`, 'info');
+            this.api.emit('hybridshock:events-update', events);
+        });
+
+        // Features Update Event (kombiniert)
+        this.client.on('features:update', (features) => {
+            this.api.log('Features updated from HybridShock server', 'info');
+            this.api.emit('hybridshock:features-update', features);
+        });
+
         // Action Response
         this.client.on('action:sent', (data) => {
             if (this.config.enableDebugMode) {
-                this.api.log(`Action sent: ${data.category}/${data.action}`, 'debug');
+                const via = data.via || 'http';
+                this.api.log(`Action sent (${via}): ${data.category}/${data.action}`, 'debug');
             }
         });
 
@@ -288,11 +317,22 @@ class HybridShockPlugin {
         // Action ausführen (wird von Queue getriggert)
         this.actionQueue.on('action:execute', async (action, callback) => {
             try {
-                const result = await this.client.sendAction(
-                    action.category,
-                    action.action,
-                    action.context
-                );
+                let result;
+
+                // WebSocket oder HTTP verwenden?
+                if (this.config.useWebSocketForActions && this.client.isConnected) {
+                    result = await this.client.sendActionViaWebSocket(
+                        action.category,
+                        action.action,
+                        action.context
+                    );
+                } else {
+                    result = await this.client.sendAction(
+                        action.category,
+                        action.action,
+                        action.context
+                    );
+                }
 
                 // Log
                 if (this.config.enableActionLog) {
