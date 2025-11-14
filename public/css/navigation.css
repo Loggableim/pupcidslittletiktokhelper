@@ -279,13 +279,14 @@ body {
 
 .main-content {
     margin-left: var(--sidebar-width-expanded);
-    min-height: 100vh;
+    height: 100vh; /* Fixed height to enable proper scrolling */
     width: calc(100% - var(--sidebar-width-expanded));
     display: flex;
     flex-direction: column;
     flex: 1;
     min-width: 0; /* Allow flex shrinking */
     transition: all var(--transition-speed) ease;
+    overflow: hidden; /* Prevent main-content from scrolling, only content-container should scroll */
 }
 
 .sidebar-collapsed ~ .main-content {
