@@ -1,18 +1,38 @@
 {
   "soundboard": {
     "enabled": true,
-    "loadedAt": "2025-11-13T00:50:35.227Z"
+    "loadedAt": "2025-11-14T19:19:33.144Z"
   },
   "tts": {
     "enabled": true,
-    "loadedAt": "2025-11-13T00:50:35.278Z"
+    "loadedAt": "2025-11-14T19:19:33.197Z"
   },
   "emoji-rain": {
     "enabled": true,
-    "loadedAt": "2025-11-13T02:00:00.000Z"
+    "loadedAt": "2025-11-14T19:19:32.097Z"
   },
   "openshock": {
     "enabled": true,
     "loadedAt": "2025-11-14T00:00:00.000Z"
+  },
+  "api-bridge": {
+    "enabled": true,
+    "loadedAt": "2025-11-14T19:19:32.088Z"
+  },
+  "goals": {
+    "enabled": true,
+    "loadedAt": "2025-11-14T19:19:32.120Z"
+  },
+  "hybridshock": {
+    "enabled": true,
+    "loadedAt": "2025-11-14T19:19:32.142Z"
+  },
+  "quiz-show": {
+    "enabled": true,
+    "loadedAt": "2025-11-14T19:19:32.164Z"
+  },
+  "resource-monitor": {
+    "enabled": true,
+    "loadedAt": "2025-11-14T19:19:32.561Z"
   }
 }
