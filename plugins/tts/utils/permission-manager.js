@@ -65,7 +65,14 @@ class PermissionManager {
             }
 
             // Get user permission record
-            const userPerm = this._getUserPermission(userId);
+            let userPerm = this._getUserPermission(userId);
+
+            // Auto-create user record on first encounter (for tracking and management)
+            if (!userPerm) {
+                this._createUserRecord(userId, username);
+                userPerm = this._getUserPermission(userId);
+                this.logger.info(`TTS: New user record created for ${username} (${userId})`);
+            }
 
             // Check blacklist first
             if (userPerm && userPerm.is_blacklisted) {
@@ -121,6 +128,23 @@ class PermissionManager {
             SELECT * FROM tts_user_permissions WHERE user_id = ? LIMIT 1
         `);
         return stmt.get(userId);
+    }
+
+    /**
+     * Create a new user record (auto-tracking)
+     */
+    _createUserRecord(userId, username) {
+        try {
+            const now = Math.floor(Date.now() / 1000);
+            const stmt = this.db.db.prepare(`
+                INSERT INTO tts_user_permissions (user_id, username, allow_tts, created_at, updated_at)
+                VALUES (?, ?, 0, ?, ?)
+                ON CONFLICT(user_id) DO NOTHING
+            `);
+            stmt.run(userId, username, now, now);
+        } catch (error) {
+            this.logger.error(`Failed to create user record for ${username}: ${error.message}`);
+        }
     }
 
     /**

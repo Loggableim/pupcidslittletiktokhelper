@@ -143,6 +143,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             showNotification('Failed to load statistics (non-critical)', 'warning');
         }
 
+        // Load plugin status (including debug mode)
+        if (statusEl) statusEl.textContent = 'Loading plugin status...';
+        try {
+            await loadPluginStatus();
+            console.log('✓ Plugin status loaded');
+        } catch (error) {
+            console.error('✗ Plugin status load failed:', error);
+        }
+
         // Load debug logs (non-critical)
         if (statusEl) statusEl.textContent = 'Loading debug logs...';
         try {
@@ -736,7 +745,6 @@ function renderModalVoiceList() {
 
     list.innerHTML = filteredVoices.map(([id, voice]) => `
         <div
-            onclick="selectModalVoice('${escapeHtml(id)}')"
             class="voice-option p-3 rounded cursor-pointer hover:bg-gray-600 ${modalState.selectedVoiceId === id ? 'bg-blue-600' : 'bg-gray-800'}"
             data-voice-id="${escapeHtml(id)}"
         >
@@ -745,6 +753,14 @@ function renderModalVoiceList() {
             ${voice.language ? `<div class="text-xs text-gray-400">${escapeHtml(voice.language)}</div>` : ''}
         </div>
     `).join('');
+
+    // Add event listeners to voice options
+    list.querySelectorAll('.voice-option').forEach(option => {
+        option.addEventListener('click', () => {
+            const voiceId = option.dataset.voiceId;
+            selectModalVoice(voiceId);
+        });
+    });
 }
 
 function selectModalVoice(voiceId) {
@@ -1122,6 +1138,27 @@ function setupEventListeners() {
             toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye-slash');
         });
     }
+
+    // Modal close buttons
+    const modalCloseX = document.getElementById('modalCloseX');
+    if (modalCloseX) {
+        modalCloseX.addEventListener('click', closeVoiceAssignmentModal);
+    }
+
+    const modalCancelBtn = document.getElementById('modalCancelBtn');
+    if (modalCancelBtn) {
+        modalCancelBtn.addEventListener('click', closeVoiceAssignmentModal);
+    }
+
+    // Close modal when clicking outside
+    const modal = document.getElementById('voiceAssignmentModal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeVoiceAssignmentModal();
+            }
+        });
+    }
 }
 
 // ============================================================================
@@ -1165,6 +1202,31 @@ function showNotification(message, type = 'info') {
         notification.style.transition = 'all 0.3s ease';
         setTimeout(() => notification.remove(), 300);
     }, 3000);
+}
+
+// ============================================================================
+// PLUGIN STATUS
+// ============================================================================
+
+/**
+ * Load plugin status from backend (including debug mode state)
+ */
+async function loadPluginStatus() {
+    try {
+        const data = await fetchJSON('/api/tts/status');
+
+        if (data.success && data.status) {
+            // Update debug enabled state
+            debugEnabled = data.status.debugEnabled || false;
+            console.log('[TTS] Plugin status loaded:', {
+                debugEnabled,
+                engines: data.status.engines,
+                defaultEngine: data.status.config?.defaultEngine
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load plugin status:', error);
+    }
 }
 
 // ============================================================================
@@ -1346,7 +1408,7 @@ async function toggleDebugMode() {
         const data = await postJSON('/api/tts/debug/toggle', {});
 
         if (data.success) {
-            debugEnabled = data.enabled;
+            debugEnabled = data.debugEnabled;
             updateDebugModeUI();
             showNotification(`Debug mode ${debugEnabled ? 'enabled' : 'disabled'}`, 'success');
         } else {
