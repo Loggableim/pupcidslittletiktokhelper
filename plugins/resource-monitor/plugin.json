@@ -1,0 +1,14 @@
+{
+  "id": "resource-monitor",
+  "name": "Resource Monitor",
+  "version": "1.0.0",
+  "description": "Real-time system resource monitoring with CPU, RAM, GPU metrics. Provides performance insights and historical data tracking.",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": true,
+  "permissions": [
+    "socket.io",
+    "routes",
+    "system-info"
+  ]
+}

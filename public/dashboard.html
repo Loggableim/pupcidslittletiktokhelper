@@ -181,6 +181,8 @@
                 <button class="tab-btn" data-tab="hybridshock" data-plugin="hybridshock">⚡ HybridShock</button>
                 <!-- Live Goals Tab -->
                 <button class="tab-btn" data-tab="liveGoals" data-plugin="goals">🎯 Live Goals</button>
+                <!-- Resource Monitor Tab -->
+                <button class="tab-btn" data-tab="resourceMonitor" data-plugin="resource-monitor">🖥️ Resources</button>
                 <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
@@ -832,6 +834,28 @@
             </div>
         </div>
 
+        <!-- Tab: Resource Monitor -->
+        <div id="tab-resourceMonitor" class="tab-content" data-plugin="resource-monitor">
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">🖥️ System Resource Monitor</h2>
+                    <a href="/resource-monitor/ui" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm transition-colors">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <p class="text-gray-400 text-sm">
+                    Monitor real-time CPU, RAM, and GPU usage. The software should use less than 5% CPU for optimal performance.
+                </p>
+            </div>
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe src="/resource-monitor/ui"
+                        style="width: 100%; height: 100%; border: none;"
+                        title="Resource Monitor">
+                </iframe>
+            </div>
+        </div>
+
         <!-- Tab: Settings -->
         <div id="tab-settings" class="tab-content">
             <div class="bg-gray-800 rounded-lg p-6 mb-6">
@@ -1055,6 +1079,112 @@
                             <strong>⚠️ Warning:</strong> Importing a configuration may overwrite your current settings.
                             A backup will be created automatically if enabled.
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resource Monitor Settings -->
+            <div class="bg-gray-800 rounded-lg p-6 mt-6">
+                <h2 class="text-xl mb-6 font-semibold">🖥️ Resource Monitor Settings</h2>
+
+                <div class="space-y-4">
+                    <!-- Enable/Disable -->
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" id="resource-monitor-enabled" class="w-4 h-4">
+                        <span>Enable Resource Monitor</span>
+                    </label>
+
+                    <!-- Update Interval -->
+                    <div>
+                        <label class="block text-gray-400 mb-2">Update Interval</label>
+                        <input type="range" id="resource-monitor-interval"
+                               min="500" max="5000" step="100" value="1000"
+                               class="w-full accent-blue-600">
+                        <div class="flex justify-between text-sm text-gray-400 mt-1">
+                            <span>0.5s (Fast)</span>
+                            <span id="resource-monitor-interval-label" class="text-white font-semibold">1.0s</span>
+                            <span>5.0s (Slow)</span>
+                        </div>
+                    </div>
+
+                    <!-- Display Options -->
+                    <div class="border-t border-gray-700 pt-4">
+                        <div class="text-gray-400 mb-3 font-semibold">Display Components</div>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="resource-monitor-show-cpu" class="w-4 h-4" checked>
+                                <span>Show CPU Usage</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="resource-monitor-show-ram" class="w-4 h-4" checked>
+                                <span>Show RAM Usage</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="resource-monitor-show-gpu" class="w-4 h-4" checked>
+                                <span>Show GPU Usage</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- CPU Warning Thresholds -->
+                    <div class="border-t border-gray-700 pt-4">
+                        <div class="text-gray-400 mb-3 font-semibold">CPU Warning Thresholds</div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-1">Yellow Warning (%)</label>
+                                <input type="number" id="cpu-warning-yellow" value="5" min="1" max="100"
+                                       class="bg-gray-700 text-white px-3 py-2 rounded w-full">
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 text-sm mb-1">Red Warning (%)</label>
+                                <input type="number" id="cpu-warning-red" value="8" min="1" max="100"
+                                       class="bg-gray-700 text-white px-3 py-2 rounded w-full">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            The software should use less than 5% CPU. Yellow at 5-8%, red above 8%.
+                        </p>
+                    </div>
+
+                    <!-- RAM Warning Thresholds -->
+                    <div>
+                        <label class="block text-gray-400 mb-2">System RAM Warning Threshold (%)</label>
+                        <input type="number" id="ram-warning-threshold" value="90" min="50" max="100"
+                               class="bg-gray-700 text-white px-3 py-2 rounded w-full">
+                        <p class="text-xs text-gray-500 mt-1">
+                            Warn when system RAM usage exceeds this percentage.
+                        </p>
+                    </div>
+
+                    <!-- History Length -->
+                    <div>
+                        <label class="block text-gray-400 mb-2">Graph History Duration</label>
+                        <select id="resource-monitor-history-length"
+                                class="bg-gray-700 text-white px-4 py-2 rounded w-full">
+                            <option value="30">30 seconds</option>
+                            <option value="60" selected>60 seconds</option>
+                            <option value="120">2 minutes</option>
+                            <option value="300">5 minutes</option>
+                        </select>
+                    </div>
+
+                    <!-- Notifications -->
+                    <div class="border-t border-gray-700 pt-4">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="resource-monitor-notifications" class="w-4 h-4" checked>
+                            <span>Enable Performance Warnings</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6">
+                            Show alerts when resource usage exceeds thresholds.
+                        </p>
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="border-t border-gray-700 pt-4">
+                        <button id="save-resource-monitor-settings"
+                                class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 transition-colors">
+                            💾 Save Resource Monitor Settings
+                        </button>
                     </div>
                 </div>
             </div>

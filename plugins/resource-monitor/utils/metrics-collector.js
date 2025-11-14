@@ -1,0 +1,465 @@
+/**
+ * Metrics Collector Utility
+ *
+ * Collects system metrics using systeminformation package:
+ * - CPU usage (total and per-core)
+ * - CPU temperature
+ * - RAM usage (total, used, free, percentage)
+ * - Process-specific memory
+ * - GPU information and usage
+ * - System uptime and process uptime
+ */
+
+const si = require('systeminformation');
+
+class MetricsCollector {
+    constructor(logger) {
+        this.logger = logger;
+
+        // Historical data buffer (stores last 60 seconds of metrics)
+        this.historySize = 60;
+        this.history = {
+            cpu: [],
+            memory: [],
+            gpu: [],
+            timestamps: []
+        };
+
+        // Cache for static info (updated less frequently)
+        this.staticInfo = {
+            cpu: null,
+            memory: null,
+            gpu: null,
+            os: null,
+            lastUpdate: 0
+        };
+
+        // Cache TTL for static info (5 minutes)
+        this.staticInfoTTL = 5 * 60 * 1000;
+
+        // GPU availability flag
+        this.hasGPU = false;
+        this.gpuCheckDone = false;
+    }
+
+    /**
+     * Initialize and check for GPU availability
+     */
+    async initialize() {
+        try {
+            this.log('Initializing metrics collector...', 'info');
+
+            // Check for GPU
+            const graphics = await si.graphics();
+            this.hasGPU = graphics.controllers && graphics.controllers.length > 0;
+            this.gpuCheckDone = true;
+
+            if (this.hasGPU) {
+                this.log(`GPU detected: ${graphics.controllers[0].model}`, 'info');
+            } else {
+                this.log('No GPU detected or not accessible', 'info');
+            }
+
+            // Load static info
+            await this.updateStaticInfo();
+
+            this.log('Metrics collector initialized successfully', 'info');
+        } catch (error) {
+            this.log(`Error initializing metrics collector: ${error.message}`, 'error');
+            this.hasGPU = false;
+            this.gpuCheckDone = true;
+        }
+    }
+
+    /**
+     * Update static system information (called less frequently)
+     */
+    async updateStaticInfo() {
+        try {
+            const now = Date.now();
+
+            // Only update if cache is stale
+            if (now - this.staticInfo.lastUpdate < this.staticInfoTTL) {
+                return;
+            }
+
+            // Get static CPU info
+            const cpuInfo = await si.cpu();
+            this.staticInfo.cpu = {
+                manufacturer: cpuInfo.manufacturer,
+                brand: cpuInfo.brand,
+                cores: cpuInfo.cores,
+                physicalCores: cpuInfo.physicalCores,
+                processors: cpuInfo.processors,
+                speed: cpuInfo.speed,
+                speedMin: cpuInfo.speedMin,
+                speedMax: cpuInfo.speedMax
+            };
+
+            // Get static memory info
+            const memInfo = await si.mem();
+            this.staticInfo.memory = {
+                total: memInfo.total
+            };
+
+            // Get static GPU info
+            if (this.hasGPU) {
+                const graphics = await si.graphics();
+                if (graphics.controllers && graphics.controllers.length > 0) {
+                    this.staticInfo.gpu = graphics.controllers.map(gpu => ({
+                        vendor: gpu.vendor,
+                        model: gpu.model,
+                        vram: gpu.vram,
+                        vramDynamic: gpu.vramDynamic
+                    }));
+                }
+            }
+
+            // Get OS info
+            const osInfo = await si.osInfo();
+            this.staticInfo.os = {
+                platform: osInfo.platform,
+                distro: osInfo.distro,
+                release: osInfo.release,
+                kernel: osInfo.kernel,
+                arch: osInfo.arch,
+                hostname: osInfo.hostname
+            };
+
+            this.staticInfo.lastUpdate = now;
+
+        } catch (error) {
+            this.log(`Error updating static info: ${error.message}`, 'warn');
+        }
+    }
+
+    /**
+     * Collect all current metrics
+     */
+    async collectMetrics() {
+        try {
+            const timestamp = Date.now();
+
+            // Periodically update static info
+            await this.updateStaticInfo();
+
+            // Collect dynamic metrics in parallel for better performance
+            const [
+                cpuData,
+                memData,
+                cpuTemp,
+                processData,
+                uptimeData,
+                gpuData
+            ] = await Promise.all([
+                this.getCPUMetrics(),
+                this.getMemoryMetrics(),
+                this.getCPUTemperature(),
+                this.getProcessMetrics(),
+                this.getUptimeMetrics(),
+                this.hasGPU ? this.getGPUMetrics() : Promise.resolve(null)
+            ]);
+
+            // Combine all metrics
+            const metrics = {
+                timestamp,
+                cpu: cpuData,
+                memory: memData,
+                process: processData,
+                uptime: uptimeData,
+                static: this.staticInfo
+            };
+
+            // Add temperature if available
+            if (cpuTemp !== null) {
+                metrics.cpu.temperature = cpuTemp;
+            }
+
+            // Add GPU if available
+            if (gpuData) {
+                metrics.gpu = gpuData;
+            }
+
+            // Add to history
+            this.addToHistory(metrics);
+
+            return metrics;
+
+        } catch (error) {
+            this.log(`Error collecting metrics: ${error.message}`, 'error');
+            return null;
+        }
+    }
+
+    /**
+     * Get CPU metrics (usage and per-core)
+     */
+    async getCPUMetrics() {
+        try {
+            const cpuLoad = await si.currentLoad();
+
+            return {
+                usage: Math.round(cpuLoad.currentLoad * 100) / 100,
+                idle: Math.round(cpuLoad.currentLoadIdle * 100) / 100,
+                user: Math.round(cpuLoad.currentLoadUser * 100) / 100,
+                system: Math.round(cpuLoad.currentLoadSystem * 100) / 100,
+                cores: cpuLoad.cpus ? cpuLoad.cpus.map(core => ({
+                    load: Math.round(core.load * 100) / 100,
+                    loadUser: Math.round(core.loadUser * 100) / 100,
+                    loadSystem: Math.round(core.loadSystem * 100) / 100,
+                    loadIdle: Math.round(core.loadIdle * 100) / 100
+                })) : []
+            };
+        } catch (error) {
+            this.log(`Error getting CPU metrics: ${error.message}`, 'warn');
+            return { usage: 0, idle: 100, user: 0, system: 0, cores: [] };
+        }
+    }
+
+    /**
+     * Get CPU temperature (if available)
+     */
+    async getCPUTemperature() {
+        try {
+            const temp = await si.cpuTemperature();
+
+            if (temp.main !== null && temp.main !== -1) {
+                return {
+                    main: temp.main,
+                    cores: temp.cores || [],
+                    max: temp.max || null,
+                    socket: temp.socket || []
+                };
+            }
+
+            return null;
+        } catch (error) {
+            // Temperature not available on all systems, don't spam logs
+            return null;
+        }
+    }
+
+    /**
+     * Get memory metrics
+     */
+    async getMemoryMetrics() {
+        try {
+            const mem = await si.mem();
+
+            const total = mem.total;
+            const used = mem.used;
+            const free = mem.free;
+            const available = mem.available;
+            const usedPercent = total > 0 ? Math.round((used / total) * 10000) / 100 : 0;
+
+            return {
+                total,
+                used,
+                free,
+                available,
+                usedPercent,
+                // Convert to human-readable
+                totalGB: Math.round(total / (1024 * 1024 * 1024) * 100) / 100,
+                usedGB: Math.round(used / (1024 * 1024 * 1024) * 100) / 100,
+                freeGB: Math.round(free / (1024 * 1024 * 1024) * 100) / 100,
+                availableGB: Math.round(available / (1024 * 1024 * 1024) * 100) / 100,
+                // Swap info
+                swapTotal: mem.swaptotal,
+                swapUsed: mem.swapused,
+                swapFree: mem.swapfree
+            };
+        } catch (error) {
+            this.log(`Error getting memory metrics: ${error.message}`, 'warn');
+            return {
+                total: 0,
+                used: 0,
+                free: 0,
+                available: 0,
+                usedPercent: 0,
+                totalGB: 0,
+                usedGB: 0,
+                freeGB: 0,
+                availableGB: 0
+            };
+        }
+    }
+
+    /**
+     * Get process-specific metrics
+     */
+    async getProcessMetrics() {
+        try {
+            const processLoad = await si.processLoad('node');
+
+            if (processLoad && processLoad.proc) {
+                return {
+                    cpu: Math.round(processLoad.proc * 100) / 100,
+                    memory: process.memoryUsage().heapUsed,
+                    memoryMB: Math.round(process.memoryUsage().heapUsed / (1024 * 1024) * 100) / 100,
+                    pid: process.pid
+                };
+            }
+
+            // Fallback to basic process info
+            const memUsage = process.memoryUsage();
+            return {
+                cpu: 0,
+                memory: memUsage.heapUsed,
+                memoryMB: Math.round(memUsage.heapUsed / (1024 * 1024) * 100) / 100,
+                heapTotal: Math.round(memUsage.heapTotal / (1024 * 1024) * 100) / 100,
+                external: Math.round(memUsage.external / (1024 * 1024) * 100) / 100,
+                rss: Math.round(memUsage.rss / (1024 * 1024) * 100) / 100,
+                pid: process.pid
+            };
+        } catch (error) {
+            this.log(`Error getting process metrics: ${error.message}`, 'warn');
+            const memUsage = process.memoryUsage();
+            return {
+                cpu: 0,
+                memory: memUsage.heapUsed,
+                memoryMB: Math.round(memUsage.heapUsed / (1024 * 1024) * 100) / 100,
+                pid: process.pid
+            };
+        }
+    }
+
+    /**
+     * Get GPU metrics (if available)
+     */
+    async getGPUMetrics() {
+        try {
+            if (!this.hasGPU) {
+                return null;
+            }
+
+            const graphics = await si.graphics();
+
+            if (graphics.controllers && graphics.controllers.length > 0) {
+                return graphics.controllers.map(gpu => ({
+                    model: gpu.model,
+                    vendor: gpu.vendor,
+                    vram: gpu.vram,
+                    vramDynamic: gpu.vramDynamic,
+                    temperatureGpu: gpu.temperatureGpu || null,
+                    utilizationGpu: gpu.utilizationGpu || null,
+                    utilizationMemory: gpu.utilizationMemory || null,
+                    memoryTotal: gpu.memoryTotal || null,
+                    memoryUsed: gpu.memoryUsed || null,
+                    memoryFree: gpu.memoryFree || null
+                }));
+            }
+
+            return null;
+        } catch (error) {
+            // GPU metrics might not be available, don't spam logs
+            return null;
+        }
+    }
+
+    /**
+     * Get uptime metrics
+     */
+    async getUptimeMetrics() {
+        try {
+            const time = await si.time();
+
+            return {
+                system: time.uptime,
+                process: process.uptime(),
+                // Human-readable formats
+                systemHours: Math.floor(time.uptime / 3600),
+                processHours: Math.floor(process.uptime() / 3600)
+            };
+        } catch (error) {
+            this.log(`Error getting uptime metrics: ${error.message}`, 'warn');
+            return {
+                system: 0,
+                process: process.uptime(),
+                systemHours: 0,
+                processHours: Math.floor(process.uptime() / 3600)
+            };
+        }
+    }
+
+    /**
+     * Add metrics to historical buffer
+     */
+    addToHistory(metrics) {
+        try {
+            // Add timestamp
+            this.history.timestamps.push(metrics.timestamp);
+
+            // Add CPU data
+            this.history.cpu.push({
+                usage: metrics.cpu.usage,
+                temperature: metrics.cpu.temperature?.main || null
+            });
+
+            // Add memory data
+            this.history.memory.push({
+                usedPercent: metrics.memory.usedPercent,
+                usedGB: metrics.memory.usedGB
+            });
+
+            // Add GPU data if available
+            if (metrics.gpu && metrics.gpu.length > 0) {
+                if (!this.history.gpu.length) {
+                    this.history.gpu = [];
+                }
+                this.history.gpu.push({
+                    utilization: metrics.gpu[0].utilizationGpu || null,
+                    temperature: metrics.gpu[0].temperatureGpu || null
+                });
+            }
+
+            // Trim history to maintain size limit
+            if (this.history.timestamps.length > this.historySize) {
+                const excess = this.history.timestamps.length - this.historySize;
+                this.history.timestamps.splice(0, excess);
+                this.history.cpu.splice(0, excess);
+                this.history.memory.splice(0, excess);
+                if (this.history.gpu.length > 0) {
+                    this.history.gpu.splice(0, excess);
+                }
+            }
+        } catch (error) {
+            this.log(`Error adding to history: ${error.message}`, 'warn');
+        }
+    }
+
+    /**
+     * Get historical data
+     */
+    getHistory() {
+        return {
+            timestamps: [...this.history.timestamps],
+            cpu: [...this.history.cpu],
+            memory: [...this.history.memory],
+            gpu: [...this.history.gpu]
+        };
+    }
+
+    /**
+     * Clear historical data
+     */
+    clearHistory() {
+        this.history = {
+            cpu: [],
+            memory: [],
+            gpu: [],
+            timestamps: []
+        };
+        this.log('History cleared', 'info');
+    }
+
+    /**
+     * Log helper
+     */
+    log(message, level = 'info') {
+        if (this.logger) {
+            this.logger(message, level);
+        }
+    }
+}
+
+module.exports = MetricsCollector;

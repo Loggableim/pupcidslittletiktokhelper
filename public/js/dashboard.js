@@ -1808,6 +1808,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (settingsTabBtn) {
         settingsTabBtn.addEventListener('click', () => {
             loadAutoStartSettings();
+            loadResourceMonitorSettings();
         });
     }
 
@@ -1829,6 +1830,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const importBtn = document.getElementById('import-preset-btn');
     if (importBtn) {
         importBtn.addEventListener('click', importPreset);
+    }
+
+    // Resource Monitor - Save button
+    const saveResourceMonitorBtn = document.getElementById('save-resource-monitor-settings');
+    if (saveResourceMonitorBtn) {
+        saveResourceMonitorBtn.addEventListener('click', saveResourceMonitorSettings);
+    }
+
+    // Resource Monitor - Interval slider live update
+    const resourceMonitorInterval = document.getElementById('resource-monitor-interval');
+    if (resourceMonitorInterval) {
+        resourceMonitorInterval.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            const label = document.getElementById('resource-monitor-interval-label');
+            if (label) {
+                label.textContent = (value / 1000).toFixed(1) + 's';
+            }
+        });
     }
 });
 
@@ -1971,5 +1990,72 @@ function showNotification(title, message, type) {
         alert(`✅ ${title}\n\n${message}`);
     } else {
         alert(`ℹ️ ${title}\n\n${message}`);
+    }
+}
+
+// ========== RESOURCE MONITOR SETTINGS ==========
+
+/**
+ * Load resource monitor settings
+ */
+async function loadResourceMonitorSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        // Load settings into UI
+        document.getElementById('resource-monitor-enabled').checked = settings.resource_monitor_enabled === 'true';
+        document.getElementById('resource-monitor-interval').value = settings.resource_monitor_interval || '1000';
+        document.getElementById('resource-monitor-show-cpu').checked = settings.resource_monitor_show_cpu !== 'false';
+        document.getElementById('resource-monitor-show-ram').checked = settings.resource_monitor_show_ram !== 'false';
+        document.getElementById('resource-monitor-show-gpu').checked = settings.resource_monitor_show_gpu !== 'false';
+        document.getElementById('cpu-warning-yellow').value = settings.cpu_warning_yellow || '5';
+        document.getElementById('cpu-warning-red').value = settings.cpu_warning_red || '8';
+        document.getElementById('ram-warning-threshold').value = settings.ram_warning_threshold || '90';
+        document.getElementById('resource-monitor-history-length').value = settings.resource_monitor_history_length || '60';
+        document.getElementById('resource-monitor-notifications').checked = settings.resource_monitor_notifications !== 'false';
+
+        // Update interval label
+        const intervalValue = parseInt(settings.resource_monitor_interval || '1000');
+        document.getElementById('resource-monitor-interval-label').textContent = (intervalValue / 1000).toFixed(1) + 's';
+
+    } catch (error) {
+        console.error('Error loading resource monitor settings:', error);
+    }
+}
+
+/**
+ * Save resource monitor settings
+ */
+async function saveResourceMonitorSettings() {
+    const newSettings = {
+        resource_monitor_enabled: document.getElementById('resource-monitor-enabled').checked ? 'true' : 'false',
+        resource_monitor_interval: document.getElementById('resource-monitor-interval').value,
+        resource_monitor_show_cpu: document.getElementById('resource-monitor-show-cpu').checked ? 'true' : 'false',
+        resource_monitor_show_ram: document.getElementById('resource-monitor-show-ram').checked ? 'true' : 'false',
+        resource_monitor_show_gpu: document.getElementById('resource-monitor-show-gpu').checked ? 'true' : 'false',
+        cpu_warning_yellow: document.getElementById('cpu-warning-yellow').value,
+        cpu_warning_red: document.getElementById('cpu-warning-red').value,
+        ram_warning_threshold: document.getElementById('ram-warning-threshold').value,
+        resource_monitor_history_length: document.getElementById('resource-monitor-history-length').value,
+        resource_monitor_notifications: document.getElementById('resource-monitor-notifications').checked ? 'true' : 'false'
+    };
+
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newSettings)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ Resource Monitor settings saved successfully!');
+        } else {
+            alert('❌ Error saving settings: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving resource monitor settings:', error);
+        alert('❌ Error saving Resource Monitor settings!');
     }
 }
