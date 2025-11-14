@@ -103,12 +103,18 @@ class HybridShockPlugin {
             // TikTok Event-Handler registrieren
             this.registerTikTokEventHandlers();
 
-            // Auto-Connect wenn aktiviert
+            // Auto-Connect wenn aktiviert (non-blocking)
             if (this.config.autoConnect) {
-                await this.start();
+                this.start().catch(err => {
+                    this.api.log(`Auto-connect failed: ${err.message}`, 'warn');
+                });
             }
 
             this.api.log('✅ HybridShock Plugin initialized successfully', 'info');
+
+            // Broadcast initial status to GUI
+            this.broadcastStatus();
+
             return true;
 
         } catch (error) {
@@ -301,11 +307,6 @@ class HybridShockPlugin {
             if (this.config.enableDebugMode) {
                 const via = data.via || 'http';
                 this.api.log(`Action sent (${via}): ${data.category}/${data.action}`, 'debug');
-        // Action Response
-        this.client.on('action:sent', (data) => {
-            if (this.config.enableDebugMode) {
-                const via = data.via || 'http';
-                this.api.log(`Action sent (${via}): ${data.category}/${data.action}`, 'debug');
             }
         });
 
@@ -325,7 +326,7 @@ class HybridShockPlugin {
                 let result;
 
                 // WebSocket oder HTTP verwenden?
-                if (this.config.useWebSocketForActions && this.client.isConnected) {
+                if (this.config.useWebSocketForActions && this.client && this.client.isConnected) {
                     result = await this.client.sendActionViaWebSocket(
                         action.category,
                         action.action,
@@ -338,11 +339,6 @@ class HybridShockPlugin {
                         action.context
                     );
                 }
-                const result = await this.client.sendAction(
-                    action.category,
-                    action.action,
-                    action.context
-                );
 
                 // Log
                 if (this.config.enableActionLog) {
@@ -895,14 +891,21 @@ class HybridShockPlugin {
             return;
         }
 
-        this.api.log('▶️ Starting HybridShock plugin...', 'info');
+        try {
+            this.api.log('▶️ Starting HybridShock plugin...', 'info');
 
-        this.isRunning = true;
-        this.stats.startTime = Date.now();
+            this.isRunning = true;
+            this.stats.startTime = Date.now();
 
-        await this.client.connect();
+            await this.client.connect();
 
-        this.broadcastStatus();
+            this.broadcastStatus();
+        } catch (error) {
+            this.isRunning = false;
+            this.api.log(`❌ Failed to start HybridShock plugin: ${error.message}`, 'error');
+            this.broadcastStatus();
+            throw error;
+        }
     }
 
     /**
@@ -1014,6 +1017,9 @@ class HybridShockPlugin {
      */
     async destroy() {
         this.api.log('🛑 HybridShock Plugin shutting down...', 'info');
+
+        // Broadcast final status before shutdown
+        this.broadcastStatus();
 
         await this.stop();
 
