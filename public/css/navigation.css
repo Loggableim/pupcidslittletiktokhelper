@@ -404,19 +404,21 @@ body {
     width: 100%;
     min-width: 0; /* Allow flex shrinking */
     min-height: 0; /* Critical for flexbox sizing */
-    overflow-y: auto; /* Allow scrolling for dashboard-like views */
-    overflow-x: hidden;
+    overflow: hidden; /* No scrolling - let views handle it */
     background: var(--color-bg-primary);
+    position: relative;
 }
 
 .content-view {
     display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    min-height: 100%; /* At least full container height */
+    height: 100%;
     padding: 1rem;
-    min-width: 0; /* Allow flex shrinking */
-    animation: fadeIn 0.3s ease;
     box-sizing: border-box;
+    animation: fadeIn 0.3s ease;
 }
 
 .content-view.active {
@@ -424,9 +426,9 @@ body {
     flex-direction: column;
 }
 
-/* Dashboard view should scroll naturally */
+/* Dashboard view needs scrolling for its content */
 #view-dashboard {
-    min-height: auto;
+    overflow-y: auto;
 }
 
 @keyframes fadeIn {
