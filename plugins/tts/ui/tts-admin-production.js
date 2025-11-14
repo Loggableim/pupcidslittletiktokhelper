@@ -929,6 +929,8 @@ function setupEventListeners() {
 
             // Notify user if voice was automatically changed due to engine switch
             if (previousVoice && previousVoice !== newVoice && previousEngine !== selectedEngine) {
+            // Notify user if voice was automatically changed due to engine switch
+            if (previousVoice && previousVoice !== newVoice && previousEngine !== engineSelect.value) {
                 showNotification(
                     `Voice was reset from '${previousVoice}' to '${newVoice}' because it's not compatible with the selected engine. Please review and save.`,
                     'warning'

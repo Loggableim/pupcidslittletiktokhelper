@@ -200,6 +200,11 @@ class TTSPlugin {
                     } else if (updates.defaultEngine === 'speechify' && this.engines.speechify) {
                         engineVoices = await this.engines.speechify.getVoices();
                     }
+                    const engineVoices = updates.defaultEngine === 'tiktok'
+                        ? TikTokEngine.getVoices()
+                        : (updates.defaultEngine === 'google' && this.engines.google
+                            ? GoogleEngine.getVoices()
+                            : {});
 
                     if (!engineVoices[updates.defaultVoice]) {
                         return res.status(400).json({
@@ -210,6 +215,7 @@ class TTSPlugin {
                 }
 
                 // Update config (skip API keys - they have dedicated handling below)
+                // Update config (skip googleApiKey - it has dedicated handling below)
                 Object.keys(updates).forEach(key => {
                     if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey' && key !== 'speechifyApiKey') {
                         this.config[key] = updates[key];
@@ -842,6 +848,7 @@ class TTSPlugin {
                         throw engineError;
                     }
                 } else if (selectedEngine === 'google' && this.engines.tiktok) {
+                if (selectedEngine === 'google' && this.engines.tiktok) {
                     // Try to keep the voice if it's valid for TikTok, otherwise detect language
                     let fallbackVoice = selectedVoice;
                     const tiktokVoices = TikTokEngine.getVoices();
