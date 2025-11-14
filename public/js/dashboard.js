@@ -9,69 +9,19 @@ let settings = {};
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize UI first, dann Plugins checken (non-blocking)
-    initializeTabs();
     initializeButtons();
     initializeSocketListeners();
-    initializeAudioInfoBanner();
 
     // Dann asynchron (ohne await) laden - blockiert nicht die UI
-    checkPluginsAndUpdateUI().catch(err => console.error('Plugin check failed:', err));
     loadSettings().catch(err => console.error('Settings load failed:', err));
     // loadVoices und loadVoiceMapping werden vom tts_core_v2 Plugin verwaltet
     loadFlows().catch(err => console.error('Flows load failed:', err));
     loadActiveProfile().catch(err => console.error('Profile load failed:', err));
 });
 
-// ========== TABS ==========
-function initializeTabs() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabName = btn.dataset.tab;
-            switchTab(tabName);
-        });
-    });
-
-    // Restore last active tab from localStorage
-    const savedTab = localStorage.getItem('dashboard-active-tab');
-    if (savedTab) {
-        // Check if the saved tab button exists (plugin might be disabled)
-        const tabButton = document.querySelector(`[data-tab="${savedTab}"]`);
-        if (tabButton && tabButton.style.display !== 'none') {
-            switchTab(savedTab);
-        } else {
-            // Fallback to events tab if saved tab is not available
-            switchTab('events');
-        }
-    }
-}
-
-function switchTab(tabName) {
-    // Button-States
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabName);
-    });
-
-    // Content-States
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.toggle('active', content.id === `tab-${tabName}`);
-    });
-
-    currentTab = tabName;
-
-    // Save active tab to localStorage
-    localStorage.setItem('dashboard-active-tab', tabName);
-
-    // Tab-spezifische Aktionen
-    if (tabName === 'flows') {
-        loadFlows();
-    } else if (tabName === 'soundboard') {
-        loadSoundboardSettings();
-        loadGiftSounds();
-        loadGiftCatalog();
-    }
-    // TTS-Tab wird vom tts_core_v2 Plugin verwaltet
-}
+// ========== TABS (Legacy - now handled by navigation.js) ==========
+// Tab functions removed - navigation is now handled by navigation.js
+// View switching is done through NavigationManager.switchView()
 
 // ========== BUTTONS ==========
 function initializeButtons() {
@@ -267,33 +217,29 @@ async function disconnect() {
 }
 
 function updateConnectionStatus(status, data = {}) {
-    const statusEl = document.getElementById('connection-status');
     const infoEl = document.getElementById('connection-info');
     const connectBtn = document.getElementById('connect-btn');
     const disconnectBtn = document.getElementById('disconnect-btn');
 
+    // Update status badge via NavigationManager
+    if (window.NavigationManager) {
+        window.NavigationManager.updateConnectionStatus(status, data);
+    }
+
     switch (status) {
         case 'connected':
-            statusEl.className = 'status-badge status-connected';
-            statusEl.textContent = '🟢 Connected';
-            infoEl.textContent = `Connected to @${data.username}`;
-            infoEl.className = 'mt-4 text-green-400 text-sm';
+            infoEl.innerHTML = `<div class="text-green-400 text-sm">Connected to @${data.username}</div>`;
             connectBtn.disabled = true;
             disconnectBtn.disabled = false;
             break;
 
         case 'disconnected':
-            statusEl.className = 'status-badge status-disconnected';
-            statusEl.textContent = '⚫ Disconnected';
             infoEl.textContent = '';
-            infoEl.className = 'mt-4 text-gray-400 text-sm';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
             break;
 
         case 'retrying':
-            statusEl.className = 'status-badge bg-yellow-600';
-            statusEl.textContent = `🔄 Retrying (${data.attempt}/${data.maxRetries})`;
             infoEl.innerHTML = `
                 <div class="p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded">
                     <div class="font-semibold text-yellow-300">Verbindung wird wiederholt...</div>
@@ -303,15 +249,11 @@ function updateConnectionStatus(status, data = {}) {
                     </div>
                 </div>
             `;
-            infoEl.className = 'mt-4 text-sm';
             connectBtn.disabled = true;
             disconnectBtn.disabled = false;
             break;
 
         case 'error':
-            statusEl.className = 'status-badge status-error';
-            statusEl.textContent = '🔴 Error';
-
             // Detaillierte Fehleranzeige mit Type und Suggestion
             let errorHtml = `
                 <div class="p-3 bg-red-900 bg-opacity-50 border border-red-600 rounded">
@@ -339,16 +281,12 @@ function updateConnectionStatus(status, data = {}) {
             errorHtml += `</div>`;
 
             infoEl.innerHTML = errorHtml;
-            infoEl.className = 'mt-4 text-sm';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
             break;
 
         case 'stream_ended':
-            statusEl.className = 'status-badge status-error';
-            statusEl.textContent = '📺 Stream Ended';
-            infoEl.textContent = 'The stream has ended';
-            infoEl.className = 'mt-4 text-gray-400 text-sm';
+            infoEl.innerHTML = '<div class="text-gray-400 text-sm">The stream has ended</div>';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
             break;
@@ -1581,63 +1519,8 @@ function initializeAudioInfoBanner() {
 }
 
 // ========== PLUGIN-BASED UI VISIBILITY ==========
-async function checkPluginsAndUpdateUI() {
-    try {
-        // Lade Plugin-Liste vom Server (mit Timeout)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-        const response = await fetch('/api/plugins', { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            console.warn(`Failed to load plugins: ${response.status} ${response.statusText}`);
-            return;
-        }
-
-        const data = await response.json();
-
-        if (!data.success) {
-            console.warn('Failed to load plugins, showing all UI elements');
-            return;
-        }
-
-        // Erstelle Set von aktiven Plugin-IDs
-        const activePlugins = new Set(
-            data.plugins
-                .filter(p => p.enabled)
-                .map(p => p.id)
-        );
-
-        console.log('Active plugins:', Array.from(activePlugins));
-
-        // Verstecke Tab-Buttons für inaktive Plugins
-        document.querySelectorAll('[data-plugin]').forEach(element => {
-            const requiredPlugin = element.getAttribute('data-plugin');
-
-            if (!activePlugins.has(requiredPlugin)) {
-                // Plugin ist nicht aktiv -> Element verstecken
-                element.style.display = 'none';
-                console.log(`Hiding UI element for inactive plugin: ${requiredPlugin}`);
-
-                // Wenn es ein Tab-Button ist und er aktiv war, wechsle zu Events-Tab
-                if (element.classList.contains('tab-btn') && element.classList.contains('active')) {
-                    const eventsTab = document.querySelector('[data-tab="events"]');
-                    if (eventsTab) {
-                        eventsTab.click();
-                    }
-                }
-            } else {
-                // Plugin ist aktiv -> Element anzeigen (falls es versteckt war)
-                element.style.display = '';
-            }
-        });
-
-    } catch (error) {
-        console.error('Error checking plugins:', error);
-        // Bei Fehler: Zeige alle UI-Elemente an (fail-safe)
-    }
-}
+// This functionality is now handled by navigation.js
+// See NavigationManager.initializePluginVisibility()
 
 // ========== DASHBOARD AUDIO PLAYBACK ==========
 
