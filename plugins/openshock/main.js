@@ -239,12 +239,22 @@ class OpenShockPlugin {
      * Helper-Klassen initialisieren
      */
     _initializeHelpers() {
+        // Logger-Wrapper für Helper-Klassen (die ein Logger-Objekt mit .info, .warn, .error erwarten)
+        const logger = {
+            info: (msg) => this.api.log(msg, 'info'),
+            warn: (msg) => this.api.log(msg, 'warn'),
+            error: (msg) => this.api.log(msg, 'error'),
+            debug: (msg) => this.api.log(msg, 'debug'),
+            log: (msg, level = 'info') => this.api.log(msg, level)
+        };
+
         // OpenShock API Client (nur wenn API Key vorhanden)
         if (this.config.apiKey && this.config.apiKey.trim() !== '') {
-            this.openShockClient = new OpenShockClient({
-                apiKey: this.config.apiKey,
-                baseUrl: this.config.baseUrl
-            });
+            this.openShockClient = new OpenShockClient(
+                this.config.apiKey,
+                this.config.baseUrl,
+                logger
+            );
             this.api.log('OpenShock API Client initialized', 'info');
         } else {
             this.openShockClient = null;
@@ -252,33 +262,20 @@ class OpenShockPlugin {
         }
 
         // Mapping Engine
-        this.mappingEngine = new MappingEngine({
-            database: this.api.getDatabase(),
-            logger: this.api.log.bind(this.api)
-        });
+        this.mappingEngine = new MappingEngine(logger);
 
         // Pattern Engine
-        this.patternEngine = new PatternEngine({
-            database: this.api.getDatabase(),
-            logger: this.api.log.bind(this.api)
-        });
+        this.patternEngine = new PatternEngine(logger);
 
         // Safety Manager
-        this.safetyManager = new SafetyManager({
-            globalLimits: this.config.globalLimits,
-            defaultCooldowns: this.config.defaultCooldowns,
-            userLimits: this.config.userLimits,
-            emergencyStop: this.config.emergencyStop,
-            logger: this.api.log.bind(this.api)
-        });
+        this.safetyManager = new SafetyManager(this.config, logger);
 
         // Queue Manager
-        this.queueManager = new QueueManager({
-            maxQueueSize: this.config.queueSettings.maxQueueSize,
-            processingDelay: this.config.queueSettings.processingDelay,
-            processCallback: this._processQueueItem.bind(this),
-            logger: this.api.log.bind(this.api)
-        });
+        this.queueManager = new QueueManager(
+            this.openShockClient,
+            this.safetyManager,
+            logger
+        );
 
         // Queue Event-Handler
         this.queueManager.on('item-processed', (item, success) => {
