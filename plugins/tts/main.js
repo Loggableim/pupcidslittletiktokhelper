@@ -193,18 +193,21 @@ class TTSPlugin {
                 if (updates.defaultVoice && updates.defaultEngine) {
                     let engineVoices = {};
 
-                    if (updates.defaultEngine === 'tiktok') {
-                        engineVoices = TikTokEngine.getVoices();
-                    } else if (updates.defaultEngine === 'google' && this.engines.google) {
-                        engineVoices = GoogleEngine.getVoices();
-                    } else if (updates.defaultEngine === 'speechify' && this.engines.speechify) {
-                        engineVoices = await this.engines.speechify.getVoices();
+                    try {
+                        if (updates.defaultEngine === 'tiktok') {
+                            engineVoices = TikTokEngine.getVoices();
+                        } else if (updates.defaultEngine === 'google' && this.engines.google) {
+                            engineVoices = GoogleEngine.getVoices();
+                        } else if (updates.defaultEngine === 'speechify' && this.engines.speechify) {
+                            engineVoices = await this.engines.speechify.getVoices();
+                        }
+                    } catch (error) {
+                        this._logDebug('config', 'Failed to fetch voices for validation', { error: error.message });
+                        return res.status(500).json({
+                            success: false,
+                            error: `Failed to fetch voices: ${error.message}`
+                        });
                     }
-                    const engineVoices = updates.defaultEngine === 'tiktok'
-                        ? TikTokEngine.getVoices()
-                        : (updates.defaultEngine === 'google' && this.engines.google
-                            ? GoogleEngine.getVoices()
-                            : {});
 
                     if (!engineVoices[updates.defaultVoice]) {
                         return res.status(400).json({
@@ -848,7 +851,6 @@ class TTSPlugin {
                         throw engineError;
                     }
                 } else if (selectedEngine === 'google' && this.engines.tiktok) {
-                if (selectedEngine === 'google' && this.engines.tiktok) {
                     // Try to keep the voice if it's valid for TikTok, otherwise detect language
                     let fallbackVoice = selectedVoice;
                     const tiktokVoices = TikTokEngine.getVoices();
