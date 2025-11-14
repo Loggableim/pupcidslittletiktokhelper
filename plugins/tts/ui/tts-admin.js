@@ -1,6 +1,19 @@
 // TTS Admin Panel JavaScript
 let socket = null;
 
+/**
+ * HTML escape function to prevent XSS attacks
+ */
+function escapeHtml(unsafe) {
+    if (unsafe == null) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Initialize Socket.io with error handling
 try {
     if (typeof io !== 'undefined') {
@@ -277,9 +290,9 @@ function renderUsers() {
     list.innerHTML = filtered.map(user => `
         <div class="bg-gray-700 rounded p-4 flex justify-between items-center fade-in">
             <div class="flex-1">
-                <div class="font-bold">${user.username}</div>
+                <div class="font-bold">${escapeHtml(user.username)}</div>
                 <div class="text-sm text-gray-400">
-                    ${user.assigned_voice_id ? `Voice: ${user.assigned_voice_id}` : 'No voice assigned'}
+                    ${user.assigned_voice_id ? `Voice: ${escapeHtml(user.assigned_voice_id)}` : 'No voice assigned'}
                 </div>
                 <div class="text-xs text-gray-500 mt-1">
                     ${user.allow_tts ? '<span class="text-green-400">✓ Allowed</span>' : ''}
@@ -288,24 +301,24 @@ function renderUsers() {
             </div>
             <div class="flex space-x-2">
                 ${!user.allow_tts ? `
-                    <button onclick="allowUser('${user.user_id}', '${user.username}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
+                    <button onclick="allowUser('${escapeHtml(user.user_id)}', '${escapeHtml(user.username)}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
                         Allow
                     </button>
                 ` : `
-                    <button onclick="denyUser('${user.user_id}', '${user.username}')" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm">
+                    <button onclick="denyUser('${escapeHtml(user.user_id)}', '${escapeHtml(user.username)}')" class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm">
                         Revoke
                     </button>
                 `}
                 ${!user.is_blacklisted ? `
-                    <button onclick="blacklistUser('${user.user_id}', '${user.username}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                    <button onclick="blacklistUser('${escapeHtml(user.user_id)}', '${escapeHtml(user.username)}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
                         Blacklist
                     </button>
                 ` : `
-                    <button onclick="unblacklistUser('${user.user_id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                    <button onclick="unblacklistUser('${escapeHtml(user.user_id)}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
                         Unblacklist
                     </button>
                 `}
-                <button onclick="assignVoiceDialog('${user.user_id}', '${user.username}')" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm">
+                <button onclick="assignVoiceDialog('${escapeHtml(user.user_id)}', '${escapeHtml(user.username)}')" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm">
                     ${user.assigned_voice_id ? 'Change' : 'Assign'} Voice
                 </button>
             </div>
@@ -382,22 +395,122 @@ async function unblacklistUser(userId) {
     }
 }
 
-function assignVoiceDialog(userId, username) {
-    const engine = prompt('Select engine:\n1. tiktok\n2. google', 'tiktok');
-    if (!engine) return;
+// Voice Assignment Modal State
+let modalState = {
+    userId: null,
+    username: null,
+    selectedVoiceId: null,
+    selectedEngine: 'tiktok'
+};
 
-    const voiceList = voices[engine];
-    if (!voiceList) {
-        alert('Engine not available');
+function assignVoiceDialog(userId, username) {
+    console.log('[TTS] Opening voice assignment dialog for:', { userId, username });
+
+    modalState.userId = userId;
+    modalState.username = username;
+    modalState.selectedVoiceId = null;
+    modalState.selectedEngine = 'tiktok';
+
+    const modal = document.getElementById('voiceAssignmentModal');
+    const usernameEl = document.getElementById('modalUsername');
+    const engineSelect = document.getElementById('modalEngine');
+    const voiceSearch = document.getElementById('modalVoiceSearch');
+
+    console.log('[TTS] Modal elements found:', {
+        modal: !!modal,
+        usernameEl: !!usernameEl,
+        engineSelect: !!engineSelect,
+        voiceSearch: !!voiceSearch
+    });
+
+    if (!modal) {
+        console.error('[TTS] Modal element not found! Cannot open voice assignment dialog.');
+        showNotification('Error: Voice assignment dialog not available', 'error');
         return;
     }
 
-    const voiceOptions = Object.keys(voiceList).map((id, i) => `${i + 1}. ${id} - ${voiceList[id].name}`).join('\n');
-    const voiceId = prompt(`Select voice:\n${voiceOptions}\n\nEnter voice ID:`, '');
+    if (usernameEl) usernameEl.textContent = username;
+    if (engineSelect) {
+        engineSelect.value = 'tiktok';
+        engineSelect.onchange = () => {
+            modalState.selectedEngine = engineSelect.value;
+            console.log('[TTS] Engine changed to:', modalState.selectedEngine);
+            renderModalVoiceList();
+        };
+    }
+    if (voiceSearch) {
+        voiceSearch.value = '';
+        voiceSearch.oninput = renderModalVoiceList;
+    }
 
-    if (!voiceId) return;
+    console.log('[TTS] Rendering voice list...');
+    renderModalVoiceList();
 
-    assignVoice(userId, username, voiceId, engine);
+    console.log('[TTS] Opening modal...');
+    modal.classList.remove('hidden');
+
+    const confirmBtn = document.getElementById('confirmVoiceAssignment');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            if (!modalState.selectedVoiceId) {
+                showNotification('Please select a voice', 'error');
+                return;
+            }
+            console.log('[TTS] Assigning voice:', modalState.selectedVoiceId, 'to user:', username);
+            await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine);
+            closeVoiceAssignmentModal();
+        };
+    }
+
+    console.log('[TTS] Voice assignment dialog opened successfully');
+}
+
+function closeVoiceAssignmentModal() {
+    const modal = document.getElementById('voiceAssignmentModal');
+    if (modal) modal.classList.add('hidden');
+    modalState = { userId: null, username: null, selectedVoiceId: null, selectedEngine: 'tiktok' };
+}
+
+function renderModalVoiceList() {
+    const list = document.getElementById('modalVoiceList');
+    if (!list) return;
+
+    const engine = modalState.selectedEngine;
+    const voiceList = voices[engine];
+    const searchTerm = document.getElementById('modalVoiceSearch')?.value.toLowerCase() || '';
+
+    if (!voiceList || Object.keys(voiceList).length === 0) {
+        list.innerHTML = '<div class="text-gray-400 text-center py-4">No voices available for this engine</div>';
+        return;
+    }
+
+    const filteredVoices = Object.entries(voiceList).filter(([id, voice]) =>
+        id.toLowerCase().includes(searchTerm) ||
+        voice.name.toLowerCase().includes(searchTerm) ||
+        (voice.language && voice.language.toLowerCase().includes(searchTerm))
+    );
+
+    if (filteredVoices.length === 0) {
+        list.innerHTML = '<div class="text-gray-400 text-center py-4">No voices match your search</div>';
+        return;
+    }
+
+    list.innerHTML = filteredVoices.map(([id, voice]) => `
+        <div
+            onclick="selectModalVoice('${escapeHtml(id)}')"
+            class="voice-option p-3 rounded cursor-pointer hover:bg-gray-600 ${modalState.selectedVoiceId === id ? 'bg-blue-600' : 'bg-gray-800'}"
+            data-voice-id="${escapeHtml(id)}"
+        >
+            <div class="font-bold">${escapeHtml(id)}</div>
+            <div class="text-sm text-gray-300">${escapeHtml(voice.name)}</div>
+            ${voice.language ? `<div class="text-xs text-gray-400">${escapeHtml(voice.language)}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+function selectModalVoice(voiceId) {
+    modalState.selectedVoiceId = voiceId;
+    renderModalVoiceList();
 }
 
 async function assignVoice(userId, username, voiceId, engine) {
@@ -408,12 +521,17 @@ async function assignVoice(userId, username, voiceId, engine) {
             body: JSON.stringify({ username, voiceId, engine })
         });
 
-        if (res.ok) {
-            showNotification(`Voice assigned to ${username}`, 'success');
-            loadUsers(currentFilter);
+        const data = await res.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to assign voice');
         }
+
+        showNotification(`Voice assigned to ${username}`, 'success');
+        loadUsers(currentFilter);
     } catch (error) {
-        showNotification('Failed to assign voice', 'error');
+        console.error('Failed to assign voice:', error);
+        showNotification(`Failed to assign voice: ${error.message}`, 'error');
     }
 }
 

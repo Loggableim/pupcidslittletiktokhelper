@@ -545,7 +545,7 @@ async function handleUserAction(event) {
                 await unblacklistUser(userId);
                 break;
             case 'assign-voice':
-                await assignVoiceDialog(userId, username);
+                assignVoiceDialog(userId, username);
                 break;
         }
     } catch (error) {
@@ -623,25 +623,133 @@ async function unblacklistUser(userId) {
     }
 }
 
-async function assignVoiceDialog(userId, username) {
-    const engine = prompt('Select engine:\n1. tiktok\n2. google\n3. speechify', 'tiktok');
-    if (!engine) return;
+// Voice Assignment Modal State
+let modalState = {
+    userId: null,
+    username: null,
+    selectedVoiceId: null,
+    selectedEngine: 'tiktok'
+};
 
-    const voiceList = voices[engine];
-    if (!voiceList) {
-        alert('Engine not available');
+function assignVoiceDialog(userId, username) {
+    console.log('[TTS] Opening voice assignment dialog for:', { userId, username });
+
+    modalState.userId = userId;
+    modalState.username = username;
+    modalState.selectedVoiceId = null;
+    modalState.selectedEngine = 'tiktok';
+
+    const modal = document.getElementById('voiceAssignmentModal');
+    const usernameEl = document.getElementById('modalUsername');
+    const engineSelect = document.getElementById('modalEngine');
+    const voiceSearch = document.getElementById('modalVoiceSearch');
+
+    console.log('[TTS] Modal elements found:', {
+        modal: !!modal,
+        usernameEl: !!usernameEl,
+        engineSelect: !!engineSelect,
+        voiceSearch: !!voiceSearch
+    });
+
+    if (!modal) {
+        console.error('[TTS] Modal element not found! Cannot open voice assignment dialog.');
+        showNotification('Error: Voice assignment dialog not available', 'error');
         return;
     }
 
-    const voiceOptions = Object.keys(voiceList)
-        .slice(0, 20) // Show first 20
-        .map((id, i) => `${i + 1}. ${id} - ${voiceList[id].name}`)
-        .join('\n');
+    if (usernameEl) usernameEl.textContent = username;
+    if (engineSelect) {
+        engineSelect.value = 'tiktok';
+        engineSelect.onchange = () => {
+            modalState.selectedEngine = engineSelect.value;
+            console.log('[TTS] Engine changed to:', modalState.selectedEngine);
+            renderModalVoiceList();
+        };
+    }
+    if (voiceSearch) {
+        voiceSearch.value = '';
+        voiceSearch.oninput = renderModalVoiceList;
+    }
 
-    const voiceId = prompt(`Select voice:\n${voiceOptions}\n\nEnter voice ID:`, '');
-    if (!voiceId) return;
+    console.log('[TTS] Rendering voice list...');
+    renderModalVoiceList();
 
-    await assignVoice(userId, username, voiceId, engine);
+    console.log('[TTS] Opening modal...');
+    modal.classList.remove('hidden');
+
+    const confirmBtn = document.getElementById('confirmVoiceAssignment');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            if (!modalState.selectedVoiceId) {
+                showNotification('Please select a voice', 'error');
+                return;
+            }
+            console.log('[TTS] Assigning voice:', modalState.selectedVoiceId, 'to user:', username);
+            await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine);
+            closeVoiceAssignmentModal();
+        };
+    }
+
+    console.log('[TTS] Voice assignment dialog opened successfully');
+}
+
+function closeVoiceAssignmentModal() {
+    const modal = document.getElementById('voiceAssignmentModal');
+    if (modal) modal.classList.add('hidden');
+    modalState = { userId: null, username: null, selectedVoiceId: null, selectedEngine: 'tiktok' };
+}
+
+function renderModalVoiceList() {
+    const list = document.getElementById('modalVoiceList');
+    if (!list) {
+        console.warn('[TTS] modalVoiceList element not found');
+        return;
+    }
+
+    const engine = modalState.selectedEngine;
+    const voiceList = voices[engine];
+    const searchTerm = document.getElementById('modalVoiceSearch')?.value.toLowerCase() || '';
+
+    console.log('[TTS] Rendering voice list:', {
+        engine,
+        voiceCount: voiceList ? Object.keys(voiceList).length : 0,
+        searchTerm,
+        allVoices: Object.keys(voices)
+    });
+
+    if (!voiceList || Object.keys(voiceList).length === 0) {
+        list.innerHTML = '<div class="text-gray-400 text-center py-4">No voices available for this engine</div>';
+        console.warn('[TTS] No voices available for engine:', engine);
+        return;
+    }
+
+    const filteredVoices = Object.entries(voiceList).filter(([id, voice]) =>
+        id.toLowerCase().includes(searchTerm) ||
+        voice.name.toLowerCase().includes(searchTerm) ||
+        (voice.language && voice.language.toLowerCase().includes(searchTerm))
+    );
+
+    if (filteredVoices.length === 0) {
+        list.innerHTML = '<div class="text-gray-400 text-center py-4">No voices match your search</div>';
+        return;
+    }
+
+    list.innerHTML = filteredVoices.map(([id, voice]) => `
+        <div
+            onclick="selectModalVoice('${escapeHtml(id)}')"
+            class="voice-option p-3 rounded cursor-pointer hover:bg-gray-600 ${modalState.selectedVoiceId === id ? 'bg-blue-600' : 'bg-gray-800'}"
+            data-voice-id="${escapeHtml(id)}"
+        >
+            <div class="font-bold">${escapeHtml(id)}</div>
+            <div class="text-sm text-gray-300">${escapeHtml(voice.name)}</div>
+            ${voice.language ? `<div class="text-xs text-gray-400">${escapeHtml(voice.language)}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+function selectModalVoice(voiceId) {
+    modalState.selectedVoiceId = voiceId;
+    renderModalVoiceList();
 }
 
 async function assignVoice(userId, username, voiceId, engine) {
@@ -927,8 +1035,6 @@ function setupEventListeners() {
                 speechifyKeySection.style.display = (selectedEngine === 'speechify') ? 'block' : 'none';
             }
 
-            // Notify user if voice was automatically changed due to engine switch
-            if (previousVoice && previousVoice !== newVoice && previousEngine !== selectedEngine) {
             // Notify user if voice was automatically changed due to engine switch
             if (previousVoice && previousVoice !== newVoice && previousEngine !== engineSelect.value) {
                 showNotification(
