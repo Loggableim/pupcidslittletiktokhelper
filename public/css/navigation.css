@@ -1847,3 +1847,493 @@ input:checked + .toggle-slider:before {
 .max-w-none {
     max-width: none !important;
 }
+
+/* ============================================
+   NEW: Quick Actions Button Grid
+   ============================================ */
+
+.quick-actions-button-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.quick-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 2px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.quick-action-btn svg {
+    width: 28px;
+    height: 28px;
+}
+
+.quick-action-btn span {
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* ON State - Green */
+.quick-action-btn[data-state="on"] {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2));
+    border-color: rgba(16, 185, 129, 0.6);
+    color: #10b981;
+}
+
+.quick-action-btn[data-state="on"]:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 182, 212, 0.3));
+    border-color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
+}
+
+/* OFF State - Red */
+.quick-action-btn[data-state="off"] {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2));
+    border-color: rgba(239, 68, 68, 0.6);
+    color: #ef4444;
+}
+
+.quick-action-btn[data-state="off"]:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.3));
+    border-color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    transform: translateY(-2px);
+}
+
+/* IDLE State - Gray (optional) */
+.quick-action-btn[data-state="idle"] {
+    background: var(--color-bg-card);
+    border-color: var(--color-border);
+    color: var(--color-text-muted);
+}
+
+.quick-action-btn[data-state="idle"]:hover {
+    background: var(--color-bg-hover);
+    border-color: var(--color-accent-primary);
+    color: var(--color-text-primary);
+    transform: translateY(-2px);
+}
+
+/* ============================================
+   NEW: Live Statistics with Sparkline
+   ============================================ */
+
+.stat-card-runtime {
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card-runtime .stat-icon {
+    background: rgba(139, 92, 246, 0.2);
+    color: #8b5cf6;
+}
+
+.stat-card-runtime canvas.stat-sparkline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.stat-card-gifts .stat-icon {
+    background: rgba(236, 72, 153, 0.2);
+    color: #ec4899;
+}
+
+/* ============================================
+   NEW: Updates / Features / Changelog Section
+   ============================================ */
+
+.updates-section {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1));
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.updates-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.updates-content {
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-bg-hover) transparent;
+}
+
+.updates-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.updates-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.updates-content::-webkit-scrollbar-thumb {
+    background: var(--color-bg-hover);
+    border-radius: 3px;
+}
+
+.changelog-version {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.changelog-version:last-child {
+    border-bottom: none;
+}
+
+.changelog-version-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.changelog-version-number {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-accent-primary);
+}
+
+.changelog-version-date {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    background: var(--color-bg-tertiary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.changelog-section {
+    margin-bottom: 0.75rem;
+}
+
+.changelog-section-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.changelog-section-title.added { color: #10b981; }
+.changelog-section-title.changed { color: #3b82f6; }
+.changelog-section-title.fixed { color: #f59e0b; }
+.changelog-section-title.removed { color: #ef4444; }
+
+.changelog-list {
+    list-style: none;
+    padding-left: 1.5rem;
+}
+
+.changelog-list li {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+    position: relative;
+    line-height: 1.6;
+}
+
+.changelog-list li::before {
+    content: '•';
+    position: absolute;
+    left: -1rem;
+    color: var(--color-accent-primary);
+    font-weight: bold;
+}
+
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    color: var(--color-text-muted);
+}
+
+.loading-indicator svg {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   NEW: FAQ / Help Center Accordion
+   ============================================ */
+
+.faq-section {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(14, 165, 233, 0.1));
+    border-color: rgba(6, 182, 212, 0.3);
+}
+
+.faq-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.faq-item {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.faq-item:hover {
+    border-color: var(--color-accent-primary);
+}
+
+.faq-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: transparent;
+    border: none;
+    color: var(--color-text-primary);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.faq-toggle:hover {
+    background: var(--color-bg-hover);
+}
+
+.faq-toggle svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+    color: var(--color-accent-primary);
+}
+
+.faq-item.active .faq-toggle svg {
+    transform: rotate(90deg);
+}
+
+.faq-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0 1.25rem;
+}
+
+.faq-item.active .faq-content {
+    max-height: 500px;
+    padding: 0 1.25rem 1.25rem;
+}
+
+.faq-content p {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+}
+
+.faq-content p:last-child {
+    margin-bottom: 0;
+}
+
+.faq-content code {
+    background: var(--color-bg-tertiary);
+    color: var(--color-accent-primary);
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-family: 'Courier New', monospace;
+}
+
+/* ============================================
+   NEW: Compact System Resources
+   ============================================ */
+
+.resource-section-compact {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.1));
+    border-color: rgba(245, 158, 11, 0.3);
+    padding: 1rem 1.5rem;
+}
+
+.section-title-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: 1rem;
+}
+
+.section-title-compact svg {
+    width: 20px;
+    height: 20px;
+    color: var(--color-accent-primary);
+}
+
+.section-title-compact span {
+    flex: 1;
+}
+
+.resource-details-link {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-accent-primary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.resource-details-link:hover {
+    color: var(--color-accent-secondary);
+    gap: 0.5rem;
+}
+
+.resource-details-link svg {
+    width: 14px;
+    height: 14px;
+}
+
+.resource-grid-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: 0.75rem;
+}
+
+.resource-card-compact {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.resource-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.resource-info svg {
+    width: 16px;
+    height: 16px;
+    color: var(--color-accent-primary);
+}
+
+.resource-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    flex: 1;
+}
+
+.resource-value-compact {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.resource-bar-compact {
+    width: 100%;
+    height: 4px;
+    background: var(--color-bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.resource-bar-fill-compact {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-accent-success), var(--color-accent-primary));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.resource-sparkline-compact {
+    width: 100%;
+    height: 20px;
+    opacity: 0.6;
+}
+
+/* ============================================
+   Mobile Responsiveness for New Components
+   ============================================ */
+
+@media (max-width: 768px) {
+    .quick-actions-button-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .quick-action-btn {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .quick-action-btn svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .updates-content {
+        max-height: 300px;
+    }
+
+    .faq-accordion {
+        gap: 0.5rem;
+    }
+
+    .faq-toggle {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .resource-grid-compact {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .resource-section-compact {
+        padding: 0.75rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-actions-button-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .resource-grid-compact {
+        grid-template-columns: 1fr;
+    }
+}

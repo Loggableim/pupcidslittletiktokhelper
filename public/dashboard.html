@@ -148,7 +148,7 @@
                 <!-- View: Dashboard -->
                 <div id="view-dashboard" class="content-view active">
 
-                    <!-- Connection Section -->
+                    <!-- 1. TikTok Live Connection Section -->
                     <section class="dashboard-section connection-section">
                         <h2 class="section-title">
                             <i data-lucide="wifi"></i>
@@ -169,31 +169,53 @@
                         <div id="connection-info" class="connection-info"></div>
                     </section>
 
-                    <!-- Update Notification Banner -->
-                    <div id="update-banner" class="update-banner hidden">
-                        <div class="update-banner-content">
-                            <i data-lucide="download"></i>
-                            <div>
-                                <div class="update-banner-title">Neue Version verfügbar!</div>
-                                <div class="update-banner-text" id="update-version-info"></div>
-                            </div>
-                        </div>
-                        <div class="update-banner-actions">
-                            <button id="update-download-btn" class="btn btn-sm btn-light">
-                                <i data-lucide="download"></i>
-                                Update installieren
+                    <!-- 2. Quick Actions Section (Compact Button Grid) -->
+                    <section class="dashboard-section actions-section">
+                        <h2 class="section-title">
+                            <i data-lucide="zap"></i>
+                            Quick Actions
+                        </h2>
+                        <div class="quick-actions-button-grid">
+                            <button class="quick-action-btn" id="quick-tts-btn" data-action="tts" data-state="on">
+                                <i data-lucide="mic"></i>
+                                <span>Text-to-Speech</span>
                             </button>
-                            <button id="update-dismiss-btn" class="btn btn-sm btn-ghost">Später</button>
+                            <button class="quick-action-btn" id="quick-soundboard-btn" data-action="soundboard" data-state="on">
+                                <i data-lucide="music"></i>
+                                <span>Soundboard</span>
+                            </button>
+                            <button class="quick-action-btn" id="quick-flows-btn" data-action="flows" data-state="on">
+                                <i data-lucide="git-branch"></i>
+                                <span>Automation Flows</span>
+                            </button>
+                            <button class="quick-action-btn" id="quick-emoji-rain-btn" data-action="emoji-rain" data-state="on">
+                                <i data-lucide="cloud-rain"></i>
+                                <span>Emoji Rain</span>
+                            </button>
+                            <button class="quick-action-btn" id="quick-osc-bridge-btn" data-action="osc-bridge" data-state="off" data-plugin="osc-bridge">
+                                <i data-lucide="gamepad-2"></i>
+                                <span>OSC-Bridge</span>
+                            </button>
                         </div>
-                    </div>
+                    </section>
 
-                    <!-- Live Stats Section -->
+                    <!-- 3. Live Statistics Section (with Runtime) -->
                     <section class="dashboard-section stats-section">
                         <h2 class="section-title">
                             <i data-lucide="trending-up"></i>
                             Live Statistics
                         </h2>
                         <div class="stats-grid">
+                            <div class="stat-card stat-card-runtime">
+                                <div class="stat-icon">
+                                    <i data-lucide="clock"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Stream Runtime</div>
+                                    <div class="stat-value" id="stat-runtime">--:--:--</div>
+                                </div>
+                                <canvas id="runtime-sparkline" class="stat-sparkline" width="150" height="40"></canvas>
+                            </div>
                             <div class="stat-card stat-card-viewers">
                                 <div class="stat-icon">
                                     <i data-lucide="users"></i>
@@ -230,104 +252,43 @@
                                     <div class="stat-value" id="stat-followers">0</div>
                                 </div>
                             </div>
-                        </div>
-                    </section>
-
-                    <!-- Resource Monitor Section -->
-                    <section class="dashboard-section resource-section">
-                        <h2 class="section-title">
-                            <i data-lucide="activity"></i>
-                            System Resources
-                        </h2>
-                        <div class="resource-grid">
-                            <div class="resource-card">
-                                <div class="resource-header">
-                                    <i data-lucide="cpu"></i>
-                                    <span>CPU</span>
+                            <div class="stat-card stat-card-gifts">
+                                <div class="stat-icon">
+                                    <i data-lucide="gift"></i>
                                 </div>
-                                <div class="resource-value" id="resource-cpu">0%</div>
-                                <div class="resource-bar">
-                                    <div class="resource-bar-fill" id="resource-cpu-bar" style="width: 0%"></div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Gifts</div>
+                                    <div class="stat-value" id="stat-gifts">0</div>
                                 </div>
-                            </div>
-                            <div class="resource-card">
-                                <div class="resource-header">
-                                    <i data-lucide="memory-stick"></i>
-                                    <span>RAM</span>
-                                </div>
-                                <div class="resource-value" id="resource-ram">0%</div>
-                                <div class="resource-bar">
-                                    <div class="resource-bar-fill" id="resource-ram-bar" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <div class="resource-card">
-                                <div class="resource-header">
-                                    <i data-lucide="gauge"></i>
-                                    <span>FPS</span>
-                                </div>
-                                <div class="resource-value" id="resource-fps">60</div>
-                            </div>
-                            <div class="resource-card">
-                                <div class="resource-header">
-                                    <i data-lucide="wifi"></i>
-                                    <span>Latency</span>
-                                </div>
-                                <div class="resource-value" id="resource-latency">0ms</div>
                             </div>
                         </div>
                     </section>
 
-                    <!-- Quick Actions Section -->
-                    <section class="dashboard-section actions-section">
-                        <h2 class="section-title">
-                            <i data-lucide="zap"></i>
-                            Quick Actions
-                        </h2>
-                        <div class="quick-actions-grid">
-                            <div class="quick-action-card">
-                                <div class="quick-action-header">
-                                    <i data-lucide="mic"></i>
-                                    <span>TTS</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="quick-tts-toggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="quick-action-card">
-                                <div class="quick-action-header">
-                                    <i data-lucide="music"></i>
-                                    <span>Soundboard</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="quick-soundboard-toggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="quick-action-card">
-                                <div class="quick-action-header">
-                                    <i data-lucide="git-branch"></i>
-                                    <span>Flows</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="quick-flows-toggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="quick-action-card">
-                                <div class="quick-action-header">
-                                    <i data-lucide="cloud-rain"></i>
-                                    <span>Emoji Rain</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="quick-emoji-rain-toggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
+                    <!-- 4. Updates / Features / Changelog Section (NEW) -->
+                    <section class="dashboard-section updates-section" id="updates-section">
+                        <div class="updates-header">
+                            <h2 class="section-title">
+                                <i data-lucide="sparkles"></i>
+                                Updates & Features
+                            </h2>
+                            <button id="dismiss-updates-btn" class="btn btn-sm btn-ghost">
+                                <i data-lucide="x"></i>
+                                Ausblenden
+                            </button>
+                        </div>
+                        <div class="updates-content" id="updates-content">
+                            <div class="loading-indicator">
+                                <i data-lucide="loader"></i>
+                                <span>Loading changelog...</span>
                             </div>
                         </div>
+                        <button id="show-more-changelog-btn" class="btn btn-sm btn-ghost" style="margin-top: 1rem; display: none;">
+                            <i data-lucide="chevron-down"></i>
+                            Mehr anzeigen
+                        </button>
                     </section>
 
-                    <!-- Plugin & Tool Shortcuts -->
+                    <!-- 5. Plugin & Tool Shortcuts -->
                     <section class="dashboard-section shortcuts-section">
                         <h2 class="section-title">
                             <i data-lucide="grid-3x3"></i>
@@ -335,6 +296,131 @@
                         </h2>
                         <div class="shortcuts-grid" id="shortcuts-grid">
                             <!-- Will be dynamically populated -->
+                        </div>
+                    </section>
+
+                    <!-- 6. FAQ / Help Center Section (NEW) -->
+                    <section class="dashboard-section faq-section">
+                        <h2 class="section-title">
+                            <i data-lucide="help-circle"></i>
+                            FAQ & Help Center
+                        </h2>
+                        <div class="faq-accordion" id="faq-accordion">
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wie verbinde ich mich mit einem TikTok LIVE Stream?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>Geben Sie einfach den TikTok-Benutzernamen (ohne @-Zeichen) in das Eingabefeld ein und klicken Sie auf "Connect". Stellen Sie sicher, dass der Benutzer gerade LIVE ist.</p>
+                                    <p><strong>Tipp:</strong> Der Benutzer muss während der Verbindung live streamen.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wie aktiviere ich Text-to-Speech (TTS)?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>TTS ist standardmäßig aktiviert. Sie können es über den grünen "Text-to-Speech" Button in den Quick Actions steuern.</p>
+                                    <p>Für erweiterte Einstellungen gehen Sie zu TTS in der Seitenleiste oder den Settings.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Was sind Automation Flows?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>Automation Flows ermöglichen es Ihnen, automatische Aktionen basierend auf TikTok-Events zu erstellen.</p>
+                                    <p>Beispiel: Spielen Sie einen Sound ab, wenn jemand ein bestimmtes Gift sendet, oder zeigen Sie eine Alert an, wenn Sie einen neuen Follower bekommen.</p>
+                                    <p><strong>Zugriff:</strong> Klicken Sie auf "Flows" in der Seitenleiste.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wie füge ich das Overlay zu OBS hinzu?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>1. Öffnen Sie OBS Studio</p>
+                                    <p>2. Fügen Sie eine neue "Browser"-Quelle hinzu</p>
+                                    <p>3. URL: <code>http://localhost:3000/overlay</code></p>
+                                    <p>4. Breite: 1920, Höhe: 1080</p>
+                                    <p>5. Aktivieren Sie "Shutdown source when not visible"</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wo finde ich die System Resources?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>Die System-Ressourcen (CPU, RAM, etc.) werden kompakt am Ende des Dashboards angezeigt.</p>
+                                    <p>Für detaillierte Informationen klicken Sie auf "Resources" in der Seitenleiste oder in den Tools & Plugins.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wie installiere ich neue Plugins?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>1. Gehen Sie zum "Plugin Manager" in der Seitenleiste</p>
+                                    <p>2. Klicken Sie auf "Upload Plugin (ZIP)"</p>
+                                    <p>3. Wählen Sie die Plugin-ZIP-Datei aus</p>
+                                    <p>4. Das Plugin wird automatisch installiert und aktiviert</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 7. System Resources Section (Compact, at bottom) -->
+                    <section class="dashboard-section resource-section-compact">
+                        <h2 class="section-title-compact">
+                            <i data-lucide="activity"></i>
+                            <span>System Resources</span>
+                            <a href="#" class="resource-details-link" data-view="resource-monitor" data-plugin="resource-monitor">
+                                Details <i data-lucide="arrow-right"></i>
+                            </a>
+                        </h2>
+                        <div class="resource-grid-compact">
+                            <div class="resource-card-compact">
+                                <div class="resource-info">
+                                    <i data-lucide="cpu"></i>
+                                    <span class="resource-label">CPU</span>
+                                    <span class="resource-value-compact" id="resource-cpu-compact">0%</span>
+                                </div>
+                                <div class="resource-bar-compact">
+                                    <div class="resource-bar-fill-compact" id="resource-cpu-bar-compact" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="resource-card-compact">
+                                <div class="resource-info">
+                                    <i data-lucide="memory-stick"></i>
+                                    <span class="resource-label">RAM</span>
+                                    <span class="resource-value-compact" id="resource-ram-compact">0%</span>
+                                </div>
+                                <div class="resource-bar-compact">
+                                    <div class="resource-bar-fill-compact" id="resource-ram-bar-compact" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="resource-card-compact">
+                                <div class="resource-info">
+                                    <i data-lucide="hard-drive"></i>
+                                    <span class="resource-label">GPU</span>
+                                    <span class="resource-value-compact" id="resource-gpu-compact">--</span>
+                                </div>
+                                <canvas id="gpu-sparkline" class="resource-sparkline-compact" width="100" height="20"></canvas>
+                            </div>
+                            <div class="resource-card-compact">
+                                <div class="resource-info">
+                                    <i data-lucide="wifi"></i>
+                                    <span class="resource-label">Network</span>
+                                    <span class="resource-value-compact" id="resource-network-compact">0 KB/s</span>
+                                </div>
+                                <canvas id="network-sparkline" class="resource-sparkline-compact" width="100" height="20"></canvas>
+                            </div>
                         </div>
                     </section>
 
@@ -959,6 +1045,25 @@
                             </button>
                         </div>
 
+                        <!-- OSC-Bridge Settings -->
+                        <div class="settings-card" data-plugin="osc-bridge">
+                            <h3 class="card-title">
+                                <i data-lucide="gamepad-2"></i>
+                                OSC-Bridge Settings
+                            </h3>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="osc-bridge-enabled">
+                                    <span>Enable OSC-Bridge</span>
+                                </label>
+                                <p class="form-help">Aktiviert die OSC-Bridge für VRChat-Integration. Wenn aktiviert, startet die Bridge automatisch beim Verbindungsaufbau.</p>
+                            </div>
+                            <div class="info-banner">
+                                <i data-lucide="info"></i>
+                                <p>Die vollständigen OSC-Bridge Einstellungen (Ports, Verbose-Modus, etc.) finden Sie im OSC-Bridge Tab in der Seitenleiste.</p>
+                            </div>
+                        </div>
+
                     </section>
                 </div>
 
@@ -1067,6 +1172,7 @@
     <script src="/js/audio-unlock.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/navigation.js"></script>
+    <script src="/js/dashboard-enhancements.js"></script>
     <script src="/js/vdoninja-dashboard.js"></script>
     <script src="/js/plugin-manager.js"></script>
     <script src="/js/update-checker.js"></script>
