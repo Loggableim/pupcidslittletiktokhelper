@@ -1,0 +1,34 @@
+/* Open Sans Font Replacement with Web-Safe Alternatives */
+/* This provides a CSP-compliant alternative to Google Fonts */
+
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  /* Use system fonts with similar characteristics */
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica'), local('Liberation Sans');
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  /* Use semi-bold system fonts */
+  src: local('Arial Bold'), local('Helvetica Neue Bold'), local('Helvetica Bold'), local('Liberation Sans Bold');
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  /* Use bold system fonts */
+  src: local('Arial Bold'), local('Helvetica Neue Bold'), local('Helvetica Bold'), local('Liberation Sans Bold');
+}
+
+/* Fallback font stack for Open Sans */
+body {
+  font-family: 'Open Sans', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
+}
