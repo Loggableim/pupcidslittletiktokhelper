@@ -582,6 +582,32 @@ class ResourceMonitorPlugin extends EventEmitter {
             }
         });
 
+        // Client requests current metrics (alias for compatibility)
+        this.api.registerSocket('resource-monitor:request-metrics', async (socket) => {
+            try {
+                if (!this.metricsCollector) {
+                    socket.emit('resource-monitor:error', {
+                        error: 'Metrics collector not initialized'
+                    });
+                    return;
+                }
+
+                const metrics = await this.metricsCollector.collectMetrics();
+
+                if (metrics) {
+                    socket.emit('resource-monitor:metrics', {
+                        ...metrics,
+                        updateInterval: this.updateInterval
+                    });
+                }
+            } catch (error) {
+                this.api.log(`Error sending metrics: ${error.message}`, 'error');
+                socket.emit('resource-monitor:error', {
+                    error: error.message
+                });
+            }
+        });
+
         // Client requests historical data
         this.api.registerSocket('resource-monitor:get-history', (socket) => {
             try {

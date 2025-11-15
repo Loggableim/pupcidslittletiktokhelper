@@ -524,7 +524,7 @@ class DatabaseManager {
         const rows = stmt.all(limit);
         return rows.map(row => ({
             ...row,
-            data: JSON.parse(row.data)
+            data: safeJsonParse(row.data, {})
         }));
     }
 
@@ -806,7 +806,7 @@ class DatabaseManager {
         console.log('🔍 [DATABASE] row.config_json length:', row.config_json ? row.config_json.length : 0);
 
         // Return flat config object with enabled flag
-        const configData = JSON.parse(row.config_json);
+        const configData = safeJsonParse(row.config_json, {});
         console.log('🔍 [DATABASE] Parsed config_json:', JSON.stringify(configData).substring(0, 200));
         console.log('🔍 [DATABASE] configData.emoji_set:', configData.emoji_set);
         console.log('🔍 [DATABASE] configData.emoji_set type:', typeof configData.emoji_set, Array.isArray(configData.emoji_set));

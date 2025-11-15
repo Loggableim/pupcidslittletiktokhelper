@@ -229,6 +229,39 @@ function initializeButtons() {
             }
         });
     }
+
+    // OSC-Bridge settings checkbox handler
+    const oscBridgeCheckbox = document.getElementById('osc-bridge-enabled');
+    if (oscBridgeCheckbox) {
+        oscBridgeCheckbox.addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ osc_bridge_enabled: enabled ? 'true' : 'false' })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log(`OSC-Bridge ${enabled ? 'enabled' : 'disabled'}`);
+                    // Update the quick action button state if it exists
+                    const quickBtn = document.getElementById('quick-osc-bridge-btn');
+                    if (quickBtn) {
+                        quickBtn.setAttribute('data-state', enabled ? 'on' : 'off');
+                    }
+                } else {
+                    // Revert on error
+                    oscBridgeCheckbox.checked = !enabled;
+                    alert('Error saving OSC-Bridge setting');
+                }
+            } catch (error) {
+                console.error('Error saving OSC-Bridge setting:', error);
+                oscBridgeCheckbox.checked = !enabled;
+            }
+        });
+    }
 }
 
 // ========== SOCKET.IO LISTENERS ==========
@@ -313,6 +346,12 @@ function updateConnectionStatus(status, data = {}) {
     const connectBtn = document.getElementById('connect-btn');
     const disconnectBtn = document.getElementById('disconnect-btn');
 
+    // Check if elements exist
+    if (!infoEl || !connectBtn || !disconnectBtn) {
+        console.warn('Connection status elements not found');
+        return;
+    }
+
     // Update status badge via NavigationManager
     if (window.NavigationManager) {
         window.NavigationManager.updateConnectionStatus(status, data);
@@ -387,10 +426,15 @@ function updateConnectionStatus(status, data = {}) {
 
 // ========== STATS ==========
 function updateStats(stats) {
-    document.getElementById('stat-viewers').textContent = stats.viewers.toLocaleString();
-    document.getElementById('stat-likes').textContent = stats.likes.toLocaleString();
-    document.getElementById('stat-coins').textContent = stats.totalCoins.toLocaleString();
-    document.getElementById('stat-followers').textContent = stats.followers.toLocaleString();
+    const viewersEl = document.getElementById('stat-viewers');
+    const likesEl = document.getElementById('stat-likes');
+    const coinsEl = document.getElementById('stat-coins');
+    const followersEl = document.getElementById('stat-followers');
+
+    if (viewersEl) viewersEl.textContent = stats.viewers.toLocaleString();
+    if (likesEl) likesEl.textContent = stats.likes.toLocaleString();
+    if (coinsEl) coinsEl.textContent = stats.totalCoins.toLocaleString();
+    if (followersEl) followersEl.textContent = stats.followers.toLocaleString();
 
     // Update gifts counter if available
     const giftsElement = document.getElementById('stat-gifts');
@@ -2119,38 +2163,3 @@ async function loadOSCBridgeSettings() {
         console.error('Error loading OSC-Bridge settings:', error);
     }
 }
-
-// Initialize OSC-Bridge settings checkbox handler
-document.addEventListener('DOMContentLoaded', () => {
-    const oscBridgeCheckbox = document.getElementById('osc-bridge-enabled');
-    if (oscBridgeCheckbox) {
-        oscBridgeCheckbox.addEventListener('change', async (e) => {
-            const enabled = e.target.checked;
-
-            try {
-                const response = await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ osc_bridge_enabled: enabled ? 'true' : 'false' })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    console.log(`OSC-Bridge ${enabled ? 'enabled' : 'disabled'}`);
-                    // Update the quick action button state if it exists
-                    const quickBtn = document.getElementById('quick-osc-bridge-btn');
-                    if (quickBtn) {
-                        quickBtn.setAttribute('data-state', enabled ? 'on' : 'off');
-                    }
-                } else {
-                    // Revert on error
-                    oscBridgeCheckbox.checked = !enabled;
-                    alert('Error saving OSC-Bridge setting');
-                }
-            } catch (error) {
-                console.error('Error saving OSC-Bridge setting:', error);
-                oscBridgeCheckbox.checked = !enabled;
-            }
-        });
-    }
-});
