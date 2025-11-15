@@ -215,6 +215,11 @@ class ResourceMonitorPlugin extends EventEmitter {
                 return;
             }
 
+            if (!this.metricsCollector) {
+                this.api.log('Metrics collector not initialized, skipping collection', 'warn');
+                return;
+            }
+
             const metrics = await this.metricsCollector.collectMetrics();
 
             if (!metrics) {
@@ -339,6 +344,13 @@ class ResourceMonitorPlugin extends EventEmitter {
         // Get current metrics
         this.api.registerRoute('get', '/api/resource-monitor/metrics', async (req, res) => {
             try {
+                if (!this.metricsCollector) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Metrics collector not initialized'
+                    });
+                }
+
                 const metrics = await this.metricsCollector.collectMetrics();
 
                 if (!metrics) {
@@ -365,6 +377,13 @@ class ResourceMonitorPlugin extends EventEmitter {
         // Get historical data
         this.api.registerRoute('get', '/api/resource-monitor/history', (req, res) => {
             try {
+                if (!this.metricsCollector) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Metrics collector not initialized'
+                    });
+                }
+
                 const history = this.metricsCollector.getHistory();
 
                 res.json({
@@ -389,7 +408,7 @@ class ResourceMonitorPlugin extends EventEmitter {
                     running: this.isRunning,
                     updateInterval: this.updateInterval,
                     subscribedClients: this.subscribedClients,
-                    hasGPU: this.metricsCollector.hasGPU,
+                    hasGPU: this.metricsCollector ? this.metricsCollector.hasGPU : false,
                     thresholds: this.thresholds
                 }
             });
@@ -466,6 +485,13 @@ class ResourceMonitorPlugin extends EventEmitter {
         // Clear historical data
         this.api.registerRoute('post', '/api/resource-monitor/clear-history', (req, res) => {
             try {
+                if (!this.metricsCollector) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Metrics collector not initialized'
+                    });
+                }
+
                 this.metricsCollector.clearHistory();
 
                 res.json({
@@ -495,13 +521,22 @@ class ResourceMonitorPlugin extends EventEmitter {
             this.api.log(`Client subscribed to metrics (total: ${this.subscribedClients})`, 'info');
 
             // Send current metrics immediately
-            this.metricsCollector.collectMetrics().then(metrics => {
-                if (metrics) {
-                    socket.emit('resource-monitor:metrics', metrics);
-                }
-            }).catch(error => {
-                this.api.log(`Error sending initial metrics: ${error.message}`, 'error');
-            });
+            if (this.metricsCollector) {
+                this.metricsCollector.collectMetrics().then(metrics => {
+                    if (metrics) {
+                        socket.emit('resource-monitor:metrics', metrics);
+                    }
+                }).catch(error => {
+                    this.api.log(`Error sending initial metrics: ${error.message}`, 'error');
+                    socket.emit('resource-monitor:error', {
+                        error: error.message
+                    });
+                });
+            } else {
+                socket.emit('resource-monitor:error', {
+                    error: 'Metrics collector not initialized'
+                });
+            }
 
             // Handle disconnect
             socket.on('disconnect', () => {
@@ -513,6 +548,13 @@ class ResourceMonitorPlugin extends EventEmitter {
         // Client requests current metrics (one-time)
         this.api.registerSocket('resource-monitor:get-metrics', async (socket) => {
             try {
+                if (!this.metricsCollector) {
+                    socket.emit('resource-monitor:error', {
+                        error: 'Metrics collector not initialized'
+                    });
+                    return;
+                }
+
                 const metrics = await this.metricsCollector.collectMetrics();
 
                 if (metrics) {
@@ -529,6 +571,13 @@ class ResourceMonitorPlugin extends EventEmitter {
         // Client requests historical data
         this.api.registerSocket('resource-monitor:get-history', (socket) => {
             try {
+                if (!this.metricsCollector) {
+                    socket.emit('resource-monitor:error', {
+                        error: 'Metrics collector not initialized'
+                    });
+                    return;
+                }
+
                 const history = this.metricsCollector.getHistory();
                 socket.emit('resource-monitor:history', history);
             } catch (error) {
