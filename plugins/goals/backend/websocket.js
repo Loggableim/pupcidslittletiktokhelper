@@ -233,6 +233,14 @@ class GoalsWebSocket {
         const machine = this.stateMachineManager.getMachine(goal.id);
         const snapshot = machine ? machine.getSnapshot() : null;
 
+        // Broadcast to all clients (for UI updates)
+        this.io.emit('goals:value-changed', {
+            goalId: goal.id,
+            goal: goal,
+            state: snapshot
+        });
+
+        // Also broadcast to goal-specific room (for overlay updates)
         this.io.to(`goal:${goal.id}`).emit('goals:value-changed', {
             goalId: goal.id,
             goal: goal,
@@ -266,6 +274,12 @@ class GoalsWebSocket {
         const machine = this.stateMachineManager.getMachine(goal.id);
         const snapshot = machine ? machine.getSnapshot() : null;
 
+        // Broadcast to all clients (for UI updates)
+        this.io.emit('goals:updated', {
+            goal: goal
+        });
+
+        // Also broadcast reset event to goal-specific room (for overlay)
         this.io.to(`goal:${goal.id}`).emit('goals:reset', {
             goalId: goal.id,
             goal: goal,
