@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeSocket();
     initializeTabs();
     initializeModals();
+    initializeEventDelegation();
 
     await loadInitialData();
     startPeriodicUpdates();
@@ -269,7 +270,7 @@ function renderDeviceList() {
             <div class="openshock-empty-state">
                 <i class="fas fa-plug"></i>
                 <p>No devices found</p>
-                <button onclick="refreshDevices()" class="openshock-btn openshock-btn-primary">
+                <button class="openshock-btn openshock-btn-primary refresh-devices-btn">
                     <i class="fas fa-sync"></i> Refresh Devices
                 </button>
             </div>
@@ -318,18 +319,18 @@ function renderDeviceList() {
                         </td>
                         <td>
                             <div class="openshock-btn-group">
-                                <button onclick="testDevice('${device.id}', 'vibrate')"
-                                        class="openshock-btn openshock-btn-sm openshock-btn-secondary"
+                                <button data-device-id="${escapeHtml(device.id)}" data-test-type="vibrate"
+                                        class="openshock-btn openshock-btn-sm openshock-btn-secondary test-device-btn"
                                         title="Test Vibrate">
                                     <i class="fas fa-mobile-alt"></i>
                                 </button>
-                                <button onclick="testDevice('${device.id}', 'shock')"
-                                        class="openshock-btn openshock-btn-sm openshock-btn-warning"
+                                <button data-device-id="${escapeHtml(device.id)}" data-test-type="shock"
+                                        class="openshock-btn openshock-btn-sm openshock-btn-warning test-device-btn"
                                         title="Test Shock">
                                     <i class="fas fa-bolt"></i>
                                 </button>
-                                <button onclick="testDevice('${device.id}', 'beep')"
-                                        class="openshock-btn openshock-btn-sm openshock-btn-info"
+                                <button data-device-id="${escapeHtml(device.id)}" data-test-type="beep"
+                                        class="openshock-btn openshock-btn-sm openshock-btn-info test-device-btn"
                                         title="Test Beep">
                                     <i class="fas fa-volume-up"></i>
                                 </button>
@@ -357,7 +358,7 @@ function renderCommandLog(commands) {
         <div class="openshock-log-entry">
             <div class="openshock-log-time">${formatTimestamp(cmd.timestamp)}</div>
             <div class="openshock-log-content">
-                <span class="openshock-badge openshock-badge-${getCommandTypeColor(cmd.type)}">${cmd.type}</span>
+                <span class="openshock-badge openshock-badge-${getCommandTypeColor(cmd.type)}">${escapeHtml(cmd.type)}</span>
                 <strong>${escapeHtml(cmd.deviceName || cmd.deviceId)}</strong>
                 ${cmd.intensity ? `<span class="openshock-intensity">${cmd.intensity}%</span>` : ''}
                 ${cmd.duration ? `<span class="openshock-duration">${cmd.duration}ms</span>` : ''}
@@ -377,7 +378,7 @@ function renderMappingList() {
             <div class="openshock-empty-state">
                 <i class="fas fa-link"></i>
                 <p>No mappings configured</p>
-                <button onclick="openMappingModal()" class="openshock-btn openshock-btn-primary">
+                <button class="openshock-btn openshock-btn-primary create-mapping-btn">
                     <i class="fas fa-plus"></i> Create Mapping
                 </button>
             </div>
@@ -392,15 +393,15 @@ function renderMappingList() {
                 <div class="openshock-mapping-actions">
                     <label class="openshock-switch">
                         <input type="checkbox" ${mapping.enabled ? 'checked' : ''}
-                               onchange="toggleMapping('${mapping.id}', this.checked)">
+                               data-mapping-id="${escapeHtml(mapping.id)}" class="toggle-mapping-checkbox">
                         <span class="openshock-slider"></span>
                     </label>
-                    <button onclick="openMappingModal('${mapping.id}')"
-                            class="openshock-btn openshock-btn-sm openshock-btn-secondary">
+                    <button data-mapping-id="${escapeHtml(mapping.id)}"
+                            class="openshock-btn openshock-btn-sm openshock-btn-secondary edit-mapping-btn">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="deleteMapping('${mapping.id}')"
-                            class="openshock-btn openshock-btn-sm openshock-btn-danger">
+                    <button data-mapping-id="${escapeHtml(mapping.id)}"
+                            class="openshock-btn openshock-btn-sm openshock-btn-danger delete-mapping-btn">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -442,7 +443,7 @@ function renderPatternList() {
             <div class="openshock-empty-state">
                 <i class="fas fa-wave-square"></i>
                 <p>No patterns configured</p>
-                <button onclick="openPatternModal()" class="openshock-btn openshock-btn-primary">
+                <button class="openshock-btn openshock-btn-primary create-pattern-btn">
                     <i class="fas fa-plus"></i> Create Pattern
                 </button>
             </div>
@@ -455,12 +456,12 @@ function renderPatternList() {
             <div class="openshock-pattern-header">
                 <h4>${escapeHtml(pattern.name)}</h4>
                 <div class="openshock-pattern-actions">
-                    <button onclick="openPatternModal('${pattern.id}')"
-                            class="openshock-btn openshock-btn-sm openshock-btn-secondary">
+                    <button data-pattern-id="${escapeHtml(pattern.id)}"
+                            class="openshock-btn openshock-btn-sm openshock-btn-secondary edit-pattern-btn">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="deletePattern('${pattern.id}')"
-                            class="openshock-btn openshock-btn-sm openshock-btn-danger">
+                    <button data-pattern-id="${escapeHtml(pattern.id)}"
+                            class="openshock-btn openshock-btn-sm openshock-btn-danger delete-pattern-btn">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -476,12 +477,12 @@ function renderPatternList() {
                 </div>
             </div>
             <div class="openshock-pattern-footer">
-                <select id="pattern-device-${pattern.id}" class="openshock-select openshock-select-sm">
+                <select id="pattern-device-${escapeHtml(pattern.id)}" data-pattern-id="${escapeHtml(pattern.id)}" class="openshock-select openshock-select-sm pattern-device-select">
                     <option value="">Select device...</option>
-                    ${devices.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
+                    ${devices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('')}
                 </select>
-                <button onclick="executePattern('${pattern.id}', document.getElementById('pattern-device-${pattern.id}').value)"
-                        class="openshock-btn openshock-btn-sm openshock-btn-primary">
+                <button data-pattern-id="${escapeHtml(pattern.id)}"
+                        class="openshock-btn openshock-btn-sm openshock-btn-primary execute-pattern-btn">
                     <i class="fas fa-play"></i> Execute
                 </button>
             </div>
@@ -515,7 +516,7 @@ function renderQueueStatus() {
             </div>
         </div>
         ${queueStatus.pending > 0 ? `
-            <button onclick="clearQueue()" class="openshock-btn openshock-btn-sm openshock-btn-warning">
+            <button class="openshock-btn openshock-btn-sm openshock-btn-warning clear-queue-btn">
                 <i class="fas fa-times"></i> Clear Queue
             </button>
         ` : ''}
@@ -624,7 +625,7 @@ function populateTriggerFields(trigger) {
             <div class="openshock-form-group">
                 <label>Gift Name (optional)</label>
                 <input type="text" id="trigger-gift-name" class="openshock-input"
-                       placeholder="Leave empty for any gift" value="${trigger?.giftName || ''}">
+                       placeholder="Leave empty for any gift" value="${escapeHtml(trigger?.giftName || '')}">
             </div>
             <div class="openshock-form-group">
                 <label>Minimum Coins</label>
@@ -649,7 +650,7 @@ function populateTriggerFields(trigger) {
             <div class="openshock-form-group">
                 <label>Keywords (comma-separated)</label>
                 <input type="text" id="trigger-keywords" class="openshock-input"
-                       placeholder="zap, shock, buzz" value="${trigger?.keywords?.join(', ') || ''}">
+                       placeholder="zap, shock, buzz" value="${escapeHtml(trigger?.keywords?.join(', ') || '')}">
             </div>
         `;
     }
@@ -665,8 +666,7 @@ function populateActionFields(action) {
         <div class="openshock-form-group">
             <label>Intensity (%)</label>
             <input type="range" id="action-intensity" class="openshock-slider"
-                   min="1" max="100" value="${action?.intensity || 50}"
-                   oninput="document.getElementById('action-intensity-value').textContent = this.value">
+                   min="1" max="100" value="${action?.intensity || 50}">
             <span id="action-intensity-value">${action?.intensity || 50}</span>%
         </div>
         <div class="openshock-form-group">
@@ -677,6 +677,15 @@ function populateActionFields(action) {
     `;
 
     container.innerHTML = html;
+
+    // Add event listener for intensity slider
+    const intensitySlider = document.getElementById('action-intensity');
+    const intensityValue = document.getElementById('action-intensity-value');
+    if (intensitySlider && intensityValue) {
+        intensitySlider.addEventListener('input', function() {
+            intensityValue.textContent = this.value;
+        });
+    }
 }
 
 async function saveMappingModal() {
@@ -871,12 +880,12 @@ function renderPatternSteps() {
         <div class="openshock-pattern-step">
             <div class="openshock-pattern-step-number">${index + 1}</div>
             <div class="openshock-pattern-step-content">
-                <span class="openshock-badge openshock-badge-${getCommandTypeColor(step.type)}">${step.type}</span>
+                <span class="openshock-badge openshock-badge-${getCommandTypeColor(step.type)}">${escapeHtml(step.type)}</span>
                 <span>Intensity: ${step.intensity}%</span>
                 <span>Duration: ${step.duration}ms</span>
                 ${step.delay ? `<span>Delay: ${step.delay}ms</span>` : ''}
             </div>
-            <button onclick="removePatternStep(${index})" class="openshock-btn openshock-btn-sm openshock-btn-danger">
+            <button data-step-index="${index}" class="openshock-btn openshock-btn-sm openshock-btn-danger remove-pattern-step-btn">
                 <i class="fas fa-trash"></i>
             </button>
         </div>
@@ -926,10 +935,13 @@ function renderPatternTimeline(steps) {
         const widthPercent = (step.duration / totalDuration) * 100;
         currentTime += step.duration + (step.delay || 0);
 
+        // Sanitize step.type for CSS class (only allow alphanumeric and hyphen)
+        const sanitizedType = (step.type || '').replace(/[^a-zA-Z0-9-]/g, '');
+
         return `
-            <div class="openshock-timeline-bar openshock-timeline-${step.type}"
+            <div class="openshock-timeline-bar openshock-timeline-${sanitizedType}"
                  style="left: ${startPercent}%; width: ${widthPercent}%;"
-                 title="${step.type} - ${step.intensity}% - ${step.duration}ms">
+                 title="${escapeHtml(step.type)} - ${step.intensity}% - ${step.duration}ms">
             </div>
         `;
     }).join('');
@@ -1171,7 +1183,7 @@ async function saveApiSettings() {
 }
 
 async function testConnection() {
-    const button = document.querySelector('[onclick="testConnection()"]');
+    const button = document.querySelector('.test-connection-btn');
     if (button) {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
@@ -1201,7 +1213,7 @@ async function testConnection() {
 }
 
 async function refreshDevices() {
-    const button = document.querySelector('[onclick="refreshDevices()"]');
+    const button = document.querySelector('.refresh-devices-btn');
     if (button) {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
@@ -1464,7 +1476,7 @@ function renderTriggerDetails(trigger) {
         return `<span class="openshock-detail">Threshold: ${trigger.threshold}</span>`;
     }
     if (trigger.type === 'keyword' && trigger.keywords) {
-        return `<span class="openshock-detail">${trigger.keywords.join(', ')}</span>`;
+        return `<span class="openshock-detail">${trigger.keywords.map(k => escapeHtml(k)).join(', ')}</span>`;
     }
     return '';
 }
@@ -1478,6 +1490,113 @@ function renderActionDetails(action) {
 
 function calculatePatternDuration(steps) {
     return steps.reduce((total, step) => total + step.duration + (step.delay || 0), 0);
+}
+
+// ====================================================================
+// EVENT DELEGATION
+// ====================================================================
+
+function initializeEventDelegation() {
+    // Use event delegation for dynamically created elements
+    document.addEventListener('click', (e) => {
+        // Refresh devices button
+        if (e.target.closest('.refresh-devices-btn')) {
+            e.preventDefault();
+            refreshDevices();
+        }
+
+        // Test device buttons
+        if (e.target.closest('.test-device-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.test-device-btn');
+            const deviceId = button.dataset.deviceId;
+            const testType = button.dataset.testType;
+            testDevice(deviceId, testType);
+        }
+
+        // Create mapping button
+        if (e.target.closest('.create-mapping-btn')) {
+            e.preventDefault();
+            openMappingModal();
+        }
+
+        // Edit mapping button
+        if (e.target.closest('.edit-mapping-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.edit-mapping-btn');
+            const mappingId = button.dataset.mappingId;
+            openMappingModal(mappingId);
+        }
+
+        // Delete mapping button
+        if (e.target.closest('.delete-mapping-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.delete-mapping-btn');
+            const mappingId = button.dataset.mappingId;
+            deleteMapping(mappingId);
+        }
+
+        // Create pattern button
+        if (e.target.closest('.create-pattern-btn')) {
+            e.preventDefault();
+            openPatternModal();
+        }
+
+        // Edit pattern button
+        if (e.target.closest('.edit-pattern-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.edit-pattern-btn');
+            const patternId = button.dataset.patternId;
+            openPatternModal(patternId);
+        }
+
+        // Delete pattern button
+        if (e.target.closest('.delete-pattern-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.delete-pattern-btn');
+            const patternId = button.dataset.patternId;
+            deletePattern(patternId);
+        }
+
+        // Execute pattern button
+        if (e.target.closest('.execute-pattern-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.execute-pattern-btn');
+            const patternId = button.dataset.patternId;
+            const select = document.getElementById(`pattern-device-${patternId}`);
+            const deviceId = select ? select.value : '';
+            executePattern(patternId, deviceId);
+        }
+
+        // Clear queue button
+        if (e.target.closest('.clear-queue-btn')) {
+            e.preventDefault();
+            clearQueue();
+        }
+
+        // Remove pattern step button
+        if (e.target.closest('.remove-pattern-step-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.remove-pattern-step-btn');
+            const stepIndex = parseInt(button.dataset.stepIndex);
+            removePatternStep(stepIndex);
+        }
+
+        // Test connection button (static button in settings)
+        if (e.target.closest('.test-connection-btn')) {
+            e.preventDefault();
+            testConnection();
+        }
+    });
+
+    // Toggle mapping checkbox (change event)
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('toggle-mapping-checkbox')) {
+            const mappingId = e.target.dataset.mappingId;
+            const enabled = e.target.checked;
+            toggleMapping(mappingId, enabled);
+        }
+    });
 }
 
 // ====================================================================
