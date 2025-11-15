@@ -77,6 +77,8 @@
             if (modal) modal.classList.remove('hidden');
         });
         addListener('resetLeaderboardBtn', 'click', resetLeaderboard);
+        addListener('newSeasonBtn', 'click', createNewSeason);
+        addListener('seasonSelect', 'change', (e) => loadSeasonLeaderboard(e.target.value));
 
         // Import modal
         addListener('confirmImportBtn', 'click', importLeaderboard);
@@ -133,6 +135,8 @@
             if (data.success) {
                 currentState = data;
                 updateUI();
+                loadCategories();
+                loadSeasons();
             }
         } catch (error) {
             console.error('Error loading state:', error);
@@ -165,6 +169,8 @@
             document.getElementById('answerD').value.trim()
         ];
         const correct = parseInt(document.getElementById('correctAnswer').value);
+        const category = document.getElementById('questionCategory').value.trim() || 'Allgemein';
+        const difficulty = parseInt(document.getElementById('questionDifficulty').value);
 
         if (!question || answers.some(a => !a)) {
             alert('Bitte alle Felder ausfüllen');
@@ -175,7 +181,7 @@
             const response = await fetch('/api/quiz-show/questions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question, answers, correct })
+                body: JSON.stringify({ question, answers, correct, category, difficulty })
             });
 
             const data = await response.json();
@@ -183,6 +189,7 @@
             if (data.success) {
                 clearQuestionForm();
                 showMessage('Frage hinzugefügt', 'success');
+                loadCategories(); // Refresh categories
             } else {
                 showMessage('Fehler: ' + data.error, 'error');
             }
@@ -203,6 +210,8 @@
             document.getElementById('answerD').value.trim()
         ];
         const correct = parseInt(document.getElementById('correctAnswer').value);
+        const category = document.getElementById('questionCategory').value.trim() || 'Allgemein';
+        const difficulty = parseInt(document.getElementById('questionDifficulty').value);
 
         if (!question || answers.some(a => !a)) {
             alert('Bitte alle Felder ausfüllen');
@@ -213,7 +222,7 @@
             const response = await fetch(`/api/quiz-show/questions/${editingQuestionId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question, answers, correct })
+                body: JSON.stringify({ question, answers, correct, category, difficulty })
             });
 
             const data = await response.json();
@@ -222,6 +231,7 @@
                 clearQuestionForm();
                 cancelEdit();
                 showMessage('Frage aktualisiert', 'success');
+                loadCategories(); // Refresh categories
             } else {
                 showMessage('Fehler: ' + data.error, 'error');
             }
@@ -243,6 +253,8 @@
         document.getElementById('answerC').value = question.answers[2];
         document.getElementById('answerD').value = question.answers[3];
         document.getElementById('correctAnswer').value = question.correct;
+        document.getElementById('questionCategory').value = question.category || 'Allgemein';
+        document.getElementById('questionDifficulty').value = question.difficulty || 2;
 
         document.getElementById('addQuestionBtn').classList.add('hidden');
         document.getElementById('updateQuestionBtn').classList.remove('hidden');
@@ -289,6 +301,8 @@
         document.getElementById('answerC').value = '';
         document.getElementById('answerD').value = '';
         document.getElementById('correctAnswer').value = '0';
+        document.getElementById('questionCategory').value = 'Allgemein';
+        document.getElementById('questionDifficulty').value = '2';
     }
 
     async function uploadQuestions() {
@@ -356,7 +370,12 @@
             jokerInfoEnabled: document.getElementById('jokerInfoEnabled').checked,
             jokerTimeEnabled: document.getElementById('jokerTimeEnabled').checked,
             jokerTimeBoost: parseInt(document.getElementById('jokerTimeBoost').value),
-            jokersPerRound: parseInt(document.getElementById('jokersPerRound').value)
+            jokersPerRound: parseInt(document.getElementById('jokersPerRound').value),
+            ttsEnabled: document.getElementById('ttsEnabled').checked,
+            ttsVoice: document.getElementById('ttsVoice').value,
+            marathonLength: parseInt(document.getElementById('marathonLength').value),
+            gameMode: document.getElementById('gameModeSelect').value,
+            categoryFilter: document.getElementById('categoryFilter').value
         };
 
         try {
@@ -567,6 +586,11 @@
         document.getElementById('jokerTimeEnabled').checked = config.jokerTimeEnabled !== false;
         document.getElementById('jokerTimeBoost').value = config.jokerTimeBoost || 15;
         document.getElementById('jokersPerRound').value = config.jokersPerRound || 3;
+        document.getElementById('ttsEnabled').checked = config.ttsEnabled || false;
+        document.getElementById('ttsVoice').value = config.ttsVoice || 'default';
+        document.getElementById('marathonLength').value = config.marathonLength || 15;
+        document.getElementById('gameModeSelect').value = config.gameMode || 'classic';
+        document.getElementById('categoryFilter').value = config.categoryFilter || 'Alle';
     }
 
     function updateQuestionsList() {
@@ -581,11 +605,17 @@
             return;
         }
 
+        const difficultyStars = (difficulty) => '⭐'.repeat(difficulty || 2);
+
         container.innerHTML = questions.map((q, index) => `
             <div class="question-item" data-id="${q.id}">
                 <div class="question-number">#${index + 1}</div>
                 <div class="question-content">
                     <div class="question-text">${escapeHtml(q.question)}</div>
+                    <div class="question-meta" style="font-size: 0.9em; color: #888; margin: 5px 0;">
+                        <span>📁 ${escapeHtml(q.category || 'Allgemein')}</span>
+                        <span style="margin-left: 15px;">${difficultyStars(q.difficulty)}</span>
+                    </div>
                     <div class="question-answers">
                         ${q.answers.map((ans, idx) => `
                             <span class="answer-badge ${idx === q.correct ? 'correct' : ''}">
@@ -999,6 +1029,110 @@
                     loadHUDConfig();
                 }, 100);
             });
+        }
+    }
+
+    // ============================================
+    // CATEGORIES AND SEASONS
+    // ============================================
+    
+    async function loadCategories() {
+        try {
+            const response = await fetch('/api/quiz-show/categories');
+            const data = await response.json();
+            
+            if (data.success) {
+                const categoryList = document.getElementById('categoryList');
+                const categoryFilter = document.getElementById('categoryFilter');
+                
+                // Update datalist for question editor
+                categoryList.innerHTML = data.categories.map(cat => 
+                    `<option value="${escapeHtml(cat)}"></option>`
+                ).join('');
+                
+                // Update category filter dropdown
+                const currentFilter = categoryFilter.value;
+                categoryFilter.innerHTML = '<option value="Alle">Alle Kategorien</option>' + 
+                    data.categories.map(cat => 
+                        `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`
+                    ).join('');
+                categoryFilter.value = currentFilter || 'Alle';
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+    
+    async function loadSeasons() {
+        try {
+            const response = await fetch('/api/quiz-show/seasons');
+            const data = await response.json();
+            
+            if (data.success) {
+                const seasonSelect = document.getElementById('seasonSelect');
+                const currentSeason = seasonSelect.value;
+                
+                seasonSelect.innerHTML = '<option value="active">Aktuelle Saison</option>' +
+                    data.seasons.filter(s => !s.is_active).map(season =>
+                        `<option value="${season.id}">${escapeHtml(season.season_name)} (${new Date(season.start_date).toLocaleDateString()})</option>`
+                    ).join('');
+                    
+                if (currentSeason !== 'active') {
+                    seasonSelect.value = currentSeason;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading seasons:', error);
+        }
+    }
+    
+    async function createNewSeason() {
+        const seasonName = prompt('Name der neuen Saison:', `Saison ${new Date().getFullYear()}`);
+        if (!seasonName) return;
+        
+        if (!confirm(`Neue Saison "${seasonName}" erstellen? Die aktuelle Saison wird archiviert.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/quiz-show/seasons', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seasonName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage(`Neue Saison "${seasonName}" erstellt`, 'success');
+                loadSeasons();
+                loadInitialState(); // Reload leaderboard
+            } else {
+                showMessage('Fehler: ' + data.error, 'error');
+            }
+        } catch (error) {
+            console.error('Error creating season:', error);
+            showMessage('Fehler beim Erstellen der Saison', 'error');
+        }
+    }
+    
+    async function loadSeasonLeaderboard(seasonId) {
+        if (seasonId === 'active') {
+            await loadInitialState();
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/quiz-show/seasons/${seasonId}/leaderboard`);
+            const data = await response.json();
+            
+            if (data.success) {
+                currentState.leaderboard = data.leaderboard;
+                updateLeaderboardTable();
+            }
+        } catch (error) {
+            console.error('Error loading season leaderboard:', error);
+            showMessage('Fehler beim Laden des Leaderboards', 'error');
         }
     }
 

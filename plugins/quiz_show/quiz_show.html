@@ -44,6 +44,16 @@
                     <div class="panel-header">
                         <h2>Aktuelle Frage</h2>
                         <div class="panel-controls">
+                            <select id="gameModeSelect" class="form-control" style="width: auto; display: inline-block; margin-right: 10px;">
+                                <option value="classic">Klassisch</option>
+                                <option value="fastestFinger">Schnellste Finger</option>
+                                <option value="elimination">Elimination</option>
+                                <option value="marathon">Marathon</option>
+                            </select>
+                            <select id="categoryFilter" class="form-control" style="width: auto; display: inline-block; margin-right: 10px;">
+                                <option value="Alle">Alle Kategorien</option>
+                                <!-- Categories will be populated dynamically -->
+                            </select>
                             <button id="startQuizBtn" class="btn btn-primary">▶️ Quiz Starten</button>
                             <button id="nextQuestionBtn" class="btn btn-secondary" disabled>⏭️ Nächste Frage</button>
                             <button id="stopQuizBtn" class="btn btn-danger" disabled>⏹️ Stoppen</button>
@@ -178,6 +188,26 @@
                             </select>
                         </div>
 
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kategorie:</label>
+                                <input type="text" id="questionCategory" class="form-control" placeholder="Allgemein" list="categoryList">
+                                <datalist id="categoryList">
+                                    <!-- Categories will be populated dynamically -->
+                                </datalist>
+                            </div>
+                            <div class="form-group">
+                                <label>Schwierigkeit:</label>
+                                <select id="questionDifficulty" class="form-control">
+                                    <option value="1">⭐ Leicht</option>
+                                    <option value="2" selected>⭐⭐ Mittel</option>
+                                    <option value="3">⭐⭐⭐ Schwer</option>
+                                    <option value="4">⭐⭐⭐⭐ Experte</option>
+                                    <option value="5">⭐⭐⭐⭐⭐ Master</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="button-group">
                             <button id="addQuestionBtn" class="btn btn-primary">➕ Frage Hinzufügen</button>
                             <button id="updateQuestionBtn" class="btn btn-secondary hidden">💾 Frage Aktualisieren</button>
@@ -306,6 +336,46 @@
                     </div>
                 </div>
 
+                <!-- TTS Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>🗣️ TTS Einstellungen</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="ttsEnabled">
+                                <span>TTS Aktiviert (Fragen vorlesen)</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>TTS Stimme:</label>
+                            <select id="ttsVoice" class="form-control">
+                                <option value="default">Standard</option>
+                                <option value="de-DE-Standard-A">Deutsch (Weiblich A)</option>
+                                <option value="de-DE-Standard-B">Deutsch (Männlich B)</option>
+                                <option value="de-DE-Standard-C">Deutsch (Weiblich C)</option>
+                                <option value="de-DE-Standard-D">Deutsch (Männlich D)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Marathon Mode Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>🏃 Marathon Modus</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Marathon Länge (Anzahl richtiger Antworten):</label>
+                            <input type="number" id="marathonLength" class="form-control" min="5" max="50" value="15">
+                            <div class="help-text small">Wie viele Fragen muss ein Spieler in Folge richtig beantworten?</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Save Button -->
                 <div class="panel full-width">
                     <div class="panel-body">
@@ -322,6 +392,11 @@
                 <div class="panel-header">
                     <h2>🏆 Leaderboard</h2>
                     <div class="panel-controls">
+                        <select id="seasonSelect" class="form-control" style="width: auto; display: inline-block; margin-right: 10px;">
+                            <option value="active">Aktuelle Saison</option>
+                            <!-- Seasons will be populated dynamically -->
+                        </select>
+                        <button id="newSeasonBtn" class="btn btn-secondary">🆕 Neue Saison</button>
                         <button id="exportLeaderboardBtn" class="btn btn-secondary">📥 Exportieren</button>
                         <button id="importLeaderboardBtn" class="btn btn-secondary">📤 Importieren</button>
                         <button id="resetLeaderboardBtn" class="btn btn-danger">🗑️ Zurücksetzen</button>
