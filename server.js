@@ -22,6 +22,7 @@ const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integ
 
 // Import New Modules
 const logger = require('./modules/logger');
+const debugLogger = require('./modules/debug-logger');
 const { apiLimiter, authLimiter, uploadLimiter } = require('./modules/rate-limiter');
 const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
@@ -30,6 +31,7 @@ const Leaderboard = require('./modules/leaderboard');
 const { setupSwagger } = require('./modules/swagger-config');
 const PluginLoader = require('./modules/plugin-loader');
 const { setupPluginRoutes } = require('./routes/plugin-routes');
+const { setupDebugRoutes } = require('./routes/debug-routes');
 const UpdateManager = require('./modules/update-manager');
 const { Validators, ValidationError } = require('./modules/validators');
 const getAutoStartManager = require('./modules/auto-start');
@@ -127,28 +129,28 @@ app.use((req, res, next) => {
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss:; ` +
+            `connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; ` +
             `media-src 'self' blob: data: https:; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
-            `frame-ancestors 'self';`
+            `frame-ancestors 'self' null;`  // Allow OBS BrowserSource (null origin)
         );
     } else {
         res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Strict CSP for other routes
+        // Strict CSP for other routes (including overlays for OBS)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
             `script-src 'self'; ` +
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss:; ` +
+            `connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; ` +
             `media-src 'self' blob: data: https:; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
-            `frame-ancestors 'self';`
+            `frame-ancestors 'self' null;`  // Allow OBS BrowserSource (null origin)
         );
     }
 
@@ -288,6 +290,9 @@ logger.info('📚 Swagger API Documentation available at /api-docs');
 
 // ========== PLUGIN ROUTES ==========
 setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger);
+
+// ========== DEBUG ROUTES ==========
+setupDebugRoutes(app, debugLogger, logger);
 
 // NOTE: Plugin static files middleware will be registered AFTER plugins are loaded
 // to ensure plugin-registered routes take precedence over static file serving
@@ -1526,6 +1531,7 @@ app.post('/api/minigames/coinflip', apiLimiter, (req, res) => {
 
 io.on('connection', (socket) => {
     logger.info(`🔌 Client connected: ${socket.id}`);
+    debugLogger.log('websocket', `Client connected`, { socket_id: socket.id });
 
     // Mark socket as ready on first connection
     if (!initState.getState().socketReady) {
@@ -1538,23 +1544,62 @@ io.on('connection', (socket) => {
     // Plugin Socket Events registrieren
     pluginLoader.registerPluginSocketEvents(socket);
 
-    // Goal Room Join
+    // Goals: Subscribe to all goals updates (new centralized approach)
+    socket.on('goals:subscribe', () => {
+        socket.join('goals');
+        debugLogger.log('goals', `Client subscribed to goals room`, { socket_id: socket.id });
+        
+        // Send snapshot of all goals with current state
+        const snapshot = goals.getAllGoalsWithState();
+        const snapshotData = {
+            goals: snapshot,
+            timestamp: Date.now(),
+            sources: {
+                coins: 'gifts',
+                followers: 'follow',
+                likes: 'like',
+                subs: 'subscribe'
+            }
+        };
+        
+        socket.emit('goals:snapshot', snapshotData);
+        debugLogger.log('socket-emit', `Sent goals:snapshot`, { 
+            count: snapshot.length,
+            socket_id: socket.id 
+        }, 'debug');
+    });
+
+    // Goals: Unsubscribe from goals updates
+    socket.on('goals:unsubscribe', () => {
+        socket.leave('goals');
+        debugLogger.log('goals', `Client unsubscribed from goals room`, { socket_id: socket.id });
+    });
+
+    // Goal Room Join (legacy - single goal)
     socket.on('goal:join', (key) => {
         socket.join(`goal_${key}`);
         logger.debug(`📊 Client joined goal room: goal_${key}`);
+        debugLogger.log('goals', `Client joined goal room`, { 
+            goal_key: key,
+            socket_id: socket.id 
+        });
 
         // Send initial state
         const s = goals.state[key];
         const config = goals.getGoalConfig(key);
         if (s && config) {
-            socket.emit('goal:update', {
+            const updateData = {
                 type: 'goal',
+                goalId: key,
                 total: s.total,
                 goal: s.goal,
                 show: s.show,
                 pct: goals.getPercent(key),
+                percent: Math.round(goals.getPercent(key) * 100),
                 style: config.style
-            });
+            };
+            socket.emit('goal:update', updateData);
+            debugLogger.log('socket-emit', `Sent goal:update for ${key}`, updateData, 'debug');
         }
     });
 
@@ -1567,6 +1612,7 @@ io.on('connection', (socket) => {
     // Client disconnect
     socket.on('disconnect', () => {
         logger.info(`🔌 Client disconnected: ${socket.id}`);
+        debugLogger.log('websocket', `Client disconnected`, { socket_id: socket.id });
     });
 
     // Test Events (für Testing vom Dashboard)
@@ -1592,6 +1638,12 @@ io.on('connection', (socket) => {
 
 // Gift Event
 tiktok.on('gift', async (data) => {
+    debugLogger.log('tiktok', `Gift event received`, { 
+        username: data.username,
+        gift: data.giftName,
+        coins: data.coins
+    });
+
     // Alert anzeigen (wenn konfiguriert)
     const minCoins = parseInt(db.getSetting('alert_gift_min_coins')) || 100;
     if (data.coins >= minCoins) {
@@ -1602,6 +1654,7 @@ tiktok.on('gift', async (data) => {
     // Der TikTok-Connector berechnet: diamondCount * 2 * repeatCount
     // und zählt nur bei Streak-Ende (bei streakable Gifts)
     await goals.incrementGoal('coins', data.coins || 0);
+    debugLogger.log('goals', `Coins goal incremented by ${data.coins}`);
 
     // Leaderboard: Update user stats
     await leaderboard.trackGift(data.username, data.giftName, data.coins);
@@ -1612,10 +1665,13 @@ tiktok.on('gift', async (data) => {
 
 // Follow Event
 tiktok.on('follow', async (data) => {
+    debugLogger.log('tiktok', `Follow event received`, { username: data.username });
+    
     alerts.addAlert('follow', data);
 
     // Goals: Follower erhöhen
     await goals.incrementGoal('followers', 1);
+    debugLogger.log('goals', `Followers goal incremented by 1`);
 
     // Leaderboard: Track follow
     await leaderboard.trackFollow(data.username);
@@ -1625,10 +1681,13 @@ tiktok.on('follow', async (data) => {
 
 // Subscribe Event
 tiktok.on('subscribe', async (data) => {
+    debugLogger.log('tiktok', `Subscribe event received`, { username: data.username });
+    
     alerts.addAlert('subscribe', data);
 
     // Goals: Subscriber erhöhen
     await goals.incrementGoal('subs', 1);
+    debugLogger.log('goals', `Subs goal incremented by 1`);
 
     // Subscription Tiers: Process subscription
     await subscriptionTiers.processSubscription(data);
@@ -1660,13 +1719,21 @@ tiktok.on('chat', async (data) => {
 
 // Like Event
 tiktok.on('like', async (data) => {
+    debugLogger.log('tiktok', `Like event received`, { 
+        username: data.username,
+        likeCount: data.likeCount,
+        totalLikes: data.totalLikes
+    }, 'debug');
+
     // Goals: Total Likes setzen (Event-Data enthält bereits robustes totalLikes)
     // Der TikTok-Connector extrahiert totalLikes aus verschiedenen Properties
     if (data.totalLikes !== undefined && data.totalLikes !== null) {
         await goals.setGoal('likes', data.totalLikes);
+        debugLogger.log('goals', `Likes goal set to ${data.totalLikes}`, null, 'debug');
     } else {
         // Sollte nicht mehr vorkommen, da Connector immer totalLikes liefert
         await goals.incrementGoal('likes', data.likeCount || 1);
+        debugLogger.log('goals', `Likes goal incremented by ${data.likeCount || 1}`, null, 'debug');
     }
 
     // Leaderboard: Track likes
