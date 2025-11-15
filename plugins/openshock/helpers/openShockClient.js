@@ -23,11 +23,16 @@ class OpenShockClient {
      * @param {Object} [logger=console] - Logger instance (must have info, warn, error methods)
      */
     constructor(apiKey, baseUrl = 'https://api.openshock.app', logger = console) {
-        if (!apiKey || typeof apiKey !== 'string') {
-            throw new Error('OpenShockClient: API key is required and must be a string');
+        // Allow empty API key for initial setup - warn but don't throw
+        if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+            logger.warn('OpenShockClient: API key not configured. Plugin will run in configuration mode only.');
+            this.apiKey = '';
+            this.isConfigured = false;
+        } else {
+            this.apiKey = apiKey;
+            this.isConfigured = true;
         }
 
-        this.apiKey = apiKey;
         this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
         this.logger = logger;
 
@@ -142,6 +147,15 @@ class OpenShockClient {
      * @returns {Promise<Object>} Connection test results
      */
     async testConnection() {
+        // Check if API key is configured
+        if (!this.isConfigured) {
+            return {
+                success: false,
+                error: 'API key not configured',
+                timestamp: new Date().toISOString()
+            };
+        }
+
         const startTime = Date.now();
         try {
             const devices = await this.getDevices();
@@ -175,6 +189,10 @@ class OpenShockClient {
      * @returns {Promise<Array>} Array of device objects
      */
     async getDevices() {
+        if (!this.isConfigured) {
+            this.logger.warn('OpenShockClient: Cannot get devices - API key not configured');
+            return [];
+        }
         return this._executeRequest('GET', '/1/shockers/own', null, 1);
     }
 
