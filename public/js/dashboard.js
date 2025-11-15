@@ -2163,3 +2163,39 @@ async function loadOSCBridgeSettings() {
         console.error('Error loading OSC-Bridge settings:', error);
     }
 }
+// Set up event listeners for soundboard buttons
+document.addEventListener('click', function(event) {
+    // Test sound buttons
+    const testSoundBtn = event.target.closest('[data-test-sound]');
+    if (testSoundBtn) {
+        const soundType = testSoundBtn.dataset.testSound;
+        testEventSound(soundType);
+        return;
+    }
+});
+
+// Soundboard specific buttons
+const refreshCatalogBtn = document.getElementById('refresh-catalog-btn');
+if (refreshCatalogBtn) {
+    refreshCatalogBtn.addEventListener('click', refreshGiftCatalog);
+}
+
+const myinstantsSearchBtn = document.getElementById('myinstants-search-btn');
+if (myinstantsSearchBtn) {
+    myinstantsSearchBtn.addEventListener('click', searchMyInstants);
+}
+
+const addGiftSoundBtn = document.getElementById('add-gift-sound-btn');
+if (addGiftSoundBtn) {
+    addGiftSoundBtn.addEventListener('click', addGiftSound);
+}
+
+const clearGiftFormBtn = document.getElementById('clear-gift-form-btn');
+if (clearGiftFormBtn) {
+    clearGiftFormBtn.addEventListener('click', clearGiftSoundForm);
+}
+
+const saveSoundboardBtn = document.getElementById('save-soundboard-btn');
+if (saveSoundboardBtn) {
+    saveSoundboardBtn.addEventListener('click', saveSoundboardSettings);
+}

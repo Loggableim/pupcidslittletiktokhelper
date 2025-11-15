@@ -562,7 +562,7 @@
                                         <div class="event-sound-header">
                                             <i data-lucide="star"></i>
                                             <span>Follow Sound</span>
-                                            <button onclick="testEventSound('follow')" class="btn btn-xs btn-ghost">
+                                            <button data-test-sound="follow" class="btn btn-xs btn-ghost">
                                                 <i data-lucide="play"></i>
                                             </button>
                                         </div>
@@ -574,7 +574,7 @@
                                         <div class="event-sound-header">
                                             <i data-lucide="users"></i>
                                             <span>Subscribe Sound</span>
-                                            <button onclick="testEventSound('subscribe')" class="btn btn-xs btn-ghost">
+                                            <button data-test-sound="subscribe" class="btn btn-xs btn-ghost">
                                                 <i data-lucide="play"></i>
                                             </button>
                                         </div>
@@ -586,7 +586,7 @@
                                         <div class="event-sound-header">
                                             <i data-lucide="share-2"></i>
                                             <span>Share Sound</span>
-                                            <button onclick="testEventSound('share')" class="btn btn-xs btn-ghost">
+                                            <button data-test-sound="share" class="btn btn-xs btn-ghost">
                                                 <i data-lucide="play"></i>
                                             </button>
                                         </div>
@@ -598,7 +598,7 @@
                                         <div class="event-sound-header">
                                             <i data-lucide="gift"></i>
                                             <span>Default Gift Sound</span>
-                                            <button onclick="testEventSound('gift')" class="btn btn-xs btn-ghost">
+                                            <button data-test-sound="gift" class="btn btn-xs btn-ghost">
                                                 <i data-lucide="play"></i>
                                             </button>
                                         </div>
@@ -610,7 +610,7 @@
                                         <div class="event-sound-header">
                                             <i data-lucide="heart"></i>
                                             <span>Like Threshold Sound</span>
-                                            <button onclick="testEventSound('like')" class="btn btn-xs btn-ghost">
+                                            <button data-test-sound="like" class="btn btn-xs btn-ghost">
                                                 <i data-lucide="play"></i>
                                             </button>
                                         </div>
@@ -635,7 +635,7 @@
                                 <div class="gift-catalog">
                                     <div class="gift-catalog-header">
                                         <h4>Available Gifts from Stream</h4>
-                                        <button onclick="refreshGiftCatalog()" id="refresh-catalog-btn" class="btn btn-sm btn-primary">
+                                        <button id="refresh-catalog-btn" class="btn btn-sm btn-primary">
                                             <i data-lucide="refresh-cw" id="refresh-icon"></i>
                                             Refresh Catalog
                                         </button>
@@ -649,7 +649,7 @@
                                     <h4>Search MyInstants</h4>
                                     <div class="search-box">
                                         <input type="text" id="myinstants-search-input" placeholder="Search sounds..." class="form-input">
-                                        <button onclick="searchMyInstants()" class="btn btn-primary">
+                                        <button id="myinstants-search-btn" class="btn btn-primary">
                                             <i data-lucide="search"></i>
                                             Search
                                         </button>
@@ -676,11 +676,11 @@
                                         </select>
                                     </div>
                                     <div class="form-actions">
-                                        <button onclick="addGiftSound()" class="btn btn-primary">
+                                        <button id="add-gift-sound-btn" class="btn btn-primary">
                                             <i data-lucide="plus"></i>
                                             Add/Update Gift Sound
                                         </button>
-                                        <button onclick="clearGiftSoundForm()" class="btn btn-ghost">Clear</button>
+                                        <button id="clear-gift-form-btn" class="btn btn-ghost">Clear</button>
                                     </div>
                                 </div>
 
@@ -703,7 +703,7 @@
                             </div>
 
                             <div class="form-actions">
-                                <button onclick="saveSoundboardSettings()" class="btn btn-primary btn-lg">
+                                <button id="save-soundboard-btn" class="btn btn-primary btn-lg">
                                     <i data-lucide="save"></i>
                                     Save Soundboard Settings
                                 </button>
@@ -1202,16 +1202,5 @@
     <script src="/js/plugin-manager.js"></script>
     <script src="/js/update-checker.js"></script>
     <script src="/js/audio-settings.js"></script>
-
-    <!-- Initialize Lucide Icons after DOM is ready -->
-    <script>
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            });
-        } else {
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-    </script>
 </body>
 </html>

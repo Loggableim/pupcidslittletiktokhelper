@@ -135,3 +135,12 @@ const initHelper = new InitializationHelper();
 if (typeof window !== 'undefined') {
     window.initHelper = initHelper;
 }
+
+// Initialize Lucide icons after DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+} else {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}

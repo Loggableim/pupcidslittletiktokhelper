@@ -7,7 +7,6 @@ const socketIO = require('socket.io');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
-const crypto = require('crypto');
 
 // Import Core Modules
 const Database = require('./modules/database');
@@ -65,14 +64,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    // Generiere CSP Nonce für jeden Request
-    const nonce = crypto.randomBytes(16).toString('base64');
-    res.locals.cspNonce = nonce;
-
-    // No overlay routes anymore (OBS integration will be added later)
-    const isOverlayRoute = false;
-
-    // Dashboard and plugin UIs need relaxed CSP for inline scripts
+    // Dashboard and plugin UIs need CSP policy
     const isDashboard = req.path === '/' || req.path.includes('/dashboard.html');
     const isPluginUI = req.path.includes('/goals/ui') || req.path.includes('/goals/overlay') ||
                        req.path.includes('/emoji-rain/ui') || req.path.includes('/gift-milestone/ui') ||
@@ -81,11 +73,10 @@ app.use((req, res, next) => {
 
     if (isDashboard || isPluginUI) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Dashboard & Plugin UI CSP: Allow inline scripts for functionality
+        // Dashboard & Plugin UI CSP: Strict policy - no inline scripts allowed
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; ` +
-            `script-src-attr 'unsafe-inline'; ` +
+            `script-src 'self'; ` +
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
