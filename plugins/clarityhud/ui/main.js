@@ -117,9 +117,16 @@ function renderSettingsForm(dock) {
 
   // Render tabs
   const tabsHtml = tabs.map((tab, index) =>
-    `<div class="tab ${index === 0 ? 'active' : ''}" onclick="switchTab('${tab.id}')">${tab.label}</div>`
+    `<div class="tab ${index === 0 ? 'active' : ''}" data-tab-id="${tab.id}">${tab.label}</div>`
   ).join('');
   document.getElementById('settings-tabs').innerHTML = tabsHtml;
+  
+  // Add event listeners to tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      switchTab(this.dataset.tabId);
+    });
+  });
 
   // Render tab contents
   const contentsHtml = tabs.map((tab, index) =>
@@ -139,8 +146,9 @@ function renderSettingsForm(dock) {
 // Switch tab
 function switchTab(tabId) {
   // Update tab buttons
-  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-  event.target.classList.add('active');
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tabId === tabId);
+  });
 
   // Update tab contents
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -169,7 +177,7 @@ function renderTabContent(dock, tabId) {
                   <label>Font Size</label>
                   <span id="fontSize-value">${s.fontSize || 16}px</span>
                 </div>
-                <input type="range" id="fontSize" min="10" max="48" value="${s.fontSize || 16}" oninput="updateRangeValue('fontSize', this.value + 'px')">
+                <input type="range" id="fontSize" min="10" max="48" value="${s.fontSize || 16}" data-range-target="fontSize" data-range-suffix="px">
               </div>
             </div>
           </div>
@@ -198,7 +206,7 @@ function renderTabContent(dock, tabId) {
                   <label>Line Height</label>
                   <span id="lineHeight-value">${s.lineHeight || 1.5}</span>
                 </div>
-                <input type="range" id="lineHeight" min="1" max="3" step="0.1" value="${s.lineHeight || 1.5}" oninput="updateRangeValue('lineHeight', this.value)">
+                <input type="range" id="lineHeight" min="1" max="3" step="0.1" value="${s.lineHeight || 1.5}" data-range-target="lineHeight">
               </div>
             </div>
             <div class="form-group">
@@ -208,7 +216,7 @@ function renderTabContent(dock, tabId) {
                   <label>Letter Spacing</label>
                   <span id="letterSpacing-value">${s.letterSpacing || 0}px</span>
                 </div>
-                <input type="range" id="letterSpacing" min="-2" max="5" step="0.5" value="${s.letterSpacing || 0}" oninput="updateRangeValue('letterSpacing', this.value + 'px')">
+                <input type="range" id="letterSpacing" min="-2" max="5" step="0.5" value="${s.letterSpacing || 0}" data-range-target="letterSpacing" data-range-suffix="px">
               </div>
             </div>
           </div>
@@ -350,7 +358,7 @@ function renderTabContent(dock, tabId) {
                   <label>Thickness</label>
                   <span id="outlineThickness-value">${s.outlineThickness || 0}px</span>
                 </div>
-                <input type="range" id="outlineThickness" min="0" max="5" step="0.5" value="${s.outlineThickness || 0}" oninput="updateRangeValue('outlineThickness', this.value + 'px')">
+                <input type="range" id="outlineThickness" min="0" max="5" step="0.5" value="${s.outlineThickness || 0}" data-range-target="outlineThickness" data-range-suffix="px">
               </div>
             </div>
             <div class="form-group">
@@ -373,16 +381,16 @@ function renderTabContent(dock, tabId) {
         <div class="settings-group">
           <h3>Quick Presets</h3>
           <div class="preset-buttons">
-            <button class="preset-btn" onclick="applyPreset('highContrast')">
+            <button class="preset-btn" data-preset="highContrast">
               High Contrast
             </button>
-            <button class="preset-btn" onclick="applyPreset('visionImpaired')">
+            <button class="preset-btn" data-preset="visionImpaired">
               Vision Impaired
             </button>
-            <button class="preset-btn" onclick="applyPreset('dyslexiaFriendly')">
+            <button class="preset-btn" data-preset="dyslexiaFriendly">
               Dyslexia Friendly
             </button>
-            <button class="preset-btn" onclick="applyPreset('motionSensitive')">
+            <button class="preset-btn" data-preset="motionSensitive">
               Motion Sensitive
             </button>
           </div>
@@ -450,16 +458,20 @@ function setupColorPickers() {
 
 // Setup range sliders
 function setupRangeSliders() {
-  const rangeFields = ['fontSize', 'lineHeight', 'letterSpacing', 'outlineThickness'];
-
-  rangeFields.forEach(field => {
-    const slider = document.getElementById(field);
-    if (slider) {
-      slider.addEventListener('input', (e) => {
-        const suffix = field === 'lineHeight' ? '' : 'px';
-        updateRangeValue(field, e.target.value + suffix);
-      });
-    }
+  // Use event delegation for all range inputs with data-range-target
+  document.querySelectorAll('input[type="range"][data-range-target]').forEach(slider => {
+    slider.addEventListener('input', (e) => {
+      const target = e.target.dataset.rangeTarget;
+      const suffix = e.target.dataset.rangeSuffix || '';
+      updateRangeValue(target, e.target.value + suffix);
+    });
+  });
+  
+  // Also add event listeners for preset buttons
+  document.querySelectorAll('.preset-btn[data-preset]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      applyPreset(e.target.dataset.preset);
+    });
   });
 }
 
