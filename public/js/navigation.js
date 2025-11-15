@@ -280,12 +280,20 @@
     // Old toggle-based implementation has been removed
 
     // ========== PLUGIN VISIBILITY ==========
-    async function initializePluginVisibility() {
+    async function initializePluginVisibility(retryCount = 0, maxRetries = 3) {
         try {
             // Load plugin list from server
             const response = await fetch('/api/plugins');
             if (!response.ok) {
-                console.warn('Failed to load plugins for visibility check');
+                // Retry if server isn't ready yet
+                if (retryCount < maxRetries) {
+                    console.log(`Plugin API not ready, retrying... (${retryCount + 1}/${maxRetries})`);
+                    setTimeout(() => {
+                        initializePluginVisibility(retryCount + 1, maxRetries);
+                    }, 500 * (retryCount + 1)); // Exponential backoff: 500ms, 1000ms, 1500ms
+                    return;
+                }
+                console.warn('Failed to load plugins for visibility check after retries');
                 return;
             }
 
@@ -323,7 +331,15 @@
             }
 
         } catch (error) {
-            console.error('Error checking plugin visibility:', error);
+            // Retry on network errors
+            if (retryCount < maxRetries) {
+                console.log(`Error loading plugins, retrying... (${retryCount + 1}/${maxRetries})`);
+                setTimeout(() => {
+                    initializePluginVisibility(retryCount + 1, maxRetries);
+                }, 500 * (retryCount + 1)); // Exponential backoff
+                return;
+            }
+            console.error('Error checking plugin visibility after retries:', error);
         }
     }
 
@@ -419,7 +435,8 @@
     window.NavigationManager = {
         switchView,
         updateConnectionStatus,
-        getCurrentView: () => currentView
+        getCurrentView: () => currentView,
+        refreshPluginVisibility: initializePluginVisibility
     };
 
 })();
