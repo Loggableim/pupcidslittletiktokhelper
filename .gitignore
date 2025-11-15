@@ -44,3 +44,4 @@ temp/
 
 # Plugin runtime data
 plugins/*/data/
+plugins/plugins_state.json

@@ -114,9 +114,13 @@ app.use((req, res, next) => {
     if (isDashboard || isPluginUI) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
         // Dashboard & Plugin UI CSP: Strict policy - no inline scripts allowed
+        // NOTE: All HTML files (dashboard.html, soundboard.html, etc.) use EXTERNAL scripts
+        // via <script src="..."> tags, NOT inline scripts. This ensures CSP compliance.
+        // The script-src 'self' directive only allows scripts from the same origin,
+        // which prevents XSS attacks via inline script injection.
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self'; ` +
+            `script-src 'self'; ` +  // No 'unsafe-inline' - all scripts must be external files
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
@@ -282,10 +286,8 @@ logger.info('📚 Swagger API Documentation available at /api-docs');
 // ========== PLUGIN ROUTES ==========
 setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger);
 
-// ========== PLUGIN STATIC FILES ==========
-// Serve static files from plugin directories
-app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
-logger.info('📂 Plugin static files served from /plugins/*');
+// NOTE: Plugin static files middleware will be registered AFTER plugins are loaded
+// to ensure plugin-registered routes take precedence over static file serving
 
 // ========== UPDATE ROUTES ==========
 
@@ -1697,6 +1699,12 @@ const PORT = process.env.PORT || 3000;
         // TikTok-Events für Plugins registrieren
         pluginLoader.registerPluginTikTokEvents(tiktok);
 
+        // ========== PLUGIN STATIC FILES ==========
+        // Register static file serving AFTER plugins are loaded
+        // This ensures plugin-registered routes take precedence over static file serving
+        app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
+        logger.info('📂 Plugin static files served from /plugins/*');
+
         if (loadedCount > 0) {
             logger.info(`✅ ${loadedCount} plugin(s) loaded successfully`);
 
@@ -1724,6 +1732,11 @@ const PORT = process.env.PORT || 3000;
             initState.setPluginInjectionsComplete();
         } else {
             logger.info('ℹ️  No plugins found in /plugins directory');
+            
+            // Still register static file serving even with no plugins
+            app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
+            logger.info('📂 Plugin static files served from /plugins/*');
+            
             initState.setPluginsLoaded(0);
             initState.setPluginInjectionsComplete();
         }
