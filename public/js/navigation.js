@@ -11,11 +11,22 @@
     let sidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
 
     // ========== INITIALIZATION ==========
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Wait for server to be fully initialized before loading plugins
+        if (window.initHelper) {
+            try {
+                console.log('⏳ [Navigation] Waiting for server initialization...');
+                await window.initHelper.waitForReady(10000);
+                console.log('✅ [Navigation] Server ready, loading plugin visibility...');
+            } catch (err) {
+                console.warn('[Navigation] Server initialization check timed out, proceeding anyway:', err);
+            }
+        }
+
         initializeSidebar();
         initializeNavigation();
         initializeShortcuts();
-        initializePluginVisibility();
+        await initializePluginVisibility();
 
         // Re-initialize Lucide icons
         if (typeof lucide !== 'undefined') {
@@ -152,6 +163,11 @@
             case 'flows':
                 if (typeof loadFlows === 'function') {
                     loadFlows();
+                }
+                break;
+            case 'plugins':
+                if (window.pluginManager && typeof window.pluginManager.loadPlugins === 'function') {
+                    window.pluginManager.loadPlugins();
                 }
                 break;
             case 'soundboard':
