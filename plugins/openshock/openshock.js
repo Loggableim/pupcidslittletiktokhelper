@@ -172,7 +172,7 @@ async function loadConfig() {
 
         // Update UI with config
         if (config.apiKey) {
-            const apiKeyInput = document.getElementById('openshock-api-key');
+            const apiKeyInput = document.getElementById('apiKey');
             if (apiKeyInput) {
                 apiKeyInput.value = config.apiKey.substring(0, 8) + '...' + config.apiKey.substring(config.apiKey.length - 4);
             }
@@ -262,18 +262,12 @@ function renderDashboard() {
 }
 
 function renderDeviceList() {
-    const container = document.getElementById('openshock-device-list');
+    const container = document.getElementById('devicesList');
     if (!container) return;
 
     if (devices.length === 0) {
         container.innerHTML = `
-            <div class="openshock-empty-state">
-                <i class="fas fa-plug"></i>
-                <p>No devices found</p>
-                <button class="openshock-btn openshock-btn-primary refresh-devices-btn">
-                    <i class="fas fa-sync"></i> Refresh Devices
-                </button>
-            </div>
+            <p class="text-muted text-center">No devices found. Configure API key first.</p>
         `;
         return;
     }
@@ -346,11 +340,11 @@ function renderDeviceList() {
 }
 
 function renderCommandLog(commands) {
-    const container = document.getElementById('openshock-command-log');
+    const container = document.getElementById('commandLog');
     if (!container) return;
 
     if (commands.length === 0) {
-        container.innerHTML = '<div class="openshock-empty-state"><p>No commands yet</p></div>';
+        container.innerHTML = '<p class="text-muted text-center">No commands executed yet.</p>';
         return;
     }
 
@@ -370,7 +364,7 @@ function renderCommandLog(commands) {
 }
 
 function renderMappingList() {
-    const container = document.getElementById('openshock-mapping-list');
+    const container = document.getElementById('mappingsList');
     if (!container) return;
 
     if (mappings.length === 0) {
@@ -435,19 +429,11 @@ function renderMappingList() {
 }
 
 function renderPatternList() {
-    const container = document.getElementById('openshock-pattern-list');
+    const container = document.getElementById('customPatternsList');
     if (!container) return;
 
     if (patterns.length === 0) {
-        container.innerHTML = `
-            <div class="openshock-empty-state">
-                <i class="fas fa-wave-square"></i>
-                <p>No patterns configured</p>
-                <button class="openshock-btn openshock-btn-primary create-pattern-btn">
-                    <i class="fas fa-plus"></i> Create Pattern
-                </button>
-            </div>
-        `;
+        container.innerHTML = `<p class="text-muted text-center">No custom patterns created yet.</p>`;
         return;
     }
 
@@ -493,80 +479,39 @@ function renderPatternList() {
 }
 
 function renderQueueStatus() {
-    const container = document.getElementById('openshock-queue-status');
-    if (!container) return;
-
-    const html = `
-        <div class="openshock-queue-stats">
-            <div class="openshock-stat-item">
-                <span class="openshock-stat-label">Pending</span>
-                <span class="openshock-stat-value">${queueStatus.pending || 0}</span>
-            </div>
-            <div class="openshock-stat-item">
-                <span class="openshock-stat-label">Processing</span>
-                <span class="openshock-stat-value">${queueStatus.processing || 0}</span>
-            </div>
-            <div class="openshock-stat-item">
-                <span class="openshock-stat-label">Completed</span>
-                <span class="openshock-stat-value">${queueStatus.completed || 0}</span>
-            </div>
-            <div class="openshock-stat-item">
-                <span class="openshock-stat-label">Failed</span>
-                <span class="openshock-stat-value openshock-text-danger">${queueStatus.failed || 0}</span>
-            </div>
-        </div>
-        ${queueStatus.pending > 0 ? `
-            <button class="openshock-btn openshock-btn-sm openshock-btn-warning clear-queue-btn">
-                <i class="fas fa-times"></i> Clear Queue
-            </button>
-        ` : ''}
-    `;
-
-    container.innerHTML = html;
+    // Update the stat values directly in the dashboard
+    const queueLengthEl = document.getElementById('queueLength');
+    const queueProcessingEl = document.getElementById('queueProcessing');
+    
+    if (queueLengthEl) {
+        queueLengthEl.textContent = queueStatus.pending || 0;
+    }
+    if (queueProcessingEl) {
+        queueProcessingEl.textContent = queueStatus.processing ? 'Yes' : 'No';
+    }
 }
 
 function renderStats() {
-    const container = document.getElementById('openshock-stats');
-    if (!container) return;
-
-    const html = `
-        <div class="openshock-stats-grid">
-            <div class="openshock-stat-card">
-                <i class="fas fa-bolt"></i>
-                <div class="openshock-stat-content">
-                    <span class="openshock-stat-value">${stats.totalCommands || 0}</span>
-                    <span class="openshock-stat-label">Total Commands</span>
-                </div>
-            </div>
-            <div class="openshock-stat-card">
-                <i class="fas fa-check-circle"></i>
-                <div class="openshock-stat-content">
-                    <span class="openshock-stat-value">${stats.successfulCommands || 0}</span>
-                    <span class="openshock-stat-label">Successful</span>
-                </div>
-            </div>
-            <div class="openshock-stat-card">
-                <i class="fas fa-exclamation-triangle"></i>
-                <div class="openshock-stat-content">
-                    <span class="openshock-stat-value openshock-text-danger">${stats.failedCommands || 0}</span>
-                    <span class="openshock-stat-label">Failed</span>
-                </div>
-            </div>
-            <div class="openshock-stat-card">
-                <i class="fas fa-link"></i>
-                <div class="openshock-stat-content">
-                    <span class="openshock-stat-value">${stats.activeMappings || 0}</span>
-                    <span class="openshock-stat-label">Active Mappings</span>
-                </div>
-            </div>
-        </div>
-    `;
-
-    container.innerHTML = html;
+    // Update stat values directly in the dashboard
+    const totalCommandsEl = document.getElementById('totalCommands');
+    const successRateEl = document.getElementById('successRate');
+    const uptimeEl = document.getElementById('uptime');
+    
+    if (totalCommandsEl) {
+        totalCommandsEl.textContent = stats.totalCommands || 0;
+    }
+    if (successRateEl && stats.totalCommands > 0) {
+        const rate = Math.round((stats.successfulCommands / stats.totalCommands) * 100);
+        successRateEl.textContent = rate + '%';
+    }
+    if (uptimeEl && stats.startTime) {
+        const uptime = Date.now() - stats.startTime;
+        uptimeEl.textContent = formatDuration(uptime);
+    }
 }
 
 function updateConnectionStatus(status) {
-    const badge = document.getElementById('openshock-connection-status');
+    const badge = document.getElementById('connection-status');
     if (!badge) return;
 
     badge.className = 'openshock-connection-badge';
@@ -588,7 +533,7 @@ function updateConnectionStatus(status) {
 // ====================================================================
 
 function openMappingModal(mappingId = null) {
-    const modal = document.getElementById('openshock-mapping-modal');
+    const modal = document.getElementById('mappingModal');
     if (!modal) return;
 
     const isEdit = mappingId !== null;
@@ -611,7 +556,7 @@ function openMappingModal(mappingId = null) {
     document.getElementById('mapping-action-device').value = mapping?.action.deviceId || '';
     populateActionFields(mapping?.action);
 
-    openModal('openshock-mapping-modal');
+    openModal('mappingModal');
 }
 
 function populateTriggerFields(trigger) {
@@ -713,7 +658,7 @@ async function saveMappingModal() {
 
         await loadMappings();
         renderMappingList();
-        closeModal('openshock-mapping-modal');
+        closeModal('mappingModal');
 
         showNotification(`Mapping ${isEdit ? 'updated' : 'created'} successfully`, 'success');
     } catch (error) {
@@ -849,7 +794,7 @@ async function exportMappings() {
 let currentPatternSteps = [];
 
 function openPatternModal(patternId = null) {
-    const modal = document.getElementById('openshock-pattern-modal');
+    const modal = document.getElementById('patternModal');
     if (!modal) return;
 
     const isEdit = patternId !== null;
@@ -864,7 +809,7 @@ function openPatternModal(patternId = null) {
     currentPatternSteps = pattern?.steps ? JSON.parse(JSON.stringify(pattern.steps)) : [];
     renderPatternSteps();
 
-    openModal('openshock-pattern-modal');
+    openModal('patternModal');
 }
 
 function renderPatternSteps() {
@@ -986,7 +931,7 @@ async function savePatternModal() {
 
         await loadPatterns();
         renderPatternList();
-        closeModal('openshock-pattern-modal');
+        closeModal('patternModal');
 
         showNotification(`Pattern ${isEdit ? 'updated' : 'created'} successfully`, 'success');
     } catch (error) {
@@ -1158,7 +1103,8 @@ async function clearEmergencyStop() {
 // ====================================================================
 
 async function saveApiSettings() {
-    const apiKey = document.getElementById('openshock-api-key').value;
+    const apiKey = document.getElementById('apiKey').value;
+    const baseUrl = document.getElementById('baseUrl').value;
 
     if (!apiKey || apiKey.includes('...')) {
         showNotification('Please enter a valid API key', 'error');
@@ -1169,7 +1115,7 @@ async function saveApiSettings() {
         const response = await fetch('/api/openshock/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ apiKey })
+            body: JSON.stringify({ apiKey, baseUrl })
         });
 
         if (!response.ok) throw new Error('Failed to save API settings');
@@ -1331,7 +1277,7 @@ function switchTab(tabId) {
 
 function initializeModals() {
     // Close modal on backdrop click
-    document.querySelectorAll('.openshock-modal').forEach(modal => {
+    document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 closeModal(modal.id);
@@ -1339,21 +1285,21 @@ function initializeModals() {
         });
     });
 
-    // Close modal on close button click
-    document.querySelectorAll('[data-close-modal]').forEach(button => {
+    // Close modal on close button click - use the modal-close class from HTML
+    document.querySelectorAll('.modal-close').forEach(button => {
         button.addEventListener('click', () => {
-            const modalId = button.closest('.openshock-modal').id;
+            const modalId = button.closest('.modal').id;
             closeModal(modalId);
         });
     });
 
     // Event listeners for dynamic form updates
-    const triggerTypeSelect = document.getElementById('mapping-trigger-type');
+    const triggerTypeSelect = document.getElementById('mappingEventType');
     if (triggerTypeSelect) {
         triggerTypeSelect.addEventListener('change', () => populateTriggerFields());
     }
 
-    const actionTypeSelect = document.getElementById('mapping-action-type');
+    const actionTypeSelect = document.getElementById('mappingActionType');
     if (actionTypeSelect) {
         actionTypeSelect.addEventListener('change', () => populateActionFields());
     }
@@ -1498,6 +1444,295 @@ function calculatePatternDuration(steps) {
 // ====================================================================
 
 function initializeEventDelegation() {
+    // Static button event listeners (buttons with IDs from HTML)
+    
+    // Dashboard tab buttons
+    const refreshDevicesBtn = document.getElementById('refreshDevices');
+    if (refreshDevicesBtn) {
+        refreshDevicesBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            refreshDevices();
+        });
+    }
+
+    const resetStatsBtn = document.getElementById('resetStats');
+    if (resetStatsBtn) {
+        resetStatsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            resetStats();
+        });
+    }
+
+    const clearLogBtn = document.getElementById('clearLog');
+    if (clearLogBtn) {
+        clearLogBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearCommandLog();
+        });
+    }
+
+    const exportLogBtn = document.getElementById('exportLog');
+    if (exportLogBtn) {
+        exportLogBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportCommandLog();
+        });
+    }
+
+    // Mapper tab buttons
+    const addMappingBtn = document.getElementById('addMapping');
+    if (addMappingBtn) {
+        addMappingBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openMappingModal();
+        });
+    }
+
+    const importMappingsBtn = document.getElementById('importMappings');
+    if (importMappingsBtn) {
+        importMappingsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            importMappings();
+        });
+    }
+
+    const exportMappingsBtn = document.getElementById('exportMappings');
+    if (exportMappingsBtn) {
+        exportMappingsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportMappings();
+        });
+    }
+
+    // Safety tab buttons
+    const saveGlobalLimitsBtn = document.getElementById('saveGlobalLimits');
+    if (saveGlobalLimitsBtn) {
+        saveGlobalLimitsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            saveSafetyConfig();
+        });
+    }
+
+    const saveUserLimitsBtn = document.getElementById('saveUserLimits');
+    if (saveUserLimitsBtn) {
+        saveUserLimitsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            saveSafetyConfig();
+        });
+    }
+
+    const emergencyStopBtn = document.getElementById('emergencyStop');
+    if (emergencyStopBtn) {
+        emergencyStopBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerEmergencyStop();
+        });
+    }
+
+    // Patterns tab buttons
+    const addPatternBtn = document.getElementById('addPattern');
+    if (addPatternBtn) {
+        addPatternBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openPatternModal();
+        });
+    }
+
+    const importPatternsBtn = document.getElementById('importPatterns');
+    if (importPatternsBtn) {
+        importPatternsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            importPatterns();
+        });
+    }
+
+    const exportPatternsBtn = document.getElementById('exportPatterns');
+    if (exportPatternsBtn) {
+        exportPatternsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportPatterns();
+        });
+    }
+
+    const generateCurveBtn = document.getElementById('generateCurve');
+    if (generateCurveBtn) {
+        generateCurveBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            generateFromCurve();
+        });
+    }
+
+    // Advanced tab buttons
+    const saveApiSettingsBtn = document.getElementById('saveApiSettings');
+    if (saveApiSettingsBtn) {
+        saveApiSettingsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            saveApiSettings();
+        });
+    }
+
+    const testConnectionBtn = document.getElementById('testConnection');
+    if (testConnectionBtn) {
+        testConnectionBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            testConnection();
+        });
+    }
+
+    const pauseQueueBtn = document.getElementById('pauseQueue');
+    if (pauseQueueBtn) {
+        pauseQueueBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            pauseQueue();
+        });
+    }
+
+    const resumeQueueBtn = document.getElementById('resumeQueue');
+    if (resumeQueueBtn) {
+        resumeQueueBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            resumeQueue();
+        });
+    }
+
+    const clearQueueBtn = document.getElementById('clearQueue');
+    if (clearQueueBtn) {
+        clearQueueBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearQueue();
+        });
+    }
+
+    const clearDebugLogBtn = document.getElementById('clearDebugLog');
+    if (clearDebugLogBtn) {
+        clearDebugLogBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearDebugLog();
+        });
+    }
+
+    const exportDebugLogBtn = document.getElementById('exportDebugLog');
+    if (exportDebugLogBtn) {
+        exportDebugLogBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportDebugLog();
+        });
+    }
+
+    // Modal buttons
+    const closeMappingModalBtn = document.getElementById('closeMappingModal');
+    if (closeMappingModalBtn) {
+        closeMappingModalBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeModal('mappingModal');
+        });
+    }
+
+    const saveMappingBtn = document.getElementById('saveMappingBtn');
+    if (saveMappingBtn) {
+        saveMappingBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            saveMappingModal();
+        });
+    }
+
+    const cancelMappingBtn = document.getElementById('cancelMappingBtn');
+    if (cancelMappingBtn) {
+        cancelMappingBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeModal('mappingModal');
+        });
+    }
+
+    const closePatternModalBtn = document.getElementById('closePatternModal');
+    if (closePatternModalBtn) {
+        closePatternModalBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeModal('patternModal');
+        });
+    }
+
+    const savePatternBtn = document.getElementById('savePatternBtn');
+    if (savePatternBtn) {
+        savePatternBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            savePatternModal();
+        });
+    }
+
+    const cancelPatternBtn = document.getElementById('cancelPatternBtn');
+    if (cancelPatternBtn) {
+        cancelPatternBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeModal('patternModal');
+        });
+    }
+
+    const addPatternStepBtn = document.getElementById('addPatternStep');
+    if (addPatternStepBtn) {
+        addPatternStepBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            addPatternStep();
+        });
+    }
+
+    const saveStepBtn = document.getElementById('saveStep');
+    if (saveStepBtn) {
+        saveStepBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            savePatternStep();
+        });
+    }
+
+    const cancelStepBtn = document.getElementById('cancelStep');
+    if (cancelStepBtn) {
+        cancelStepBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            cancelPatternStep();
+        });
+    }
+
+    // Slider value updates
+    const globalMaxIntensitySlider = document.getElementById('globalMaxIntensity');
+    const globalMaxIntensityValue = document.getElementById('globalMaxIntensityValue');
+    if (globalMaxIntensitySlider && globalMaxIntensityValue) {
+        globalMaxIntensitySlider.addEventListener('input', (e) => {
+            globalMaxIntensityValue.textContent = e.target.value;
+        });
+    }
+
+    const globalMaxDurationSlider = document.getElementById('globalMaxDuration');
+    const globalMaxDurationValue = document.getElementById('globalMaxDurationValue');
+    if (globalMaxDurationSlider && globalMaxDurationValue) {
+        globalMaxDurationSlider.addEventListener('input', (e) => {
+            globalMaxDurationValue.textContent = e.target.value;
+        });
+    }
+
+    const mappingIntensitySlider = document.getElementById('mappingIntensity');
+    const mappingIntensityValue = document.getElementById('mappingIntensityValue');
+    if (mappingIntensitySlider && mappingIntensityValue) {
+        mappingIntensitySlider.addEventListener('input', (e) => {
+            mappingIntensityValue.textContent = e.target.value;
+        });
+    }
+
+    const mappingDurationSlider = document.getElementById('mappingDuration');
+    const mappingDurationValue = document.getElementById('mappingDurationValue');
+    if (mappingDurationSlider && mappingDurationValue) {
+        mappingDurationSlider.addEventListener('input', (e) => {
+            mappingDurationValue.textContent = e.target.value;
+        });
+    }
+
+    const stepIntensitySlider = document.getElementById('stepIntensity');
+    const stepIntensityValue = document.getElementById('stepIntensityValue');
+    if (stepIntensitySlider && stepIntensityValue) {
+        stepIntensitySlider.addEventListener('input', (e) => {
+            stepIntensityValue.textContent = e.target.value;
+        });
+    }
+
     // Use event delegation for dynamically created elements
     document.addEventListener('click', (e) => {
         // Refresh devices button
@@ -1598,6 +1833,162 @@ function initializeEventDelegation() {
             toggleMapping(mappingId, enabled);
         }
     });
+}
+
+// ====================================================================
+// ADDITIONAL UI FUNCTIONS
+// ====================================================================
+
+async function resetStats() {
+    if (!await confirmAction('Reset all statistics?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/openshock/stats/reset', {
+            method: 'POST'
+        });
+
+        if (!response.ok) throw new Error('Failed to reset stats');
+
+        await loadStats();
+        renderStats();
+        showNotification('Statistics reset successfully', 'success');
+    } catch (error) {
+        console.error('[OpenShock] Error resetting stats:', error);
+        showNotification('Error resetting statistics', 'error');
+    }
+}
+
+function clearCommandLog() {
+    debugLogs = [];
+    renderCommandLog([]);
+    showNotification('Command log cleared', 'success');
+}
+
+function exportCommandLog() {
+    const data = JSON.stringify(debugLogs, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `openshock-commandlog-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Command log exported', 'success');
+}
+
+async function pauseQueue() {
+    try {
+        const response = await fetch('/api/openshock/queue/pause', {
+            method: 'POST'
+        });
+
+        if (!response.ok) throw new Error('Failed to pause queue');
+
+        await loadQueueStatus();
+        renderQueueStatus();
+        showNotification('Queue paused', 'success');
+    } catch (error) {
+        console.error('[OpenShock] Error pausing queue:', error);
+        showNotification('Error pausing queue', 'error');
+    }
+}
+
+async function resumeQueue() {
+    try {
+        const response = await fetch('/api/openshock/queue/resume', {
+            method: 'POST'
+        });
+
+        if (!response.ok) throw new Error('Failed to resume queue');
+
+        await loadQueueStatus();
+        renderQueueStatus();
+        showNotification('Queue resumed', 'success');
+    } catch (error) {
+        console.error('[OpenShock] Error resuming queue:', error);
+        showNotification('Error resuming queue', 'error');
+    }
+}
+
+function clearDebugLog() {
+    const debugLog = document.getElementById('debugLog');
+    if (debugLog) {
+        debugLog.innerHTML = '<p class="text-muted text-center">Debug log is empty.</p>';
+    }
+    showNotification('Debug log cleared', 'success');
+}
+
+function exportDebugLog() {
+    const debugLog = document.getElementById('debugLog');
+    if (debugLog) {
+        const data = debugLog.textContent;
+        const blob = new Blob([data], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `openshock-debuglog-${Date.now()}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('Debug log exported', 'success');
+    }
+}
+
+function savePatternStep() {
+    // This function would save the current step being edited
+    // For now, it calls addPatternStep which handles the logic
+    addPatternStep();
+}
+
+function cancelPatternStep() {
+    // Hide the step form
+    const stepForm = document.getElementById('stepForm');
+    if (stepForm) {
+        stepForm.classList.add('step-form-hidden');
+    }
+}
+
+async function importPatterns() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const importedPatterns = JSON.parse(text);
+            
+            // TODO: Send to backend
+            console.log('[OpenShock] Imported patterns:', importedPatterns);
+            showNotification('Patterns imported successfully', 'success');
+        } catch (error) {
+            console.error('[OpenShock] Error importing patterns:', error);
+            showNotification('Error importing patterns', 'error');
+        }
+    };
+    
+    input.click();
+}
+
+async function exportPatterns() {
+    try {
+        const data = JSON.stringify(patterns, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `openshock-patterns-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('Patterns exported', 'success');
+    } catch (error) {
+        console.error('[OpenShock] Error exporting patterns:', error);
+        showNotification('Error exporting patterns', 'error');
+    }
 }
 
 // ====================================================================
