@@ -1761,6 +1761,51 @@ const PORT = process.env.PORT || 3000;
         // Auto-Update-Check starten (alle 24 Stunden)
         updateManager.startAutoCheck(24);
 
+        // ========== ERROR HANDLING MIDDLEWARE ==========
+        // IMPORTANT: Error handlers must be registered AFTER plugin routes are loaded
+        // Catch-all error handler - ensures JSON responses for API routes
+        app.use((err, req, res, next) => {
+            logger.error('Express Error Handler:', err);
+
+            // Always return JSON for API routes
+            if (req.path.startsWith('/api/')) {
+                return res.status(err.status || 500).json({
+                    success: false,
+                    error: err.message || 'Internal Server Error'
+                });
+            }
+
+            // For non-API routes, return JSON if Accept header indicates JSON
+            if (req.accepts('json') && !req.accepts('html')) {
+                return res.status(err.status || 500).json({
+                    success: false,
+                    error: err.message || 'Internal Server Error'
+                });
+            }
+
+            // Default: return generic error page
+            res.status(err.status || 500).send('Internal Server Error');
+        });
+
+        // 404 handler - ensures JSON responses for API routes
+        app.use((req, res) => {
+            if (req.path.startsWith('/api/')) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'API endpoint not found'
+                });
+            }
+
+            if (req.accepts('json') && !req.accepts('html')) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Not found'
+                });
+            }
+
+            res.status(404).send('Page not found');
+        });
+
         // Browser automatisch öffnen (async)
         try {
             const open = (await import('open')).default;
@@ -1771,50 +1816,6 @@ const PORT = process.env.PORT || 3000;
         }
     });
 })(); // Schließe async IIFE
-
-// ========== ERROR HANDLING MIDDLEWARE ==========
-// Catch-all error handler - ensures JSON responses for API routes
-app.use((err, req, res, next) => {
-    logger.error('Express Error Handler:', err);
-
-    // Always return JSON for API routes
-    if (req.path.startsWith('/api/')) {
-        return res.status(err.status || 500).json({
-            success: false,
-            error: err.message || 'Internal Server Error'
-        });
-    }
-
-    // For non-API routes, return JSON if Accept header indicates JSON
-    if (req.accepts('json') && !req.accepts('html')) {
-        return res.status(err.status || 500).json({
-            success: false,
-            error: err.message || 'Internal Server Error'
-        });
-    }
-
-    // Default: return generic error page
-    res.status(err.status || 500).send('Internal Server Error');
-});
-
-// 404 handler - ensures JSON responses for API routes
-app.use((req, res) => {
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({
-            success: false,
-            error: 'API endpoint not found'
-        });
-    }
-
-    if (req.accepts('json') && !req.accepts('html')) {
-        return res.status(404).json({
-            success: false,
-            error: 'Not found'
-        });
-    }
-
-    res.status(404).send('Page not found');
-});
 
 // Graceful Shutdown
 process.on('SIGINT', async () => {
