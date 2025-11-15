@@ -31,10 +31,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // Setup event listeners
 function setupEventListeners() {
     // Compact mode toggle
-    document.getElementById('compact-toggle').addEventListener('change', (e) => {
-        compactMode = e.target.checked;
-        document.getElementById('app').classList.toggle('compact-mode', compactMode);
-    });
+    const compactToggle = document.getElementById('compact-toggle');
+    if (compactToggle) {
+        compactToggle.addEventListener('change', (e) => {
+            compactMode = e.target.checked;
+            const app = document.getElementById('app');
+            if (app) {
+                app.classList.toggle('compact-mode', compactMode);
+            }
+        });
+    }
 
     // Export button
     const exportBtn = document.querySelector('[data-action="export"]');
@@ -75,6 +81,11 @@ function updateConnectionStatus(connected) {
     const indicator = document.getElementById('status-indicator');
     const text = document.getElementById('status-text');
 
+    if (!indicator || !text) {
+        console.warn('Status elements not found');
+        return;
+    }
+
     if (connected) {
         indicator.className = 'w-3 h-3 rounded-full bg-green-500';
         text.textContent = 'Connected';
@@ -91,8 +102,16 @@ function updateMetrics(data) {
     if (!data) return;
 
     lastUpdateTime = Date.now();
-    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-    document.getElementById('update-interval').textContent = data.updateInterval || 2000;
+
+    const lastUpdateEl = document.getElementById('last-update');
+    if (lastUpdateEl) {
+        lastUpdateEl.textContent = new Date().toLocaleTimeString();
+    }
+
+    const updateIntervalEl = document.getElementById('update-interval');
+    if (updateIntervalEl) {
+        updateIntervalEl.textContent = data.updateInterval || 2000;
+    }
 
     // Update CPU
     if (data.cpu) {
@@ -116,6 +135,14 @@ function updateMetrics(data) {
 
     // Check for warnings
     checkWarnings();
+}
+
+// Safe element update helper
+function safeUpdateElement(id, callback) {
+    const el = document.getElementById(id);
+    if (el && callback) {
+        callback(el);
+    }
 }
 
 // Update CPU display
@@ -182,19 +209,20 @@ function updateRAM(ram) {
     const free = formatBytes(ram.free || 0);
 
     // Update percentage with animation
-    const percentEl = document.getElementById('ram-percentage');
-    if (parseInt(percentEl.textContent) !== percent) {
-        percentEl.classList.add('value-changed');
-        setTimeout(() => percentEl.classList.remove('value-changed'), 300);
-    }
-    percentEl.textContent = percent + '%';
+    safeUpdateElement('ram-percentage', (el) => {
+        if (parseInt(el.textContent) !== percent) {
+            el.classList.add('value-changed');
+            setTimeout(() => el.classList.remove('value-changed'), 300);
+        }
+        el.textContent = percent + '%';
+    });
 
     // Update used display
-    document.getElementById('ram-used').textContent = used;
-    document.getElementById('ram-total').textContent = `Total: ${total}`;
-    document.getElementById('ram-used-stat').textContent = used;
-    document.getElementById('ram-free').textContent = free;
-    document.getElementById('ram-process').textContent = formatBytes(ram.processMemory || 0);
+    safeUpdateElement('ram-used', (el) => el.textContent = used);
+    safeUpdateElement('ram-total', (el) => el.textContent = `Total: ${total}`);
+    safeUpdateElement('ram-used-stat', (el) => el.textContent = used);
+    safeUpdateElement('ram-free', (el) => el.textContent = free);
+    safeUpdateElement('ram-process', (el) => el.textContent = formatBytes(ram.processMemory || 0));
 
     // Update progress bars and circles
     const color = getColorClass(percent, 70, 85);

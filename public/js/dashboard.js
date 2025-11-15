@@ -29,20 +29,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ========== BUTTONS ==========
 function initializeButtons() {
     // Connect Button
-    document.getElementById('connect-btn').addEventListener('click', connect);
+    const connectBtn = document.getElementById('connect-btn');
+    if (connectBtn) {
+        connectBtn.addEventListener('click', connect);
+    }
 
     // Disconnect Button
-    document.getElementById('disconnect-btn').addEventListener('click', disconnect);
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', disconnect);
+    }
 
     // Enter-Taste im Username-Input
-    document.getElementById('username-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') connect();
-    });
+    const usernameInput = document.getElementById('username-input');
+    if (usernameInput) {
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') connect();
+        });
+    }
 
     // Clear Events
-    document.getElementById('clear-events-btn').addEventListener('click', () => {
-        document.getElementById('event-log').innerHTML = '';
-    });
+    const clearEventsBtn = document.getElementById('clear-events-btn');
+    if (clearEventsBtn) {
+        clearEventsBtn.addEventListener('click', () => {
+            const eventLog = document.getElementById('event-log');
+            if (eventLog) {
+                eventLog.innerHTML = '';
+            }
+        });
+    }
 
     // TTS Voice Buttons (nur wenn Elemente existieren - Plugin könnte diese zur Verfügung stellen)
     const addVoiceBtn = document.getElementById('add-voice-btn');
@@ -750,24 +765,52 @@ async function loadSoundboardSettings() {
         const response = await fetch('/api/settings');
         const settings = await response.json();
 
-        // Load settings into UI
-        document.getElementById('soundboard-enabled').checked = settings.soundboard_enabled === 'true';
-        document.getElementById('soundboard-play-mode').value = settings.soundboard_play_mode || 'overlap';
-        document.getElementById('soundboard-max-queue').value = settings.soundboard_max_queue_length || '10';
+        // Load settings into UI with null checks
+        const soundboardEnabled = document.getElementById('soundboard-enabled');
+        if (soundboardEnabled) soundboardEnabled.checked = settings.soundboard_enabled === 'true';
 
-        // Event sounds
-        document.getElementById('soundboard-follow-url').value = settings.soundboard_follow_sound || '';
-        document.getElementById('soundboard-follow-volume').value = settings.soundboard_follow_volume || '1.0';
-        document.getElementById('soundboard-subscribe-url').value = settings.soundboard_subscribe_sound || '';
-        document.getElementById('soundboard-subscribe-volume').value = settings.soundboard_subscribe_volume || '1.0';
-        document.getElementById('soundboard-share-url').value = settings.soundboard_share_sound || '';
-        document.getElementById('soundboard-share-volume').value = settings.soundboard_share_volume || '1.0';
-        document.getElementById('soundboard-gift-url').value = settings.soundboard_default_gift_sound || '';
-        document.getElementById('soundboard-gift-volume').value = settings.soundboard_gift_volume || '1.0';
-        document.getElementById('soundboard-like-url').value = settings.soundboard_like_sound || '';
-        document.getElementById('soundboard-like-volume').value = settings.soundboard_like_volume || '1.0';
-        document.getElementById('soundboard-like-threshold').value = settings.soundboard_like_threshold || '0';
-        document.getElementById('soundboard-like-window').value = settings.soundboard_like_window_seconds || '10';
+        const playMode = document.getElementById('soundboard-play-mode');
+        if (playMode) playMode.value = settings.soundboard_play_mode || 'overlap';
+
+        const maxQueue = document.getElementById('soundboard-max-queue');
+        if (maxQueue) maxQueue.value = settings.soundboard_max_queue_length || '10';
+
+        // Event sounds with null checks
+        const followUrl = document.getElementById('soundboard-follow-url');
+        if (followUrl) followUrl.value = settings.soundboard_follow_sound || '';
+
+        const followVolume = document.getElementById('soundboard-follow-volume');
+        if (followVolume) followVolume.value = settings.soundboard_follow_volume || '1.0';
+
+        const subscribeUrl = document.getElementById('soundboard-subscribe-url');
+        if (subscribeUrl) subscribeUrl.value = settings.soundboard_subscribe_sound || '';
+
+        const subscribeVolume = document.getElementById('soundboard-subscribe-volume');
+        if (subscribeVolume) subscribeVolume.value = settings.soundboard_subscribe_volume || '1.0';
+
+        const shareUrl = document.getElementById('soundboard-share-url');
+        if (shareUrl) shareUrl.value = settings.soundboard_share_sound || '';
+
+        const shareVolume = document.getElementById('soundboard-share-volume');
+        if (shareVolume) shareVolume.value = settings.soundboard_share_volume || '1.0';
+
+        const giftUrl = document.getElementById('soundboard-gift-url');
+        if (giftUrl) giftUrl.value = settings.soundboard_default_gift_sound || '';
+
+        const giftVolume = document.getElementById('soundboard-gift-volume');
+        if (giftVolume) giftVolume.value = settings.soundboard_gift_volume || '1.0';
+
+        const likeUrl = document.getElementById('soundboard-like-url');
+        if (likeUrl) likeUrl.value = settings.soundboard_like_sound || '';
+
+        const likeVolume = document.getElementById('soundboard-like-volume');
+        if (likeVolume) likeVolume.value = settings.soundboard_like_volume || '1.0';
+
+        const likeThreshold = document.getElementById('soundboard-like-threshold');
+        if (likeThreshold) likeThreshold.value = settings.soundboard_like_threshold || '0';
+
+        const likeWindow = document.getElementById('soundboard-like-window');
+        if (likeWindow) likeWindow.value = settings.soundboard_like_window_seconds || '10';
 
     } catch (error) {
         console.error('Error loading soundboard settings:', error);
@@ -775,22 +818,39 @@ async function loadSoundboardSettings() {
 }
 
 async function saveSoundboardSettings() {
+    // Collect settings with null checks
+    const soundboardEnabled = document.getElementById('soundboard-enabled');
+    const playMode = document.getElementById('soundboard-play-mode');
+    const maxQueue = document.getElementById('soundboard-max-queue');
+    const followUrl = document.getElementById('soundboard-follow-url');
+    const followVolume = document.getElementById('soundboard-follow-volume');
+    const subscribeUrl = document.getElementById('soundboard-subscribe-url');
+    const subscribeVolume = document.getElementById('soundboard-subscribe-volume');
+    const shareUrl = document.getElementById('soundboard-share-url');
+    const shareVolume = document.getElementById('soundboard-share-volume');
+    const giftUrl = document.getElementById('soundboard-gift-url');
+    const giftVolume = document.getElementById('soundboard-gift-volume');
+    const likeUrl = document.getElementById('soundboard-like-url');
+    const likeVolume = document.getElementById('soundboard-like-volume');
+    const likeThreshold = document.getElementById('soundboard-like-threshold');
+    const likeWindow = document.getElementById('soundboard-like-window');
+
     const newSettings = {
-        soundboard_enabled: document.getElementById('soundboard-enabled').checked ? 'true' : 'false',
-        soundboard_play_mode: document.getElementById('soundboard-play-mode').value,
-        soundboard_max_queue_length: document.getElementById('soundboard-max-queue').value,
-        soundboard_follow_sound: document.getElementById('soundboard-follow-url').value,
-        soundboard_follow_volume: document.getElementById('soundboard-follow-volume').value,
-        soundboard_subscribe_sound: document.getElementById('soundboard-subscribe-url').value,
-        soundboard_subscribe_volume: document.getElementById('soundboard-subscribe-volume').value,
-        soundboard_share_sound: document.getElementById('soundboard-share-url').value,
-        soundboard_share_volume: document.getElementById('soundboard-share-volume').value,
-        soundboard_default_gift_sound: document.getElementById('soundboard-gift-url').value,
-        soundboard_gift_volume: document.getElementById('soundboard-gift-volume').value,
-        soundboard_like_sound: document.getElementById('soundboard-like-url').value,
-        soundboard_like_volume: document.getElementById('soundboard-like-volume').value,
-        soundboard_like_threshold: document.getElementById('soundboard-like-threshold').value,
-        soundboard_like_window_seconds: document.getElementById('soundboard-like-window').value
+        soundboard_enabled: soundboardEnabled ? (soundboardEnabled.checked ? 'true' : 'false') : 'false',
+        soundboard_play_mode: playMode?.value || 'overlap',
+        soundboard_max_queue_length: maxQueue?.value || '10',
+        soundboard_follow_sound: followUrl?.value || '',
+        soundboard_follow_volume: followVolume?.value || '1.0',
+        soundboard_subscribe_sound: subscribeUrl?.value || '',
+        soundboard_subscribe_volume: subscribeVolume?.value || '1.0',
+        soundboard_share_sound: shareUrl?.value || '',
+        soundboard_share_volume: shareVolume?.value || '1.0',
+        soundboard_default_gift_sound: giftUrl?.value || '',
+        soundboard_gift_volume: giftVolume?.value || '1.0',
+        soundboard_like_sound: likeUrl?.value || '',
+        soundboard_like_volume: likeVolume?.value || '1.0',
+        soundboard_like_threshold: likeThreshold?.value || '0',
+        soundboard_like_window_seconds: likeWindow?.value || '10'
     };
 
     try {
@@ -816,6 +876,10 @@ async function loadGiftSounds() {
         const gifts = await response.json();
 
         const tbody = document.getElementById('gift-sounds-list');
+        if (!tbody) {
+            console.warn('gift-sounds-list element not found');
+            return;
+        }
         tbody.innerHTML = '';
 
         if (gifts.length === 0) {
@@ -857,9 +921,18 @@ async function loadGiftSounds() {
 }
 
 async function addGiftSound() {
-    const giftId = document.getElementById('new-gift-id').value;
-    const label = document.getElementById('new-gift-label').value;
-    const url = document.getElementById('new-gift-url').value;
+    const giftIdEl = document.getElementById('new-gift-id');
+    const labelEl = document.getElementById('new-gift-label');
+    const urlEl = document.getElementById('new-gift-url');
+
+    if (!giftIdEl || !labelEl || !urlEl) {
+        console.warn('Gift sound form elements not found');
+        return;
+    }
+
+    const giftId = giftIdEl.value;
+    const label = labelEl.value;
+    const url = urlEl.value;
     const volume = document.getElementById('new-gift-volume').value;
     const animationUrl = document.getElementById('new-gift-animation-url').value;
     const animationType = document.getElementById('new-gift-animation-type').value;

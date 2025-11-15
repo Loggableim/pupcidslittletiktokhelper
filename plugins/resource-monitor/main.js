@@ -328,7 +328,7 @@ class ResourceMonitorPlugin extends EventEmitter {
      * Register HTTP routes
      */
     registerRoutes() {
-        // Serve UI
+        // Serve UI HTML
         this.api.registerRoute('get', '/resource-monitor/ui', (req, res) => {
             const uiPath = path.join(__dirname, 'ui.html');
             if (fs.existsSync(uiPath)) {
@@ -337,6 +337,20 @@ class ResourceMonitorPlugin extends EventEmitter {
                 res.status(404).json({
                     success: false,
                     error: 'UI not found. Create ui.html for the Resource Monitor interface.'
+                });
+            }
+        });
+
+        // Serve UI JavaScript with correct MIME type
+        this.api.registerRoute('get', '/resource-monitor/ui.js', (req, res) => {
+            const jsPath = path.join(__dirname, 'ui.js');
+            if (fs.existsSync(jsPath)) {
+                res.setHeader('Content-Type', 'application/javascript');
+                res.sendFile(jsPath);
+            } else {
+                res.status(404).json({
+                    success: false,
+                    error: 'UI JavaScript not found.'
                 });
             }
         });
