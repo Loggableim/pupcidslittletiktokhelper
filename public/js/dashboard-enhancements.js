@@ -29,15 +29,24 @@
 
     // ========== QUICK ACTION BUTTONS ==========
     async function initializeQuickActionButtons() {
+        console.log('[Dashboard Enhancements] Initializing Quick Action Buttons');
+
         // Load initial states
         await loadQuickActionButtonStates();
 
         // Attach click handlers to all quick action buttons
         const buttons = document.querySelectorAll('.quick-action-btn');
+        console.log(`[Dashboard Enhancements] Found ${buttons.length} quick action buttons`);
+
         buttons.forEach(button => {
-            button.addEventListener('click', async () => {
+            button.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
                 const action = button.getAttribute('data-action');
                 const currentState = button.getAttribute('data-state');
+
+                console.log(`[Quick Action] Clicked: ${action}, current state: ${currentState}`);
 
                 // Toggle state
                 const newState = currentState === 'on' ? 'off' : 'on';
@@ -50,7 +59,10 @@
 
                 // Revert if failed
                 if (!success) {
+                    console.error(`[Quick Action] Failed to toggle ${action}, reverting`);
                     button.setAttribute('data-state', currentState);
+                } else {
+                    console.log(`[Quick Action] Successfully toggled ${action} to ${newState}`);
                 }
 
                 // Re-initialize Lucide icons
@@ -63,24 +75,34 @@
 
     async function loadQuickActionButtonStates() {
         try {
+            console.log('[Load Quick Action States] Fetching settings from /api/settings');
+
             // Load settings for TTS, Soundboard, and Flows
             const settingsResponse = await fetch('/api/settings');
             const settings = await settingsResponse.json();
 
+            console.log('[Load Quick Action States] Settings loaded:', settings);
+
             // Set button states
             const ttsBtn = document.getElementById('quick-tts-btn');
             if (ttsBtn) {
-                ttsBtn.setAttribute('data-state', settings.tts_enabled !== 'false' ? 'on' : 'off');
+                const state = settings.tts_enabled !== 'false' ? 'on' : 'off';
+                ttsBtn.setAttribute('data-state', state);
+                console.log(`[Load Quick Action States] TTS button set to: ${state} (tts_enabled=${settings.tts_enabled})`);
             }
 
             const soundboardBtn = document.getElementById('quick-soundboard-btn');
             if (soundboardBtn) {
-                soundboardBtn.setAttribute('data-state', settings.soundboard_enabled !== 'false' ? 'on' : 'off');
+                const state = settings.soundboard_enabled !== 'false' ? 'on' : 'off';
+                soundboardBtn.setAttribute('data-state', state);
+                console.log(`[Load Quick Action States] Soundboard button set to: ${state}`);
             }
 
             const flowsBtn = document.getElementById('quick-flows-btn');
             if (flowsBtn) {
-                flowsBtn.setAttribute('data-state', settings.flows_enabled !== 'false' ? 'on' : 'off');
+                const state = settings.flows_enabled !== 'false' ? 'on' : 'off';
+                flowsBtn.setAttribute('data-state', state);
+                console.log(`[Load Quick Action States] Flows button set to: ${state}`);
             }
 
             // Load Emoji Rain state from plugin
@@ -113,7 +135,7 @@
     }
 
     async function toggleQuickAction(action, enabled) {
-        console.log(`Toggle ${action}:`, enabled ? 'ON' : 'OFF');
+        console.log(`[Toggle Quick Action] ${action}:`, enabled ? 'ON' : 'OFF');
 
         try {
             let endpoint, body;
@@ -145,9 +167,11 @@
                     break;
 
                 default:
-                    console.warn(`Unknown action: ${action}`);
+                    console.warn(`[Toggle Quick Action] Unknown action: ${action}`);
                     return false;
             }
+
+            console.log(`[Toggle Quick Action] Sending to ${endpoint}:`, body);
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -155,18 +179,21 @@
                 body: JSON.stringify(body)
             });
 
+            console.log(`[Toggle Quick Action] Response status:`, response.status);
+
             const result = await response.json();
+            console.log(`[Toggle Quick Action] Response data:`, result);
 
             if (result.success) {
                 showQuickActionNotification(action, enabled);
                 return true;
             } else {
-                console.error(`Failed to toggle ${action}:`, result.error);
+                console.error(`[Toggle Quick Action] Failed to toggle ${action}:`, result.error);
                 return false;
             }
 
         } catch (error) {
-            console.error(`Error toggling ${action}:`, error);
+            console.error(`[Toggle Quick Action] Error toggling ${action}:`, error);
             return false;
         }
     }
