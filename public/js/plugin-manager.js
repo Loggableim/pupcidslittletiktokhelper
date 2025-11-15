@@ -2,6 +2,13 @@
  * Plugin Manager - Frontend-Logik für Plugin-Verwaltung
  */
 
+// Global function to update UI after plugin changes
+async function checkPluginsAndUpdateUI() {
+    if (window.NavigationManager && typeof window.NavigationManager.refreshPluginVisibility === 'function') {
+        await window.NavigationManager.refreshPluginVisibility();
+    }
+}
+
 class PluginManager {
     constructor() {
         this.plugins = [];
