@@ -130,7 +130,7 @@ function applySettings(newSettings) {
 
   // Update reduce motion in animation renderer
   if (animationRenderer) {
-    animationRenderer.setReduceMotion(settings.reduceMotion || false);
+    animationRenderer.setReducedMotion(settings.reduceMotion || false);
   }
 
   // Update body classes
