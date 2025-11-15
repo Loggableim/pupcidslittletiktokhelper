@@ -21,8 +21,7 @@ const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integ
 // Import New Modules
 const logger = require('./modules/logger');
 const { apiLimiter, authLimiter, uploadLimiter } = require('./modules/rate-limiter');
-// OBS WebSocket will be integrated later
-// const OBSWebSocket = require('./modules/obs-websocket');
+const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
 const Leaderboard = require('./modules/leaderboard');
@@ -219,8 +218,7 @@ const flows = new FlowEngine(db, alerts, logger);
 const goals = new GoalManager(db, io, logger);
 
 // New Modules
-// OBS WebSocket will be integrated later
-// const obs = new OBSWebSocket(db, io, logger);
+const obs = new OBSWebSocket(db, io, logger);
 const subscriptionTiers = new SubscriptionTiers(db, io, logger);
 const leaderboard = new Leaderboard(db, io, logger);
 
@@ -501,6 +499,11 @@ app.post('/api/presets/import', authLimiter, async (req, res) => {
 // Haupt-Seite
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Favicon route (prevent 404 errors)
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
 });
 
 // ========== TIKTOK CONNECTION ROUTES ==========
