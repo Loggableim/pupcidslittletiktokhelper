@@ -23,7 +23,8 @@ class TikTokConnector extends EventEmitter {
             likes: 0,
             totalCoins: 0,
             followers: 0,
-            shares: 0
+            shares: 0,
+            gifts: 0
         };
     }
 
@@ -403,6 +404,7 @@ class TikTokConnector extends EventEmitter {
             // - Streakable Gift UND Streak ist beendet
             if (!isStreakable || (isStreakable && isStreakEnd)) {
                 this.stats.totalCoins += coins;
+                this.stats.gifts++; // Increment gift counter
 
                 const userData = this.extractUserData(data);
                 const eventData = {
@@ -564,7 +566,8 @@ class TikTokConnector extends EventEmitter {
             likes: 0,
             totalCoins: 0,
             followers: 0,
-            shares: 0
+            shares: 0,
+            gifts: 0
         };
         this.broadcastStats();
     }
