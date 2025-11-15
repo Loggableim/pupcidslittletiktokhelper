@@ -3,6 +3,7 @@
  * Handles all HTTP routes for goal management
  */
 
+const path = require('path');
 const { nanoid } = require('nanoid');
 const templateRegistry = require('../engine/templates/registry');
 const animationRegistry = require('../engine/animations/registry');
@@ -21,12 +22,12 @@ class GoalsAPI {
     registerRoutes() {
         // UI route
         this.api.registerRoute('get', '/goals/ui', (req, res) => {
-            res.sendFile(__dirname + '/../ui.html');
+            res.sendFile(path.join(__dirname, '..', 'ui.html'));
         });
 
         // Overlay route - each goal gets its own overlay
         this.api.registerRoute('get', '/goals/overlay', (req, res) => {
-            res.sendFile(__dirname + '/../overlay/index.html');
+            res.sendFile(path.join(__dirname, '..', 'overlay', 'index.html'));
         });
 
         // Get all goals
