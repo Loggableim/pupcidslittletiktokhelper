@@ -249,3 +249,9 @@ init();
 document.getElementById('create-goal-btn').addEventListener('click', openCreateModal);
 document.getElementById('goal-form').addEventListener('submit', saveGoal);
 document.getElementById('cancel-goal-btn').addEventListener('click', closeModal);
+
+// Also set up listener for the initial empty state button (if it exists)
+const initialCreateBtn = document.getElementById('create-first-goal-initial-btn');
+if (initialCreateBtn) {
+    initialCreateBtn.addEventListener('click', openCreateModal);
+}

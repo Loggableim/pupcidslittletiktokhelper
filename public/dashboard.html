@@ -1202,16 +1202,5 @@
     <script src="/js/plugin-manager.js"></script>
     <script src="/js/update-checker.js"></script>
     <script src="/js/audio-settings.js"></script>
-
-    <!-- Initialize Lucide Icons after DOM is ready -->
-    <script>
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            });
-        } else {
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-    </script>
 </body>
 </html>
