@@ -108,6 +108,15 @@
                     applyHUDConfig();
                 }
             }
+
+            // Load brand kit
+            const brandResponse = await fetch('/api/quiz-show/brand-kit');
+            if (brandResponse.ok) {
+                const brandData = await brandResponse.json();
+                if (brandData.success && brandData.brandKit) {
+                    applyBrandKit(brandData.brandKit);
+                }
+            }
         } catch (error) {
             console.error('Error loading HUD config:', error);
         }
@@ -343,6 +352,32 @@
         socket.on('quiz-show:joker-activated', handleJokerActivated);
         socket.on('quiz-show:stopped', handleQuizStopped);
         socket.on('quiz-show:hud-config-updated', handleHUDConfigUpdated);
+        socket.on('quiz-show:play-sound', handlePlaySound);
+        socket.on('quiz-show:quiz-ended', handleQuizEnded);
+        socket.on('quiz-show:brand-kit-updated', handleBrandKitUpdated);
+    }
+
+    function handlePlaySound(data) {
+        try {
+            if (!data.filePath) return;
+            
+            const audio = new Audio(data.filePath);
+            audio.volume = data.volume || 1.0;
+            audio.play().catch(err => console.warn('Could not play sound:', err));
+        } catch (error) {
+            console.error('Error playing sound:', error);
+        }
+    }
+
+    function handleQuizEnded(data) {
+        if (data.mvp) {
+            showMVPDisplay(data.mvp);
+        }
+    }
+
+    function handleBrandKitUpdated(brandKit) {
+        console.log('Brand kit updated:', brandKit);
+        applyBrandKit(brandKit);
     }
 
     function handleHUDConfigUpdated(config) {
@@ -822,6 +857,113 @@
         setTimeout(() => {
             timerSection.classList.remove('time-boost');
         }, 1000 / hudConfig.animationSpeed);
+    }
+
+    // ============================================
+    // MVP DISPLAY
+    // ============================================
+
+    function showMVPDisplay(mvp) {
+        // Create MVP overlay element if it doesn't exist
+        let mvpOverlay = document.getElementById('mvp-overlay');
+        if (!mvpOverlay) {
+            mvpOverlay = document.createElement('div');
+            mvpOverlay.id = 'mvp-overlay';
+            mvpOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.9);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                opacity: 0;
+                transition: opacity 0.5s;
+            `;
+            document.body.appendChild(mvpOverlay);
+        }
+
+        mvpOverlay.innerHTML = `
+            <div style="text-align: center; transform: scale(0); transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
+                <div style="font-size: 4em; margin-bottom: 20px;">👑</div>
+                <h1 style="font-size: 3em; color: gold; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);">MVP</h1>
+                <h2 style="font-size: 2.5em; color: white; margin-bottom: 10px;">${escapeHtml(mvp.username)}</h2>
+                <div style="font-size: 2em; color: #10b981;">
+                    <span style="font-weight: bold;">${mvp.points}</span> Punkte
+                </div>
+            </div>
+        `;
+
+        // Animate in
+        setTimeout(() => {
+            mvpOverlay.style.opacity = '1';
+            mvpOverlay.querySelector('div').style.transform = 'scale(1)';
+        }, 100);
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            mvpOverlay.style.opacity = '0';
+            setTimeout(() => {
+                if (mvpOverlay.parentNode) {
+                    mvpOverlay.parentNode.removeChild(mvpOverlay);
+                }
+            }, 500);
+        }, 5000);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ============================================
+    // BRAND KIT
+    // ============================================
+
+    function applyBrandKit(brandKit) {
+        if (!brandKit) return;
+
+        const overlay = document.getElementById('overlay-container');
+        const root = document.documentElement;
+
+        // Apply branded theme if colors are set
+        if (brandKit.primary_color || brandKit.secondary_color) {
+            overlay.setAttribute('data-theme', 'branded');
+            
+            if (brandKit.primary_color) {
+                root.style.setProperty('--brand-primary', brandKit.primary_color);
+                root.style.setProperty('--color-primary', brandKit.primary_color);
+            }
+            
+            if (brandKit.secondary_color) {
+                root.style.setProperty('--brand-secondary', brandKit.secondary_color);
+                root.style.setProperty('--color-secondary', brandKit.secondary_color);
+            }
+        }
+
+        // Apply logo if set
+        if (brandKit.logo_path) {
+            let logoElement = document.getElementById('brand-logo');
+            if (!logoElement) {
+                logoElement = document.createElement('img');
+                logoElement.id = 'brand-logo';
+                logoElement.style.cssText = `
+                    position: absolute;
+                    top: 20px;
+                    right: 20px;
+                    max-width: 150px;
+                    max-height: 80px;
+                    z-index: 100;
+                `;
+                overlay.appendChild(logoElement);
+            }
+            logoElement.src = brandKit.logo_path;
+        }
     }
 
     // ============================================
