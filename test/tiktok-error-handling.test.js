@@ -1,0 +1,148 @@
+/**
+ * Test suite for TikTok Connection Error Handling
+ * Tests the error detection and retry logic improvements
+ */
+
+const assert = require('assert');
+
+// Mock dependencies
+class MockIO {
+    emit() {}
+}
+
+class MockDB {
+    setSetting() {}
+    getGift() { return null; }
+    getGiftCatalog() { return []; }
+    updateGiftCatalog() { return 0; }
+    logEvent() {}
+}
+
+// Load the TikTokConnector class
+const TikTokConnector = require('../modules/tiktok.js');
+
+// Simple test runner
+console.log('🧪 Running TikTok Error Handling Tests...\n');
+
+let passed = 0;
+let failed = 0;
+
+const testSuites = [
+    {
+        name: 'analyzeConnectionError',
+        tests: [
+            { name: 'SIGI_STATE errors', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                const error = new Error('Failed to extract the SIGI_STATE HTML tag, you might be blocked by TikTok.');
+                const result = connector.analyzeConnectionError(error);
+                assert.strictEqual(result.type, 'BLOCKED_BY_TIKTOK');
+                assert.strictEqual(result.retryable, false);
+                assert.ok(result.message.includes('blockiert'));
+                assert.ok(result.suggestion.includes('NICHT SOFORT ERNEUT VERSUCHEN'));
+            }},
+            { name: 'Sign API 504 errors', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                const error = new Error('[Sign Error] 504 error occurred');
+                const result = connector.analyzeConnectionError(error);
+                assert.strictEqual(result.type, 'SIGN_API_GATEWAY_TIMEOUT');
+                assert.strictEqual(result.retryable, true);
+                assert.ok(result.message.includes('504 Gateway Timeout'));
+                assert.ok(result.suggestion.includes('2-5 Minuten'));
+            }},
+            { name: 'Sign API 500 errors', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                const error = new Error('[Sign Error] 500 Internal Server Error');
+                const result = connector.analyzeConnectionError(error);
+                assert.strictEqual(result.type, 'SIGN_API_ERROR');
+                assert.strictEqual(result.retryable, true);
+                assert.ok(result.message.includes('500'));
+                assert.ok(result.suggestion.includes('1-2 Minuten'));
+            }},
+            { name: 'Room ID errors', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                const error = new Error('Failed to retrieve Room ID');
+                const result = connector.analyzeConnectionError(error);
+                assert.strictEqual(result.type, 'ROOM_NOT_FOUND');
+                assert.strictEqual(result.retryable, false);
+            }},
+            { name: 'Timeout errors', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                const error = new Error('Verbindungs-Timeout nach 30 Sekunden');
+                const result = connector.analyzeConnectionError(error);
+                assert.strictEqual(result.type, 'CONNECTION_TIMEOUT');
+                assert.strictEqual(result.retryable, true);
+            }},
+            { name: 'Network errors', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                const error = new Error('ECONNREFUSED');
+                const result = connector.analyzeConnectionError(error);
+                assert.strictEqual(result.type, 'NETWORK_ERROR');
+                assert.strictEqual(result.retryable, true);
+            }},
+            { name: 'Unknown errors', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                const error = new Error('Some random error');
+                const result = connector.analyzeConnectionError(error);
+                assert.strictEqual(result.type, 'UNKNOWN_ERROR');
+                assert.strictEqual(result.retryable, true);
+            }},
+        ]
+    },
+    {
+        name: 'retry delay configuration',
+        tests: [
+            { name: 'Sign API delays longer than default', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                assert.ok(connector.retryDelays.signApi[0] > connector.retryDelays.default[0]);
+                assert.ok(connector.retryDelays.signApi[1] > connector.retryDelays.default[1]);
+                assert.ok(connector.retryDelays.signApi[2] > connector.retryDelays.default[2]);
+            }},
+            { name: 'Network delays between default and Sign API', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                assert.ok(connector.retryDelays.network[0] >= connector.retryDelays.default[0]);
+                assert.ok(connector.retryDelays.network[0] < connector.retryDelays.signApi[0]);
+            }},
+            { name: 'Proper exponential backoff', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                assert.ok(connector.retryDelays.default[0] < connector.retryDelays.default[1]);
+                assert.ok(connector.retryDelays.default[1] < connector.retryDelays.default[2]);
+                assert.ok(connector.retryDelays.signApi[0] < connector.retryDelays.signApi[1]);
+                assert.ok(connector.retryDelays.signApi[1] < connector.retryDelays.signApi[2]);
+            }},
+        ]
+    },
+    {
+        name: 'initialization',
+        tests: [
+            { name: 'Correct default values', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                assert.strictEqual(connector.retryCount, 0);
+                assert.strictEqual(connector.maxRetries, 3);
+                assert.strictEqual(connector.lastErrorType, null);
+                assert.strictEqual(connector.isConnected, false);
+            }},
+        ]
+    }
+];
+
+testSuites.forEach(suite => {
+    console.log(`\n📋 ${suite.name}:`);
+    suite.tests.forEach(test => {
+        try {
+            test.fn();
+            console.log(`  ✅ ${test.name}`);
+            passed++;
+        } catch (err) {
+            console.log(`  ❌ ${test.name}`);
+            console.log(`     Error: ${err.message}`);
+            failed++;
+        }
+    });
+});
+
+console.log(`\n${'='.repeat(50)}`);
+console.log(`📊 Test Results: ${passed} passed, ${failed} failed`);
+console.log(`${'='.repeat(50)}\n`);
+
+process.exit(failed > 0 ? 1 : 0);
+
