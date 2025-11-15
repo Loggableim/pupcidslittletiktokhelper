@@ -26,6 +26,10 @@ class TikTokConnector extends EventEmitter {
             shares: 0,
             gifts: 0
         };
+
+        // Stream duration tracking
+        this.streamStartTime = null;
+        this.durationInterval = null;
     }
 
     async connect(username, options = {}) {
@@ -68,6 +72,27 @@ class TikTokConnector extends EventEmitter {
 
             this.isConnected = true;
             this.retryCount = 0; // Reset bei erfolgreicher Verbindung
+
+            // Start stream duration tracking
+            // Try to get real stream start time from roomInfo if available
+            if (state.roomInfo && state.roomInfo.create_time) {
+                // TikTok provides create_time in seconds, convert to milliseconds
+                this.streamStartTime = state.roomInfo.create_time * 1000;
+            } else if (state.roomInfo && state.roomInfo.createTime) {
+                // Alternative field name
+                this.streamStartTime = state.roomInfo.createTime * 1000;
+            } else {
+                // Fallback: use current time as start time
+                this.streamStartTime = Date.now();
+            }
+
+            // Start interval to broadcast duration every second
+            if (this.durationInterval) {
+                clearInterval(this.durationInterval);
+            }
+            this.durationInterval = setInterval(() => {
+                this.broadcastStats();
+            }, 1000); // Update every second
 
             // Reset Auto-Reconnect-Counter nach 5 Minuten stabiler Verbindung
             if (this.autoReconnectResetTimeout) {
@@ -215,6 +240,14 @@ class TikTokConnector extends EventEmitter {
         this.isConnected = false;
         this.currentUsername = null;
         this.retryCount = 0; // Reset retry counter
+
+        // Clear duration tracking
+        if (this.durationInterval) {
+            clearInterval(this.durationInterval);
+            this.durationInterval = null;
+        }
+        this.streamStartTime = null;
+
         this.resetStats();
         this.broadcastStatus('disconnected');
         console.log('⚫ Disconnected from TikTok LIVE');
@@ -557,7 +590,15 @@ class TikTokConnector extends EventEmitter {
     }
 
     broadcastStats() {
-        this.io.emit('tiktok:stats', this.stats);
+        // Calculate stream duration in seconds
+        const streamDuration = this.streamStartTime 
+            ? Math.floor((Date.now() - this.streamStartTime) / 1000)
+            : 0;
+
+        this.io.emit('tiktok:stats', {
+            ...this.stats,
+            streamDuration: streamDuration
+        });
     }
 
     resetStats() {

@@ -368,6 +368,12 @@ function updateConnectionStatus(status, data = {}) {
             infoEl.textContent = '';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
+            
+            // Reset runtime display
+            const runtimeEl = document.getElementById('stat-runtime');
+            if (runtimeEl) {
+                runtimeEl.textContent = '--:--:--';
+            }
             break;
 
         case 'retrying':
@@ -430,11 +436,25 @@ function updateStats(stats) {
     const likesEl = document.getElementById('stat-likes');
     const coinsEl = document.getElementById('stat-coins');
     const followersEl = document.getElementById('stat-followers');
+    const runtimeEl = document.getElementById('stat-runtime');
 
     if (viewersEl) viewersEl.textContent = stats.viewers.toLocaleString();
     if (likesEl) likesEl.textContent = stats.likes.toLocaleString();
     if (coinsEl) coinsEl.textContent = stats.totalCoins.toLocaleString();
     if (followersEl) followersEl.textContent = stats.followers.toLocaleString();
+
+    // Update stream runtime
+    if (runtimeEl && stats.streamDuration !== undefined) {
+        const duration = stats.streamDuration;
+        const hours = Math.floor(duration / 3600);
+        const minutes = Math.floor((duration % 3600) / 60);
+        const seconds = duration % 60;
+        
+        const formatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        runtimeEl.textContent = formatted;
+    } else if (runtimeEl) {
+        runtimeEl.textContent = '--:--:--';
+    }
 
     // Update gifts counter if available
     const giftsElement = document.getElementById('stat-gifts');
