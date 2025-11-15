@@ -1,0 +1,549 @@
+/**
+ * ClarityHUD Backend API
+ *
+ * Handles settings management, event processing, and WebSocket broadcasting
+ * for both Chat HUD and Full HUD overlays
+ */
+
+class ClarityHUDBackend {
+  constructor(api) {
+    this.api = api;
+
+    // Event queues for each event type
+    this.eventQueues = {
+      chat: [],
+      follow: [],
+      share: [],
+      gift: [],
+      subscribe: [],
+      join: []
+    };
+
+    // Default settings for Chat HUD
+    this.defaultChatSettings = {
+      fontSize: '48px',
+      fontFamily: 'Exo 2',
+      fontColor: '#FFFFFF',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      lineHeight: '1.6',
+      letterSpacing: '0.5px',
+      align: 'left',
+      showTimestamps: false,
+      maxLines: 10,
+      outlineThickness: '2px',
+      outlineColor: '#000000',
+      wrapLongWords: true,
+      mode: 'day',
+      highContrastMode: false,
+      colorblindSafeMode: false,
+      reduceMotion: false,
+      dyslexiaFont: false,
+      accessibilityPreset: 'default'
+    };
+
+    // Default settings for Full HUD (includes all chat settings plus activity settings)
+    this.defaultFullSettings = {
+      ...this.defaultChatSettings,
+      showChat: true,
+      showFollows: true,
+      showShares: true,
+      showGifts: true,
+      showSubs: true,
+      showTreasureChests: true,
+      showJoins: true,
+      layoutMode: 'singleStream',
+      feedDirection: 'newestTop',
+      animationIn: 'fadeSlideIn',
+      animationOut: 'fadeSlideOut',
+      animationSpeed: 'medium'
+    };
+
+    // Current settings
+    this.settings = {
+      chat: { ...this.defaultChatSettings },
+      full: { ...this.defaultFullSettings }
+    };
+  }
+
+  /**
+   * Initialize backend - load settings from database
+   */
+  async initialize() {
+    try {
+      // Load chat settings
+      const chatSettings = await this.api.getConfig('clarityhud.settings.chat');
+      if (chatSettings) {
+        this.settings.chat = { ...this.defaultChatSettings, ...chatSettings };
+      }
+
+      // Load full settings
+      const fullSettings = await this.api.getConfig('clarityhud.settings.full');
+      if (fullSettings) {
+        this.settings.full = { ...this.defaultFullSettings, ...fullSettings };
+      }
+
+      this.api.log('ClarityHUD backend initialized with settings loaded', 'info');
+    } catch (error) {
+      this.api.log(`Error initializing ClarityHUD backend: ${error.message}`, 'error');
+      // Use defaults if loading fails
+      this.settings.chat = { ...this.defaultChatSettings };
+      this.settings.full = { ...this.defaultFullSettings };
+    }
+  }
+
+  /**
+   * Register HTTP API routes
+   */
+  registerRoutes() {
+    // Get all settings (both chat and full)
+    this.api.registerRoute('get', '/api/clarityhud/settings', (req, res) => {
+      try {
+        res.json({
+          success: true,
+          settings: this.settings
+        });
+      } catch (error) {
+        this.api.log(`Error getting all settings: ${error.message}`, 'error');
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+
+    // Get settings for specific dock (chat or full)
+    this.api.registerRoute('get', '/api/clarityhud/settings/:dock', (req, res) => {
+      try {
+        const { dock } = req.params;
+
+        if (dock !== 'chat' && dock !== 'full') {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid dock. Must be "chat" or "full"'
+          });
+        }
+
+        res.json({
+          success: true,
+          dock: dock,
+          settings: this.settings[dock]
+        });
+      } catch (error) {
+        this.api.log(`Error getting ${req.params.dock} settings: ${error.message}`, 'error');
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+
+    // Update settings for specific dock
+    this.api.registerRoute('post', '/api/clarityhud/settings/:dock', async (req, res) => {
+      try {
+        const { dock } = req.params;
+        const newSettings = req.body;
+
+        if (dock !== 'chat' && dock !== 'full') {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid dock. Must be "chat" or "full"'
+          });
+        }
+
+        // Merge with existing settings
+        const defaults = dock === 'chat' ? this.defaultChatSettings : this.defaultFullSettings;
+        this.settings[dock] = { ...defaults, ...this.settings[dock], ...newSettings };
+
+        // Persist to database
+        await this.api.setConfig(`clarityhud.settings.${dock}`, this.settings[dock]);
+
+        // Broadcast settings update to overlays
+        this.api.emit(`clarityhud.settings.${dock}`, {
+          dock: dock,
+          settings: this.settings[dock]
+        });
+
+        this.api.log(`Settings updated for ${dock} HUD`, 'info');
+
+        res.json({
+          success: true,
+          dock: dock,
+          settings: this.settings[dock]
+        });
+      } catch (error) {
+        this.api.log(`Error updating ${req.params.dock} settings: ${error.message}`, 'error');
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+
+    // Get current event state for specific dock
+    this.api.registerRoute('get', '/api/clarityhud/state/:dock', (req, res) => {
+      try {
+        const { dock } = req.params;
+
+        if (dock !== 'chat' && dock !== 'full') {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid dock. Must be "chat" or "full"'
+          });
+        }
+
+        // For chat dock, return only chat events
+        if (dock === 'chat') {
+          res.json({
+            success: true,
+            dock: dock,
+            events: {
+              chat: this.eventQueues.chat
+            },
+            settings: this.settings.chat
+          });
+        } else {
+          // For full dock, return all event queues
+          res.json({
+            success: true,
+            dock: dock,
+            events: this.eventQueues,
+            settings: this.settings.full
+          });
+        }
+      } catch (error) {
+        this.api.log(`Error getting ${req.params.dock} state: ${error.message}`, 'error');
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+
+    // Reset settings to defaults for specific dock
+    this.api.registerRoute('post', '/api/clarityhud/settings/:dock/reset', async (req, res) => {
+      try {
+        const { dock } = req.params;
+
+        if (dock !== 'chat' && dock !== 'full') {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid dock. Must be "chat" or "full"'
+          });
+        }
+
+        // Reset to defaults
+        const defaults = dock === 'chat' ? this.defaultChatSettings : this.defaultFullSettings;
+        this.settings[dock] = { ...defaults };
+
+        // Persist to database
+        await this.api.setConfig(`clarityhud.settings.${dock}`, this.settings[dock]);
+
+        // Broadcast settings update to overlays
+        this.api.emit(`clarityhud.settings.${dock}`, {
+          dock: dock,
+          settings: this.settings[dock]
+        });
+
+        this.api.log(`Settings reset to defaults for ${dock} HUD`, 'info');
+
+        res.json({
+          success: true,
+          dock: dock,
+          settings: this.settings[dock]
+        });
+      } catch (error) {
+        this.api.log(`Error resetting ${req.params.dock} settings: ${error.message}`, 'error');
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+
+    this.api.log('ClarityHUD API routes registered', 'info');
+  }
+
+  /**
+   * Handle chat message event
+   * Broadcasts to both chat and full HUDs
+   */
+  async handleChatEvent(data) {
+    try {
+      const chatEvent = {
+        type: 'chat',
+        timestamp: Date.now(),
+        user: {
+          uniqueId: data.uniqueId || 'unknown',
+          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          profilePictureUrl: data.profilePictureUrl || null,
+          badge: data.badge || null
+        },
+        message: data.comment || '',
+        raw: data
+      };
+
+      // Add to chat queue
+      this.addToQueue('chat', chatEvent);
+
+      // Broadcast to both HUDs
+      this.api.emit('clarityhud.update.chat', chatEvent);
+
+      this.api.log(`Chat event from ${chatEvent.user.nickname}: ${chatEvent.message}`, 'debug');
+    } catch (error) {
+      this.api.log(`Error handling chat event: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Handle follow event
+   * Broadcasts to full HUD only
+   */
+  async handleFollowEvent(data) {
+    try {
+      // Check if full HUD has follows enabled
+      if (!this.settings.full.showFollows) {
+        return;
+      }
+
+      const followEvent = {
+        type: 'follow',
+        timestamp: Date.now(),
+        user: {
+          uniqueId: data.uniqueId || 'unknown',
+          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          profilePictureUrl: data.profilePictureUrl || null,
+          badge: data.badge || null
+        },
+        raw: data
+      };
+
+      // Add to follow queue
+      this.addToQueue('follow', followEvent);
+
+      // Broadcast to full HUD
+      this.api.emit('clarityhud.update.follow', followEvent);
+
+      this.api.log(`Follow event from ${followEvent.user.nickname}`, 'debug');
+    } catch (error) {
+      this.api.log(`Error handling follow event: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Handle share event
+   * Broadcasts to full HUD only
+   */
+  async handleShareEvent(data) {
+    try {
+      // Check if full HUD has shares enabled
+      if (!this.settings.full.showShares) {
+        return;
+      }
+
+      const shareEvent = {
+        type: 'share',
+        timestamp: Date.now(),
+        user: {
+          uniqueId: data.uniqueId || 'unknown',
+          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          profilePictureUrl: data.profilePictureUrl || null,
+          badge: data.badge || null
+        },
+        raw: data
+      };
+
+      // Add to share queue
+      this.addToQueue('share', shareEvent);
+
+      // Broadcast to full HUD
+      this.api.emit('clarityhud.update.share', shareEvent);
+
+      this.api.log(`Share event from ${shareEvent.user.nickname}`, 'debug');
+    } catch (error) {
+      this.api.log(`Error handling share event: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Handle gift event
+   * Broadcasts to full HUD only
+   */
+  async handleGiftEvent(data) {
+    try {
+      // Check if full HUD has gifts enabled
+      if (!this.settings.full.showGifts) {
+        return;
+      }
+
+      // Check if this is a treasure chest (special case)
+      const isTreasureChest = data.giftType === 1 || data.giftName?.toLowerCase().includes('treasure');
+
+      // Skip treasure chests if disabled
+      if (isTreasureChest && !this.settings.full.showTreasureChests) {
+        return;
+      }
+
+      const giftEvent = {
+        type: 'gift',
+        timestamp: Date.now(),
+        user: {
+          uniqueId: data.uniqueId || 'unknown',
+          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          profilePictureUrl: data.profilePictureUrl || null,
+          badge: data.badge || null
+        },
+        gift: {
+          name: data.giftName || 'Unknown Gift',
+          count: data.repeatCount || 1,
+          coins: data.diamondCount || 0,
+          image: data.giftPictureUrl || null,
+          isTreasureChest: isTreasureChest
+        },
+        raw: data
+      };
+
+      // Add to gift queue
+      this.addToQueue('gift', giftEvent);
+
+      // Broadcast to full HUD
+      this.api.emit('clarityhud.update.gift', giftEvent);
+
+      this.api.log(`Gift event from ${giftEvent.user.nickname}: ${giftEvent.gift.name} x${giftEvent.gift.count}`, 'debug');
+    } catch (error) {
+      this.api.log(`Error handling gift event: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Handle subscribe/superfan event
+   * Broadcasts to full HUD only
+   */
+  async handleSubscribeEvent(data) {
+    try {
+      // Check if full HUD has subs enabled
+      if (!this.settings.full.showSubs) {
+        return;
+      }
+
+      const subscribeEvent = {
+        type: 'subscribe',
+        timestamp: Date.now(),
+        user: {
+          uniqueId: data.uniqueId || 'unknown',
+          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          profilePictureUrl: data.profilePictureUrl || null,
+          badge: data.badge || null
+        },
+        subscribeType: data.subscribeType || 'subscribe',
+        raw: data
+      };
+
+      // Add to subscribe queue
+      this.addToQueue('subscribe', subscribeEvent);
+
+      // Broadcast to full HUD
+      this.api.emit('clarityhud.update.subscribe', subscribeEvent);
+
+      this.api.log(`Subscribe event from ${subscribeEvent.user.nickname}`, 'debug');
+    } catch (error) {
+      this.api.log(`Error handling subscribe event: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Handle join event (user joined stream)
+   * Broadcasts to full HUD only
+   */
+  async handleJoinEvent(data) {
+    try {
+      // Check if full HUD has joins enabled
+      if (!this.settings.full.showJoins) {
+        return;
+      }
+
+      const joinEvent = {
+        type: 'join',
+        timestamp: Date.now(),
+        user: {
+          uniqueId: data.uniqueId || 'unknown',
+          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          profilePictureUrl: data.profilePictureUrl || null,
+          badge: data.badge || null
+        },
+        raw: data
+      };
+
+      // Add to join queue
+      this.addToQueue('join', joinEvent);
+
+      // Broadcast to full HUD
+      this.api.emit('clarityhud.update.join', joinEvent);
+
+      this.api.log(`Join event from ${joinEvent.user.nickname}`, 'debug');
+    } catch (error) {
+      this.api.log(`Error handling join event: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Add event to queue with max length management
+   */
+  addToQueue(queueName, event) {
+    if (!this.eventQueues[queueName]) {
+      this.eventQueues[queueName] = [];
+    }
+
+    // Add event to beginning of queue (newest first)
+    this.eventQueues[queueName].unshift(event);
+
+    // Determine max length based on settings
+    const maxLines = queueName === 'chat'
+      ? this.settings.chat.maxLines
+      : this.settings.full.maxLines;
+
+    // Trim queue to max length
+    if (this.eventQueues[queueName].length > maxLines) {
+      this.eventQueues[queueName] = this.eventQueues[queueName].slice(0, maxLines);
+    }
+  }
+
+  /**
+   * Clear event queue for specific type
+   */
+  clearQueue(queueName) {
+    if (this.eventQueues[queueName]) {
+      this.eventQueues[queueName] = [];
+      this.api.log(`Cleared ${queueName} queue`, 'debug');
+    }
+  }
+
+  /**
+   * Clear all event queues
+   */
+  clearAllQueues() {
+    Object.keys(this.eventQueues).forEach(queueName => {
+      this.eventQueues[queueName] = [];
+    });
+    this.api.log('Cleared all event queues', 'info');
+  }
+
+  /**
+   * Cleanup on plugin unload
+   */
+  async cleanup() {
+    try {
+      // Clear all queues
+      this.clearAllQueues();
+
+      // Save current settings
+      await this.api.setConfig('clarityhud.settings.chat', this.settings.chat);
+      await this.api.setConfig('clarityhud.settings.full', this.settings.full);
+
+      this.api.log('ClarityHUD backend cleaned up', 'info');
+    } catch (error) {
+      this.api.log(`Error during cleanup: ${error.message}`, 'error');
+    }
+  }
+}
+
+module.exports = ClarityHUDBackend;
