@@ -284,7 +284,8 @@ class Launcher {
             let command;
 
             if (platform === 'win32') {
-                command = `start ${url}`;
+                // Use empty title "" to prevent opening two windows
+                command = `start "" "${url}"`;
             } else if (platform === 'darwin') {
                 command = `open "${url}"`;
             } else {

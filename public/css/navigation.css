@@ -1381,6 +1381,10 @@ input:checked + .toggle-slider:before {
     gap: 1.5rem;
     width: 100%;
     min-width: 0; /* Allow flex shrinking */
+    flex: 1; /* Allow content to fill available space */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden;
+    padding-right: 0.5rem; /* Add padding for scrollbar */
 }
 
 .event-sounds-grid {

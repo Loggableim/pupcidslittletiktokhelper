@@ -185,6 +185,7 @@
             { icon: 'activity', label: 'Events', view: 'events' },
             { icon: 'git-branch', label: 'Flows', view: 'flows' },
             { icon: 'target', label: 'Goals', view: 'goals', plugin: 'goals' },
+            { icon: 'eye', label: 'LastEvent', view: 'lastevent-spotlight', plugin: 'lastevent-spotlight' },
             { icon: 'mic', label: 'TTS', view: 'tts', plugin: 'tts' },
             { icon: 'music', label: 'Soundboard', view: 'soundboard', plugin: 'soundboard' },
             { icon: 'cloud-rain', label: 'Emoji Rain', view: 'emoji-rain', plugin: 'emoji-rain' },
@@ -287,7 +288,7 @@
     // Old toggle-based implementation has been removed
 
     // ========== PLUGIN VISIBILITY ==========
-    async function initializePluginVisibility(retryCount = 0, maxRetries = 3) {
+    async function initializePluginVisibility(retryCount = 0, maxRetries = 5) {
         try {
             // Load plugin list from server
             const response = await fetch('/api/plugins');
@@ -297,7 +298,7 @@
                     console.log(`Plugin API not ready, retrying... (${retryCount + 1}/${maxRetries})`);
                     setTimeout(() => {
                         initializePluginVisibility(retryCount + 1, maxRetries);
-                    }, 500 * (retryCount + 1)); // Exponential backoff: 500ms, 1000ms, 1500ms
+                    }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s, 4s, 5s
                     return;
                 }
                 console.warn('Failed to load plugins for visibility check after retries');
@@ -343,12 +344,18 @@
                 console.log(`Error loading plugins, retrying... (${retryCount + 1}/${maxRetries})`);
                 setTimeout(() => {
                     initializePluginVisibility(retryCount + 1, maxRetries);
-                }, 500 * (retryCount + 1)); // Exponential backoff
+                }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s, 4s, 5s
                 return;
             }
             console.error('Error checking plugin visibility after retries:', error);
         }
     }
+
+    // Export for use in other modules
+    window.NavigationManager = {
+        switchView,
+        refreshPluginVisibility: initializePluginVisibility
+    };
 
     // ========== CONNECTION STATUS UPDATES ==========
     function updateConnectionStatus(status, data = {}) {
