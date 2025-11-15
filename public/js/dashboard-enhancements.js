@@ -510,13 +510,14 @@
             const data = await response.json();
 
             if (data.success && data.metrics) {
-                const { cpu, memory, gpu } = data.metrics;
+                const { cpu, memory, ram, gpu } = data.metrics;
 
                 // Update CPU
                 updateCompactResource('cpu', cpu.usage || 0);
 
-                // Update RAM
-                updateCompactResource('ram', memory.usedPercent || 0);
+                // Update RAM (try both 'ram' and 'memory' for compatibility)
+                const ramData = ram || memory;
+                updateCompactResource('ram', ramData?.usedPercent || ramData?.percent || 0);
 
                 // Update GPU (if available)
                 if (gpu && gpu.length > 0) {
