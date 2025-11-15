@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LastEvent Spotlight</title>
+  <style>
+    .lastevent-container {
+      padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .lastevent-header {
+      margin-bottom: 30px;
+    }
+
+    .lastevent-header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .lastevent-header p {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .overlay-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .overlay-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .overlay-card h3 {
+      margin: 0 0 15px 0;
+      font-size: 18px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .overlay-card .icon {
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .url-container {
+      margin: 15px 0;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      word-break: break-all;
+      position: relative;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn:hover {
+      opacity: 0.8;
+    }
+
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-info {
+      background: #17a2b8;
+      color: white;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      overflow: auto;
+    }
+
+    .modal.active {
+      display: block;
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 2% auto;
+      padding: 0;
+      border-radius: 8px;
+      max-width: 900px;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 20px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .close {
+      font-size: 28px;
+      font-weight: bold;
+      color: #aaa;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .close:hover {
+      color: #000;
+    }
+
+    /* Settings Form Styles */
+    .settings-section {
+      margin-bottom: 25px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 6px;
+    }
+
+    .settings-section h4 {
+      margin: 0 0 15px 0;
+      font-size: 16px;
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 8px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .form-group input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .checkbox-group label {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    /* Preview */
+    .preview-container {
+      margin: 20px 0;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .preview-frame {
+      width: 100%;
+      height: 300px;
+      border: none;
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #28a745;
+      color: white;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      z-index: 2000;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    .toast.show {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    .color-input-wrapper {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .color-input-wrapper input[type="color"] {
+      width: 50px;
+      height: 38px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .color-input-wrapper input[type="text"] {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="lastevent-container">
+    <div class="lastevent-header">
+      <h1>🎯 LastEvent Spotlight</h1>
+      <p>Live overlays showing the last active user for each event type. Perfect for OBS and streaming software.</p>
+    </div>
+
+    <div class="overlay-grid" id="overlay-grid">
+      <!-- Will be populated by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings: <span id="modal-title-type"></span></h2>
+        <span class="close" onclick="closeSettingsModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="settings-form-container">
+        <!-- Settings form will be inserted here -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div id="preview-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Preview: <span id="preview-title-type"></span></h2>
+        <span class="close" onclick="closePreviewModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="preview-container">
+          <iframe id="preview-frame" class="preview-frame" src=""></iframe>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePreviewModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const overlayTypes = [
+      { id: 'follower', name: 'Last Follower', icon: '👤', color: '#007bff' },
+      { id: 'like', name: 'Last Like', icon: '❤️', color: '#dc3545' },
+      { id: 'chatter', name: 'Last Chatter', icon: '💬', color: '#28a745' },
+      { id: 'share', name: 'Last Share', icon: '🔗', color: '#17a2b8' },
+      { id: 'gifter', name: 'Last Gifter', icon: '🎁', color: '#ffc107' },
+      { id: 'subscriber', name: 'Last Subscriber', icon: '⭐', color: '#6f42c1' }
+    ];
+
+    let currentType = null;
+    let allSettings = {};
+
+    // Initialize UI
+    function init() {
+      renderOverlayCards();
+      loadAllSettings();
+    }
+
+    // Render overlay cards
+    function renderOverlayCards() {
+      const grid = document.getElementById('overlay-grid');
+      grid.innerHTML = '';
+
+      overlayTypes.forEach(type => {
+        const url = `${window.location.origin}/overlay/lastevent/${type.id}`;
+
+        const card = document.createElement('div');
+        card.className = 'overlay-card';
+        card.innerHTML = `
+          <h3>
+            <span class="icon" style="background: ${type.color}">${type.icon}</span>
+            ${type.name}
+          </h3>
+
+          <div class="url-container">
+            ${url}
+          </div>
+
+          <div class="button-group">
+            <button class="btn btn-primary btn-sm" onclick="copyURL('${type.id}')">
+              📋 Copy URL
+            </button>
+            <button class="btn btn-info btn-sm" onclick="openPreview('${type.id}')">
+              👁️ Preview
+            </button>
+            <button class="btn btn-success btn-sm" onclick="testOverlay('${type.id}')">
+              🧪 Test
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="openSettings('${type.id}')">
+              ⚙️ Settings
+            </button>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    // Load all settings
+    async function loadAllSettings() {
+      try {
+        const response = await fetch('/api/lastevent/settings');
+        const data = await response.json();
+        if (data.success) {
+          allSettings = data.settings;
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        showToast('Error loading settings', 'error');
+      }
+    }
+
+    // Copy URL to clipboard
+    function copyURL(type) {
+      const url = `${window.location.origin}/overlay/lastevent/${type}`;
+      navigator.clipboard.writeText(url).then(() => {
+        showToast(`URL copied to clipboard!`);
+      }).catch(err => {
+        showToast('Failed to copy URL', 'error');
+      });
+    }
+
+    // Open preview
+    function openPreview(type) {
+      const typeName = overlayTypes.find(t => t.id === type)?.name || type;
+      document.getElementById('preview-title-type').textContent = typeName;
+
+      const url = `/overlay/lastevent/${type}`;
+      document.getElementById('preview-frame').src = url;
+
+      document.getElementById('preview-modal').classList.add('active');
+    }
+
+    // Close preview modal
+    function closePreviewModal() {
+      document.getElementById('preview-modal').classList.remove('active');
+      document.getElementById('preview-frame').src = '';
+    }
+
+    // Test overlay
+    async function testOverlay(type) {
+      try {
+        const response = await fetch(`/api/lastevent/test/${type}`, {
+          method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          showToast(`Test event sent for ${type}!`);
+        } else {
+          showToast('Test failed: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('Error testing overlay:', error);
+        showToast('Error testing overlay', 'error');
+      }
+    }
+
+    // Open settings modal
+    function openSettings(type) {
+      currentType = type;
+      const typeName = overlayTypes.find(t => t.id === type)?.name || type;
+      document.getElementById('modal-title-type').textContent = typeName;
+
+      renderSettingsForm(type);
+      document.getElementById('settings-modal').classList.add('active');
+    }
+
+    // Close settings modal
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.remove('active');
+      currentType = null;
+    }
+
+    // Render settings form
+    function renderSettingsForm(type) {
+      const settings = allSettings[type] || {};
+      const container = document.getElementById('settings-form-container');
+
+      container.innerHTML = `
+        <!-- Font Settings -->
+        <div class="settings-section">
+          <h4>📝 Font Settings</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Font Family</label>
+              <input type="text" id="fontFamily" value="${settings.fontFamily || 'Exo 2'}">
+            </div>
+            <div class="form-group">
+              <label>Font Size</label>
+              <input type="text" id="fontSize" value="${settings.fontSize || '32px'}">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Line Spacing</label>
+              <input type="text" id="fontLineSpacing" value="${settings.fontLineSpacing || '1.2'}">
+            </div>
+            <div class="form-group">
+              <label>Letter Spacing</label>
+              <input type="text" id="fontLetterSpacing" value="${settings.fontLetterSpacing || 'normal'}">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Font Color</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="fontColor-picker" value="${settings.fontColor || '#FFFFFF'}">
+                <input type="text" id="fontColor" value="${settings.fontColor || '#FFFFFF'}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Username Effects -->
+        <div class="settings-section">
+          <h4>✨ Username Effects</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Effect Type</label>
+              <select id="usernameEffect">
+                <option value="none" ${settings.usernameEffect === 'none' ? 'selected' : ''}>None</option>
+                <option value="wave" ${settings.usernameEffect === 'wave' ? 'selected' : ''}>Wave</option>
+                <option value="wave-slow" ${settings.usernameEffect === 'wave-slow' ? 'selected' : ''}>Wave (Slow)</option>
+                <option value="wave-fast" ${settings.usernameEffect === 'wave-fast' ? 'selected' : ''}>Wave (Fast)</option>
+                <option value="jitter" ${settings.usernameEffect === 'jitter' ? 'selected' : ''}>Jitter</option>
+                <option value="bounce" ${settings.usernameEffect === 'bounce' ? 'selected' : ''}>Bounce</option>
+              </select>
+            </div>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="usernameGlow" ${settings.usernameGlow ? 'checked' : ''}>
+            <label for="usernameGlow">Enable Glow Effect</label>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Glow Color</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="usernameGlowColor-picker" value="${settings.usernameGlowColor || '#00FF00'}">
+                <input type="text" id="usernameGlowColor" value="${settings.usernameGlowColor || '#00FF00'}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Border -->
+        <div class="settings-section">
+          <h4>🖼️ Border</h4>
+          <div class="checkbox-group">
+            <input type="checkbox" id="enableBorder" ${settings.enableBorder ? 'checked' : ''}>
+            <label for="enableBorder">Enable Border</label>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Border Color</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="borderColor-picker" value="${settings.borderColor || '#FFFFFF'}">
+                <input type="text" id="borderColor" value="${settings.borderColor || '#FFFFFF'}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Background -->
+        <div class="settings-section">
+          <h4>🎨 Background</h4>
+          <div class="checkbox-group">
+            <input type="checkbox" id="enableBackground" ${settings.enableBackground ? 'checked' : ''}>
+            <label for="enableBackground">Enable Background</label>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Background Color (RGBA)</label>
+              <input type="text" id="backgroundColor" value="${settings.backgroundColor || 'rgba(0, 0, 0, 0.7)'}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile Picture -->
+        <div class="settings-section">
+          <h4>👤 Profile Picture</h4>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showProfilePicture" ${settings.showProfilePicture !== false ? 'checked' : ''}>
+            <label for="showProfilePicture">Show Profile Picture</label>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Profile Picture Size</label>
+              <input type="text" id="profilePictureSize" value="${settings.profilePictureSize || '80px'}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Layout -->
+        <div class="settings-section">
+          <h4>📐 Layout</h4>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showUsername" ${settings.showUsername !== false ? 'checked' : ''}>
+            <label for="showUsername">Show Username</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="alignCenter" ${settings.alignCenter !== false ? 'checked' : ''}>
+            <label for="alignCenter">Center Alignment</label>
+          </div>
+        </div>
+
+        <!-- Animations -->
+        <div class="settings-section">
+          <h4>🎬 Animations</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>In Animation</label>
+              <select id="inAnimationType">
+                <option value="fade" ${settings.inAnimationType === 'fade' ? 'selected' : ''}>Fade</option>
+                <option value="slide" ${settings.inAnimationType === 'slide' ? 'selected' : ''}>Slide</option>
+                <option value="pop" ${settings.inAnimationType === 'pop' ? 'selected' : ''}>Pop</option>
+                <option value="zoom" ${settings.inAnimationType === 'zoom' ? 'selected' : ''}>Zoom</option>
+                <option value="glow" ${settings.inAnimationType === 'glow' ? 'selected' : ''}>Glow</option>
+                <option value="bounce" ${settings.inAnimationType === 'bounce' ? 'selected' : ''}>Bounce</option>
+                <option value="none" ${settings.inAnimationType === 'none' ? 'selected' : ''}>None</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Out Animation</label>
+              <select id="outAnimationType">
+                <option value="fade" ${settings.outAnimationType === 'fade' ? 'selected' : ''}>Fade</option>
+                <option value="slide" ${settings.outAnimationType === 'slide' ? 'selected' : ''}>Slide</option>
+                <option value="pop" ${settings.outAnimationType === 'pop' ? 'selected' : ''}>Pop</option>
+                <option value="zoom" ${settings.outAnimationType === 'zoom' ? 'selected' : ''}>Zoom</option>
+                <option value="glow" ${settings.outAnimationType === 'glow' ? 'selected' : ''}>Glow</option>
+                <option value="bounce" ${settings.outAnimationType === 'bounce' ? 'selected' : ''}>Bounce</option>
+                <option value="none" ${settings.outAnimationType === 'none' ? 'selected' : ''}>None</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Animation Speed</label>
+              <select id="animationSpeed">
+                <option value="slow" ${settings.animationSpeed === 'slow' ? 'selected' : ''}>Slow</option>
+                <option value="medium" ${settings.animationSpeed === 'medium' ? 'selected' : ''}>Medium</option>
+                <option value="fast" ${settings.animationSpeed === 'fast' ? 'selected' : ''}>Fast</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fade Duration</label>
+              <input type="text" id="fadeDuration" value="${settings.fadeDuration || '0.5s'}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Behavior -->
+        <div class="settings-section">
+          <h4>⚙️ Behavior</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Auto Refresh Interval (seconds, 0 = disabled)</label>
+              <input type="number" id="refreshIntervalSeconds" value="${settings.refreshIntervalSeconds || 0}" min="0">
+            </div>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="hideOnNullUser" ${settings.hideOnNullUser !== false ? 'checked' : ''}>
+            <label for="hideOnNullUser">Hide When No User Data</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="preloadImages" ${settings.preloadImages !== false ? 'checked' : ''}>
+            <label for="preloadImages">Preload Profile Images</label>
+          </div>
+        </div>
+      `;
+
+      // Setup color picker sync
+      setupColorPickers();
+    }
+
+    // Setup color pickers
+    function setupColorPickers() {
+      const colorFields = ['fontColor', 'usernameGlowColor', 'borderColor'];
+
+      colorFields.forEach(field => {
+        const picker = document.getElementById(`${field}-picker`);
+        const input = document.getElementById(field);
+
+        if (picker && input) {
+          picker.addEventListener('input', (e) => {
+            input.value = e.target.value;
+          });
+
+          input.addEventListener('input', (e) => {
+            if (e.target.value.startsWith('#')) {
+              picker.value = e.target.value;
+            }
+          });
+        }
+      });
+    }
+
+    // Save settings
+    async function saveSettings() {
+      if (!currentType) return;
+
+      const newSettings = {
+        // Font
+        fontFamily: document.getElementById('fontFamily').value,
+        fontSize: document.getElementById('fontSize').value,
+        fontLineSpacing: document.getElementById('fontLineSpacing').value,
+        fontLetterSpacing: document.getElementById('fontLetterSpacing').value,
+        fontColor: document.getElementById('fontColor').value,
+
+        // Username effects
+        usernameEffect: document.getElementById('usernameEffect').value,
+        usernameGlow: document.getElementById('usernameGlow').checked,
+        usernameGlowColor: document.getElementById('usernameGlowColor').value,
+
+        // Border
+        enableBorder: document.getElementById('enableBorder').checked,
+        borderColor: document.getElementById('borderColor').value,
+
+        // Background
+        enableBackground: document.getElementById('enableBackground').checked,
+        backgroundColor: document.getElementById('backgroundColor').value,
+
+        // Profile picture
+        showProfilePicture: document.getElementById('showProfilePicture').checked,
+        profilePictureSize: document.getElementById('profilePictureSize').value,
+
+        // Layout
+        showUsername: document.getElementById('showUsername').checked,
+        alignCenter: document.getElementById('alignCenter').checked,
+
+        // Animations
+        inAnimationType: document.getElementById('inAnimationType').value,
+        outAnimationType: document.getElementById('outAnimationType').value,
+        animationSpeed: document.getElementById('animationSpeed').value,
+        fadeDuration: document.getElementById('fadeDuration').value,
+
+        // Behavior
+        refreshIntervalSeconds: parseInt(document.getElementById('refreshIntervalSeconds').value) || 0,
+        hideOnNullUser: document.getElementById('hideOnNullUser').checked,
+        preloadImages: document.getElementById('preloadImages').checked
+      };
+
+      try {
+        const response = await fetch(`/api/lastevent/settings/${currentType}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(newSettings)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          allSettings[currentType] = data.settings;
+          showToast('Settings saved successfully!');
+          closeSettingsModal();
+        } else {
+          showToast('Error saving settings: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        showToast('Error saving settings', 'error');
+      }
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.background = type === 'error' ? '#dc3545' : '#28a745';
+      toast.classList.add('show');
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Close modals on background click
+    window.onclick = function(event) {
+      const settingsModal = document.getElementById('settings-modal');
+      const previewModal = document.getElementById('preview-modal');
+
+      if (event.target === settingsModal) {
+        closeSettingsModal();
+      }
+      if (event.target === previewModal) {
+        closePreviewModal();
+      }
+    };
+
+    // Initialize on page load
+    init();
+  </script>
+</body>
+</html>
