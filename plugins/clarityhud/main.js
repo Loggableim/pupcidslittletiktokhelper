@@ -19,7 +19,7 @@ class ClarityHUDPlugin {
   /**
    * Initialize plugin
    */
-  async onLoad() {
+  async init() {
     this.api.log('ClarityHUD plugin loading...');
 
     // Initialize backend
@@ -119,7 +119,7 @@ class ClarityHUDPlugin {
   /**
    * Cleanup on plugin unload
    */
-  async onUnload() {
+  async destroy() {
     this.api.log('ClarityHUD plugin unloading...');
     if (this.backend) {
       await this.backend.cleanup();

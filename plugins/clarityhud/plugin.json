@@ -5,7 +5,9 @@
   "description": "Ultra-minimalistic, VR-optimized and accessible HUD overlays for chat and activity feeds",
   "author": "Plugin System",
   "entry": "main.js",
-  "enabled": false,
+  "enabled": true,
+  "type": "overlay",
+  "uiPath": "/clarityhud/ui",
   "permissions": [
     "socket.io",
     "routes",
