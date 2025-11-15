@@ -203,10 +203,14 @@ if (!activeProfile) {
 
 logger.info(`👤 Aktives User-Profil: ${activeProfile}`);
 
+// ========== INITIALIZATION STATE MANAGER ==========
+const initState = require('./modules/initialization-state');
+
 // ========== DATABASE INITIALISIEREN ==========
 const dbPath = profileManager.getProfilePath(activeProfile);
 const db = new Database(dbPath);
 logger.info(`✅ Database initialized: ${dbPath}`);
+initState.setDatabaseReady();
 
 // ========== MODULE INITIALISIEREN ==========
 const tiktok = new TikTokConnector(io, db, logger);
@@ -540,6 +544,11 @@ app.get('/api/status', apiLimiter, (req, res) => {
 
 // ========== PLUGIN ROUTES ==========
 // Plugin routes are set up in routes/plugin-routes.js (setupPluginRoutes)
+
+// ========== INITIALIZATION STATE ROUTE ==========
+app.get('/api/init-state', (req, res) => {
+    res.json(initState.getState());
+});
 
 // ========== SETTINGS ROUTES ==========
 
@@ -1479,6 +1488,14 @@ app.post('/api/minigames/coinflip', apiLimiter, (req, res) => {
 io.on('connection', (socket) => {
     logger.info(`🔌 Client connected: ${socket.id}`);
 
+    // Mark socket as ready on first connection
+    if (!initState.getState().socketReady) {
+        initState.setSocketReady();
+    }
+
+    // Send initialization state to client
+    socket.emit('init:state', initState.getState());
+
     // Plugin Socket Events registrieren
     pluginLoader.registerPluginSocketEvents(socket);
 
@@ -1631,12 +1648,21 @@ const PORT = process.env.PORT || 3000;
     // Plugins laden VOR Server-Start, damit alle Routen verfügbar sind
     logger.info('🔌 Loading plugins...');
     try {
-        await pluginLoader.loadAllPlugins();
+        const plugins = await pluginLoader.loadAllPlugins();
+        const loadedCount = pluginLoader.plugins.size;
+
+        initState.setPluginsLoaded(loadedCount);
+
+        // Mark each loaded plugin as initialized
+        plugins.forEach(plugin => {
+            if (plugin) {
+                initState.setPluginInitialized(plugin.id, true);
+            }
+        });
 
         // TikTok-Events für Plugins registrieren
         pluginLoader.registerPluginTikTokEvents(tiktok);
 
-        const loadedCount = pluginLoader.plugins.size;
         if (loadedCount > 0) {
             logger.info(`✅ ${loadedCount} plugin(s) loaded successfully`);
 
@@ -1660,15 +1686,22 @@ const PORT = process.env.PORT || 3000;
                 flows.ttsEngine = ttsPlugin;
                 logger.info('✅ TTS injected into Flows');
             }
+
+            initState.setPluginInjectionsComplete();
         } else {
             logger.info('ℹ️  No plugins found in /plugins directory');
+            initState.setPluginsLoaded(0);
+            initState.setPluginInjectionsComplete();
         }
     } catch (error) {
         logger.error(`⚠️  Error loading plugins: ${error.message}`);
+        initState.addError('plugin-loader', 'Failed to load plugins', error);
     }
 
     // Jetzt Server starten
     server.listen(PORT, async () => {
+        initState.setServerStarted();
+
         logger.info('\n' + '='.repeat(50));
         logger.info('🎥 TikTok Stream Tool');
         logger.info('='.repeat(50));
