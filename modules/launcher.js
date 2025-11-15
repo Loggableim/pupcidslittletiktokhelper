@@ -215,24 +215,13 @@ class Launcher {
      */
     async startServer() {
         this.log.newLine();
-        this.log.header(`${this.log.symbols.rocket} TikTok Stream Tool läuft!`);
-
-        this.log.box('Wichtige URLs', [
-            `Dashboard: http://localhost:3000/dashboard.html`,
-            `Overlay:   http://localhost:3000/overlay.html`,
-            '',
-            `${this.log.symbols.warning} WICHTIG: Öffne das Overlay und klicke '${this.log.symbols.success} Audio aktivieren'!`
-        ]);
+        this.log.header(`${this.log.symbols.rocket} Pup Cids little TikTok Helper wird gestartet...`);
 
         this.log.newLine();
-        this.log.info('Zum Beenden: Strg+C drücken');
+        this.log.info('Server wird initialisiert...');
+        this.log.info('Bitte warten...');
         this.log.separator();
         this.log.newLine();
-
-        // Browser öffnen (nach 2 Sekunden)
-        setTimeout(() => {
-            this.openBrowser('http://localhost:3000/dashboard.html');
-        }, 2000);
 
         // Server starten (blockierend)
         const serverPath = path.join(this.projectRoot, 'server.js');
@@ -272,35 +261,6 @@ class Launcher {
         } catch (error) {
             this.log.error(`Server konnte nicht gestartet werden: ${error.message}`);
             throw error;
-        }
-    }
-
-    /**
-     * Öffnet Browser (platform-spezifisch)
-     */
-    openBrowser(url) {
-        try {
-            const platform = process.platform;
-            let command;
-
-            if (platform === 'win32') {
-                // Use empty title "" to prevent opening two windows
-                command = `start "" "${url}"`;
-            } else if (platform === 'darwin') {
-                command = `open "${url}"`;
-            } else {
-                command = `xdg-open "${url}"`;
-            }
-
-            execSync(command, {
-                stdio: 'ignore',
-                windowsHide: true
-            });
-
-            this.log.info(`Browser geöffnet: ${url}`);
-        } catch (error) {
-            // Ignoriere Fehler (Browser könnte nicht verfügbar sein)
-            this.log.debug(`Browser konnte nicht geöffnet werden: ${error.message}`);
         }
     }
 

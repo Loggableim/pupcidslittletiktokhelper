@@ -8,6 +8,9 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 
+// Browser opening guard - prevents duplicate browser opens
+let browserOpened = false;
+
 // Import Core Modules
 const Database = require('./modules/database');
 const TikTokConnector = require('./modules/tiktok');
@@ -1750,15 +1753,17 @@ const PORT = process.env.PORT || 3000;
         initState.setServerStarted();
 
         logger.info('\n' + '='.repeat(50));
-        logger.info('🎥 TikTok Stream Tool');
+        logger.info('✅ Pup Cids little TikTok Helper läuft!');
         logger.info('='.repeat(50));
-        logger.info(`\n✅ Server running on http://localhost:${PORT}`);
         logger.info(`\n📊 Dashboard:     http://localhost:${PORT}/dashboard.html`);
-        logger.info(`🖼️  Overlay:      http://localhost:${PORT}/overlay.html`);
+        logger.info(`🎬 Overlay:       http://localhost:${PORT}/overlay.html`);
         logger.info(`📚 API Docs:      http://localhost:${PORT}/api-docs`);
+        logger.info(`🐾 Pup Cid:       https://www.tiktok.com/@pupcid`);
         logger.info('\n' + '='.repeat(50));
-        logger.info('\n⚠️  WICHTIG: Öffne das Overlay und klicke auf "🔊 Audio aktivieren"!');
-        logger.info('   Browser Autoplay Policy erfordert User-Interaktion.\n');
+        logger.info('\n💡 HINWEIS: Öffne das Overlay im OBS Browser-Source');
+        logger.info('   und klicke "✅ Audio aktivieren" für vollständige Funktionalität.');
+        logger.info('\n⌨️  Beenden:      Drücke Strg+C');
+        logger.info('='.repeat(50) + '\n');
 
         // OBS WebSocket auto-connect (if configured)
     const obsConfigStr = db.getSetting('obs_websocket_config');
@@ -1850,13 +1855,23 @@ const PORT = process.env.PORT || 3000;
             res.status(404).send('Page not found');
         });
 
-        // Browser automatisch öffnen (async)
-        try {
-            const open = (await import('open')).default;
-            await open(`http://localhost:${PORT}/dashboard.html`);
-        } catch (error) {
-            logger.info('ℹ️  Browser konnte nicht automatisch geöffnet werden.');
-            logger.info(`   Öffne manuell: http://localhost:${PORT}/dashboard.html\n`);
+        // Browser automatisch öffnen (mit Guard gegen Duplikate)
+        // Respektiert OPEN_BROWSER Umgebungsvariable
+        const shouldOpenBrowser = process.env.OPEN_BROWSER !== 'false' && !browserOpened;
+        
+        if (shouldOpenBrowser) {
+            browserOpened = true; // Setze Guard sofort
+            
+            try {
+                const open = (await import('open')).default;
+                await open(`http://localhost:${PORT}/dashboard.html`);
+                logger.info(`ℹ️  Browser geöffnet: http://localhost:${PORT}/dashboard.html\n`);
+            } catch (error) {
+                logger.info('ℹ️  Browser konnte nicht automatisch geöffnet werden.');
+                logger.info(`   Öffne manuell: http://localhost:${PORT}/dashboard.html\n`);
+            }
+        } else if (process.env.OPEN_BROWSER === 'false') {
+            logger.info('ℹ️  Browser-Auto-Open deaktiviert (OPEN_BROWSER=false)\n');
         }
     });
 })(); // Schließe async IIFE
