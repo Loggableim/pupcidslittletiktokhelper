@@ -1309,9 +1309,10 @@ function switchTab(tabId) {
         }
     });
 
-    // Update tab content
-    document.querySelectorAll('.openshock-tab-pane').forEach(pane => {
-        if (pane.id === `openshock-tab-${tabId}`) {
+    // BUG FIX: Use correct selector - HTML has id="dashboard" class="tab-content"
+    // not id="openshock-tab-dashboard" class="openshock-tab-pane"
+    document.querySelectorAll('.tab-content').forEach(pane => {
+        if (pane.id === tabId) {
             pane.classList.add('active');
         } else {
             pane.classList.remove('active');

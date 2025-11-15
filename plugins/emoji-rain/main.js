@@ -450,8 +450,14 @@ class EmojiRainPlugin {
                     count = config.gift_base_emojis + Math.floor(data.coins * config.gift_coin_multiplier);
                     count = Math.min(config.gift_max_emojis, count);
                 } else if (reason === 'like' && data.likeCount) {
+                    // BUG FIX: likeCount represents the actual like count, not a batch
+                    // With divisor=10, we want: 20 likes = 2 emojis, 10 likes = 1 emoji
+                    // However, if likeCount is typically 1 per event, divisor should be 1 to show each like
                     count = Math.floor(data.likeCount / config.like_count_divisor);
                     count = Math.max(config.like_min_emojis, Math.min(config.like_max_emojis, count));
+                    
+                    // BUG FIX LOGGING: Track like count calculation
+                    console.log(`💗 [LIKE CALC] likeCount=${data.likeCount}, divisor=${config.like_count_divisor}, count=${count}, min=${config.like_min_emojis}, max=${config.like_max_emojis}`);
                 } else {
                     count = 3; // Default for follow, share, subscribe
                 }
