@@ -35,7 +35,47 @@ const PresetManager = require('./modules/preset-manager');
 // ========== EXPRESS APP ==========
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+
+// ========== SOCKET.IO CONFIGURATION ==========
+// Configure Socket.IO with proper CORS and transport settings for OBS BrowserSource compatibility
+const io = socketIO(server, {
+    cors: {
+        origin: function(origin, callback) {
+            // Allow requests with no origin (like mobile apps, curl requests, or OBS BrowserSource)
+            if (!origin) return callback(null, true);
+            
+            // Check if origin is in the allowed list
+            const ALLOWED_ORIGINS = [
+                'http://localhost:3000',
+                'http://127.0.0.1:3000',
+                'http://localhost:8080',
+                'http://127.0.0.1:8080',
+                'null'
+            ];
+            
+            if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+                callback(null, true);
+            } else {
+                // For OBS BrowserSource and other local contexts, allow null origin
+                callback(null, true);
+            }
+        },
+        methods: ['GET', 'POST'],
+        credentials: true
+    },
+    // Transport configuration for OBS BrowserSource (Chromium 118+)
+    transports: ['websocket', 'polling'],
+    // Allow upgrades from polling to websocket
+    allowUpgrades: true,
+    // Ping timeout (default 20000ms may be too short for OBS)
+    pingTimeout: 60000,
+    // Ping interval
+    pingInterval: 25000,
+    // Max HTTP buffer size (for large payloads)
+    maxHttpBufferSize: 1e6,
+    // Allow EIO 4 (Socket.IO 4.x)
+    allowEIO3: true
+});
 
 // Middleware
 app.use(express.json());

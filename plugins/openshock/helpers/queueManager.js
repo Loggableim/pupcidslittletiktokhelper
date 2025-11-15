@@ -5,7 +5,7 @@
  * and comprehensive statistics tracking.
  */
 
-const { v4: uuidv4 } = require('uuid');
+const { nanoid } = require('nanoid');
 const EventEmitter = require('events');
 
 class QueueManager extends EventEmitter {
@@ -94,7 +94,7 @@ class QueueManager extends EventEmitter {
 
         // Create queue item
         const queueItem = {
-          id: `queue-${uuidv4()}`,
+          id: `queue-${nanoid()}`,
           priority,
           command,
           userId,

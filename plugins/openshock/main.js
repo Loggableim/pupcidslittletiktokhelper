@@ -133,10 +133,9 @@ class OpenShockPlugin {
                 }
             }
 
-            // 8. Queue starten
-            if (this.queueManager) {
-                this.queueManager.startProcessing();
-            }
+            // 8. Queue monitoring (process queue on-demand via enqueue)
+            // Queue will auto-process when items are added
+            this.api.log('Queue manager ready - will auto-process on command enqueue', 'info');
 
             // 9. Stats-Timer starten
             this._startStatsTimer();
@@ -263,21 +262,32 @@ class OpenShockPlugin {
      * Helper-Klassen initialisieren
      */
     _initializeHelpers() {
+        // Create a logger adapter that wraps api.log to provide the standard logger interface
+        const createLoggerAdapter = (apiLog) => {
+            return {
+                info: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'info'),
+                warn: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'warn'),
+                error: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'error')
+            };
+        };
+
+        const logger = createLoggerAdapter(this.api.log.bind(this.api));
+
         // OpenShock API Client
         this.openShockClient = new OpenShockClient(
             this.config.apiKey,
             this.config.baseUrl,
-            this.api.log.bind(this.api)
+            logger
         );
 
         // Mapping Engine
         this.mappingEngine = new MappingEngine(
-            this.api.log.bind(this.api)
+            logger
         );
 
         // Pattern Engine
         this.patternEngine = new PatternEngine(
-            this.api.log.bind(this.api)
+            logger
         );
 
         // Safety Manager
@@ -288,14 +298,14 @@ class OpenShockPlugin {
                 userLimits: this.config.userLimits,
                 emergencyStop: this.config.emergencyStop
             },
-            this.api.log.bind(this.api)
+            logger
         );
 
         // Queue Manager
         this.queueManager = new QueueManager(
             this.openShockClient,
             this.safetyManager,
-            this.api.log.bind(this.api)
+            logger
         );
 
         // Queue Event-Handler (QueueManager wird später EventEmitter erweitern)
@@ -1052,7 +1062,7 @@ class OpenShockPlugin {
         // Get Queue Status
         app.get('/api/openshock/queue/status', authMiddleware, (req, res) => {
             try {
-                const status = this.queueManager.getStatus();
+                const status = this.queueManager.getQueueStatus();
                 res.json({
                     success: true,
                     status
@@ -1115,7 +1125,7 @@ class OpenShockPlugin {
         app.get('/api/openshock/stats', authMiddleware, (req, res) => {
             try {
                 const uptime = this.stats.startTime ? Date.now() - this.stats.startTime : 0;
-                const queueStatus = this.queueManager.getStatus();
+                const queueStatus = this.queueManager.getQueueStatus();
 
                 res.json({
                     success: true,
@@ -1868,7 +1878,7 @@ class OpenShockPlugin {
      * Queue-Update broadcasten
      */
     _broadcastQueueUpdate() {
-        const status = this.queueManager.getStatus();
+        const status = this.queueManager.getQueueStatus();
         this.api.emit('openshock:queue-update', status);
     }
 
@@ -1886,7 +1896,7 @@ class OpenShockPlugin {
      */
     _broadcastStatsUpdate() {
         const uptime = this.stats.startTime ? Date.now() - this.stats.startTime : 0;
-        const queueStatus = this.queueManager ? this.queueManager.getStatus() : {};
+        const queueStatus = this.queueManager ? this.queueManager.getQueueStatus() : {};
 
         this.api.emit('openshock:stats-update', {
             ...this.stats,
