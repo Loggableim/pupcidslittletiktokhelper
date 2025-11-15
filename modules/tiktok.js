@@ -11,7 +11,12 @@ class TikTokConnector extends EventEmitter {
         this.currentUsername = null;
         this.retryCount = 0;
         this.maxRetries = 3;
-        this.retryDelays = [2000, 5000, 10000]; // Exponential backoff: 2s, 5s, 10s
+        this.retryDelays = {
+            default: [2000, 5000, 10000],           // Standard: 2s, 5s, 10s
+            signApi: [5000, 15000, 30000],          // Sign API errors: 5s, 15s, 30s (longer delays)
+            network: [3000, 8000, 15000]            // Network errors: 3s, 8s, 15s
+        };
+        this.lastErrorType = null;
 
         // Auto-Reconnect-Limiter
         this.autoReconnectCount = 0;
@@ -126,21 +131,37 @@ class TikTokConnector extends EventEmitter {
 
             // Detaillierte Fehleranalyse
             const errorInfo = this.analyzeConnectionError(error);
+            this.lastErrorType = errorInfo.type;
 
             console.error(`❌ TikTok Verbindungsfehler (${errorInfo.type}):`, errorInfo.message);
+            
+            // Zeige Vorschlag an, wenn vorhanden
+            if (errorInfo.suggestion) {
+                console.log(`💡 Tipp: ${errorInfo.suggestion}`);
+            }
 
             // Retry-Logik bei bestimmten Fehlern
             if (errorInfo.retryable && this.retryCount < this.maxRetries) {
-                const delay = this.retryDelays[this.retryCount];
+                // Wähle passende Verzögerung basierend auf Fehlertyp
+                let delayArray = this.retryDelays.default;
+                
+                if (errorInfo.type.includes('SIGN_API')) {
+                    delayArray = this.retryDelays.signApi;
+                } else if (errorInfo.type === 'NETWORK_ERROR') {
+                    delayArray = this.retryDelays.network;
+                }
+                
+                const delay = delayArray[Math.min(this.retryCount, delayArray.length - 1)];
                 this.retryCount++;
 
-                console.log(`⏳ Wiederhole Verbindung in ${delay / 1000} Sekunden...`);
+                console.log(`⏳ Wiederhole Verbindung in ${delay / 1000} Sekunden... (Versuch ${this.retryCount}/${this.maxRetries})`);
 
                 this.broadcastStatus('retrying', {
                     attempt: this.retryCount,
                     maxRetries: this.maxRetries,
                     delay: delay,
-                    error: errorInfo.message
+                    error: errorInfo.message,
+                    errorType: errorInfo.type
                 });
 
                 // Warte und versuche erneut
@@ -164,40 +185,52 @@ class TikTokConnector extends EventEmitter {
         const errorMessage = error.message || '';
         const errorString = error.toString();
 
-        // Sign API Fehler (häufigster Fehler)
-        if (errorMessage.includes('Sign Error') || errorMessage.includes('sign server')) {
-            if (errorMessage.includes('504') || errorMessage.includes('Gateway')) {
-                return {
-                    type: 'SIGN_API_GATEWAY_TIMEOUT',
-                    message: 'TikTok Sign-Server antwortet nicht (Gateway Timeout). Dies kann an überlasteten Servern oder TikTok-Blockierungen liegen.',
-                    suggestion: 'Bitte versuche es in einigen Minuten erneut. Falls das Problem weiterhin besteht, könnte TikTok temporär den Zugriff blockieren.',
-                    retryable: true
-                };
-            }
-            return {
-                type: 'SIGN_API_ERROR',
-                message: 'Fehler beim TikTok Sign-Server. Der externe Dienst ist möglicherweise nicht verfügbar.',
-                suggestion: 'Versuche es später erneut oder verwende Session-Keys falls verfügbar.',
-                retryable: true
-            };
-        }
-
-        // SIGI_STATE Fehler (Blockierung)
+        // SIGI_STATE Fehler (Blockierung) - Höchste Priorität, da definitiv nicht retryable
         if (errorMessage.includes('SIGI_STATE') || errorMessage.includes('blocked by TikTok')) {
             return {
                 type: 'BLOCKED_BY_TIKTOK',
-                message: 'TikTok blockiert den Zugriff. Möglicherweise hat TikTok deine IP temporär blockiert.',
-                suggestion: 'Warte einige Minuten und versuche es erneut. Bei wiederholten Problemen: VPN verwenden oder Session-Keys nutzen.',
+                message: 'TikTok blockiert den Zugriff. Die HTML-Seite konnte nicht geparst werden (SIGI_STATE-Fehler).',
+                suggestion: 'NICHT SOFORT ERNEUT VERSUCHEN! Warte mindestens 5-10 Minuten. Zu viele Verbindungsversuche können zu längeren Blockierungen führen. Alternativen: VPN verwenden, andere IP-Adresse nutzen oder Session-Keys konfigurieren.',
                 retryable: false
             };
         }
 
-        // Room ID Fehler
-        if (errorMessage.includes('Room ID') || errorMessage.includes('LIVE')) {
+        // Sign API Fehler (häufigster Fehler nach SIGI_STATE)
+        if (errorMessage.includes('Sign Error') || errorMessage.includes('sign server')) {
+            // 504 Gateway Timeout - externes Service-Problem
+            if (errorMessage.includes('504') || errorMessage.includes('Gateway')) {
+                return {
+                    type: 'SIGN_API_GATEWAY_TIMEOUT',
+                    message: 'TikTok Sign-Server antwortet nicht (504 Gateway Timeout). Der externe Sign-API-Dienst ist überlastet oder nicht erreichbar.',
+                    suggestion: 'Warte 2-5 Minuten bevor du es erneut versuchst. Dies ist ein Problem mit dem externen Sign-Server, nicht mit deiner Verbindung. Falls dauerhaft: Prüfe ob tiktok-live-connector Updates verfügbar sind.',
+                    retryable: true
+                };
+            }
+            // 500 Internal Server Error
+            if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+                return {
+                    type: 'SIGN_API_ERROR',
+                    message: 'TikTok Sign-Server meldet einen internen Fehler (500). Der externe Sign-API-Dienst hat ein Problem.',
+                    suggestion: 'Warte 1-2 Minuten und versuche es erneut. Dies ist ein temporäres Problem des Sign-Servers. Falls dauerhaft: Prüfe ob tiktok-live-connector Updates verfügbar sind.',
+                    retryable: true
+                };
+            }
+            // Allgemeiner Sign-Fehler
+            return {
+                type: 'SIGN_API_ERROR',
+                message: 'Fehler beim TikTok Sign-Server. Der externe Signatur-Dienst ist möglicherweise nicht verfügbar.',
+                suggestion: 'Warte 1-2 Minuten und versuche es erneut. Falls das Problem anhält: Prüfe auf Updates der tiktok-live-connector Library.',
+                retryable: true
+            };
+        }
+
+        // Room ID Fehler - oft bedeutet dies, dass der Stream offline ist
+        if (errorMessage.includes('Room ID') || errorMessage.includes('room id') || 
+            errorMessage.includes('LIVE_NOT_FOUND') || errorMessage.includes('not live')) {
             return {
                 type: 'ROOM_NOT_FOUND',
-                message: 'Stream nicht gefunden. Der Stream ist möglicherweise nicht live oder der Username ist falsch.',
-                suggestion: 'Überprüfe den Username und stelle sicher, dass der Stream live ist.',
+                message: 'Stream nicht gefunden oder nicht live. TikTok konnte keine aktive LIVE-Session für diesen User finden.',
+                suggestion: 'Stelle sicher, dass der Username korrekt ist und der User aktuell LIVE ist. Überprüfe dies in der TikTok App.',
                 retryable: false
             };
         }
@@ -206,8 +239,8 @@ class TikTokConnector extends EventEmitter {
         if (errorMessage.includes('Timeout') || errorMessage.includes('timeout')) {
             return {
                 type: 'CONNECTION_TIMEOUT',
-                message: 'Verbindungs-Timeout. Die Verbindung zu TikTok dauerte zu lange.',
-                suggestion: 'Überprüfe deine Internetverbindung und versuche es erneut.',
+                message: 'Verbindungs-Timeout. Die Verbindung zu TikTok dauerte zu lange (>30 Sekunden).',
+                suggestion: 'Überprüfe deine Internetverbindung und Firewall-Einstellungen. Stelle sicher, dass ausgehende Verbindungen zu TikTok nicht blockiert werden.',
                 retryable: true
             };
         }
@@ -217,8 +250,8 @@ class TikTokConnector extends EventEmitter {
             errorMessage.includes('network') || errorMessage.includes('Network')) {
             return {
                 type: 'NETWORK_ERROR',
-                message: 'Netzwerkfehler. Keine Verbindung zu TikTok möglich.',
-                suggestion: 'Überprüfe deine Internetverbindung.',
+                message: 'Netzwerkfehler. Keine Verbindung zu TikTok-Servern möglich.',
+                suggestion: 'Überprüfe deine Internetverbindung. Stelle sicher, dass TikTok nicht durch Firewall/Antivirus blockiert wird.',
                 retryable: true
             };
         }
@@ -227,7 +260,7 @@ class TikTokConnector extends EventEmitter {
         return {
             type: 'UNKNOWN_ERROR',
             message: errorMessage || errorString || 'Unbekannter Verbindungsfehler',
-            suggestion: 'Bitte überprüfe die Logs für weitere Details.',
+            suggestion: 'Bitte überprüfe die Konsolen-Logs für weitere Details. Falls das Problem anhält, melde es mit den Fehlerdetails.',
             retryable: true
         };
     }
@@ -240,6 +273,7 @@ class TikTokConnector extends EventEmitter {
         this.isConnected = false;
         this.currentUsername = null;
         this.retryCount = 0; // Reset retry counter
+        this.lastErrorType = null; // Reset last error type
 
         // Clear duration tracking
         if (this.durationInterval) {
