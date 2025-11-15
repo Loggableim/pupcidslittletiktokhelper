@@ -540,16 +540,8 @@ class TTSPlugin {
 
                 this.logger.info(`TTS: Received chat event from ${username}: "${chatText}"`);
 
-                // Check if TTS is globally enabled
-                const db = this.api.getDatabase();
-                const ttsEnabled = db.getSetting('tts_enabled');
-                if (ttsEnabled === 'false') {
-                    this._logDebug('TIKTOK_EVENT', 'TTS globally disabled', { tts_enabled: false });
-                    this.logger.warn('TTS: TTS is globally disabled via Quick Actions');
-                    return;
-                }
-
                 // Only process if chat TTS is enabled
+                // Note: Global tts_enabled check is now in speak() method
                 if (!this.config.enabledForChat) {
                     this._logDebug('TIKTOK_EVENT', 'Chat TTS disabled in config', { enabledForChat: false });
                     this.logger.warn('TTS: Chat TTS is disabled in config');
@@ -598,6 +590,24 @@ class TTSPlugin {
      * @param {object} params - { text, userId, username, voiceId?, engine?, source?, teamLevel?, ... }
      */
     async speak(params) {
+        // ===== GLOBAL TTS ENABLE/DISABLE CHECK =====
+        // This check MUST be first to block ALL TTS calls when disabled
+        const db = this.api.getDatabase();
+        const ttsEnabled = db.getSetting('tts_enabled');
+        if (ttsEnabled === 'false') {
+            this._logDebug('SPEAK_BLOCKED', 'TTS is globally disabled via Quick Actions', {
+                tts_enabled: false,
+                source: params.source || 'unknown'
+            });
+            this.logger.info(`TTS: Blocked - TTS is globally disabled (source: ${params.source || 'unknown'})`);
+            return {
+                success: false,
+                error: 'TTS is globally disabled',
+                blocked: true,
+                reason: 'tts_disabled'
+            };
+        }
+
         const {
             text,
             userId,
