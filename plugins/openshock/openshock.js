@@ -273,7 +273,7 @@ function renderDeviceList() {
     }
 
     const html = `
-        <table class="openshock-table">
+        <table class="table">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -290,43 +290,42 @@ function renderDeviceList() {
                     <tr>
                         <td><strong>${escapeHtml(device.name)}</strong></td>
                         <td><code>${escapeHtml(device.id)}</code></td>
-                        <td><span class="openshock-badge openshock-badge-info">${escapeHtml(device.type || 'Unknown')}</span></td>
+                        <td><span class="badge badge-info">${escapeHtml(device.type || 'Unknown')}</span></td>
                         <td>
-                            <span class="openshock-badge openshock-badge-${device.online ? 'success' : 'secondary'}">
+                            <span class="badge ${device.online ? 'badge-success' : 'badge-secondary'}">
                                 ${device.online ? 'Online' : 'Offline'}
                             </span>
                         </td>
                         <td>
                             ${device.battery !== undefined ? `
-                                <div class="openshock-battery">
-                                    <i class="fas fa-battery-${getBatteryIcon(device.battery)}"></i>
+                                <div class="battery">
                                     ${device.battery}%
                                 </div>
                             ` : '-'}
                         </td>
                         <td>
                             ${device.rssi !== undefined ? `
-                                <span class="openshock-signal openshock-signal-${getSignalStrength(device.rssi)}">
+                                <span class="signal signal-${getSignalStrength(device.rssi)}">
                                     ${device.rssi} dBm
                                 </span>
                             ` : '-'}
                         </td>
                         <td>
-                            <div class="openshock-btn-group">
+                            <div class="btn-group">
                                 <button data-device-id="${escapeHtml(device.id)}" data-test-type="vibrate"
-                                        class="openshock-btn openshock-btn-sm openshock-btn-secondary test-device-btn"
+                                        class="btn btn-sm btn-secondary test-device-btn"
                                         title="Test Vibrate">
-                                    <i class="fas fa-mobile-alt"></i>
+                                    🔊
                                 </button>
                                 <button data-device-id="${escapeHtml(device.id)}" data-test-type="shock"
-                                        class="openshock-btn openshock-btn-sm openshock-btn-warning test-device-btn"
+                                        class="btn btn-sm btn-warning test-device-btn"
                                         title="Test Shock">
-                                    <i class="fas fa-bolt"></i>
+                                    ⚡
                                 </button>
-                                <button data-device-id="${escapeHtml(device.id)}" data-test-type="beep"
-                                        class="openshock-btn openshock-btn-sm openshock-btn-info test-device-btn"
-                                        title="Test Beep">
-                                    <i class="fas fa-volume-up"></i>
+                                <button data-device-id="${escapeHtml(device.id)}" data-test-type="sound"
+                                        class="btn btn-sm btn-info test-device-btn"
+                                        title="Test Sound">
+                                    🔔
                                 </button>
                             </div>
                         </td>
@@ -349,13 +348,13 @@ function renderCommandLog(commands) {
     }
 
     const html = commands.map(cmd => `
-        <div class="openshock-log-entry">
-            <div class="openshock-log-time">${formatTimestamp(cmd.timestamp)}</div>
-            <div class="openshock-log-content">
-                <span class="openshock-badge openshock-badge-${getCommandTypeColor(cmd.type)}">${escapeHtml(cmd.type)}</span>
-                <strong>${escapeHtml(cmd.deviceName || cmd.deviceId)}</strong>
-                ${cmd.intensity ? `<span class="openshock-intensity">${cmd.intensity}%</span>` : ''}
-                ${cmd.duration ? `<span class="openshock-duration">${cmd.duration}ms</span>` : ''}
+        <div class="log-entry ${cmd.success !== false ? 'success' : 'error'}">
+            <span class="log-timestamp">${formatTimestamp(cmd.timestamp)}</span>
+            <div class="log-message">
+                <strong>${escapeHtml(cmd.type)}</strong>
+                ${escapeHtml(cmd.deviceName || cmd.deviceId)}
+                ${cmd.intensity ? `- ${cmd.intensity}%` : ''}
+                ${cmd.duration ? `- ${cmd.duration}ms` : ''}
             </div>
         </div>
     `).join('');
@@ -369,58 +368,46 @@ function renderMappingList() {
 
     if (mappings.length === 0) {
         container.innerHTML = `
-            <div class="openshock-empty-state">
-                <i class="fas fa-link"></i>
-                <p>No mappings configured</p>
-                <button class="openshock-btn openshock-btn-primary create-mapping-btn">
-                    <i class="fas fa-plus"></i> Create Mapping
-                </button>
-            </div>
+            <p class="text-muted text-center">No mappings configured. Click "Add Mapping" to create one.</p>
         `;
         return;
     }
 
     const html = mappings.map(mapping => `
-        <div class="openshock-mapping-card ${mapping.enabled ? '' : 'openshock-mapping-disabled'}">
-            <div class="openshock-mapping-header">
-                <h4>${escapeHtml(mapping.name)}</h4>
-                <div class="openshock-mapping-actions">
-                    <label class="openshock-switch">
+        <div class="mapping-card ${mapping.enabled ? '' : 'disabled'}">
+            <div class="mapping-header">
+                <h3 class="mapping-title">${escapeHtml(mapping.name)}</h3>
+                <div class="btn-group">
+                    <label class="switch">
                         <input type="checkbox" ${mapping.enabled ? 'checked' : ''}
                                data-mapping-id="${escapeHtml(mapping.id)}" class="toggle-mapping-checkbox">
-                        <span class="openshock-slider"></span>
+                        <span class="slider"></span>
                     </label>
                     <button data-mapping-id="${escapeHtml(mapping.id)}"
-                            class="openshock-btn openshock-btn-sm openshock-btn-secondary edit-mapping-btn">
-                        <i class="fas fa-edit"></i>
+                            class="btn btn-sm btn-secondary edit-mapping-btn">
+                        ✏️
                     </button>
                     <button data-mapping-id="${escapeHtml(mapping.id)}"
-                            class="openshock-btn openshock-btn-sm openshock-btn-danger delete-mapping-btn">
-                        <i class="fas fa-trash"></i>
+                            class="btn btn-sm btn-danger delete-mapping-btn">
+                        🗑️
                     </button>
                 </div>
             </div>
-            <div class="openshock-mapping-body">
-                <div class="openshock-mapping-trigger">
-                    <strong>Trigger:</strong>
-                    <span class="openshock-badge openshock-badge-info">${escapeHtml(mapping.trigger.type)}</span>
-                    ${renderTriggerDetails(mapping.trigger)}
+            <div class="mapping-details">
+                <div class="mapping-detail-item">
+                    <span class="mapping-detail-label">Trigger:</span>
+                    <span class="mapping-detail-value">${escapeHtml(mapping.trigger?.type || 'Unknown')}</span>
                 </div>
-                <div class="openshock-mapping-action">
-                    <strong>Action:</strong>
-                    <span class="openshock-badge openshock-badge-warning">${escapeHtml(mapping.action.type)}</span>
-                    ${renderActionDetails(mapping.action)}
+                <div class="mapping-detail-item">
+                    <span class="mapping-detail-label">Action:</span>
+                    <span class="mapping-detail-value">${escapeHtml(mapping.action?.type || 'Unknown')}</span>
                 </div>
-                ${mapping.conditions && mapping.conditions.length > 0 ? `
-                    <div class="openshock-mapping-conditions">
-                        <strong>Conditions:</strong>
-                        ${mapping.conditions.map(c => `<span class="openshock-condition-badge">${escapeHtml(c.type)}</span>`).join('')}
+                ${mapping.action?.intensity ? `
+                    <div class="mapping-detail-item">
+                        <span class="mapping-detail-label">Intensity:</span>
+                        <span class="mapping-detail-value">${mapping.action.intensity}%</span>
                     </div>
                 ` : ''}
-            </div>
-            <div class="openshock-mapping-footer">
-                <small>Triggered: ${mapping.stats?.triggered || 0} times</small>
-                <small>Last: ${mapping.stats?.lastTriggered ? formatTimestamp(mapping.stats.lastTriggered) : 'Never'}</small>
             </div>
         </div>
     `).join('');
@@ -438,38 +425,35 @@ function renderPatternList() {
     }
 
     const html = patterns.map(pattern => `
-        <div class="openshock-pattern-card">
-            <div class="openshock-pattern-header">
-                <h4>${escapeHtml(pattern.name)}</h4>
-                <div class="openshock-pattern-actions">
+        <div class="pattern-card">
+            <div class="pattern-header">
+                <h3 class="pattern-name">${escapeHtml(pattern.name)}</h3>
+                <div class="btn-group">
                     <button data-pattern-id="${escapeHtml(pattern.id)}"
-                            class="openshock-btn openshock-btn-sm openshock-btn-secondary edit-pattern-btn">
-                        <i class="fas fa-edit"></i>
+                            class="btn btn-sm btn-secondary edit-pattern-btn">
+                        ✏️
                     </button>
                     <button data-pattern-id="${escapeHtml(pattern.id)}"
-                            class="openshock-btn openshock-btn-sm openshock-btn-danger delete-pattern-btn">
-                        <i class="fas fa-trash"></i>
+                            class="btn btn-sm btn-danger delete-pattern-btn">
+                        🗑️
                     </button>
                 </div>
             </div>
-            <div class="openshock-pattern-body">
-                ${pattern.description ? `<p class="openshock-pattern-description">${escapeHtml(pattern.description)}</p>` : ''}
-                <div class="openshock-pattern-preview">
-                    ${renderPatternTimeline(pattern.steps)}
-                </div>
-                <div class="openshock-pattern-info">
-                    <span><i class="fas fa-layer-group"></i> ${pattern.steps.length} steps</span>
-                    <span><i class="fas fa-clock"></i> ${formatDuration(calculatePatternDuration(pattern.steps))}</span>
+            <div class="pattern-body">
+                ${pattern.description ? `<p class="pattern-description">${escapeHtml(pattern.description)}</p>` : ''}
+                <div class="pattern-info">
+                    <span>📊 ${pattern.steps?.length || 0} steps</span>
+                    <span>⏱️ ${formatDuration(calculatePatternDuration(pattern.steps || []))}</span>
                 </div>
             </div>
-            <div class="openshock-pattern-footer">
-                <select id="pattern-device-${escapeHtml(pattern.id)}" data-pattern-id="${escapeHtml(pattern.id)}" class="openshock-select openshock-select-sm pattern-device-select">
+            <div class="pattern-footer">
+                <select id="pattern-device-${escapeHtml(pattern.id)}" data-pattern-id="${escapeHtml(pattern.id)}" class="form-select form-select-sm pattern-device-select">
                     <option value="">Select device...</option>
                     ${devices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('')}
                 </select>
                 <button data-pattern-id="${escapeHtml(pattern.id)}"
-                        class="openshock-btn openshock-btn-sm openshock-btn-primary execute-pattern-btn">
-                    <i class="fas fa-play"></i> Execute
+                        class="btn btn-sm btn-primary execute-pattern-btn">
+                    ▶️ Execute
                 </button>
             </div>
         </div>
@@ -824,16 +808,16 @@ function renderPatternSteps() {
     }
 
     const html = currentPatternSteps.map((step, index) => `
-        <div class="openshock-pattern-step">
-            <div class="openshock-pattern-step-number">${index + 1}</div>
-            <div class="openshock-pattern-step-content">
-                <span class="openshock-badge openshock-badge-${getCommandTypeColor(step.type)}">${escapeHtml(step.type)}</span>
+        <div class="pattern-step">
+            <div class="pattern-step-number">${index + 1}</div>
+            <div class="pattern-step-content">
+                <span class="pattern-step-type">${escapeHtml(step.type)}</span>
                 <span>Intensity: ${step.intensity}%</span>
                 <span>Duration: ${step.duration}ms</span>
                 ${step.delay ? `<span>Delay: ${step.delay}ms</span>` : ''}
             </div>
-            <button data-step-index="${index}" class="openshock-btn openshock-btn-sm openshock-btn-danger remove-pattern-step-btn">
-                <i class="fas fa-trash"></i>
+            <button data-step-index="${index}" class="btn btn-sm btn-danger remove-pattern-step-btn">
+                🗑️
             </button>
         </div>
     `).join('');
@@ -904,7 +888,7 @@ function renderPatternTimeline(steps) {
         const sanitizedType = (step.type || '').replace(/[^a-zA-Z0-9-]/g, '');
 
         return `
-            <div class="openshock-timeline-bar openshock-timeline-${sanitizedType}"
+            <div class="timeline-bar timeline-${sanitizedType}"
                  style="left: ${startPercent}%; width: ${widthPercent}%;"
                  title="${escapeHtml(step.type)} - ${step.intensity}% - ${step.duration}ms">
             </div>
@@ -912,10 +896,10 @@ function renderPatternTimeline(steps) {
     }).join('');
 
     return `
-        <div class="openshock-timeline">
+        <div class="timeline">
             ${bars}
         </div>
-        <div class="openshock-timeline-labels">
+        <div class="timeline-labels">
             <span>0ms</span>
             <span>${formatDuration(totalDuration)}</span>
         </div>
@@ -2045,11 +2029,27 @@ async function updatePeriodicData() {
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
+    // Clean up interval
     if (updateInterval) {
         clearInterval(updateInterval);
+        updateInterval = null;
     }
+    
+    // Clean up socket
     if (socket) {
+        // Remove all event listeners
+        socket.off('connect');
+        socket.off('disconnect');
+        socket.off('error');
+        socket.off('openshock:device-update');
+        socket.off('openshock:command-sent');
+        socket.off('openshock:queue-update');
+        socket.off('openshock:emergency-stop');
+        socket.off('openshock:stats-update');
+        
+        // Disconnect socket
         socket.disconnect();
+        socket = null;
     }
 });
 
