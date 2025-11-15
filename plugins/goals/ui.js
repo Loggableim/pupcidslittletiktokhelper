@@ -80,8 +80,8 @@ function renderGoals() {
                         <span class="goal-card-badge ${badgeClass}">${goal.goal_type}</span>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="editGoal('${goal.id}')">Edit</button>
-                        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteGoal('${goal.id}')">Delete</button>
+                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" data-action="edit-goal" data-goal-id="${goal.id}">Edit</button>
+                        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" data-action="delete-goal" data-goal-id="${goal.id}">Delete</button>
                     </div>
                 </div>
 
@@ -99,18 +99,21 @@ function renderGoals() {
                     <strong style="font-size: 0.85rem; color: var(--text-secondary);">Overlay URL:</strong>
                     <div class="overlay-url">
                         ${overlayUrl}
-                        <button class="btn btn-primary copy-btn" onclick="copyUrl('${overlayUrl}')">Copy</button>
+                        <button class="btn btn-primary copy-btn" data-action="copy-url" data-url="${escapeHtml(overlayUrl)}">Copy</button>
                     </div>
                 </div>
 
                 <div class="goal-actions">
-                    <button class="btn btn-secondary" onclick="resetGoal('${goal.id}')">Reset</button>
-                    <button class="btn btn-secondary" onclick="incrementGoal('${goal.id}')">+1</button>
-                    ${goal.goal_type === 'custom' ? `<button class="btn btn-secondary" onclick="setGoalValue('${goal.id}')">Set Value</button>` : ''}
+                    <button class="btn btn-secondary" data-action="reset-goal" data-goal-id="${goal.id}">Reset</button>
+                    <button class="btn btn-secondary" data-action="increment-goal" data-goal-id="${goal.id}">+1</button>
+                    ${goal.goal_type === 'custom' ? `<button class="btn btn-secondary" data-action="set-goal-value" data-goal-id="${goal.id}">Set Value</button>` : ''}
                 </div>
             </div>
         `;
     }).join('');
+
+    // Set up event delegation for dynamically created buttons
+    setupGoalCardEventListeners();
 }
 
 function openCreateModal() {
@@ -240,6 +243,51 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Event delegation for dynamically created goal card buttons
+function setupGoalCardEventListeners() {
+    const container = document.getElementById('goals-container');
+    
+    // Remove old listener if exists to avoid duplicates
+    const oldListener = container._goalEventListener;
+    if (oldListener) {
+        container.removeEventListener('click', oldListener);
+    }
+    
+    // Create new listener
+    const listener = function(event) {
+        const button = event.target.closest('[data-action]');
+        if (!button) return;
+        
+        const action = button.dataset.action;
+        const goalId = button.dataset.goalId;
+        const url = button.dataset.url;
+        
+        switch(action) {
+            case 'edit-goal':
+                editGoal(goalId);
+                break;
+            case 'delete-goal':
+                deleteGoal(goalId);
+                break;
+            case 'copy-url':
+                copyUrl(url);
+                break;
+            case 'reset-goal':
+                resetGoal(goalId);
+                break;
+            case 'increment-goal':
+                incrementGoal(goalId);
+                break;
+            case 'set-goal-value':
+                setGoalValue(goalId);
+                break;
+        }
+    };
+    
+    container.addEventListener('click', listener);
+    container._goalEventListener = listener;
 }
 
 // Initialize on load

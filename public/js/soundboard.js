@@ -359,19 +359,19 @@ function giftRowTemplate(g) {
     <div class="flex items-center gap-2">
       <input id="mp3_${g.id}" value="${assigned.mp3_url || ''}" placeholder="MP3-URL"
              class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
-             ondrop="handleDrop(event, ${g.id})" ondragover="handleDragOver(event)" />
+             data-gift-id="${g.id}" />
       <input id="vol_${g.id}" type="range" min="0" max="1" step="0.05" value="${vol}"
              class="w-24 flex-shrink-0" title="Lautstärke" />
       <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-3 py-1.5"
-              onclick="previewGift(${g.id})">▶</button>
+              data-action="preview-gift" data-gift-id="${g.id}">▶</button>
       <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-3 py-1.5"
-              onclick="openPicker('gift:${g.id}')">Picker</button>
+              data-action="open-picker" data-target="gift:${g.id}">Picker</button>
       <button class="rounded-lg bg-rose-700/80 hover:bg-rose-600 px-3 py-1.5"
-              onclick="clearGift(${g.id})">✕</button>
+              data-action="clear-gift" data-gift-id="${g.id}">✕</button>
     </div>
     <div class="flex items-center gap-2 border-t border-slate-700/50 pt-2">
       <span class="text-xs text-slate-400 flex-shrink-0">🎬 Animation:</span>
-      <select id="anim_type_${g.id}" class="rounded-lg bg-slate-800 border border-slate-700 px-2 py-1 text-sm flex-shrink-0" onchange="updateAssignment(${g.id}, 'animation_type', this.value)">
+      <select id="anim_type_${g.id}" class="rounded-lg bg-slate-800 border border-slate-700 px-2 py-1 text-sm flex-shrink-0" data-change-action="update-anim-type" data-gift-id="${g.id}">
         <option value="none" ${animType === 'none' ? 'selected' : ''}>Keine</option>
         <option value="image" ${animType === 'image' ? 'selected' : ''}>Bild</option>
         <option value="gif" ${animType === 'gif' ? 'selected' : ''}>GIF</option>
@@ -482,7 +482,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.setAttribute('aria-selected','false'));
   document.querySelectorAll('[id^="tab-"]').forEach(p => p.classList.add('hidden'));
 
-  const btn = document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`);
+  const btn = document.querySelector(`.tab-btn[data-action="switch-tab"][data-tab="${tab}"]`);
   if (btn) btn.setAttribute('aria-selected','true');
 
   const panel = document.getElementById('tab-' + tab);
@@ -754,7 +754,7 @@ function renderSoundResults(items, targetElement, showPagination = false) {
     const tagPills = itemTags.map(tag => {
       const safeTag = String(tag).replace(/'/g, "&#39;");
       return `<button class="inline-block px-2 py-0.5 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors"
-                      onclick="filterByCategory('${safeTag}')" title="Nach '${safeTag}' filtern">${safeTag}</button>`;
+                      data-action="filter-category" data-category="${safeTag}" title="Nach '${safeTag}' filtern">${safeTag}</button>`;
     }).join(' ');
 
     return `<div class="flex flex-col gap-2 border border-slate-700 rounded-xl p-3 hover:border-sky-500 transition-colors">
@@ -766,12 +766,16 @@ function renderSoundResults(items, targetElement, showPagination = false) {
         </div>
         <div class="flex gap-1 flex-shrink-0">
           <button class="rounded-lg ${isFavorite ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-slate-600 hover:bg-slate-500'} px-2 py-1 text-sm"
-                  onclick="${isFavorite ? `removeFromFavorites('${mp3}')` : `addToFavorites({name: '${title}', url: '${mp3}', description: '${description}', tags: ${JSON.stringify(itemTags)}})`}; renderFavorites();"
+                  data-action="${isFavorite ? 'remove-favorite' : 'add-favorite'}"
+                  data-url="${mp3}"
+                  data-name="${title.replace(/"/g, '&quot;')}"
+                  data-description="${(description || '').replace(/"/g, '&quot;')}"
+                  data-tags="${JSON.stringify(itemTags).replace(/"/g, '&quot;')}"
                   title="${isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}">⭐</button>
           <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-2 py-1 text-sm"
-                  onclick="playSound('${mp3}', 1.0, '${title}')" title="Vorschau">▶</button>
+                  data-action="play-sound" data-url="${mp3}" data-title="${title}" title="Vorschau">▶</button>
           <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-2 py-1 text-sm"
-                  onclick="assignToTarget('${mp3}'); closePicker();" title="Sound zuweisen">Wählen</button>
+                  data-action="assign-sound" data-url="${mp3}" title="Sound zuweisen">Wählen</button>
         </div>
       </div>
     </div>`;
@@ -1434,5 +1438,71 @@ document.addEventListener('click', function(event) {
     case 'filter-category':
       filterByCategory(button.dataset.category);
       break;
+    case 'preview-gift':
+      previewGift(parseInt(button.dataset.giftId));
+      break;
+    case 'clear-gift':
+      clearGift(parseInt(button.dataset.giftId));
+      break;
+    case 'play-sound':
+      playSound(button.dataset.url, 1.0, button.dataset.title);
+      break;
+    case 'assign-sound':
+      assignToTarget(button.dataset.url);
+      closePicker();
+      break;
+    case 'add-favorite':
+      try {
+        const tags = button.dataset.tags ? JSON.parse(button.dataset.tags.replace(/&quot;/g, '"')) : [];
+        addToFavorites({
+          name: button.dataset.name,
+          url: button.dataset.url,
+          description: button.dataset.description,
+          tags: tags
+        });
+        renderFavorites();
+      } catch (e) {
+        console.error('Error adding to favorites:', e);
+      }
+      break;
+    case 'remove-favorite':
+      removeFromFavorites(button.dataset.url);
+      renderFavorites();
+      break;
   }
 });
+      break;
+  }
+});
+
+// Event delegation for change events
+document.addEventListener('change', function(event) {
+  const element = event.target.closest('[data-change-action]');
+  if (!element) return;
+  
+  const action = element.dataset.changeAction;
+  const giftId = parseInt(element.dataset.giftId);
+  
+  if (action === 'update-anim-type') {
+    updateAssignment(giftId, 'animation_type', element.value);
+  }
+});
+
+// Event delegation for drag and drop
+const giftListContainer = document.getElementById('gift-sounds-list');
+if (giftListContainer) {
+  giftListContainer.addEventListener('dragover', function(event) {
+    const input = event.target.closest('[data-gift-id]');
+    if (input) {
+      handleDragOver(event);
+    }
+  });
+  
+  giftListContainer.addEventListener('drop', function(event) {
+    const input = event.target.closest('[data-gift-id]');
+    if (input) {
+      const giftId = parseInt(input.dataset.giftId);
+      handleDrop(event, giftId);
+    }
+  });
+}

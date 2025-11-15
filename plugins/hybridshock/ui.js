@@ -144,11 +144,11 @@ function renderMappings(mappings) {
                     ${mapping.description ? `<p class="text-sm text-gray-400 mt-1">${mapping.description}</p>` : ''}
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="toggleMapping(${mapping.id}, ${!mapping.enabled})" class="btn-secondary text-sm px-3 py-1">
+                    <button data-action="toggle-mapping" data-mapping-id="${mapping.id}" data-enabled="${!mapping.enabled}" class="btn-secondary text-sm px-3 py-1">
                         ${mapping.enabled ? '🔴 Disable' : '🟢 Enable'}
                     </button>
-                    <button onclick="editMapping(${mapping.id})" class="btn-primary text-sm px-3 py-1">✏️ Edit</button>
-                    <button onclick="deleteMapping(${mapping.id})" class="btn-danger text-sm px-3 py-1">🗑️</button>
+                    <button data-action="edit-mapping" data-mapping-id="${mapping.id}" class="btn-primary text-sm px-3 py-1">✏️ Edit</button>
+                    <button data-action="delete-mapping" data-mapping-id="${mapping.id}" class="btn-danger text-sm px-3 py-1">🗑️</button>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4 mt-4 text-sm">
@@ -579,3 +579,25 @@ function formatDuration(ms) {
     if (ms < 3600000) return `${Math.floor(ms / 60000)}m`;
     return `${Math.floor(ms / 3600000)}h`;
 }
+
+// Event delegation for dynamically created mapping buttons
+document.getElementById('mappingsList').addEventListener('click', function(event) {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    
+    const action = button.dataset.action;
+    const mappingId = parseInt(button.dataset.mappingId);
+    
+    switch(action) {
+        case 'toggle-mapping':
+            const enabled = button.dataset.enabled === 'true';
+            toggleMapping(mappingId, enabled);
+            break;
+        case 'edit-mapping':
+            editMapping(mappingId);
+            break;
+        case 'delete-mapping':
+            deleteMapping(mappingId);
+            break;
+    }
+});
