@@ -240,53 +240,53 @@ class OpenShockPlugin {
      */
     _initializeHelpers() {
         // OpenShock API Client
-        this.openShockClient = new OpenShockClient({
-            apiKey: this.config.apiKey,
-            baseUrl: this.config.baseUrl
-        });
+        this.openShockClient = new OpenShockClient(
+            this.config.apiKey,
+            this.config.baseUrl,
+            this.api.log.bind(this.api)
+        );
 
         // Mapping Engine
-        this.mappingEngine = new MappingEngine({
-            database: this.api.getDatabase(),
-            logger: this.api.log.bind(this.api)
-        });
+        this.mappingEngine = new MappingEngine(
+            this.api.log.bind(this.api)
+        );
 
         // Pattern Engine
-        this.patternEngine = new PatternEngine({
-            database: this.api.getDatabase(),
-            logger: this.api.log.bind(this.api)
-        });
+        this.patternEngine = new PatternEngine(
+            this.api.log.bind(this.api)
+        );
 
         // Safety Manager
-        this.safetyManager = new SafetyManager({
-            globalLimits: this.config.globalLimits,
-            defaultCooldowns: this.config.defaultCooldowns,
-            userLimits: this.config.userLimits,
-            emergencyStop: this.config.emergencyStop,
-            logger: this.api.log.bind(this.api)
-        });
+        this.safetyManager = new SafetyManager(
+            {
+                globalLimits: this.config.globalLimits,
+                defaultCooldowns: this.config.defaultCooldowns,
+                userLimits: this.config.userLimits,
+                emergencyStop: this.config.emergencyStop
+            },
+            this.api.log.bind(this.api)
+        );
 
         // Queue Manager
-        this.queueManager = new QueueManager({
-            maxQueueSize: this.config.queueSettings.maxQueueSize,
-            processingDelay: this.config.queueSettings.processingDelay,
-            processCallback: this._processQueueItem.bind(this),
-            logger: this.api.log.bind(this.api)
-        });
+        this.queueManager = new QueueManager(
+            this.openShockClient,
+            this.safetyManager,
+            this.api.log.bind(this.api)
+        );
 
-        // Queue Event-Handler
-        this.queueManager.on('item-processed', (item, success) => {
-            this._broadcastQueueUpdate();
-            if (success) {
-                this.stats.successfulCommands++;
-            } else {
-                this.stats.failedCommands++;
-            }
-        });
+        // Queue Event-Handler (QueueManager wird später EventEmitter erweitern)
+        // this.queueManager.on('item-processed', (item, success) => {
+        //     this._broadcastQueueUpdate();
+        //     if (success) {
+        //         this.stats.successfulCommands++;
+        //     } else {
+        //         this.stats.failedCommands++;
+        //     }
+        // });
 
-        this.queueManager.on('queue-changed', () => {
-            this._broadcastQueueUpdate();
-        });
+        // this.queueManager.on('queue-changed', () => {
+        //     this._broadcastQueueUpdate();
+        // });
 
         this.api.log('OpenShock helpers initialized', 'info');
     }
@@ -332,11 +332,15 @@ class OpenShockPlugin {
 
         // ============ API ROUTES - CONFIG ============
 
-        // Get Config
+        // Get Config (WITHOUT API-KEY for security!)
         app.get('/api/openshock/config', (req, res) => {
+            const safeConfig = {
+                ...this.config,
+                apiKey: this.config.apiKey ? '***' + this.config.apiKey.slice(-4) : '' // Mask API key
+            };
             res.json({
                 success: true,
-                config: this.config
+                config: safeConfig
             });
         });
 
@@ -352,15 +356,17 @@ class OpenShockPlugin {
                 await this.saveData();
 
                 // Update helpers
-                if (this.config.apiKey) {
-                    this.openShockClient.updateConfig({
-                        apiKey: this.config.apiKey,
-                        baseUrl: this.config.baseUrl
-                    });
+                if (this.config.apiKey && this.openShockClient) {
+                    // Re-create OpenShockClient with new config
+                    this.openShockClient = new OpenShockClient(
+                        this.config.apiKey,
+                        this.config.baseUrl,
+                        this.api.log.bind(this.api)
+                    );
                 }
 
                 if (this.safetyManager) {
-                    this.safetyManager.updateLimits({
+                    this.safetyManager.updateConfig({
                         globalLimits: this.config.globalLimits,
                         defaultCooldowns: this.config.defaultCooldowns,
                         userLimits: this.config.userLimits,
@@ -1063,42 +1069,42 @@ class OpenShockPlugin {
      */
     _registerTikTokEvents() {
         // Chat
-        this.api.on('tiktok:chat', async (data) => {
+        this.api.registerTikTokEvent('chat', async (data) => {
             await this.handleTikTokEvent('chat', data);
         });
 
         // Gift
-        this.api.on('tiktok:gift', async (data) => {
+        this.api.registerTikTokEvent('gift', async (data) => {
             await this.handleTikTokEvent('gift', data);
         });
 
         // Follow
-        this.api.on('tiktok:follow', async (data) => {
+        this.api.registerTikTokEvent('follow', async (data) => {
             await this.handleTikTokEvent('follow', data);
         });
 
         // Share
-        this.api.on('tiktok:share', async (data) => {
+        this.api.registerTikTokEvent('share', async (data) => {
             await this.handleTikTokEvent('share', data);
         });
 
         // Subscribe
-        this.api.on('tiktok:subscribe', async (data) => {
+        this.api.registerTikTokEvent('subscribe', async (data) => {
             await this.handleTikTokEvent('subscribe', data);
         });
 
         // Like
-        this.api.on('tiktok:like', async (data) => {
+        this.api.registerTikTokEvent('like', async (data) => {
             await this.handleTikTokEvent('like', data);
         });
 
         // Goal Progress
-        this.api.on('tiktok:goal_progress', async (data) => {
+        this.api.registerTikTokEvent('goal_progress', async (data) => {
             await this.handleTikTokEvent('goal_progress', data);
         });
 
         // Goal Complete
-        this.api.on('tiktok:goal_complete', async (data) => {
+        this.api.registerTikTokEvent('goal_complete', async (data) => {
             await this.handleTikTokEvent('goal_complete', data);
         });
 
@@ -1122,11 +1128,14 @@ class OpenShockPlugin {
             });
 
             // Mapping-Engine fragen, welche Actions getriggert werden sollen
-            const actions = this.mappingEngine.processEvent(eventType, eventData);
+            const matches = this.mappingEngine.evaluateEvent(eventType, eventData);
 
-            if (actions.length === 0) {
+            if (matches.length === 0) {
                 return;
             }
+
+            // Extract actions from matches
+            const actions = matches.map(m => m.action);
 
             // Jede Action ausführen
             for (const action of actions) {
@@ -1265,12 +1274,17 @@ class OpenShockPlugin {
             cancelled: false
         });
 
-        // Pattern-Steps generieren
-        const steps = this.patternEngine.generateSteps(pattern, context.variables);
+        // Pattern-Steps direkt aus pattern.steps verwenden
+        const steps = pattern.steps || [];
 
         // Alle Steps in Queue einfügen
         for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
+
+            // Skip pause steps in queue
+            if (step.type === 'pause') {
+                continue;
+            }
 
             this.queueManager.addItem({
                 id: `${executionId}-step-${i}`,
@@ -1557,7 +1571,7 @@ class OpenShockPlugin {
      */
     _startStatsTimer() {
         // Alle 5 Sekunden Stats broadcasten
-        setInterval(() => {
+        this.statsInterval = setInterval(() => {
             this._broadcastStatsUpdate();
         }, 5000);
     }
@@ -1630,9 +1644,26 @@ class OpenShockPlugin {
         try {
             this.api.log('OpenShock Plugin shutting down...', 'info');
 
+            // Stats interval stoppen
+            if (this.statsInterval) {
+                clearInterval(this.statsInterval);
+                this.statsInterval = null;
+            }
+
             // Queue stoppen
             if (this.queueManager) {
                 this.queueManager.stopProcessing();
+            }
+
+            // Safety Manager cleanup
+            if (this.safetyManager && typeof this.safetyManager.destroy === 'function') {
+                this.safetyManager.destroy();
+            }
+
+            // Pattern Engine cleanup
+            if (this.patternEngine) {
+                this.patternEngine.stopAllExecutions();
+                this.patternEngine.cleanupExecutions(0); // Cleanup all
             }
 
             // Pattern-Executions stoppen
