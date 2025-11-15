@@ -117,10 +117,11 @@ const DEFAULT_GOALS = {
 };
 
 class GoalManager extends EventEmitter {
-    constructor(db, io) {
+    constructor(db, io, logger) {
         super();
         this.db = db;
         this.io = io;
+        this.logger = logger;
 
         // State für jedes Goal
         this.state = {
@@ -133,7 +134,11 @@ class GoalManager extends EventEmitter {
         // Initialisiere aus Datenbank
         this.loadState();
 
-        console.log('✅ Goal Manager initialized');
+        if (this.logger) {
+            this.logger.info('✅ Goal Manager initialized');
+        } else {
+            console.log('✅ Goal Manager initialized');
+        }
     }
 
     /**

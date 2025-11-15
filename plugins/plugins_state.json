@@ -1,50 +1,50 @@
 {
   "soundboard": {
     "enabled": true,
-    "loadedAt": "2025-11-15T21:11:55.382Z"
+    "loadedAt": "2025-11-15T23:17:12.039Z"
   },
   "tts": {
     "enabled": true,
-    "loadedAt": "2025-11-15T21:11:55.404Z"
+    "loadedAt": "2025-11-15T23:17:12.060Z"
   },
   "emoji-rain": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.237Z"
+    "loadedAt": "2025-11-15T23:17:11.775Z"
   },
   "openshock": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.270Z"
+    "loadedAt": "2025-11-15T23:17:11.809Z"
   },
   "goals": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.248Z"
+    "loadedAt": "2025-11-15T23:17:11.787Z"
   },
   "resource-monitor": {
     "enabled": true,
-    "loadedAt": "2025-11-15T21:11:55.289Z"
+    "loadedAt": "2025-11-15T23:17:11.945Z"
   },
   "api-bridge": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.228Z"
+    "loadedAt": "2025-11-15T23:17:11.766Z"
   },
   "gift-milestone": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.240Z"
+    "loadedAt": "2025-11-15T23:17:11.779Z"
   },
   "hybridshock": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.258Z"
+    "loadedAt": "2025-11-15T23:17:11.796Z"
   },
   "lastevent-spotlight": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.258Z"
+    "loadedAt": "2025-11-15T23:17:11.797Z"
   },
   "quiz-show": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.281Z"
+    "loadedAt": "2025-11-15T23:17:11.818Z"
   },
   "clarityhud": {
     "enabled": true,
-    "loadedAt": "2025-11-15T23:13:47.232Z"
+    "loadedAt": "2025-11-15T23:17:11.770Z"
   }
 }
