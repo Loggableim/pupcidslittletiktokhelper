@@ -196,6 +196,28 @@ class GoalManager extends EventEmitter {
     }
 
     /**
+     * Hole alle Goals mit aktuellem State (für Snapshot)
+     */
+    getAllGoalsWithState() {
+        const goals = [];
+        for (const key of Object.keys(this.state)) {
+            const s = this.state[key];
+            const config = this.getGoalConfig(key);
+            
+            goals.push({
+                id: key,
+                current: s.total,
+                target: s.goal,
+                show: s.show,
+                percent: Math.round(this.getPercent(key) * 100),
+                config: config,
+                timestamp: Date.now()
+            });
+        }
+        return goals;
+    }
+
+    /**
      * Berechne Prozentsatz
      */
     getPercent(key) {
@@ -309,14 +331,23 @@ class GoalManager extends EventEmitter {
         const s = this.state[key];
         const config = this.getGoalConfig(key);
 
-        this.io.to(`goal_${key}`).emit('goal:update', {
+        const updateData = {
             type: 'goal',
+            goalId: key,
             total: s.total,
             goal: s.goal,
             show: s.show,
             pct: this.getPercent(key),
-            style: config ? config.style : DEFAULT_GOALS[key].style
-        });
+            percent: Math.round(this.getPercent(key) * 100),
+            style: config ? config.style : DEFAULT_GOALS[key].style,
+            timestamp: Date.now()
+        };
+
+        // Emit to specific goal room (legacy)
+        this.io.to(`goal_${key}`).emit('goal:update', updateData);
+
+        // Also emit to 'goals' room for centralized listening
+        this.io.to('goals').emit('goals:update', updateData);
     }
 
     /**
@@ -387,6 +418,18 @@ class GoalManager extends EventEmitter {
 
         this.state[key].total = 0;
         this.saveTotal(key);
+
+        // Emit reset event to both rooms
+        this.io.to(`goal_${key}`).emit('goals:reset', {
+            goalId: key,
+            reset: true,
+            timestamp: Date.now()
+        });
+        this.io.to('goals').emit('goals:reset', {
+            goalId: key,
+            reset: true,
+            timestamp: Date.now()
+        });
 
         await this.broadcastGoal(key);
 
