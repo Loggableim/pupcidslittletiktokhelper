@@ -4,9 +4,16 @@
  */
 
 const path = require('path');
-const { nanoid } = require('nanoid');
+const crypto = require('crypto');
 const templateRegistry = require('../engine/templates/registry');
 const animationRegistry = require('../engine/animations/registry');
+
+/**
+ * Generate unique ID for goals
+ */
+function generateId() {
+    return `goal_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+}
 
 class GoalsAPI {
     constructor(plugin) {
@@ -75,7 +82,7 @@ class GoalsAPI {
         this.api.registerRoute('post', '/api/goals', (req, res) => {
             try {
                 const goalData = {
-                    id: nanoid(10),
+                    id: generateId(),
                     ...req.body
                 };
 
