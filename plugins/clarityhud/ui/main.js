@@ -175,9 +175,9 @@ function renderTabContent(dock, tabId) {
               <div class="range-group">
                 <div class="range-value">
                   <label>Font Size</label>
-                  <span id="fontSize-value">${s.fontSize || 16}px</span>
+                  <span id="fontSize-value">${s.fontSize || 16}${s.fontSize ? '' : 'px'}</span>
                 </div>
-                <input type="range" id="fontSize" min="10" max="48" value="${s.fontSize || 16}" data-range-target="fontSize" data-range-suffix="px">
+                <input type="range" id="fontSize" min="10" max="48" value="${parseInt(s.fontSize) || 16}" data-range-target="fontSize" data-range-suffix="px">
               </div>
             </div>
           </div>
@@ -214,9 +214,9 @@ function renderTabContent(dock, tabId) {
               <div class="range-group">
                 <div class="range-value">
                   <label>Letter Spacing</label>
-                  <span id="letterSpacing-value">${s.letterSpacing || 0}px</span>
+                  <span id="letterSpacing-value">${s.letterSpacing || 0}${s.letterSpacing ? '' : 'px'}</span>
                 </div>
-                <input type="range" id="letterSpacing" min="-2" max="5" step="0.5" value="${s.letterSpacing || 0}" data-range-target="letterSpacing" data-range-suffix="px">
+                <input type="range" id="letterSpacing" min="-2" max="5" step="0.5" value="${parseFloat(s.letterSpacing) || 0}" data-range-target="letterSpacing" data-range-suffix="px">
               </div>
             </div>
           </div>
@@ -356,9 +356,9 @@ function renderTabContent(dock, tabId) {
               <div class="range-group">
                 <div class="range-value">
                   <label>Thickness</label>
-                  <span id="outlineThickness-value">${s.outlineThickness || 0}px</span>
+                  <span id="outlineThickness-value">${s.outlineThickness || 0}${s.outlineThickness ? '' : 'px'}</span>
                 </div>
-                <input type="range" id="outlineThickness" min="0" max="5" step="0.5" value="${s.outlineThickness || 0}" data-range-target="outlineThickness" data-range-suffix="px">
+                <input type="range" id="outlineThickness" min="0" max="5" step="0.5" value="${parseFloat(s.outlineThickness) || 0}" data-range-target="outlineThickness" data-range-suffix="px">
               </div>
             </div>
             <div class="form-group">
