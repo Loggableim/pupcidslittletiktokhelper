@@ -34,6 +34,7 @@
     "franc-min": "^6.2.0",
     "matter-js": "^0.20.0",
     "multer": "^2.0.2",
+    "nanoid": "^5.1.6",
     "obs-websocket-js": "^5.0.6",
     "open": "^10.0.3",
     "osc": "^2.4.5",
