@@ -67,21 +67,23 @@ class PatternEngine {
       {
         id: 'preset-random',
         name: 'Random',
-        description: 'Zufällige Intensitäten',
+        description: 'Zufällige Intensitäten (20-80%)',
         preset: true,
         steps: [
-          { type: 'shock', intensity: Math.floor(Math.random() * 60) + 20, duration: 400, delay: 0 },
+          { type: 'shock', intensity: 40, duration: 400, delay: 0 },
           { type: 'pause', duration: 250 },
-          { type: 'shock', intensity: Math.floor(Math.random() * 60) + 20, duration: 400, delay: 0 },
+          { type: 'shock', intensity: 60, duration: 400, delay: 0 },
           { type: 'pause', duration: 250 },
-          { type: 'shock', intensity: Math.floor(Math.random() * 60) + 20, duration: 400, delay: 0 },
+          { type: 'shock', intensity: 35, duration: 400, delay: 0 },
           { type: 'pause', duration: 250 },
-          { type: 'shock', intensity: Math.floor(Math.random() * 60) + 20, duration: 400, delay: 0 },
+          { type: 'shock', intensity: 70, duration: 400, delay: 0 },
           { type: 'pause', duration: 250 },
-          { type: 'shock', intensity: Math.floor(Math.random() * 60) + 20, duration: 400, delay: 0 }
+          { type: 'shock', intensity: 50, duration: 400, delay: 0 }
         ],
         loop: false,
-        loopCount: 1
+        loopCount: 1,
+        // NOTE: For true randomness, implement a generateRandomPattern() method
+        isRandomTemplate: true
       },
       {
         id: 'preset-heartbeat',
@@ -208,7 +210,7 @@ class PatternEngine {
 
       // Generate ID if not provided
       if (!pattern.id) {
-        pattern.id = `pattern-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        pattern.id = `pattern-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
       }
 
       // Check if pattern ID already exists
@@ -407,8 +409,8 @@ class PatternEngine {
       const step = steps[i];
       await this._executeStep(step, deviceId, openShockClient, execution);
 
-      // Wait for step to complete (duration + delay)
-      const waitTime = (step.duration || 0) + (step.delay || 0);
+      // Wait for step duration only (delay is handled in _executeStep)
+      const waitTime = step.duration || 0;
       if (waitTime > 0) {
         await this._sleep(waitTime, execution);
       }
@@ -424,28 +426,24 @@ class PatternEngine {
       if (step.type === 'pause') {
         // Pause step - just wait
         this.logger.debug(`[PatternEngine] Pause: ${step.duration}ms`);
+        await this._sleep(step.duration, execution);
         return;
       }
 
-      // Apply delay before action
-      if (step.delay && step.delay > 0) {
-        await this._sleep(step.delay, execution);
-      }
-
-      // Execute shock or vibrate
-      const controlType = step.type === 'shock' ? 1 : 2; // 1=shock, 2=vibrate
+      // NO delay here - it was applied in _executeSteps
 
       this.logger.debug(`[PatternEngine] Executing ${step.type}: intensity=${step.intensity}, duration=${step.duration}ms`);
 
-      await openShockClient.control({
-        shocks: [{
-          id: deviceId,
-          type: controlType,
-          intensity: step.intensity,
-          duration: step.duration,
-          exclusive: true
-        }]
-      });
+      // Use correct API methods
+      if (step.type === 'shock') {
+        await openShockClient.sendShock(deviceId, step.intensity, step.duration);
+      } else if (step.type === 'vibrate') {
+        await openShockClient.sendVibrate(deviceId, step.intensity, step.duration);
+      } else if (step.type === 'sound' || step.type === 'beep') {
+        await openShockClient.sendSound(deviceId, step.intensity, step.duration);
+      } else {
+        throw new Error(`Unknown step type: ${step.type}`);
+      }
     } catch (error) {
       this.logger.error(`[PatternEngine] Error executing step: ${error.message}`);
       throw error;
@@ -459,12 +457,12 @@ class PatternEngine {
   _sleep(ms, execution) {
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
-        // Remove timeout from tracking
+        resolve();
+        // Remove timeout from tracking AFTER resolve
         const index = execution.timeouts.indexOf(timeout);
         if (index > -1) {
           execution.timeouts.splice(index, 1);
         }
-        resolve();
       }, ms);
 
       // Track timeout for cancellation

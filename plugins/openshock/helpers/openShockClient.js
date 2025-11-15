@@ -622,6 +622,20 @@ class OpenShockClient {
             }
         };
     }
+
+    /**
+     * Cleanup and destroy client
+     */
+    destroy() {
+        // Clear request queue
+        this.clearQueue();
+
+        // Clear all maps
+        this.deviceCooldowns.clear();
+        this.requestTimestamps = [];
+
+        this.logger.info('OpenShockClient destroyed');
+    }
 }
 
 module.exports = OpenShockClient;

@@ -263,14 +263,14 @@ class MappingEngine {
       const userId = eventData.user?.userId || eventData.userId;
       const userName = eventData.user?.userName || eventData.userName || '';
 
-      // Whitelist check
+      // Whitelist check (user must be in whitelist with userId OR userName)
       if (conditions.whitelist && conditions.whitelist.length > 0) {
-        if (!conditions.whitelist.includes(userId) && !conditions.whitelist.includes(userName)) {
+        if (!conditions.whitelist.includes(userId) || !conditions.whitelist.includes(userName)) {
           return false;
         }
       }
 
-      // Blacklist check
+      // Blacklist check (user is blocked if userId OR userName is in blacklist)
       if (conditions.blacklist && conditions.blacklist.length > 0) {
         if (conditions.blacklist.includes(userId) || conditions.blacklist.includes(userName)) {
           return false;
@@ -311,7 +311,8 @@ class MappingEngine {
           if (conditions.messagePattern) {
             const message = eventData.message || eventData.comment || '';
             try {
-              const regex = new RegExp(conditions.messagePattern, 'i');
+              // Add 'im' flags for case-insensitive and multiline matching
+              const regex = new RegExp(conditions.messagePattern, 'im');
               if (!regex.test(message)) {
                 return false;
               }
@@ -569,7 +570,7 @@ class MappingEngine {
    * @private
    */
   _generateId() {
-    return `mapping_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `mapping_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   /**

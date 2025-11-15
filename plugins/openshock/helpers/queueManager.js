@@ -6,8 +6,9 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
+const EventEmitter = require('events');
 
-class QueueManager {
+class QueueManager extends EventEmitter {
   /**
    * Create a new QueueManager
    * @param {Object} openShockClient - OpenShock API client
@@ -15,6 +16,7 @@ class QueueManager {
    * @param {Object} logger - Logger instance
    */
   constructor(openShockClient, safetyManager, logger) {
+    super(); // EventEmitter constructor
     this.openShockClient = openShockClient;
     this.safetyManager = safetyManager;
     this.logger = logger;
@@ -168,6 +170,7 @@ class QueueManager {
 
     this.isProcessing = true;
     this.logger.info('[QueueManager] Started queue processing');
+    this.emit('queue-started');
 
     while (this.isProcessing) {
       // Check if paused
@@ -183,6 +186,7 @@ class QueueManager {
         // Queue is empty, stop processing
         this.logger.debug('[QueueManager] Queue is empty, stopping processing');
         this.isProcessing = false;
+        this.emit('queue-empty');
         break;
       }
 
@@ -199,9 +203,13 @@ class QueueManager {
 
       // Cleanup old completed items
       this._cleanupCompletedItems();
+
+      // Emit queue-changed event
+      this.emit('queue-changed');
     }
 
     this.logger.info('[QueueManager] Stopped queue processing');
+    this.emit('queue-stopped');
   }
 
   /**
@@ -389,15 +397,15 @@ class QueueManager {
 
   /**
    * Sort queue by priority (highest first) and enqueue time
+   * NOTE: This is called frequently and can be a performance bottleneck
    * @private
    */
   _sortQueue() {
-    this.queue.sort((a, b) => {
-      // Don't move processing/completed items
-      if (a.status !== 'pending' && b.status === 'pending') return 1;
-      if (a.status === 'pending' && b.status !== 'pending') return -1;
-      if (a.status !== 'pending' && b.status !== 'pending') return 0;
+    // Only sort pending items to reduce complexity
+    const pending = this.queue.filter(item => item.status === 'pending');
+    const nonPending = this.queue.filter(item => item.status !== 'pending');
 
+    pending.sort((a, b) => {
       // Sort by priority (descending)
       if (b.priority !== a.priority) {
         return b.priority - a.priority;
@@ -406,6 +414,9 @@ class QueueManager {
       // If same priority, sort by enqueue time (ascending - FIFO)
       return a.enqueuedAt - b.enqueuedAt;
     });
+
+    // Rebuild queue with sorted pending items first, then others
+    this.queue = [...pending, ...nonPending];
   }
 
   /**
@@ -483,7 +494,8 @@ class QueueManager {
           break;
 
         case 'beep':
-          result = await this.openShockClient.sendBeep(
+        case 'sound':
+          result = await this.openShockClient.sendSound(
             command.deviceId,
             command.intensity,
             command.duration
@@ -531,6 +543,9 @@ class QueueManager {
       processingTime: `${processingTime}ms`,
       retries: item.retries
     });
+
+    // Emit item-processed event
+    this.emit('item-processed', item, true);
   }
 
   /**
@@ -565,6 +580,9 @@ class QueueManager {
         type: item.command.type,
         totalRetries: item.retries
       });
+
+      // Emit item-processed event with failure
+      this.emit('item-processed', item, false);
     }
   }
 
