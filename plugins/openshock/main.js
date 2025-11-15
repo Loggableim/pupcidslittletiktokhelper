@@ -411,7 +411,6 @@ class OpenShockPlugin {
 
         // Get Config (WITHOUT API-KEY for security!)
         app.get('/api/openshock/config', authMiddleware, (req, res) => {
-        app.get('/api/openshock/config', (req, res) => {
             const safeConfig = {
                 ...this.config,
                 apiKey: this.config.apiKey ? '***' + this.config.apiKey.slice(-4) : '' // Mask API key
