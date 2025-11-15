@@ -1,0 +1,237 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║               GLOBAL INITIALIZATION SEQUENCE - TIMING DIAGRAM                 ║
+║            Pup Cid's Little TikTok Helper - Race Conditions Shown             ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+TIME→
+┌─────────────────────────────────────────────────────────────────────────────────┐
+
+[SERVER PROCESS]
+├─ T+0ms:     Node.js process starts (server.js)
+├─ T+10ms:    UserProfileManager init
+├─ T+15ms:    Database init
+├─ T+20ms:    TikTokConnector init
+├─ T+25ms:    AlertManager init
+├─ T+30ms:    FlowEngine init
+├─ T+35ms:    GoalManager init
+├─ T+40ms:    Other modules init (Leaderboard, UpdateManager, etc)
+├─ T+50ms:    Express/Socket.io configured
+│
+├─ T+50ms:    🔴 ASYNC IIFE STARTS (loadAllPlugins)
+├─ T+55ms:       ├─ Scan /plugins directory
+├─ T+60ms:       ├─ Load plugin manifests
+├─ T+70ms:       ├─ Validate & instantiate plugins
+├─ T+80ms:       ├─ Call each plugin.init() [ASYNC]
+├─ T+90ms:       └─ Save plugins_state.json
+│
+├─ T+95ms:    🟢 registerPluginTikTokEvents(tiktok)
+├─ T+100ms:   🟢 Plugin injections (vdoninja, osc-bridge, tts)
+│             ⚠️ ISSUE: plugin.init() may still be running!
+│
+├─ T+105ms:   🟢 server.listen(3000) starts
+├─ T+110ms:   ✅ Server ready, listening for connections
+│
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+[BROWSER PROCESS] (Parallel to server)
+├─ T+1000ms: Browser loads dashboard.html
+├─ T+1010ms: Parse <script src="audio-unlock.js">
+│            ├─ new AudioUnlockManager()  [EXECUTES IMMEDIATELY]
+│            ├─ window.audioUnlockManager = [set]
+│            └─ window.audioUnlocked = false
+│
+├─ T+1020ms: Parse <script src="dashboard.js">
+│            ├─ let socket = null;  [declared]
+│            ├─ let settings = {};  [declared]
+│            └─ DOMContentLoaded listener registered
+│
+├─ T+1030ms: Parse <script src="navigation.js">
+│            └─ DOMContentLoaded listener registered
+│
+├─ T+1040ms: Parse <script src="dashboard-enhancements.js">
+│            └─ DOMContentLoaded listener registered
+│
+├─ T+1050ms: Parse <script src="plugin-manager.js">
+├─ T+1060ms: Parse <script src="update-checker.js">
+├─ T+1070ms: Parse <script src="audio-settings.js">
+│
+├─ T+1080ms: DOMContentLoaded fires
+│            │
+│            ├─ dashboard.js listener:
+│            │  ├─ socket = io()  [CREATE CONNECTION]
+│            │  ├─ initializeButtons()
+│            │  ├─ initializeSocketListeners()
+│            │  ├─ loadSettings() [ASYNC, not awaited]
+│            │  ├─ loadFlows() [ASYNC, not awaited]
+│            │  └─ loadActiveProfile() [ASYNC, not awaited]
+│            │
+│            ├─ navigation.js listener:
+│            │  ├─ initializeSidebar()
+│            │  ├─ initializeNavigation()
+│            │  ├─ initializeShortcuts()
+│            │  ├─ initializePluginVisibility()
+│            │  └─ lucide.createIcons()
+│            │
+│            └─ dashboard-enhancements.js listener:
+│               ├─ initializeQuickActionButtons() [ASYNC, not awaited]
+│               ├─ initializeFAQAccordion()
+│               ├─ initializeChangelog()
+│               ├─ initializeCompactResources()
+│               ├─ initializeRuntimeTracking()
+│               ├─ initializeResourceDetailsLink()
+│               └─ lucide.createIcons()
+│
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+[SOCKET.IO CONNECTION] (Browser → Server)
+├─ T+1085ms: Socket connection established
+│
+├─ T+1090ms: Server: io.on('connection', (socket) => {
+│            ├─ pluginLoader.registerPluginSocketEvents(socket)
+│            │  └─ Register ALL plugin socket handlers for THIS socket
+│            │     ⚠️ RACE CONDITION: Plugins may not be fully initialized!
+│            │
+│            ├─ socket.on('goal:join')
+│            ├─ socket.on('leaderboard:join')
+│            ├─ socket.on('disconnect')
+│            └─ socket.on('test:alert')
+│
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+[ASYNC LOADING IN PARALLEL]
+├─ T+1090ms: loadSettings() 
+│            └─ T+1150ms: Settings loaded, global 'settings' updated
+│
+├─ T+1090ms: loadFlows()
+│            └─ T+1150ms: Flows rendered in #flows-list
+│
+└─ T+1090ms: loadActiveProfile()
+             └─ T+1150ms: Profile name updated in UI
+
+[PLUGIN STATE]
+├─ T+80ms:   plugin.init() [ASYNC] - Still may be running
+│            ├─ TTS: Loading voices
+│            ├─ Emoji-Rain: Setting up canvas
+│            ├─ OSC-Bridge: Starting server
+│            └─ Goals: Initializing overlays
+│
+├─ T+100ms:  Plugin injections attempted
+│            ├─ flows.vdoninjaManager = vdoninjaPlugin.getManager()
+│            │  ⚠️ IF plugin.init() not done: getManager() may fail
+│            └─ flows.oscBridge = oscBridgePlugin.getOSCBridge()
+│               ⚠️ IF plugin.init() not done: getOSCBridge() may fail
+│
+└─ T+150ms+: Plugins fully initialized (when all async work done)
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                          KEY RACE CONDITIONS                                  ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+
+⚠️ RC#1: Plugin Init Not Fully Awaited
+───────────────────────────────────────
+Server (T+80-100ms):      plugin.init() still running
+Server (T+100ms):         Attempt: flows.vdoninjaManager = vdoninja.getManager()
+                          ⚠️ Returns undefined if init() not done!
+                          
+FIX: Wait for all plugin init() to resolve before injections
+
+
+⚠️ RC#2: Settings/Flows/Profile Not Awaited
+──────────────────────────────────────────────
+Browser (T+1080ms):       loadSettings() called without await
+Browser (T+1090ms):       Code continues immediately
+Browser (T+1150ms):       Settings actually available
+                          ⚠️ Any code using settings before T+1150 gets empty object!
+                          
+FIX: Use Promise.all() or chain with .then()
+
+
+⚠️ RC#3: Socket Connected Before All Plugin Handlers Ready
+────────────────────────────────────────────────────────────
+Browser (T+1080ms):       DOMContentLoaded fires
+Browser (T+1085ms):       socket = io() creates connection
+Server (T+1090ms):        io.on('connection') fires
+Server (T+1090ms):        pluginLoader.registerPluginSocketEvents(socket)
+
+IF plugin.init() hasn't finished:
+  - Plugin socket handlers not registered
+  - Client sends message → handler not found → no response
+  - Silent failure or error
+                          
+FIX: Don't register socket until plugins fully initialized
+
+
+⚠️ RC#4: Audio Unlock Before Audio Playback
+──────────────────────────────────────────────
+Global scope (T+1010ms): window.audioUnlocked = false
+Plugin (T+1200ms):       TTS tries to play audio
+                         ⚠️ Audio may not be unlocked yet!
+                         
+FIX: Check window.audioUnlocked or use event listener
+
+
+⚠️ RC#5: Multiple DOMContentLoaded Listeners (Order Undefined)
+────────────────────────────────────────────────────────────────
+Browser (T+1080ms):       ALL three listeners fire simultaneously:
+                          - dashboard.js:10
+                          - navigation.js:14
+                          - dashboard-enhancements.js:16
+                          
+                          ⚠️ No guaranteed order!
+                          If initializeQuickActionButtons() runs before
+                          loadSettings(), settings will be empty.
+                          
+FIX: Sequential initialization with event/promise chain
+
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+KEY FILES WITH ISSUES:
+───────────────────────
+
+1. /server.js
+   - Lines 1631-1668: Plugin loading before server starts
+   - Lines 1643-1662: Plugin injections without validation
+
+2. /public/js/dashboard.js
+   - Lines 19-21: Async loads not awaited
+   - Line 12: socket.io() without waiting for DOM fully ready
+
+3. /public/js/navigation.js
+   - Lines 14-24: DOMContentLoaded listener with no coordination
+
+4. /public/js/dashboard-enhancements.js
+   - Lines 16-28: DOMContentLoaded listener with no coordination
+   - Line 31: initializeQuickActionButtons() async but not awaited
+
+5. /modules/plugin-loader.js
+   - Lines 469-479: plugin.init() called but not validated
+   - No error handling if init() fails
+
+6. /public/js/audio-unlock.js
+   - Lines 1-16: Global initialization before user interaction
+   - No event for when audio is ready
+
+INITIALIZATION STATES AT KEY TIMES:
+────────────────────────────────────
+
+T+100ms (Server):
+  ✅ Modules initialized
+  ✅ Plugins loaded (instances created)
+  ⚠️ plugin.init() [async] - may still running
+  ✅ TikTok event handlers registered
+  ✅ Socket.io listening
+  
+T+1080ms (Browser):
+  ✅ All scripts parsed
+  ✅ DOM fully rendered
+  ⚠️ socket created
+  ⚠️ Settings not loaded yet
+  ⚠️ Flows not loaded yet
+  ⚠️ Profile not loaded yet
+
+T+1150ms (Browser):
+  ✅ Settings loaded
+  ✅ Flows loaded
+  ✅ Profile loaded
+  ⚠️ UI still may be referencing undefined settings
+
