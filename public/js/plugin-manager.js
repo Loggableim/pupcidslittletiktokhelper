@@ -39,13 +39,8 @@ class PluginManager {
             });
         }
 
-        // Plugins laden beim Tab-Wechsel
-        const pluginsTab = document.querySelector('[data-tab="plugins"]');
-        if (pluginsTab) {
-            pluginsTab.addEventListener('click', () => {
-                this.loadPlugins();
-            });
-        }
+        // Note: Plugin loading is now triggered by navigation.js handleViewChange()
+        // when switching to the plugins view
     }
 
     /**
