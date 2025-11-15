@@ -172,10 +172,34 @@ class OpenShockPlugin {
             )
         `);
 
+        // Migration: Drop old tables if they have INTEGER id columns
+        try {
+            const mappingsTableInfo = db.prepare("PRAGMA table_info(openshock_mappings)").all();
+            const idColumn = mappingsTableInfo.find(col => col.name === 'id');
+            if (idColumn && idColumn.type === 'INTEGER') {
+                this.api.log('Migrating openshock_mappings table to use TEXT id...', 'info');
+                db.exec('DROP TABLE IF EXISTS openshock_mappings');
+            }
+        } catch (error) {
+            // Table doesn't exist yet, that's fine
+        }
+
+        try {
+            const patternsTableInfo = db.prepare("PRAGMA table_info(openshock_patterns)").all();
+            const idColumn = patternsTableInfo.find(col => col.name === 'id');
+            if (idColumn && idColumn.type === 'INTEGER') {
+                this.api.log('Migrating openshock_patterns table to use TEXT id...', 'info');
+                db.exec('DROP TABLE IF EXISTS openshock_patterns');
+            }
+        } catch (error) {
+            // Table doesn't exist yet, that's fine
+        }
+
         // Mappings-Tabelle
         db.exec(`
             CREATE TABLE IF NOT EXISTS openshock_mappings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
                 enabled INTEGER DEFAULT 1,
                 event_type TEXT NOT NULL,
                 conditions TEXT,
@@ -189,7 +213,7 @@ class OpenShockPlugin {
         // Patterns-Tabelle
         db.exec(`
             CREATE TABLE IF NOT EXISTS openshock_patterns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 description TEXT,
                 steps TEXT NOT NULL,
@@ -289,6 +313,10 @@ class OpenShockPlugin {
         // });
 
         this.api.log('OpenShock helpers initialized', 'info');
+
+        // Load mappings and patterns from database
+        this._loadMappingsFromDatabase();
+        this._loadPatternsFromDatabase();
     }
 
     /**
@@ -297,6 +325,55 @@ class OpenShockPlugin {
     _registerRoutes() {
         const app = this.api.getApp();
         const pluginDir = __dirname;
+
+        // ============ AUTHENTICATION MIDDLEWARE ============
+
+        /**
+         * Authentication middleware for API endpoints
+         * Protects against unauthorized access to plugin controls
+         */
+        const authMiddleware = (req, res, next) => {
+            // Allow OPTIONS requests for CORS preflight
+            if (req.method === 'OPTIONS') {
+                return next();
+            }
+
+            // Check multiple authentication methods:
+            // 1. Session-based auth (if parent app provides it)
+            if (req.session && req.session.authenticated) {
+                return next();
+            }
+
+            // 2. API token in headers
+            const authHeader = req.headers['x-openshock-auth'];
+            if (authHeader && authHeader === this.config.apiAuthToken) {
+                return next();
+            }
+
+            // 3. Check if request is from localhost (development mode)
+            const isLocalhost = req.ip === '127.0.0.1' ||
+                               req.ip === '::1' ||
+                               req.ip === '::ffff:127.0.0.1' ||
+                               req.hostname === 'localhost';
+
+            // 4. Check referer/origin for same-origin requests
+            const referer = req.headers.referer || req.headers.origin || '';
+            const isSameOrigin = referer.includes(req.hostname) ||
+                                referer.includes('localhost') ||
+                                referer.includes('127.0.0.1');
+
+            // Allow localhost OR same-origin requests
+            if (isLocalhost && isSameOrigin) {
+                return next();
+            }
+
+            // If none of the auth methods succeed, deny access
+            this.api.log(`Unauthorized API access attempt from ${req.ip} to ${req.path}`, 'warn');
+            return res.status(401).json({
+                success: false,
+                error: 'Unauthorized. Please access the OpenShock panel through the main application UI.'
+            });
+        };
 
         // ============ UI ROUTES ============
 
@@ -333,6 +410,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - CONFIG ============
 
         // Get Config (WITHOUT API-KEY for security!)
+        app.get('/api/openshock/config', authMiddleware, (req, res) => {
         app.get('/api/openshock/config', (req, res) => {
             const safeConfig = {
                 ...this.config,
@@ -345,7 +423,7 @@ class OpenShockPlugin {
         });
 
         // Update Config
-        app.post('/api/openshock/config', async (req, res) => {
+        app.post('/api/openshock/config', authMiddleware, async (req, res) => {
             try {
                 const newConfig = req.body;
 
@@ -394,7 +472,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - DEVICES ============
 
         // Get Devices
-        app.get('/api/openshock/devices', (req, res) => {
+        app.get('/api/openshock/devices', authMiddleware, (req, res) => {
             res.json({
                 success: true,
                 devices: this.devices
@@ -402,7 +480,7 @@ class OpenShockPlugin {
         });
 
         // Refresh Devices
-        app.post('/api/openshock/devices/refresh', async (req, res) => {
+        app.post('/api/openshock/devices/refresh', authMiddleware, async (req, res) => {
             try {
                 await this.loadDevices();
 
@@ -422,7 +500,7 @@ class OpenShockPlugin {
         });
 
         // Get Single Device
-        app.get('/api/openshock/devices/:id', (req, res) => {
+        app.get('/api/openshock/devices/:id', authMiddleware, (req, res) => {
             const device = this.devices.find(d => d.id === req.params.id);
 
             if (!device) {
@@ -439,7 +517,7 @@ class OpenShockPlugin {
         });
 
         // Test Device
-        app.post('/api/openshock/test/:deviceId', async (req, res) => {
+        app.post('/api/openshock/test/:deviceId', authMiddleware, async (req, res) => {
             try {
                 const { deviceId } = req.params;
                 const { type = 'vibrate', intensity = 30, duration = 1000 } = req.body;
@@ -517,7 +595,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - MAPPINGS ============
 
         // Get All Mappings
-        app.get('/api/openshock/mappings', (req, res) => {
+        app.get('/api/openshock/mappings', authMiddleware, (req, res) => {
             try {
                 const mappings = this.mappingEngine.getAllMappings();
                 res.json({
@@ -533,17 +611,18 @@ class OpenShockPlugin {
         });
 
         // Create Mapping
-        app.post('/api/openshock/mappings', async (req, res) => {
+        app.post('/api/openshock/mappings', authMiddleware, async (req, res) => {
             try {
                 const mapping = req.body;
-                const id = this.mappingEngine.addMapping(mapping);
+                const addedMapping = this.mappingEngine.addMapping(mapping);
 
-                await this.saveData();
+                // Save to database
+                this._saveMappingToDatabase(addedMapping);
 
                 res.json({
                     success: true,
                     message: 'Mapping created successfully',
-                    id
+                    id: addedMapping.id
                 });
 
             } catch (error) {
@@ -555,13 +634,15 @@ class OpenShockPlugin {
         });
 
         // Update Mapping
-        app.put('/api/openshock/mappings/:id', async (req, res) => {
+        app.put('/api/openshock/mappings/:id', authMiddleware, async (req, res) => {
             try {
-                const id = parseInt(req.params.id);
+                const id = req.params.id;
                 const mapping = req.body;
 
-                this.mappingEngine.updateMapping(id, mapping);
-                await this.saveData();
+                const updatedMapping = this.mappingEngine.updateMapping(id, mapping);
+
+                // Save to database
+                this._saveMappingToDatabase(updatedMapping);
 
                 res.json({
                     success: true,
@@ -577,12 +658,14 @@ class OpenShockPlugin {
         });
 
         // Delete Mapping
-        app.delete('/api/openshock/mappings/:id', async (req, res) => {
+        app.delete('/api/openshock/mappings/:id', authMiddleware, async (req, res) => {
             try {
-                const id = parseInt(req.params.id);
+                const id = req.params.id;
 
                 this.mappingEngine.deleteMapping(id);
-                await this.saveData();
+
+                // Delete from database
+                this._deleteMappingFromDatabase(id);
 
                 res.json({
                     success: true,
@@ -598,7 +681,7 @@ class OpenShockPlugin {
         });
 
         // Import Mappings
-        app.post('/api/openshock/mappings/import', async (req, res) => {
+        app.post('/api/openshock/mappings/import', authMiddleware, async (req, res) => {
             try {
                 const { mappings } = req.body;
 
@@ -611,11 +694,11 @@ class OpenShockPlugin {
 
                 let imported = 0;
                 for (const mapping of mappings) {
-                    this.mappingEngine.addMapping(mapping);
+                    const addedMapping = this.mappingEngine.addMapping(mapping);
+                    // Save each mapping to database
+                    this._saveMappingToDatabase(addedMapping);
                     imported++;
                 }
-
-                await this.saveData();
 
                 res.json({
                     success: true,
@@ -632,7 +715,7 @@ class OpenShockPlugin {
         });
 
         // Export Mappings
-        app.get('/api/openshock/mappings/export', (req, res) => {
+        app.get('/api/openshock/mappings/export', authMiddleware, (req, res) => {
             try {
                 const mappings = this.mappingEngine.getAllMappings();
 
@@ -651,7 +734,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - PATTERNS ============
 
         // Get All Patterns
-        app.get('/api/openshock/patterns', (req, res) => {
+        app.get('/api/openshock/patterns', authMiddleware, (req, res) => {
             try {
                 const patterns = this.patternEngine.getAllPatterns();
                 res.json({
@@ -667,17 +750,18 @@ class OpenShockPlugin {
         });
 
         // Create Pattern
-        app.post('/api/openshock/patterns', async (req, res) => {
+        app.post('/api/openshock/patterns', authMiddleware, async (req, res) => {
             try {
                 const pattern = req.body;
-                const id = this.patternEngine.addPattern(pattern);
+                const addedPattern = this.patternEngine.addPattern(pattern);
 
-                await this.saveData();
+                // Save to database
+                this._savePatternToDatabase(addedPattern);
 
                 res.json({
                     success: true,
                     message: 'Pattern created successfully',
-                    id
+                    id: addedPattern.id
                 });
 
             } catch (error) {
@@ -689,13 +773,15 @@ class OpenShockPlugin {
         });
 
         // Update Pattern
-        app.put('/api/openshock/patterns/:id', async (req, res) => {
+        app.put('/api/openshock/patterns/:id', authMiddleware, async (req, res) => {
             try {
-                const id = parseInt(req.params.id);
+                const id = req.params.id;
                 const pattern = req.body;
 
-                this.patternEngine.updatePattern(id, pattern);
-                await this.saveData();
+                const updatedPattern = this.patternEngine.updatePattern(id, pattern);
+
+                // Save to database
+                this._savePatternToDatabase(updatedPattern);
 
                 res.json({
                     success: true,
@@ -711,12 +797,14 @@ class OpenShockPlugin {
         });
 
         // Delete Pattern
-        app.delete('/api/openshock/patterns/:id', async (req, res) => {
+        app.delete('/api/openshock/patterns/:id', authMiddleware, async (req, res) => {
             try {
-                const id = parseInt(req.params.id);
+                const id = req.params.id;
 
                 this.patternEngine.deletePattern(id);
-                await this.saveData();
+
+                // Delete from database
+                this._deletePatternFromDatabase(id);
 
                 res.json({
                     success: true,
@@ -732,7 +820,7 @@ class OpenShockPlugin {
         });
 
         // Execute Pattern
-        app.post('/api/openshock/patterns/execute', async (req, res) => {
+        app.post('/api/openshock/patterns/execute', authMiddleware, async (req, res) => {
             try {
                 const { patternId, deviceId, variables = {} } = req.body;
 
@@ -775,7 +863,7 @@ class OpenShockPlugin {
         });
 
         // Stop Pattern Execution
-        app.post('/api/openshock/patterns/stop/:executionId', async (req, res) => {
+        app.post('/api/openshock/patterns/stop/:executionId', authMiddleware, async (req, res) => {
             try {
                 const { executionId } = req.params;
 
@@ -804,17 +892,19 @@ class OpenShockPlugin {
         });
 
         // Import Pattern
-        app.post('/api/openshock/patterns/import', async (req, res) => {
+        app.post('/api/openshock/patterns/import', authMiddleware, async (req, res) => {
             try {
                 const pattern = req.body;
 
-                const id = this.patternEngine.addPattern(pattern);
-                await this.saveData();
+                const addedPattern = this.patternEngine.addPattern(pattern);
+
+                // Save to database
+                this._savePatternToDatabase(addedPattern);
 
                 res.json({
                     success: true,
                     message: 'Pattern imported successfully',
-                    id
+                    id: addedPattern.id
                 });
 
             } catch (error) {
@@ -826,7 +916,7 @@ class OpenShockPlugin {
         });
 
         // Export Pattern
-        app.get('/api/openshock/patterns/export/:id', (req, res) => {
+        app.get('/api/openshock/patterns/export/:id', authMiddleware, (req, res) => {
             try {
                 const id = parseInt(req.params.id);
                 const pattern = this.patternEngine.getPattern(id);
@@ -853,7 +943,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - SAFETY ============
 
         // Get Safety Settings
-        app.get('/api/openshock/safety', (req, res) => {
+        app.get('/api/openshock/safety', authMiddleware, (req, res) => {
             try {
                 const settings = this.safetyManager.getSettings();
                 res.json({
@@ -869,7 +959,7 @@ class OpenShockPlugin {
         });
 
         // Update Safety Settings
-        app.post('/api/openshock/safety', async (req, res) => {
+        app.post('/api/openshock/safety', authMiddleware, async (req, res) => {
             try {
                 const settings = req.body;
 
@@ -897,7 +987,7 @@ class OpenShockPlugin {
         });
 
         // Emergency Stop
-        app.post('/api/openshock/emergency-stop', async (req, res) => {
+        app.post('/api/openshock/emergency-stop', authMiddleware, async (req, res) => {
             try {
                 // Emergency Stop aktivieren
                 this.safetyManager.activateEmergencyStop();
@@ -906,7 +996,7 @@ class OpenShockPlugin {
                 await this.saveData();
 
                 // Queue leeren
-                this.queueManager.clearQueue();
+                await this.queueManager.clearQueue();
 
                 // Alle Pattern-Executions stoppen
                 this.activePatternExecutions.clear();
@@ -933,7 +1023,7 @@ class OpenShockPlugin {
         });
 
         // Clear Emergency Stop
-        app.post('/api/openshock/emergency-clear', async (req, res) => {
+        app.post('/api/openshock/emergency-clear', authMiddleware, async (req, res) => {
             try {
                 // Emergency Stop deaktivieren
                 this.safetyManager.deactivateEmergencyStop();
@@ -961,7 +1051,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - QUEUE ============
 
         // Get Queue Status
-        app.get('/api/openshock/queue/status', (req, res) => {
+        app.get('/api/openshock/queue/status', authMiddleware, (req, res) => {
             try {
                 const status = this.queueManager.getStatus();
                 res.json({
@@ -977,9 +1067,9 @@ class OpenShockPlugin {
         });
 
         // Clear Queue
-        app.post('/api/openshock/queue/clear', (req, res) => {
+        app.post('/api/openshock/queue/clear', authMiddleware, async (req, res) => {
             try {
-                this.queueManager.clearQueue();
+                await this.queueManager.clearQueue();
 
                 res.json({
                     success: true,
@@ -995,7 +1085,7 @@ class OpenShockPlugin {
         });
 
         // Remove Queue Item
-        app.delete('/api/openshock/queue/:id', (req, res) => {
+        app.delete('/api/openshock/queue/:id', authMiddleware, (req, res) => {
             try {
                 const id = req.params.id;
                 const removed = this.queueManager.removeItem(id);
@@ -1023,7 +1113,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - STATS ============
 
         // Get Statistics
-        app.get('/api/openshock/stats', (req, res) => {
+        app.get('/api/openshock/stats', authMiddleware, (req, res) => {
             try {
                 const uptime = this.stats.startTime ? Date.now() - this.stats.startTime : 0;
                 const queueStatus = this.queueManager.getStatus();
@@ -1483,6 +1573,176 @@ class OpenShockPlugin {
         }
 
         this.api.log('OpenShock data saved', 'info');
+    }
+
+    /**
+     * Load mappings from database
+     */
+    _loadMappingsFromDatabase() {
+        const db = this.api.getDatabase();
+
+        try {
+            const mappings = db.prepare('SELECT * FROM openshock_mappings').all();
+
+            for (const row of mappings) {
+                try {
+                    // Parse JSON columns
+                    const conditions = row.conditions ? JSON.parse(row.conditions) : {};
+                    const action = JSON.parse(row.action);
+
+                    // Construct mapping object
+                    const mapping = {
+                        id: row.id,
+                        name: row.name,
+                        enabled: row.enabled === 1,
+                        eventType: row.event_type,
+                        conditions: conditions,
+                        action: action
+                    };
+
+                    // Add to mapping engine (skip if ID already exists from presets)
+                    if (!this.mappingEngine.getMapping(mapping.id)) {
+                        this.mappingEngine.addMapping(mapping);
+                    }
+                } catch (error) {
+                    this.api.log(`Failed to load mapping ${row.id}: ${error.message}`, 'warn');
+                }
+            }
+
+            this.api.log(`Loaded ${mappings.length} mappings from database`, 'info');
+        } catch (error) {
+            this.api.log(`Failed to load mappings from database: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Load patterns from database
+     */
+    _loadPatternsFromDatabase() {
+        const db = this.api.getDatabase();
+
+        try {
+            const patterns = db.prepare('SELECT * FROM openshock_patterns WHERE preset = 0').all();
+
+            for (const row of patterns) {
+                try {
+                    // Parse JSON steps column
+                    const steps = JSON.parse(row.steps);
+
+                    // Construct pattern object
+                    const pattern = {
+                        id: row.id,
+                        name: row.name,
+                        description: row.description || '',
+                        steps: steps,
+                        preset: row.preset === 1
+                    };
+
+                    // Add to pattern engine (skip if ID already exists from presets)
+                    if (!this.patternEngine.getPattern(pattern.id)) {
+                        this.patternEngine.addPattern(pattern);
+                    }
+                } catch (error) {
+                    this.api.log(`Failed to load pattern ${row.id}: ${error.message}`, 'warn');
+                }
+            }
+
+            this.api.log(`Loaded ${patterns.length} custom patterns from database`, 'info');
+        } catch (error) {
+            this.api.log(`Failed to load patterns from database: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Save mapping to database
+     */
+    _saveMappingToDatabase(mapping) {
+        const db = this.api.getDatabase();
+
+        try {
+            const stmt = db.prepare(`
+                INSERT OR REPLACE INTO openshock_mappings
+                (id, name, enabled, event_type, conditions, action, priority, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `);
+
+            stmt.run(
+                mapping.id,
+                mapping.name,
+                mapping.enabled ? 1 : 0,
+                mapping.eventType,
+                JSON.stringify(mapping.conditions || {}),
+                JSON.stringify(mapping.action),
+                mapping.action?.priority || mapping.priority || 5
+            );
+
+            this.api.log(`Saved mapping ${mapping.id} to database`, 'info');
+        } catch (error) {
+            this.api.log(`Failed to save mapping to database: ${error.message}`, 'error');
+            throw error;
+        }
+    }
+
+    /**
+     * Save pattern to database
+     */
+    _savePatternToDatabase(pattern) {
+        const db = this.api.getDatabase();
+
+        try {
+            const stmt = db.prepare(`
+                INSERT OR REPLACE INTO openshock_patterns
+                (id, name, description, steps, preset, updated_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `);
+
+            stmt.run(
+                pattern.id,
+                pattern.name,
+                pattern.description || '',
+                JSON.stringify(pattern.steps),
+                pattern.preset ? 1 : 0
+            );
+
+            this.api.log(`Saved pattern ${pattern.id} to database`, 'info');
+        } catch (error) {
+            this.api.log(`Failed to save pattern to database: ${error.message}`, 'error');
+            throw error;
+        }
+    }
+
+    /**
+     * Delete mapping from database
+     */
+    _deleteMappingFromDatabase(id) {
+        const db = this.api.getDatabase();
+
+        try {
+            const stmt = db.prepare('DELETE FROM openshock_mappings WHERE id = ?');
+            stmt.run(id);
+
+            this.api.log(`Deleted mapping ${id} from database`, 'info');
+        } catch (error) {
+            this.api.log(`Failed to delete mapping from database: ${error.message}`, 'error');
+            throw error;
+        }
+    }
+
+    /**
+     * Delete pattern from database
+     */
+    _deletePatternFromDatabase(id) {
+        const db = this.api.getDatabase();
+
+        try {
+            const stmt = db.prepare('DELETE FROM openshock_patterns WHERE id = ?');
+            stmt.run(id);
+
+            this.api.log(`Deleted pattern ${id} from database`, 'info');
+        } catch (error) {
+            this.api.log(`Failed to delete pattern from database: ${error.message}`, 'error');
+            throw error;
+        }
     }
 
     /**

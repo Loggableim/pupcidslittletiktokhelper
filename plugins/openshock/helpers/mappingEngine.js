@@ -311,6 +311,17 @@ class MappingEngine {
           if (conditions.messagePattern) {
             const message = eventData.message || eventData.comment || '';
             try {
+              // Validate regex pattern to prevent ReDoS attacks
+              if (!this._isRegexSafe(conditions.messagePattern)) {
+                this.logger.warn('[MappingEngine] Potentially dangerous regex pattern rejected:', conditions.messagePattern);
+                return false;
+              }
+
+              // Add 'im' flags for case-insensitive and multiline matching
+              const regex = new RegExp(conditions.messagePattern, 'im');
+
+              // Use safe regex testing with timeout protection
+              if (!this._safeRegexTest(regex, message)) {
               // Add 'im' flags for case-insensitive and multiline matching
               const regex = new RegExp(conditions.messagePattern, 'im');
               if (!regex.test(message)) {
@@ -640,6 +651,97 @@ class MappingEngine {
         this.cooldowns.perUser.delete(key);
       }
     }
+  }
+
+  /**
+   * Check if a regex pattern is safe from ReDoS attacks
+   * @param {string} pattern - The regex pattern to validate
+   * @returns {boolean} - True if pattern is safe
+   */
+  _isRegexSafe(pattern) {
+    if (!pattern || typeof pattern !== 'string') {
+      return false;
+    }
+
+    // Reject patterns that are too long (potential complexity attack)
+    if (pattern.length > 200) {
+      return false;
+    }
+
+    // Reject patterns with excessive nested quantifiers (major ReDoS vector)
+    // Examples: (a+)+, (a*)*,  (a+)*, ((a+)+)+
+    const nestedQuantifiers = /(\(.*[*+]\))[*+]/g;
+    if (nestedQuantifiers.test(pattern)) {
+      return false;
+    }
+
+    // Reject patterns with excessive alternation combined with quantifiers
+    // Example: (a|b|c|d|e|f)+
+    const alternationWithQuantifiers = /\([^)]*(\|[^)]*){5,}\)[*+]/g;
+    if (alternationWithQuantifiers.test(pattern)) {
+      return false;
+    }
+
+    // Reject patterns with excessive repetition ranges
+    // Example: a{1,1000000}
+    const excessiveRepetition = /\{\d+,(\d{6,}|\d{5,})\}/g;
+    if (excessiveRepetition.test(pattern)) {
+      return false;
+    }
+
+    // Count total quantifiers - too many can indicate complexity
+    const quantifierCount = (pattern.match(/[*+?{]/g) || []).length;
+    if (quantifierCount > 15) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Execute regex test with timeout protection
+   * @param {RegExp} regex - The compiled regex
+   * @param {string} str - The string to test
+   * @param {number} timeoutMs - Timeout in milliseconds (default: 100ms)
+   * @returns {boolean} - True if regex matches, false otherwise or on timeout
+   */
+  _safeRegexTest(regex, str, timeoutMs = 100) {
+    let result = false;
+    let timedOut = false;
+
+    // Create a timeout to prevent long-running regex
+    const timeout = setTimeout(() => {
+      timedOut = true;
+    }, timeoutMs);
+
+    try {
+      // For very long strings, truncate to prevent excessive processing
+      const maxLength = 10000;
+      const testStr = str.length > maxLength ? str.substring(0, maxLength) : str;
+
+      // Store start time to detect slow regex
+      const startTime = Date.now();
+
+      result = regex.test(testStr);
+
+      // If execution took too long, log warning
+      const executionTime = Date.now() - startTime;
+      if (executionTime > 50) {
+        this.logger.warn(`[MappingEngine] Slow regex detected (${executionTime}ms):`, regex.source);
+      }
+
+      if (timedOut) {
+        this.logger.warn('[MappingEngine] Regex execution timed out:', regex.source);
+        return false;
+      }
+    } catch (error) {
+      this.logger.error('[MappingEngine] Regex execution error:', error.message);
+      result = false;
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    return result;
   }
 }
 

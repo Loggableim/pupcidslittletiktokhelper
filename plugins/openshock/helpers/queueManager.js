@@ -32,6 +32,10 @@ class QueueManager extends EventEmitter {
     this.processingDelay = 300; // ms between commands
     this.currentlyProcessingItem = null;
 
+    // Queue synchronization
+    this._queueLock = false;
+    this._lockWaiters = [];
+
     // Statistics
     this.stats = {
       totalEnqueued: 0,
@@ -61,76 +65,84 @@ class QueueManager extends EventEmitter {
    * @param {number} priority - Priority level (1-10, 10 = highest)
    * @returns {Object} { success: boolean, queueId: string, position: number, message: string }
    */
-  enqueue(command, userId, source, sourceData = {}, priority = 5) {
+  async enqueue(command, userId, source, sourceData = {}, priority = 5) {
     try {
       // Validate priority
       priority = Math.max(1, Math.min(10, priority));
 
-      // Check queue size limit
-      const pendingCount = this.queue.filter(item =>
-        item.status === 'pending' || item.status === 'processing'
-      ).length;
+      // Acquire lock before modifying queue
+      await this._acquireLock();
 
-      if (pendingCount >= this.maxQueueSize) {
-        this.logger.warn('[QueueManager] Queue is full, rejecting command', {
-          queueSize: pendingCount,
-          maxSize: this.maxQueueSize
-        });
-        return {
-          success: false,
-          queueId: null,
-          position: -1,
-          message: 'Queue is full'
+      try {
+        // Check queue size limit
+        const pendingCount = this.queue.filter(item =>
+          item.status === 'pending' || item.status === 'processing'
+        ).length;
+
+        if (pendingCount >= this.maxQueueSize) {
+          this.logger.warn('[QueueManager] Queue is full, rejecting command', {
+            queueSize: pendingCount,
+            maxSize: this.maxQueueSize
+          });
+          return {
+            success: false,
+            queueId: null,
+            position: -1,
+            message: 'Queue is full'
+          };
+        }
+
+        // Create queue item
+        const queueItem = {
+          id: `queue-${uuidv4()}`,
+          priority,
+          command,
+          userId,
+          source,
+          sourceData,
+          enqueuedAt: Date.now(),
+          status: 'pending',
+          retries: 0,
+          maxRetries: this.maxRetries,
+          error: null,
+          processingStartedAt: null,
+          completedAt: null
         };
+
+        // Add to queue
+        this.queue.push(queueItem);
+        this.stats.totalEnqueued++;
+
+        // Sort queue by priority
+        this._sortQueue();
+
+        // Calculate position
+        const position = this.queue.findIndex(item => item.id === queueItem.id) + 1;
+
+        this.logger.info('[QueueManager] Command enqueued', {
+          queueId: queueItem.id,
+          type: command.type,
+          priority,
+          position,
+          userId,
+          source
+        });
+
+        // Start processing if not already running
+        if (!this.isProcessing && !this.isPaused) {
+          this.processQueue();
+        }
+
+        return {
+          success: true,
+          queueId: queueItem.id,
+          position,
+          message: `Queued at position ${position}`
+        };
+      } finally {
+        // Always release lock
+        this._releaseLock();
       }
-
-      // Create queue item
-      const queueItem = {
-        id: `queue-${uuidv4()}`,
-        priority,
-        command,
-        userId,
-        source,
-        sourceData,
-        enqueuedAt: Date.now(),
-        status: 'pending',
-        retries: 0,
-        maxRetries: this.maxRetries,
-        error: null,
-        processingStartedAt: null,
-        completedAt: null
-      };
-
-      // Add to queue
-      this.queue.push(queueItem);
-      this.stats.totalEnqueued++;
-
-      // Sort queue by priority
-      this._sortQueue();
-
-      // Calculate position
-      const position = this.queue.findIndex(item => item.id === queueItem.id) + 1;
-
-      this.logger.info('[QueueManager] Command enqueued', {
-        queueId: queueItem.id,
-        type: command.type,
-        priority,
-        position,
-        userId,
-        source
-      });
-
-      // Start processing if not already running
-      if (!this.isProcessing && !this.isPaused) {
-        this.processQueue();
-      }
-
-      return {
-        success: true,
-        queueId: queueItem.id,
-        position,
-        message: `Queued at position ${position}`
-      };
 
     } catch (error) {
       this.logger.error('[QueueManager] Error enqueueing command', { error: error.message });
@@ -145,18 +157,26 @@ class QueueManager extends EventEmitter {
 
   /**
    * Get the next command from the queue (highest priority)
-   * @returns {Object|null} Queue item or null if queue is empty
+   * @returns {Promise<Object|null>} Queue item or null if queue is empty
    */
-  dequeue() {
-    // Find the first pending item (queue is already sorted by priority)
-    const index = this.queue.findIndex(item => item.status === 'pending');
+  async dequeue() {
+    // Acquire lock before reading queue
+    await this._acquireLock();
 
-    if (index === -1) {
-      return null;
+    try {
+      // Find the first pending item (queue is already sorted by priority)
+      const index = this.queue.findIndex(item => item.status === 'pending');
+
+      if (index === -1) {
+        return null;
+      }
+
+      const item = this.queue[index];
+      return item;
+    } finally {
+      // Always release lock
+      this._releaseLock();
     }
-
-    const item = this.queue[index];
-    return item;
   }
 
   /**
@@ -179,8 +199,8 @@ class QueueManager extends EventEmitter {
         continue;
       }
 
-      // Get next item
-      const item = this.dequeue();
+      // Get next item (now async with lock)
+      const item = await this.dequeue();
 
       if (!item) {
         // Queue is empty, stop processing
@@ -202,6 +222,7 @@ class QueueManager extends EventEmitter {
       this._updateCommandsPerMinute();
 
       // Cleanup old completed items
+      await this._cleanupCompletedItems();
       this._cleanupCompletedItems();
 
       // Emit queue-changed event
@@ -243,55 +264,71 @@ class QueueManager extends EventEmitter {
 
   /**
    * Clear all pending items from queue
-   * @returns {number} Number of items cleared
+   * @returns {Promise<number>} Number of items cleared
    */
-  clearQueue() {
-    const pendingItems = this.queue.filter(item => item.status === 'pending');
-    const count = pendingItems.length;
+  async clearQueue() {
+    // Acquire lock before modifying queue
+    await this._acquireLock();
 
-    // Mark all pending items as cancelled
-    pendingItems.forEach(item => {
-      item.status = 'cancelled';
-      item.completedAt = Date.now();
-      this.stats.totalCancelled++;
-    });
+    try {
+      const pendingItems = this.queue.filter(item => item.status === 'pending');
+      const count = pendingItems.length;
 
-    this.logger.info('[QueueManager] Queue cleared', { itemsCleared: count });
-    return count;
+      // Mark all pending items as cancelled
+      pendingItems.forEach(item => {
+        item.status = 'cancelled';
+        item.completedAt = Date.now();
+        this.stats.totalCancelled++;
+      });
+
+      this.logger.info('[QueueManager] Queue cleared', { itemsCleared: count });
+      return count;
+    } finally {
+      // Always release lock
+      this._releaseLock();
+    }
   }
 
   /**
    * Cancel a specific queue item
    * @param {string} queueId - Queue item ID
-   * @returns {boolean} Success status
+   * @returns {Promise<boolean>} Success status
    */
-  cancelItem(queueId) {
-    const item = this.queue.find(i => i.id === queueId);
+  async cancelItem(queueId) {
+    // Acquire lock before modifying queue
+    await this._acquireLock();
 
-    if (!item) {
-      this.logger.warn('[QueueManager] Item not found for cancellation', { queueId });
-      return false;
+    try {
+      const item = this.queue.find(i => i.id === queueId);
+
+      if (!item) {
+        this.logger.warn('[QueueManager] Item not found for cancellation', { queueId });
+        return false;
+      }
+
+      if (item.status === 'completed' || item.status === 'cancelled') {
+        this.logger.warn('[QueueManager] Item already completed/cancelled', {
+          queueId,
+          status: item.status
+        });
+        return false;
+      }
+
+      if (item.status === 'processing') {
+        this.logger.warn('[QueueManager] Cannot cancel item currently processing', { queueId });
+        return false;
+      }
+
+      item.status = 'cancelled';
+      item.completedAt = Date.now();
+      this.stats.totalCancelled++;
+
+      this.logger.info('[QueueManager] Item cancelled', { queueId });
+      return true;
+    } finally {
+      // Always release lock
+      this._releaseLock();
     }
-
-    if (item.status === 'completed' || item.status === 'cancelled') {
-      this.logger.warn('[QueueManager] Item already completed/cancelled', {
-        queueId,
-        status: item.status
-      });
-      return false;
-    }
-
-    if (item.status === 'processing') {
-      this.logger.warn('[QueueManager] Cannot cancel item currently processing', { queueId });
-      return false;
-    }
-
-    item.status = 'cancelled';
-    item.completedAt = Date.now();
-    this.stats.totalCancelled++;
-
-    this.logger.info('[QueueManager] Item cancelled', { queueId });
-    return true;
   }
 
   /**
@@ -393,6 +430,39 @@ class QueueManager extends EventEmitter {
       commandsPerMinute: Math.round(avgCommandsPerMinute),
       successRate: Math.round(successRate * 100) / 100
     };
+  }
+
+  /**
+   * Acquire queue lock for synchronization
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _acquireLock() {
+    // If lock is not held, acquire it immediately
+    if (!this._queueLock) {
+      this._queueLock = true;
+      return;
+    }
+
+    // Lock is held, wait for it to be released
+    return new Promise((resolve) => {
+      this._lockWaiters.push(resolve);
+    });
+  }
+
+  /**
+   * Release queue lock
+   * @private
+   */
+  _releaseLock() {
+    // If there are waiters, wake up the next one
+    if (this._lockWaiters.length > 0) {
+      const nextWaiter = this._lockWaiters.shift();
+      nextWaiter();
+    } else {
+      // No waiters, release the lock
+      this._queueLock = false;
+    }
   }
 
   /**
@@ -592,22 +662,30 @@ class QueueManager extends EventEmitter {
    * @param {Object} item - Queue item
    */
   async _retryItem(item) {
-    item.retries++;
-    item.status = 'pending';
-    item.processingStartedAt = null;
-    this.stats.totalRetried++;
+    // Acquire lock before modifying queue
+    await this._acquireLock();
 
-    this.logger.info('[QueueManager] Retrying item', {
-      queueId: item.id,
-      type: item.command.type,
-      retry: item.retries,
-      maxRetries: item.maxRetries
-    });
+    try {
+      item.retries++;
+      item.status = 'pending';
+      item.processingStartedAt = null;
+      this.stats.totalRetried++;
 
-    // Re-sort queue (retry items maintain their priority)
-    this._sortQueue();
+      this.logger.info('[QueueManager] Retrying item', {
+        queueId: item.id,
+        type: item.command.type,
+        retry: item.retries,
+        maxRetries: item.maxRetries
+      });
 
-    // Add retry delay
+      // Re-sort queue (retry items maintain their priority)
+      this._sortQueue();
+    } finally {
+      // Always release lock
+      this._releaseLock();
+    }
+
+    // Add retry delay (outside lock to avoid blocking other operations)
     await this._sleep(this.retryDelay);
   }
 
@@ -615,30 +693,38 @@ class QueueManager extends EventEmitter {
    * Cleanup old completed items (keep only last 100)
    * @private
    */
-  _cleanupCompletedItems() {
-    const completedStatuses = ['completed', 'failed', 'cancelled'];
-    const completedItems = this.queue.filter(item =>
-      completedStatuses.includes(item.status)
-    );
+  async _cleanupCompletedItems() {
+    // Acquire lock before modifying queue
+    await this._acquireLock();
 
-    if (completedItems.length > this.maxCompletedItems) {
-      // Sort by completion time (oldest first)
-      completedItems.sort((a, b) => a.completedAt - b.completedAt);
+    try {
+      const completedStatuses = ['completed', 'failed', 'cancelled'];
+      const completedItems = this.queue.filter(item =>
+        completedStatuses.includes(item.status)
+      );
 
-      // Remove oldest items
-      const itemsToRemove = completedItems.slice(0, completedItems.length - this.maxCompletedItems);
+      if (completedItems.length > this.maxCompletedItems) {
+        // Sort by completion time (oldest first)
+        completedItems.sort((a, b) => a.completedAt - b.completedAt);
 
-      itemsToRemove.forEach(item => {
-        const index = this.queue.findIndex(i => i.id === item.id);
-        if (index !== -1) {
-          this.queue.splice(index, 1);
-        }
-      });
+        // Remove oldest items
+        const itemsToRemove = completedItems.slice(0, completedItems.length - this.maxCompletedItems);
 
-      this.logger.debug('[QueueManager] Cleaned up old items', {
-        removed: itemsToRemove.length,
-        remaining: this.queue.length
-      });
+        itemsToRemove.forEach(item => {
+          const index = this.queue.findIndex(i => i.id === item.id);
+          if (index !== -1) {
+            this.queue.splice(index, 1);
+          }
+        });
+
+        this.logger.debug('[QueueManager] Cleaned up old items', {
+          removed: itemsToRemove.length,
+          remaining: this.queue.length
+        });
+      }
+    } finally {
+      // Always release lock
+      this._releaseLock();
     }
   }
 
