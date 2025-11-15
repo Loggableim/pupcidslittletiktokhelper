@@ -108,7 +108,7 @@ function renderHotButtons(buttons) {
         const button = document.createElement('button');
         button.className = 'hot-button';
         button.textContent = btn.label;
-        button.onclick = () => executeHotButton(btn);
+        button.addEventListener('click', () => executeHotButton(btn));
         container.appendChild(button);
     }
 }
@@ -212,6 +212,11 @@ function addLogEntry(data) {
         container.removeChild(container.lastChild);
     }
 }
+
+// Set up event listeners
+document.getElementById('obs-connect-btn').addEventListener('click', connect);
+document.getElementById('obs-disconnect-btn').addEventListener('click', disconnect);
+document.getElementById('switch-scene-btn').addEventListener('click', switchToSelected);
 
 // Initial load
 loadState();

@@ -252,6 +252,17 @@ function showNotification(message, type = 'success') {
 }
 
 // Initialize
+// Set up event listeners for file upload buttons
+document.getElementById('select-gif-btn').addEventListener('click', () => {
+    document.getElementById('gifInput').click();
+});
+document.getElementById('select-video-btn').addEventListener('click', () => {
+    document.getElementById('videoInput').click();
+});
+document.getElementById('select-audio-btn').addEventListener('click', () => {
+    document.getElementById('audioInput').click();
+});
+
 loadConfig();
 loadStats();
 setInterval(loadStats, 5000); // Update stats every 5 seconds

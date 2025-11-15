@@ -610,20 +610,20 @@
             <div class="url-label">Overlay URL</div>
             <div class="url-display">
               <div class="url-text" id="chat-url">Loading...</div>
-              <button class="btn btn-info btn-icon" onclick="copyURL('chat')" title="Copy URL">
+              <button class="btn btn-info btn-icon" data-action="copy-url" data-type="chat" title="Copy URL">
                 📋
               </button>
             </div>
           </div>
 
           <div class="button-group">
-            <button class="btn btn-primary" onclick="openSettings('chat')">
+            <button class="btn btn-primary" data-action="open-settings" data-type="chat">
               ⚙️ Settings
             </button>
-            <button class="btn btn-success" onclick="testEvent('chat')">
+            <button class="btn btn-success" data-action="test-event" data-type="chat">
               🧪 Test Event
             </button>
-            <button class="btn btn-secondary" onclick="refreshPreview('chat')">
+            <button class="btn btn-secondary" data-action="refresh-preview" data-type="chat">
               🔄 Refresh Preview
             </button>
           </div>
@@ -645,20 +645,20 @@
             <div class="url-label">Overlay URL</div>
             <div class="url-display">
               <div class="url-text" id="full-url">Loading...</div>
-              <button class="btn btn-info btn-icon" onclick="copyURL('full')" title="Copy URL">
+              <button class="btn btn-info btn-icon" data-action="copy-url" data-type="full" title="Copy URL">
                 📋
               </button>
             </div>
           </div>
 
           <div class="button-group">
-            <button class="btn btn-primary" onclick="openSettings('full')">
+            <button class="btn btn-primary" data-action="open-settings" data-type="full">
               ⚙️ Settings
             </button>
-            <button class="btn btn-success" onclick="testEvent('full')">
+            <button class="btn btn-success" data-action="test-event" data-type="full">
               🧪 Test Event
             </button>
-            <button class="btn btn-secondary" onclick="refreshPreview('full')">
+            <button class="btn btn-secondary" data-action="refresh-preview" data-type="full">
               🔄 Refresh Preview
             </button>
           </div>
@@ -672,7 +672,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>Settings: <span id="modal-title"></span></h2>
-        <span class="close" onclick="closeSettings()">&times;</span>
+        <span class="close" id="close-settings-modal">&times;</span>
       </div>
       <div class="modal-body">
         <div class="tabs" id="settings-tabs">
@@ -683,14 +683,14 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-warning" onclick="resetToDefaults()">
+        <button class="btn btn-warning" id="reset-defaults-btn">
           Reset to Defaults
         </button>
         <div style="flex: 1;"></div>
-        <button class="btn btn-secondary" onclick="closeSettings()">
+        <button class="btn btn-secondary" id="cancel-settings-btn">
           Cancel
         </button>
-        <button class="btn btn-primary" onclick="saveSettings()">
+        <button class="btn btn-primary" id="save-settings-btn">
           <span class="save-text">Save Settings</span>
         </button>
       </div>

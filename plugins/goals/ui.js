@@ -59,9 +59,11 @@ function renderGoals() {
             <div class="empty-state">
                 <div class="empty-state-icon">🎯</div>
                 <div class="empty-state-text">No goals created yet</div>
-                <button class="btn btn-primary" onclick="openCreateModal()">Create Your First Goal</button>
+                <button class="btn btn-primary" id="create-first-goal-btn">Create Your First Goal</button>
             </div>
         `;
+        // Add event listener to the newly created button
+        document.getElementById('create-first-goal-btn').addEventListener('click', openCreateModal);
         return;
     }
 
@@ -242,3 +244,8 @@ function escapeHtml(text) {
 
 // Initialize on load
 init();
+
+// Set up event listeners
+document.getElementById('create-goal-btn').addEventListener('click', openCreateModal);
+document.getElementById('goal-form').addEventListener('submit', saveGoal);
+document.getElementById('cancel-goal-btn').addEventListener('click', closeModal);

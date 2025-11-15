@@ -679,12 +679,42 @@ function showToast(message, type = 'success') {
 }
 
 // Close modal on background click
-window.onclick = function(event) {
+window.addEventListener('click', function(event) {
   const modal = document.getElementById('settings-modal');
   if (event.target === modal) {
     closeSettings();
   }
-};
+});
+
+// Set up event listeners with delegation for action buttons
+document.addEventListener('click', function(event) {
+  const button = event.target.closest('[data-action]');
+  if (!button) return;
+  
+  const action = button.dataset.action;
+  const type = button.dataset.type;
+  
+  switch(action) {
+    case 'copy-url':
+      copyURL(type);
+      break;
+    case 'open-settings':
+      openSettings(type);
+      break;
+    case 'test-event':
+      testEvent(type);
+      break;
+    case 'refresh-preview':
+      refreshPreview(type);
+      break;
+  }
+});
+
+// Set up modal control event listeners
+document.getElementById('close-settings-modal').addEventListener('click', closeSettings);
+document.getElementById('reset-defaults-btn').addEventListener('click', resetToDefaults);
+document.getElementById('cancel-settings-btn').addEventListener('click', closeSettings);
+document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
 
 // Initialize on page load
 init();

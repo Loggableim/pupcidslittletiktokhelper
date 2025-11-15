@@ -476,7 +476,7 @@
             <div class="upload-section">
                 <h3>🖼️ GIF/Bild Animation</h3>
                 <input type="file" id="gifInput" class="file-input" accept=".gif,.png,.jpg,.jpeg,.webp">
-                <button class="upload-button" onclick="document.getElementById('gifInput').click()">📁 GIF auswählen</button>
+                <button class="upload-button" id="select-gif-btn">📁 GIF auswählen</button>
                 <button class="delete-button" id="deleteGif" style="display: none;">🗑️ Löschen</button>
                 <div class="file-preview" id="gifPreview" style="display: none;"></div>
             </div>
@@ -484,7 +484,7 @@
             <div class="upload-section">
                 <h3>🎥 Video Animation</h3>
                 <input type="file" id="videoInput" class="file-input" accept=".mp4,.webm,.mov,.avi">
-                <button class="upload-button" onclick="document.getElementById('videoInput').click()">📁 Video auswählen</button>
+                <button class="upload-button" id="select-video-btn">📁 Video auswählen</button>
                 <button class="delete-button" id="deleteVideo" style="display: none;">🗑️ Löschen</button>
                 <div class="file-preview" id="videoPreview" style="display: none;"></div>
             </div>
@@ -492,7 +492,7 @@
             <div class="upload-section">
                 <h3>🔊 Audio</h3>
                 <input type="file" id="audioInput" class="file-input" accept=".mp3,.wav,.ogg,.m4a">
-                <button class="upload-button" onclick="document.getElementById('audioInput').click()">📁 Audio auswählen</button>
+                <button class="upload-button" id="select-audio-btn">📁 Audio auswählen</button>
                 <button class="delete-button" id="deleteAudio" style="display: none;">🗑️ Löschen</button>
                 <div class="file-preview" id="audioPreview" style="display: none;"></div>
             </div>

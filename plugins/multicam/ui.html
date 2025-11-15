@@ -280,8 +280,8 @@
         <div class="control-group">
             <h2>Connection</h2>
             <div class="button-group">
-                <button class="success" onclick="connect()">Connect OBS</button>
-                <button class="danger" onclick="disconnect()">Disconnect OBS</button>
+                <button class="success" id="obs-connect-btn">Connect OBS</button>
+                <button class="danger" id="obs-disconnect-btn">Disconnect OBS</button>
             </div>
         </div>
 
@@ -291,7 +291,7 @@
                 <select id="sceneSelect">
                     <option value="">Select Scene...</option>
                 </select>
-                <button class="primary" onclick="switchToSelected()">Switch</button>
+                <button class="primary" id="switch-scene-btn">Switch</button>
             </div>
         </div>
 

@@ -1410,3 +1410,29 @@ apiCall('/api/status').then(data => {
     showToast(`Bereits verbunden mit @${data.username}`);
   }
 });
+
+// ========== Event Delegation for data-action buttons ==========
+document.addEventListener('click', function(event) {
+  const button = event.target.closest('[data-action]');
+  if (!button) return;
+  
+  const action = button.dataset.action;
+  
+  switch(action) {
+    case 'preview-sound':
+      previewSound(button.dataset.soundId, button.dataset.volumeId, button.dataset.label);
+      break;
+    case 'open-picker':
+      openPicker(button.dataset.target);
+      break;
+    case 'switch-tab':
+      switchTab(button.dataset.tab);
+      break;
+    case 'close-picker':
+      closePicker();
+      break;
+    case 'filter-category':
+      filterByCategory(button.dataset.category);
+      break;
+  }
+});

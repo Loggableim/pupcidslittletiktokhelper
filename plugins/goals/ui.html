@@ -85,7 +85,7 @@
         <div class="sidebar">
             <div class="logo">🎯 Goals Plugin</div>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 24px;">Multi-Overlay System</p>
-            <button class="btn btn-primary" style="width: 100%;" onclick="openCreateModal()">+ Create New Goal</button>
+            <button class="btn btn-primary" style="width: 100%;" id="create-goal-btn">+ Create New Goal</button>
         </div>
 
         <div class="main-content">
@@ -106,7 +106,7 @@
     <div id="goal-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">Create New Goal</div>
-            <form id="goal-form" onsubmit="saveGoal(event)">
+            <form id="goal-form">
                 <div class="form-group">
                     <label class="form-label">Goal Name</label>
                     <input type="text" class="form-input" id="goal-name" placeholder="e.g., Coin Goal" required>
@@ -199,7 +199,7 @@
 
                 <div style="display: flex; gap: 12px; margin-top: 24px;">
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Save Goal</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-goal-btn">Cancel</button>
                 </div>
             </form>
         </div>

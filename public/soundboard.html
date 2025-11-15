@@ -126,8 +126,8 @@
               <input id="follow_sound" placeholder="MP3-URL"
                      class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
               <input id="follow_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
-              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" onclick="previewSound('follow_sound', 'follow_volume', 'Follow')">▶</button>
-              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" onclick="openPicker('follow_sound')">Picker</button>
+              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" data-action="preview-sound" data-sound-id="follow_sound" data-volume-id="follow_volume" data-label="Follow">▶</button>
+              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" data-action="open-picker" data-target="follow_sound">Picker</button>
             </div>
           </div>
 
@@ -138,8 +138,8 @@
               <input id="subscribe_sound" placeholder="MP3-URL"
                      class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
               <input id="subscribe_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
-              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" onclick="previewSound('subscribe_sound', 'subscribe_volume', 'Subscribe')">▶</button>
-              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" onclick="openPicker('subscribe_sound')">Picker</button>
+              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" data-action="preview-sound" data-sound-id="subscribe_sound" data-volume-id="subscribe_volume" data-label="Subscribe">▶</button>
+              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" data-action="open-picker" data-target="subscribe_sound">Picker</button>
             </div>
           </div>
 
@@ -150,8 +150,8 @@
               <input id="share_sound" placeholder="MP3-URL"
                      class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
               <input id="share_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
-              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" onclick="previewSound('share_sound', 'share_volume', 'Share')">▶</button>
-              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" onclick="openPicker('share_sound')">Picker</button>
+              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" data-action="preview-sound" data-sound-id="share_sound" data-volume-id="share_volume" data-label="Share">▶</button>
+              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" data-action="open-picker" data-target="share_sound">Picker</button>
             </div>
           </div>
 
@@ -172,8 +172,8 @@
                 <input id="like_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
               </div>
               <div class="flex gap-2">
-                <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-3 py-1.5" onclick="previewSound('like_sound', 'like_volume', 'Like')">▶</button>
-                <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-3 py-1.5" onclick="openPicker('like_sound')">Picker</button>
+                <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-3 py-1.5" data-action="preview-sound" data-sound-id="like_sound" data-volume-id="like_volume" data-label="Like">▶</button>
+                <button class="rounded-lg bg-sky-600 hover:bg-sky-500 px-3 py-1.5" data-action="open-picker" data-target="like_sound">Picker</button>
               </div>
             </div>
           </div>
@@ -185,8 +185,8 @@
               <input id="default_gift_sound" placeholder="MP3-URL"
                      class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-3 py-2" />
               <input id="default_gift_volume" type="range" min="0" max="1" step="0.05" value="1.0" class="w-20" title="Lautstärke" />
-              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" onclick="previewSound('default_gift_sound', 'default_gift_volume', 'Default Gift')">▶</button>
-              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" onclick="openPicker('default_gift_sound')">Picker</button>
+              <button class="rounded-xl bg-amber-600 hover:bg-amber-500 px-3 py-2" data-action="preview-sound" data-sound-id="default_gift_sound" data-volume-id="default_gift_volume" data-label="Default Gift">▶</button>
+              <button class="rounded-xl bg-sky-600 hover:bg-sky-500 px-3 py-2" data-action="open-picker" data-target="default_gift_sound">Picker</button>
             </div>
             <p class="text-xs text-slate-400 mt-1">Dieser Sound wird für alle Gifts abgespielt, die keine spezielle Zuordnung haben.</p>
           </div>
@@ -270,13 +270,13 @@
     <div class="bg-slate-900 w-full max-w-5xl h-[80vh] rounded-2xl border border-slate-800 p-4 flex flex-col">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2 flex-wrap">
-          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="true" onclick="switchTab('browse')">Browser</button>
-          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('search')">🔍 Suche</button>
-          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('favorites')">⭐ Favoriten</button>
-          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('trending')">🔥 Trending</button>
-          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" onclick="switchTab('random')">🎲 Zufall</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="true" data-action="switch-tab" data-tab="browse">Browser</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" data-action="switch-tab" data-tab="search">🔍 Suche</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" data-action="switch-tab" data-tab="favorites">⭐ Favoriten</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" data-action="switch-tab" data-tab="trending">🔥 Trending</button>
+          <button class="tab-btn rounded-lg px-3 py-2 bg-slate-800" aria-selected="false" data-action="switch-tab" data-tab="random">🎲 Zufall</button>
         </div>
-        <button onclick="closePicker()" class="text-slate-300 hover:text-white text-xl">✕</button>
+        <button data-action="close-picker" class="text-slate-300 hover:text-white text-xl">✕</button>
       </div>
 
       <!-- Browser Tab -->
@@ -301,13 +301,13 @@
         <div class="mb-2">
           <div class="text-xs text-slate-400 mb-2">🏷️ Beliebte Kategorien:</div>
           <div class="flex flex-wrap gap-1" id="popularCategories">
-            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" onclick="filterByCategory('meme')">meme</button>
-            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" onclick="filterByCategory('funny')">funny</button>
-            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" onclick="filterByCategory('music')">music</button>
-            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" onclick="filterByCategory('sound effect')">sound effect</button>
-            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" onclick="filterByCategory('anime')">anime</button>
-            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" onclick="filterByCategory('gaming')">gaming</button>
-            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" onclick="filterByCategory('movie')">movie</button>
+            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" data-action="filter-category" data-category="meme">meme</button>
+            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" data-action="filter-category" data-category="funny">funny</button>
+            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" data-action="filter-category" data-category="music">music</button>
+            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" data-action="filter-category" data-category="sound effect">sound effect</button>
+            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" data-action="filter-category" data-category="anime">anime</button>
+            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" data-action="filter-category" data-category="gaming">gaming</button>
+            <button class="px-3 py-1 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors" data-action="filter-category" data-category="movie">movie</button>
           </div>
         </div>
         <div id="searchResults" class="overflow-y-auto flex-1 space-y-2"></div>

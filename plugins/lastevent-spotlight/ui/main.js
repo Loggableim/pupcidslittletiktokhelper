@@ -437,7 +437,7 @@ function showToast(message, type = 'success') {
 }
 
 // Close modals on background click
-window.onclick = function(event) {
+window.addEventListener('click', function(event) {
   const settingsModal = document.getElementById('settings-modal');
   const previewModal = document.getElementById('preview-modal');
 
@@ -447,7 +447,14 @@ window.onclick = function(event) {
   if (event.target === previewModal) {
     closePreviewModal();
   }
-};
+});
+
+// Set up event listeners
+document.getElementById('close-settings-modal').addEventListener('click', closeSettingsModal);
+document.getElementById('cancel-settings-btn').addEventListener('click', closeSettingsModal);
+document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+document.getElementById('close-preview-modal').addEventListener('click', closePreviewModal);
+document.getElementById('close-preview-btn').addEventListener('click', closePreviewModal);
 
 // Initialize on page load
 init();

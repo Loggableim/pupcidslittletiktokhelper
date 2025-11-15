@@ -326,14 +326,14 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>Settings: <span id="modal-title-type"></span></h2>
-        <span class="close" onclick="closeSettingsModal()">&times;</span>
+        <span class="close" id="close-settings-modal">&times;</span>
       </div>
       <div class="modal-body" id="settings-form-container">
         <!-- Settings form will be inserted here -->
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        <button class="btn btn-secondary" id="cancel-settings-btn">Cancel</button>
+        <button class="btn btn-primary" id="save-settings-btn">Save Settings</button>
       </div>
     </div>
   </div>
@@ -343,7 +343,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>Preview: <span id="preview-title-type"></span></h2>
-        <span class="close" onclick="closePreviewModal()">&times;</span>
+        <span class="close" id="close-preview-modal">&times;</span>
       </div>
       <div class="modal-body">
         <div class="preview-container">
@@ -351,7 +351,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closePreviewModal()">Close</button>
+        <button class="btn btn-secondary" id="close-preview-btn">Close</button>
       </div>
     </div>
   </div>
