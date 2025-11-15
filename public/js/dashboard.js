@@ -8,18 +8,41 @@ let settings = {};
 
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize socket connection after DOM is ready
+    // Initialize UI first
+    initializeButtons();
+
+    // Wait for server to be fully initialized (prevents race conditions)
+    if (window.initHelper) {
+        try {
+            console.log('⏳ Waiting for server initialization...');
+            await window.initHelper.waitForReady(10000); // 10s timeout
+            console.log('✅ Server ready, loading dashboard data...');
+        } catch (err) {
+            console.warn('Server initialization check timed out, proceeding anyway:', err);
+        }
+    }
+
+    // Load critical data BEFORE initializing socket listeners
+    // This prevents race conditions where UI tries to use data that hasn't loaded yet
+    try {
+        await Promise.all([
+            loadSettings(),
+            loadFlows(),
+            loadActiveProfile()
+        ]);
+    } catch (err) {
+        console.error('Failed to load initial data:', err);
+    }
+
+    // Initialize socket connection AFTER data is loaded
     socket = io();
 
-    // Initialize UI first, dann Plugins checken (non-blocking)
-    initializeButtons();
-    initializeSocketListeners();
+    // Listen for init state updates
+    if (window.initHelper && socket) {
+        window.initHelper.listenForUpdates(socket);
+    }
 
-    // Dann asynchron (ohne await) laden - blockiert nicht die UI
-    loadSettings().catch(err => console.error('Settings load failed:', err));
-    // loadVoices und loadVoiceMapping werden vom tts_core_v2 Plugin verwaltet
-    loadFlows().catch(err => console.error('Flows load failed:', err));
-    loadActiveProfile().catch(err => console.error('Profile load failed:', err));
+    initializeSocketListeners();
 });
 
 // ========== TABS (Legacy - now handled by navigation.js) ==========
@@ -114,14 +137,28 @@ function initializeButtons() {
     }
 
     // Profile Buttons
-    document.getElementById('profile-btn').addEventListener('click', showProfileModal);
-    document.getElementById('profile-modal-close').addEventListener('click', hideProfileModal);
-    document.getElementById('create-profile-btn').addEventListener('click', createProfile);
+    const profileBtn = document.getElementById('profile-btn');
+    if (profileBtn) {
+        profileBtn.addEventListener('click', showProfileModal);
+    }
+
+    const profileModalClose = document.getElementById('profile-modal-close');
+    if (profileModalClose) {
+        profileModalClose.addEventListener('click', hideProfileModal);
+    }
+
+    const createProfileBtn = document.getElementById('create-profile-btn');
+    if (createProfileBtn) {
+        createProfileBtn.addEventListener('click', createProfile);
+    }
 
     // Enter-Taste im Profile-Input
-    document.getElementById('new-profile-username').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') createProfile();
-    });
+    const newProfileUsername = document.getElementById('new-profile-username');
+    if (newProfileUsername) {
+        newProfileUsername.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') createProfile();
+        });
+    }
 
     // TTS Settings Buttons (nur wenn Elemente existieren - Plugin könnte diese zur Verfügung stellen)
     const saveTTSBtn = document.getElementById('save-tts-settings-btn');
@@ -1743,9 +1780,13 @@ async function loadAutoStartSettings() {
         const platformData = await platformResponse.json();
 
         if (platformData.success) {
-            document.getElementById('autostart-platform-name').textContent = platformData.name || 'Unknown';
-            document.getElementById('autostart-platform-method').textContent = platformData.method || 'Unknown';
-            document.getElementById('autostart-supported').textContent = platformData.supported ? '✅ Yes' : '❌ No';
+            const platformName = document.getElementById('autostart-platform-name');
+            const platformMethod = document.getElementById('autostart-platform-method');
+            const supported = document.getElementById('autostart-supported');
+
+            if (platformName) platformName.textContent = platformData.name || 'Unknown';
+            if (platformMethod) platformMethod.textContent = platformData.method || 'Unknown';
+            if (supported) supported.textContent = platformData.supported ? '✅ Yes' : '❌ No';
         }
 
         // Load status
@@ -1754,16 +1795,24 @@ async function loadAutoStartSettings() {
 
         if (statusData.success) {
             const checkbox = document.getElementById('autostart-enabled');
-            checkbox.checked = statusData.enabled;
+            if (checkbox) {
+                checkbox.checked = statusData.enabled;
+            }
 
             const statusText = statusData.enabled ? '✅ Enabled' : '❌ Disabled';
-            document.getElementById('autostart-status').textContent = statusText;
-            document.getElementById('autostart-status').className = statusData.enabled ? 'font-semibold text-green-400' : 'font-semibold text-gray-400';
+            const statusElement = document.getElementById('autostart-status');
+            if (statusElement) {
+                statusElement.textContent = statusText;
+                statusElement.className = statusData.enabled ? 'font-semibold text-green-400' : 'font-semibold text-gray-400';
+            }
         }
     } catch (error) {
         console.error('Failed to load auto-start settings:', error);
-        document.getElementById('autostart-status').textContent = '❌ Error';
-        document.getElementById('autostart-status').className = 'font-semibold text-red-400';
+        const statusElement = document.getElementById('autostart-status');
+        if (statusElement) {
+            statusElement.textContent = '❌ Error';
+            statusElement.className = 'font-semibold text-red-400';
+        }
     }
 }
 
@@ -1960,21 +2009,38 @@ async function loadResourceMonitorSettings() {
         const response = await fetch('/api/settings');
         const settings = await response.json();
 
-        // Load settings into UI
-        document.getElementById('resource-monitor-enabled').checked = settings.resource_monitor_enabled === 'true';
-        document.getElementById('resource-monitor-interval').value = settings.resource_monitor_interval || '1000';
-        document.getElementById('resource-monitor-show-cpu').checked = settings.resource_monitor_show_cpu !== 'false';
-        document.getElementById('resource-monitor-show-ram').checked = settings.resource_monitor_show_ram !== 'false';
-        document.getElementById('resource-monitor-show-gpu').checked = settings.resource_monitor_show_gpu !== 'false';
-        document.getElementById('cpu-warning-yellow').value = settings.cpu_warning_yellow || '5';
-        document.getElementById('cpu-warning-red').value = settings.cpu_warning_red || '8';
-        document.getElementById('ram-warning-threshold').value = settings.ram_warning_threshold || '90';
-        document.getElementById('resource-monitor-history-length').value = settings.resource_monitor_history_length || '60';
-        document.getElementById('resource-monitor-notifications').checked = settings.resource_monitor_notifications !== 'false';
+        // Get all elements with null checks
+        const elements = {
+            enabled: document.getElementById('resource-monitor-enabled'),
+            interval: document.getElementById('resource-monitor-interval'),
+            showCpu: document.getElementById('resource-monitor-show-cpu'),
+            showRam: document.getElementById('resource-monitor-show-ram'),
+            showGpu: document.getElementById('resource-monitor-show-gpu'),
+            cpuYellow: document.getElementById('cpu-warning-yellow'),
+            cpuRed: document.getElementById('cpu-warning-red'),
+            ramThreshold: document.getElementById('ram-warning-threshold'),
+            historyLength: document.getElementById('resource-monitor-history-length'),
+            notifications: document.getElementById('resource-monitor-notifications'),
+            intervalLabel: document.getElementById('resource-monitor-interval-label')
+        };
+
+        // Load settings into UI with null checks
+        if (elements.enabled) elements.enabled.checked = settings.resource_monitor_enabled === 'true';
+        if (elements.interval) elements.interval.value = settings.resource_monitor_interval || '1000';
+        if (elements.showCpu) elements.showCpu.checked = settings.resource_monitor_show_cpu !== 'false';
+        if (elements.showRam) elements.showRam.checked = settings.resource_monitor_show_ram !== 'false';
+        if (elements.showGpu) elements.showGpu.checked = settings.resource_monitor_show_gpu !== 'false';
+        if (elements.cpuYellow) elements.cpuYellow.value = settings.cpu_warning_yellow || '5';
+        if (elements.cpuRed) elements.cpuRed.value = settings.cpu_warning_red || '8';
+        if (elements.ramThreshold) elements.ramThreshold.value = settings.ram_warning_threshold || '90';
+        if (elements.historyLength) elements.historyLength.value = settings.resource_monitor_history_length || '60';
+        if (elements.notifications) elements.notifications.checked = settings.resource_monitor_notifications !== 'false';
 
         // Update interval label
-        const intervalValue = parseInt(settings.resource_monitor_interval || '1000');
-        document.getElementById('resource-monitor-interval-label').textContent = (intervalValue / 1000).toFixed(1) + 's';
+        if (elements.intervalLabel) {
+            const intervalValue = parseInt(settings.resource_monitor_interval || '1000');
+            elements.intervalLabel.textContent = (intervalValue / 1000).toFixed(1) + 's';
+        }
 
     } catch (error) {
         console.error('Error loading resource monitor settings:', error);
@@ -1985,17 +2051,37 @@ async function loadResourceMonitorSettings() {
  * Save resource monitor settings
  */
 async function saveResourceMonitorSettings() {
+    // Get all elements with null checks
+    const elements = {
+        enabled: document.getElementById('resource-monitor-enabled'),
+        interval: document.getElementById('resource-monitor-interval'),
+        showCpu: document.getElementById('resource-monitor-show-cpu'),
+        showRam: document.getElementById('resource-monitor-show-ram'),
+        showGpu: document.getElementById('resource-monitor-show-gpu'),
+        cpuYellow: document.getElementById('cpu-warning-yellow'),
+        cpuRed: document.getElementById('cpu-warning-red'),
+        ramThreshold: document.getElementById('ram-warning-threshold'),
+        historyLength: document.getElementById('resource-monitor-history-length'),
+        notifications: document.getElementById('resource-monitor-notifications')
+    };
+
+    // Verify all elements exist before saving
+    if (!elements.enabled || !elements.interval || !elements.showCpu || !elements.showRam) {
+        console.error('Resource monitor settings form elements not found');
+        return;
+    }
+
     const newSettings = {
-        resource_monitor_enabled: document.getElementById('resource-monitor-enabled').checked ? 'true' : 'false',
-        resource_monitor_interval: document.getElementById('resource-monitor-interval').value,
-        resource_monitor_show_cpu: document.getElementById('resource-monitor-show-cpu').checked ? 'true' : 'false',
-        resource_monitor_show_ram: document.getElementById('resource-monitor-show-ram').checked ? 'true' : 'false',
-        resource_monitor_show_gpu: document.getElementById('resource-monitor-show-gpu').checked ? 'true' : 'false',
-        cpu_warning_yellow: document.getElementById('cpu-warning-yellow').value,
-        cpu_warning_red: document.getElementById('cpu-warning-red').value,
-        ram_warning_threshold: document.getElementById('ram-warning-threshold').value,
-        resource_monitor_history_length: document.getElementById('resource-monitor-history-length').value,
-        resource_monitor_notifications: document.getElementById('resource-monitor-notifications').checked ? 'true' : 'false'
+        resource_monitor_enabled: elements.enabled.checked ? 'true' : 'false',
+        resource_monitor_interval: elements.interval.value,
+        resource_monitor_show_cpu: elements.showCpu.checked ? 'true' : 'false',
+        resource_monitor_show_ram: elements.showRam.checked ? 'true' : 'false',
+        resource_monitor_show_gpu: elements.showGpu ? elements.showGpu.checked ? 'true' : 'false' : 'false',
+        cpu_warning_yellow: elements.cpuYellow ? elements.cpuYellow.value : '5',
+        cpu_warning_red: elements.cpuRed ? elements.cpuRed.value : '8',
+        ram_warning_threshold: elements.ramThreshold ? elements.ramThreshold.value : '90',
+        resource_monitor_history_length: elements.historyLength ? elements.historyLength.value : '60',
+        resource_monitor_notifications: elements.notifications ? elements.notifications.checked ? 'true' : 'false' : 'false'
     };
 
     try {
