@@ -10,7 +10,8 @@ Diese Datei dient als zentraler Einstiegspunkt für LLMs, die an diesem Projekt 
 
 **Name:** Pup Cid's Little TikTok Helper
 **Stack:** Node.js + Express + Socket.io + SQLite + TikTok LIVE Connector
-**Version:** 1.0.2
+**Version:** 1.0.3
+**Letzte Aktualisierung:** 2025-11-15
 **Zweck:** Professionelles TikTok LIVE Streaming Tool mit Overlays, Alerts, TTS, Automation und Plugin-System
 
 ---
@@ -54,11 +55,21 @@ plugins/<plugin-id>/
 
 **Aktive Plugins:**
 
-- **`topboard/`**: Top Gifters, Streaks, Donors im Overlay
-- **`tts/`**: TTS-Engine als Plugin (75+ Stimmen, Queue, Blacklist)
-- **`vdoninja/`**: VDO.Ninja Manager als Plugin
+- **`api-bridge/`**: RESTful API für externe Integrationen
+- **`clarityhud/`**: Dual VR-optimierte Overlays für VRChat
+- **`emoji-rain/`**: Emoji-Regen-Effekt im Overlay (Physics-basiert)
+- **`goals/`**: Interaktives Goal-Tracking (Follower, Likes, Gifts, Coins, Templates)
+- **`hybridshock/`**: OpenShock-Integration für haptic feedback
+- **`lastevent-spotlight/`**: Sechs Live-Event-Overlays
 - **`multicam/`**: Multi-Cam Switcher (OBS Szenen via Gifts/Commands)
 - **`osc-bridge/`**: OSC-Bridge für VRChat-Integration (bidirektionale Kommunikation)
+- **`quiz_show/`**: Interaktive Quiz-Show mit TikTok-Integration
+- **`resource-monitor/`**: System-Ressourcen-Überwachung (CPU, RAM, Network)
+- **`soundboard/`**: Soundboard-Manager (MyInstants API, Custom Sounds)
+- **`tts/`**: TTS-Engine als Plugin (75+ Stimmen, Queue, Blacklist)
+- **`vdoninja/`**: VDO.Ninja Manager als Plugin
+- **`gift-milestone/`**: Gift-Milestone-Tracker mit Animationen
+- **`topboard/`**: Top Gifters, Streaks, Donors im Overlay
 
 **Plugin-API (`PluginAPI` class in `plugin-loader.js`):**
 

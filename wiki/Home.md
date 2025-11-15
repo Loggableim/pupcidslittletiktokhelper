@@ -2,20 +2,27 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.0.2-blue)](https://github.com/yourusername/pupcidslittletiktokhelper)
+[![Version](https://img.shields.io/badge/version-1.0.3-blue)](https://github.com/yourusername/pupcidslittletiktokhelper)
 [![Status](https://img.shields.io/badge/status-active-success)](https://github.com/yourusername/pupcidslittletiktokhelper)
 
 ---
 
 ## 📑 Navigation
 
+### Erste Schritte
 - **[[Installation & Setup]]** - Systemanforderungen, Installation und erste Schritte
 - **[[Konfiguration]]** - Einstellungen, Config-Dateien und Umgebungsvariablen
+- **[[FAQ & Troubleshooting]]** - Häufige Probleme, Lösungen und Debug-Tipps
+
+### Entwickler-Ressourcen
 - **[[Architektur]]** - Technische Architektur, Module und Datenflüsse
 - **[[Entwickler-Leitfaden]]** - Coding-Standards, Workflow und Contribution-Richtlinien
-- **[[Plugin-Dokumentation]]** - Plugin-System, verfügbare Plugins und eigene Plugins erstellen
 - **[[API-Reference]]** - REST-API-Endpunkte und WebSocket-Events
-- **[[FAQ & Troubleshooting]]** - Häufige Probleme, Lösungen und Debug-Tipps
+
+### Plugins & Features
+- **[[Plugin-Dokumentation]]** - Plugin-System, verfügbare Plugins und eigene Plugins erstellen
+- **[[Plugins/VDO-Ninja]]** - Multi-Guest-Streaming mit VDO.Ninja
+- **[[Features/Emoji-Rain]]** - Emoji-Regen-Effekt im Overlay
 
 ---
 
