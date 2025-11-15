@@ -1,6 +1,13 @@
+const Database = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
+
 class QuizShowPlugin {
     constructor(api) {
         this.api = api;
+
+        // Database instance
+        this.db = null;
 
         // Plugin configuration
         this.config = {
@@ -15,14 +22,12 @@ class QuizShowPlugin {
             jokerInfoEnabled: true,
             jokerTimeEnabled: true,
             jokerTimeBoost: 15,
-            jokersPerRound: 3
+            jokersPerRound: 3,
+            gameMode: 'classic', // classic, fastestFinger, elimination, marathon
+            marathonLength: 15,
+            ttsEnabled: false,
+            ttsVoice: 'default'
         };
-
-        // Question database
-        this.questions = [];
-
-        // Leaderboard
-        this.leaderboard = new Map();
 
         // Current game state
         this.gameState = {
@@ -42,7 +47,10 @@ class QuizShowPlugin {
             },
             jokerEvents: [],
             hiddenAnswers: [], // For 50:50 joker
-            revealedWrongAnswer: null // For info joker
+            revealedWrongAnswer: null, // For info joker
+            eliminatedUsers: new Set(), // For elimination mode
+            marathonProgress: 0, // For marathon mode
+            marathonPlayerId: null // For marathon mode
         };
 
         // Timer interval
@@ -59,8 +67,11 @@ class QuizShowPlugin {
     async init() {
         this.api.log('Quiz Show Plugin initializing...', 'info');
 
-        // Load saved data
-        await this.loadData();
+        // Initialize database
+        await this.initDatabase();
+
+        // Load saved configuration
+        await this.loadConfig();
 
         // Register routes
         this.registerRoutes();
@@ -74,46 +85,174 @@ class QuizShowPlugin {
         this.api.log('Quiz Show Plugin initialized successfully', 'info');
     }
 
-    async loadData() {
+    async initDatabase() {
         try {
-            // Load configuration
+            const dbPath = path.join(__dirname, 'data', 'quiz_show.db');
+            
+            // Ensure data directory exists
+            const dataDir = path.join(__dirname, 'data');
+            if (!fs.existsSync(dataDir)) {
+                fs.mkdirSync(dataDir, { recursive: true });
+            }
+
+            // Initialize database with WAL mode for better concurrency
+            this.db = new Database(dbPath);
+            this.db.pragma('journal_mode = WAL');
+            
+            // Create tables if they don't exist
+            this.db.exec(`
+                CREATE TABLE IF NOT EXISTS questions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    question TEXT NOT NULL,
+                    answers TEXT NOT NULL,
+                    correct INTEGER NOT NULL,
+                    category TEXT DEFAULT 'Allgemein',
+                    difficulty INTEGER DEFAULT 2,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS categories (
+                    name TEXT PRIMARY KEY NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS leaderboard_seasons (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    season_name TEXT NOT NULL,
+                    start_date DATETIME NOT NULL,
+                    end_date DATETIME,
+                    is_active BOOLEAN DEFAULT TRUE
+                );
+
+                CREATE TABLE IF NOT EXISTS leaderboard_entries (
+                    season_id INTEGER NOT NULL,
+                    user_id TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    points INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (season_id, user_id),
+                    FOREIGN KEY (season_id) REFERENCES leaderboard_seasons(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS game_sounds (
+                    event_name TEXT PRIMARY KEY,
+                    file_path TEXT,
+                    volume REAL DEFAULT 1.0
+                );
+
+                CREATE TABLE IF NOT EXISTS brand_kit (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    logo_path TEXT,
+                    primary_color TEXT,
+                    secondary_color TEXT
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
+                CREATE INDEX IF NOT EXISTS idx_questions_difficulty ON questions(difficulty);
+                CREATE INDEX IF NOT EXISTS idx_leaderboard_season ON leaderboard_entries(season_id);
+            `);
+
+            // Ensure default season exists
+            const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+            if (!activeSeason) {
+                const now = new Date().toISOString();
+                const seasonName = `Season ${new Date().getFullYear()}`;
+                this.db.prepare('INSERT INTO leaderboard_seasons (season_name, start_date, is_active) VALUES (?, ?, 1)')
+                    .run(seasonName, now);
+            }
+
+            // Insert default category if none exist
+            const categoryCount = this.db.prepare('SELECT COUNT(*) as count FROM categories').get().count;
+            if (categoryCount === 0) {
+                this.db.prepare('INSERT INTO categories (name) VALUES (?)').run('Allgemein');
+            }
+
+            // Initialize brand kit if not exists
+            const brandKit = this.db.prepare('SELECT id FROM brand_kit WHERE id = 1').get();
+            if (!brandKit) {
+                this.db.prepare('INSERT INTO brand_kit (id, logo_path, primary_color, secondary_color) VALUES (1, NULL, ?, ?)')
+                    .run('#3b82f6', '#8b5cf6');
+            }
+
+            // Migrate old data if exists
+            await this.migrateOldData();
+
+            const questionCount = this.db.prepare('SELECT COUNT(*) as count FROM questions').get().count;
+            this.api.log(`Database initialized with ${questionCount} questions`, 'info');
+        } catch (error) {
+            this.api.log('Error initializing database: ' + error.message, 'error');
+            throw error;
+        }
+    }
+
+    async migrateOldData() {
+        try {
+            // Check if old data exists in config
+            const savedQuestions = this.api.getConfig('questions');
+            const savedLeaderboard = this.api.getConfig('leaderboard');
+
+            if (savedQuestions && Array.isArray(savedQuestions) && savedQuestions.length > 0) {
+                this.api.log('Migrating old questions to SQLite...', 'info');
+                
+                const insert = this.db.prepare('INSERT INTO questions (question, answers, correct, category, difficulty) VALUES (?, ?, ?, ?, ?)');
+                const insertMany = this.db.transaction((questions) => {
+                    for (const q of questions) {
+                        insert.run(
+                            q.question,
+                            JSON.stringify(q.answers),
+                            q.correct,
+                            q.category || 'Allgemein',
+                            q.difficulty || 2
+                        );
+                    }
+                });
+                
+                insertMany(savedQuestions);
+                this.api.log(`Migrated ${savedQuestions.length} questions`, 'info');
+            }
+
+            if (savedLeaderboard && typeof savedLeaderboard === 'object') {
+                this.api.log('Migrating old leaderboard to SQLite...', 'info');
+                
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                if (activeSeason) {
+                    const insert = this.db.prepare('INSERT INTO leaderboard_entries (season_id, user_id, username, points) VALUES (?, ?, ?, ?)');
+                    const insertMany = this.db.transaction((entries) => {
+                        for (const [userId, data] of entries) {
+                            insert.run(activeSeason.id, userId, data.username, data.points);
+                        }
+                    });
+                    
+                    const entries = Object.entries(savedLeaderboard);
+                    insertMany(entries);
+                    this.api.log(`Migrated ${entries.length} leaderboard entries`, 'info');
+                }
+            }
+        } catch (error) {
+            this.api.log('Error during migration: ' + error.message, 'warn');
+        }
+    }
+
+    async loadConfig() {
+        try {
             const savedConfig = this.api.getConfig('config');
             if (savedConfig) {
                 this.config = { ...this.config, ...savedConfig };
             }
 
-            // Load questions
-            const savedQuestions = this.api.getConfig('questions');
-            if (savedQuestions) {
-                this.questions = savedQuestions;
-            }
-
-            // Load leaderboard
-            const savedLeaderboard = this.api.getConfig('leaderboard');
-            if (savedLeaderboard) {
-                this.leaderboard = new Map(Object.entries(savedLeaderboard));
-            }
-
-            // Load statistics
             const savedStats = this.api.getConfig('stats');
             if (savedStats) {
                 this.stats = { ...this.stats, ...savedStats };
             }
-
-            this.api.log(`Loaded ${this.questions.length} questions and ${this.leaderboard.size} leaderboard entries`, 'info');
         } catch (error) {
-            this.api.log('Error loading data: ' + error.message, 'error');
+            this.api.log('Error loading config: ' + error.message, 'error');
         }
     }
 
-    async saveData() {
+    async saveConfig() {
         try {
             await this.api.setConfig('config', this.config);
-            await this.api.setConfig('questions', this.questions);
-            await this.api.setConfig('leaderboard', Object.fromEntries(this.leaderboard));
             await this.api.setConfig('stats', this.stats);
         } catch (error) {
-            this.api.log('Error saving data: ' + error.message, 'error');
+            this.api.log('Error saving config: ' + error.message, 'error');
         }
     }
 
@@ -148,28 +287,53 @@ class QuizShowPlugin {
 
         // Get current state
         this.api.registerRoute('get', '/api/quiz-show/state', (req, res) => {
-            res.json({
-                success: true,
-                config: this.config,
-                questions: this.questions,
-                leaderboard: Array.from(this.leaderboard.entries()).map(([userId, data]) => ({
-                    userId,
-                    username: data.username,
-                    points: data.points
-                })).sort((a, b) => b.points - a.points),
-                gameState: {
-                    ...this.gameState,
-                    answers: Array.from(this.gameState.answers.entries())
-                },
-                stats: this.stats
-            });
+            try {
+                // Get questions from database
+                const questions = this.db.prepare('SELECT * FROM questions ORDER BY created_at DESC').all();
+                const formattedQuestions = questions.map(q => ({
+                    id: q.id,
+                    question: q.question,
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty
+                }));
+
+                // Get active season leaderboard
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                let leaderboard = [];
+                if (activeSeason) {
+                    leaderboard = this.db.prepare(`
+                        SELECT user_id as userId, username, points 
+                        FROM leaderboard_entries 
+                        WHERE season_id = ? 
+                        ORDER BY points DESC
+                    `).all(activeSeason.id);
+                }
+
+                res.json({
+                    success: true,
+                    config: this.config,
+                    questions: formattedQuestions,
+                    leaderboard,
+                    gameState: {
+                        ...this.gameState,
+                        answers: Array.from(this.gameState.answers.entries()),
+                        eliminatedUsers: Array.from(this.gameState.eliminatedUsers)
+                    },
+                    stats: this.stats
+                });
+            } catch (error) {
+                this.api.log('Error getting state: ' + error.message, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
         });
 
         // Update configuration
         this.api.registerRoute('post', '/api/quiz-show/config', async (req, res) => {
             try {
                 this.config = { ...this.config, ...req.body };
-                await this.saveData();
+                await this.saveConfig();
 
                 // Broadcast config update
                 this.api.emit('quiz-show:config-updated', this.config);
@@ -183,23 +347,49 @@ class QuizShowPlugin {
         // Add question
         this.api.registerRoute('post', '/api/quiz-show/questions', async (req, res) => {
             try {
-                const { question, answers, correct } = req.body;
+                const { question, answers, correct, category, difficulty } = req.body;
 
                 if (!question || !answers || answers.length !== 4 || correct === undefined) {
                     return res.status(400).json({ success: false, error: 'Invalid question format' });
                 }
 
+                const stmt = this.db.prepare(`
+                    INSERT INTO questions (question, answers, correct, category, difficulty) 
+                    VALUES (?, ?, ?, ?, ?)
+                `);
+                
+                const result = stmt.run(
+                    question,
+                    JSON.stringify(answers),
+                    parseInt(correct),
+                    category || 'Allgemein',
+                    difficulty || 2
+                );
+
+                // Add category if it doesn't exist
+                if (category) {
+                    this.db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)').run(category);
+                }
+
                 const newQuestion = {
-                    id: Date.now() + Math.random(),
+                    id: result.lastInsertRowid,
                     question,
                     answers,
-                    correct: parseInt(correct)
+                    correct: parseInt(correct),
+                    category: category || 'Allgemein',
+                    difficulty: difficulty || 2
                 };
 
-                this.questions.push(newQuestion);
-                await this.saveData();
-
-                this.api.emit('quiz-show:questions-updated', this.questions);
+                // Broadcast update
+                const allQuestions = this.db.prepare('SELECT * FROM questions').all().map(q => ({
+                    id: q.id,
+                    question: q.question,
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty
+                }));
+                this.api.emit('quiz-show:questions-updated', allQuestions);
 
                 res.json({ success: true, question: newQuestion });
             } catch (error) {
@@ -210,25 +400,54 @@ class QuizShowPlugin {
         // Update question
         this.api.registerRoute('put', '/api/quiz-show/questions/:id', async (req, res) => {
             try {
-                const questionId = parseFloat(req.params.id);
-                const { question, answers, correct } = req.body;
+                const questionId = parseInt(req.params.id);
+                const { question, answers, correct, category, difficulty } = req.body;
 
-                const index = this.questions.findIndex(q => q.id === questionId);
-                if (index === -1) {
+                const stmt = this.db.prepare(`
+                    UPDATE questions 
+                    SET question = ?, answers = ?, correct = ?, category = ?, difficulty = ?
+                    WHERE id = ?
+                `);
+                
+                const result = stmt.run(
+                    question,
+                    JSON.stringify(answers),
+                    parseInt(correct),
+                    category || 'Allgemein',
+                    difficulty || 2,
+                    questionId
+                );
+
+                if (result.changes === 0) {
                     return res.status(404).json({ success: false, error: 'Question not found' });
                 }
 
-                this.questions[index] = {
-                    ...this.questions[index],
+                // Add category if it doesn't exist
+                if (category) {
+                    this.db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)').run(category);
+                }
+
+                const updatedQuestion = {
+                    id: questionId,
                     question,
                     answers,
-                    correct: parseInt(correct)
+                    correct: parseInt(correct),
+                    category: category || 'Allgemein',
+                    difficulty: difficulty || 2
                 };
 
-                await this.saveData();
-                this.api.emit('quiz-show:questions-updated', this.questions);
+                // Broadcast update
+                const allQuestions = this.db.prepare('SELECT * FROM questions').all().map(q => ({
+                    id: q.id,
+                    question: q.question,
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty
+                }));
+                this.api.emit('quiz-show:questions-updated', allQuestions);
 
-                res.json({ success: true, question: this.questions[index] });
+                res.json({ success: true, question: updatedQuestion });
             } catch (error) {
                 res.status(500).json({ success: false, error: error.message });
             }
@@ -237,17 +456,24 @@ class QuizShowPlugin {
         // Delete question
         this.api.registerRoute('delete', '/api/quiz-show/questions/:id', async (req, res) => {
             try {
-                const questionId = parseFloat(req.params.id);
-                const index = this.questions.findIndex(q => q.id === questionId);
+                const questionId = parseInt(req.params.id);
+                
+                const result = this.db.prepare('DELETE FROM questions WHERE id = ?').run(questionId);
 
-                if (index === -1) {
+                if (result.changes === 0) {
                     return res.status(404).json({ success: false, error: 'Question not found' });
                 }
 
-                this.questions.splice(index, 1);
-                await this.saveData();
-
-                this.api.emit('quiz-show:questions-updated', this.questions);
+                // Broadcast update
+                const allQuestions = this.db.prepare('SELECT * FROM questions').all().map(q => ({
+                    id: q.id,
+                    question: q.question,
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty
+                }));
+                this.api.emit('quiz-show:questions-updated', allQuestions);
 
                 res.json({ success: true });
             } catch (error) {
@@ -264,25 +490,52 @@ class QuizShowPlugin {
                     return res.status(400).json({ success: false, error: 'Invalid format: expected array' });
                 }
 
-                // Validate and add IDs
-                const validQuestions = uploadedQuestions.filter(q =>
-                    q.question && q.answers && q.answers.length === 4 && q.correct !== undefined
-                ).map(q => ({
-                    id: Date.now() + Math.random(),
+                // Validate and insert questions
+                const insert = this.db.prepare(`
+                    INSERT INTO questions (question, answers, correct, category, difficulty) 
+                    VALUES (?, ?, ?, ?, ?)
+                `);
+
+                const insertMany = this.db.transaction((questions) => {
+                    let added = 0;
+                    for (const q of questions) {
+                        if (q.question && q.answers && q.answers.length === 4 && q.correct !== undefined) {
+                            insert.run(
+                                q.question,
+                                JSON.stringify(q.answers),
+                                parseInt(q.correct),
+                                q.category || 'Allgemein',
+                                q.difficulty || 2
+                            );
+                            
+                            // Add category if provided
+                            if (q.category) {
+                                this.db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)').run(q.category);
+                            }
+                            added++;
+                        }
+                    }
+                    return added;
+                });
+
+                const added = insertMany(uploadedQuestions);
+                const total = this.db.prepare('SELECT COUNT(*) as count FROM questions').get().count;
+
+                // Broadcast update
+                const allQuestions = this.db.prepare('SELECT * FROM questions').all().map(q => ({
+                    id: q.id,
                     question: q.question,
-                    answers: q.answers,
-                    correct: parseInt(q.correct)
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty
                 }));
-
-                this.questions.push(...validQuestions);
-                await this.saveData();
-
-                this.api.emit('quiz-show:questions-updated', this.questions);
+                this.api.emit('quiz-show:questions-updated', allQuestions);
 
                 res.json({
                     success: true,
-                    added: validQuestions.length,
-                    total: this.questions.length
+                    added,
+                    total
                 });
             } catch (error) {
                 res.status(500).json({ success: false, error: error.message });
@@ -291,18 +544,28 @@ class QuizShowPlugin {
 
         // Export questions
         this.api.registerRoute('get', '/api/quiz-show/questions/export', (req, res) => {
-            res.json(this.questions.map(q => ({
-                question: q.question,
-                answers: q.answers,
-                correct: q.correct
-            })));
+            try {
+                const questions = this.db.prepare('SELECT * FROM questions').all();
+                const exported = questions.map(q => ({
+                    question: q.question,
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty
+                }));
+                res.json(exported);
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
         });
 
         // Reset leaderboard
         this.api.registerRoute('post', '/api/quiz-show/leaderboard/reset', async (req, res) => {
             try {
-                this.leaderboard.clear();
-                await this.saveData();
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                if (activeSeason) {
+                    this.db.prepare('DELETE FROM leaderboard_entries WHERE season_id = ?').run(activeSeason.id);
+                }
 
                 this.api.emit('quiz-show:leaderboard-updated', []);
 
@@ -314,12 +577,21 @@ class QuizShowPlugin {
 
         // Export leaderboard
         this.api.registerRoute('get', '/api/quiz-show/leaderboard/export', (req, res) => {
-            const data = Array.from(this.leaderboard.entries()).map(([userId, data]) => ({
-                userId,
-                username: data.username,
-                points: data.points
-            }));
-            res.json(data);
+            try {
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                let data = [];
+                if (activeSeason) {
+                    data = this.db.prepare(`
+                        SELECT user_id as userId, username, points 
+                        FROM leaderboard_entries 
+                        WHERE season_id = ? 
+                        ORDER BY points DESC
+                    `).all(activeSeason.id);
+                }
+                res.json(data);
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
         });
 
         // Import leaderboard
@@ -331,27 +603,165 @@ class QuizShowPlugin {
                     return res.status(400).json({ success: false, error: 'Invalid format' });
                 }
 
-                this.leaderboard.clear();
-                data.forEach(entry => {
-                    if (entry.userId && entry.username !== undefined && entry.points !== undefined) {
-                        this.leaderboard.set(entry.userId, {
-                            username: entry.username,
-                            points: entry.points
-                        });
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                if (!activeSeason) {
+                    return res.status(500).json({ success: false, error: 'No active season' });
+                }
+
+                // Clear existing entries
+                this.db.prepare('DELETE FROM leaderboard_entries WHERE season_id = ?').run(activeSeason.id);
+
+                // Insert new entries
+                const insert = this.db.prepare(`
+                    INSERT INTO leaderboard_entries (season_id, user_id, username, points) 
+                    VALUES (?, ?, ?, ?)
+                `);
+                
+                const insertMany = this.db.transaction((entries) => {
+                    for (const entry of entries) {
+                        if (entry.userId && entry.username !== undefined && entry.points !== undefined) {
+                            insert.run(activeSeason.id, entry.userId, entry.username, entry.points);
+                        }
                     }
                 });
+                
+                insertMany(data);
 
-                await this.saveData();
-
-                const leaderboardData = Array.from(this.leaderboard.entries()).map(([userId, data]) => ({
-                    userId,
-                    username: data.username,
-                    points: data.points
-                })).sort((a, b) => b.points - a.points);
+                const leaderboardData = this.db.prepare(`
+                    SELECT user_id as userId, username, points 
+                    FROM leaderboard_entries 
+                    WHERE season_id = ? 
+                    ORDER BY points DESC
+                `).all(activeSeason.id);
 
                 this.api.emit('quiz-show:leaderboard-updated', leaderboardData);
 
-                res.json({ success: true, entries: this.leaderboard.size });
+                res.json({ success: true, entries: leaderboardData.length });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get all seasons
+        this.api.registerRoute('get', '/api/quiz-show/seasons', (req, res) => {
+            try {
+                const seasons = this.db.prepare('SELECT * FROM leaderboard_seasons ORDER BY start_date DESC').all();
+                res.json({ success: true, seasons });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Create new season (archives current)
+        this.api.registerRoute('post', '/api/quiz-show/seasons', (req, res) => {
+            try {
+                const { seasonName } = req.body;
+                const now = new Date().toISOString();
+
+                // Archive current active season
+                this.db.prepare('UPDATE leaderboard_seasons SET is_active = 0, end_date = ? WHERE is_active = 1')
+                    .run(now);
+
+                // Create new season
+                const result = this.db.prepare(`
+                    INSERT INTO leaderboard_seasons (season_name, start_date, is_active) 
+                    VALUES (?, ?, 1)
+                `).run(seasonName || `Season ${new Date().getFullYear()}`, now);
+
+                const newSeason = {
+                    id: result.lastInsertRowid,
+                    season_name: seasonName || `Season ${new Date().getFullYear()}`,
+                    start_date: now,
+                    end_date: null,
+                    is_active: true
+                };
+
+                this.api.emit('quiz-show:season-changed', newSeason);
+
+                res.json({ success: true, season: newSeason });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get leaderboard by season
+        this.api.registerRoute('get', '/api/quiz-show/seasons/:id/leaderboard', (req, res) => {
+            try {
+                const seasonId = parseInt(req.params.id);
+                const leaderboard = this.db.prepare(`
+                    SELECT user_id as userId, username, points 
+                    FROM leaderboard_entries 
+                    WHERE season_id = ? 
+                    ORDER BY points DESC
+                `).all(seasonId);
+
+                res.json({ success: true, leaderboard });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get all categories
+        this.api.registerRoute('get', '/api/quiz-show/categories', (req, res) => {
+            try {
+                const categories = this.db.prepare('SELECT name FROM categories ORDER BY name').all();
+                res.json({ success: true, categories: categories.map(c => c.name) });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Sound effects management
+        this.api.registerRoute('get', '/api/quiz-show/sounds', (req, res) => {
+            try {
+                const sounds = this.db.prepare('SELECT * FROM game_sounds').all();
+                res.json({ success: true, sounds });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/quiz-show/sounds', (req, res) => {
+            try {
+                const { event_name, file_path, volume } = req.body;
+                
+                this.db.prepare(`
+                    INSERT OR REPLACE INTO game_sounds (event_name, file_path, volume) 
+                    VALUES (?, ?, ?)
+                `).run(event_name, file_path, volume || 1.0);
+
+                const sounds = this.db.prepare('SELECT * FROM game_sounds').all();
+                this.api.emit('quiz-show:sounds-updated', sounds);
+
+                res.json({ success: true });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Brand kit management
+        this.api.registerRoute('get', '/api/quiz-show/brand-kit', (req, res) => {
+            try {
+                const brandKit = this.db.prepare('SELECT * FROM brand_kit WHERE id = 1').get();
+                res.json({ success: true, brandKit: brandKit || {} });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/quiz-show/brand-kit', (req, res) => {
+            try {
+                const { logo_path, primary_color, secondary_color } = req.body;
+                
+                this.db.prepare(`
+                    INSERT OR REPLACE INTO brand_kit (id, logo_path, primary_color, secondary_color) 
+                    VALUES (1, ?, ?, ?)
+                `).run(logo_path, primary_color, secondary_color);
+
+                const brandKit = this.db.prepare('SELECT * FROM brand_kit WHERE id = 1').get();
+                this.api.emit('quiz-show:brand-kit-updated', brandKit);
+
+                res.json({ success: true, brandKit });
             } catch (error) {
                 res.status(500).json({ success: false, error: error.message });
             }
@@ -440,7 +850,8 @@ class QuizShowPlugin {
                     return;
                 }
 
-                if (this.questions.length === 0) {
+                const questionCount = this.db.prepare('SELECT COUNT(*) as count FROM questions').get().count;
+                if (questionCount === 0) {
                     socket.emit('quiz-show:error', { message: 'No questions available' });
                     return;
                 }
@@ -479,7 +890,11 @@ class QuizShowPlugin {
                 await this.endRound();
                 this.resetGameState();
 
+                // Get MVP for display
+                const mvp = this.getMVPPlayer();
+
                 this.api.emit('quiz-show:stopped', {});
+                this.api.emit('quiz-show:quiz-ended', { mvp });
                 socket.emit('quiz-show:stopped', { success: true });
             } catch (error) {
                 this.api.log('Error stopping quiz: ' + error.message, 'error');
@@ -509,21 +924,53 @@ class QuizShowPlugin {
             // Check for answers
             this.handleAnswer(userId, username, message);
         });
+
+        // Handle gift events for joker activation
+        this.api.registerTikTokEvent('gift', async (data) => {
+            if (!this.gameState.isRunning) {
+                return;
+            }
+
+            const userId = data.uniqueId || data.userId;
+            const username = data.nickname || data.username || userId;
+            const giftId = data.giftId || data.gift_id;
+
+            // Check if this gift is mapped to a joker
+            if (this.config.giftJokers && this.config.giftJokers[giftId]) {
+                const jokerType = this.config.giftJokers[giftId];
+                this.handleJokerCommand(userId, username, `!joker${jokerType}`, true);
+            }
+        });
     }
 
     async startRound() {
+        // Get questions from database
+        let questions;
+        if (this.config.categoryFilter && this.config.categoryFilter !== 'Alle') {
+            questions = this.db.prepare('SELECT * FROM questions WHERE category = ?').all(this.config.categoryFilter);
+        } else {
+            questions = this.db.prepare('SELECT * FROM questions').all();
+        }
+
+        if (questions.length === 0) {
+            throw new Error('No questions available');
+        }
+
+        // Parse JSON answers
+        questions = questions.map(q => ({
+            ...q,
+            answers: JSON.parse(q.answers)
+        }));
+
         // Select question
         let questionIndex;
         if (this.config.randomQuestions) {
-            // Random selection
-            const availableIndices = this.questions.map((_, i) => i);
-            questionIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+            questionIndex = Math.floor(Math.random() * questions.length);
         } else {
-            // Sequential
-            questionIndex = (this.gameState.currentQuestionIndex + 1) % this.questions.length;
+            questionIndex = (this.gameState.currentQuestionIndex + 1) % questions.length;
         }
 
-        const question = this.questions[questionIndex];
+        const question = questions[questionIndex];
 
         // Prepare answers (shuffle if configured)
         let answers = [...question.answers];
@@ -545,6 +992,7 @@ class QuizShowPlugin {
 
         // Update game state
         this.gameState = {
+            ...this.gameState,
             isRunning: true,
             currentQuestion: {
                 ...question,
@@ -570,6 +1018,18 @@ class QuizShowPlugin {
 
         // Start timer
         this.startTimer();
+
+        // Play timer start sound
+        this.playSound('timer_start');
+
+        // TTS announcement if enabled
+        if (this.config.ttsEnabled) {
+            const ttsText = `Neue Frage: ${question.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
+            this.api.emit('core:tts-speak', {
+                text: ttsText,
+                voice: this.config.ttsVoice || 'default'
+            });
+        }
 
         // Broadcast to overlay and UI
         this.broadcastGameState();
@@ -613,19 +1073,35 @@ class QuizShowPlugin {
         // Calculate results
         const results = this.calculateResults();
 
+        // Elimination mode - eliminate users with wrong answers
+        if (this.config.gameMode === 'elimination') {
+            const correctAnswerIndex = this.gameState.currentQuestion.correct;
+            const correctAnswerText = this.gameState.currentQuestion.answers[correctAnswerIndex];
+            
+            for (const [userId, answerData] of this.gameState.answers.entries()) {
+                if (!this.isAnswerCorrect(answerData.answer, correctAnswerIndex, correctAnswerText)) {
+                    this.gameState.eliminatedUsers.add(userId);
+                }
+            }
+        }
+
         // Update statistics
         this.stats.totalRounds++;
         this.stats.totalAnswers += this.gameState.answers.size;
         this.stats.totalCorrectAnswers += results.correctUsers.length;
 
-        await this.saveData();
+        await this.saveConfig();
+
+        // Play round end sound
+        this.playSound('round_end');
 
         // Broadcast results
         this.api.emit('quiz-show:round-ended', {
             question: this.gameState.currentQuestion,
             correctAnswer: this.gameState.currentQuestion.correct,
             results,
-            stats: this.stats
+            stats: this.stats,
+            eliminatedUsers: Array.from(this.gameState.eliminatedUsers)
         });
 
         this.api.log(`Round ended. Correct answers: ${results.correctUsers.length}/${this.gameState.answers.size}`, 'info');
@@ -696,33 +1172,86 @@ class QuizShowPlugin {
     }
 
     addPoints(userId, username, points) {
-        const current = this.leaderboard.get(userId) || { username, points: 0 };
-        current.points += points;
-        current.username = username; // Update username in case it changed
+        try {
+            const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+            if (!activeSeason) {
+                this.api.log('No active season found', 'warn');
+                return;
+            }
 
-        this.leaderboard.set(userId, current);
+            // Check if entry exists
+            const existing = this.db.prepare(`
+                SELECT points FROM leaderboard_entries 
+                WHERE season_id = ? AND user_id = ?
+            `).get(activeSeason.id, userId);
 
-        // Broadcast leaderboard update
-        const leaderboardData = Array.from(this.leaderboard.entries())
-            .map(([userId, data]) => ({
+            if (existing) {
+                // Update existing entry
+                this.db.prepare(`
+                    UPDATE leaderboard_entries 
+                    SET points = points + ?, username = ? 
+                    WHERE season_id = ? AND user_id = ?
+                `).run(points, username, activeSeason.id, userId);
+            } else {
+                // Insert new entry
+                this.db.prepare(`
+                    INSERT INTO leaderboard_entries (season_id, user_id, username, points) 
+                    VALUES (?, ?, ?, ?)
+                `).run(activeSeason.id, userId, username, points);
+            }
+
+            // Get updated total points
+            const updated = this.db.prepare(`
+                SELECT points FROM leaderboard_entries 
+                WHERE season_id = ? AND user_id = ?
+            `).get(activeSeason.id, userId);
+
+            // Broadcast leaderboard update
+            const leaderboardData = this.db.prepare(`
+                SELECT user_id as userId, username, points 
+                FROM leaderboard_entries 
+                WHERE season_id = ? 
+                ORDER BY points DESC
+            `).all(activeSeason.id);
+
+            this.api.emit('quiz-show:leaderboard-updated', leaderboardData);
+
+            // Broadcast specific user point gain
+            this.api.emit('quiz-show:points-awarded', {
                 userId,
-                username: data.username,
-                points: data.points
-            }))
-            .sort((a, b) => b.points - a.points);
+                username,
+                points,
+                totalPoints: updated.points
+            });
 
-        this.api.emit('quiz-show:leaderboard-updated', leaderboardData);
+            // Play sound effect
+            this.playSound(points > 0 ? 'answer_correct' : 'answer_wrong');
+        } catch (error) {
+            this.api.log('Error adding points: ' + error.message, 'error');
+        }
+    }
 
-        // Broadcast specific user point gain
-        this.api.emit('quiz-show:points-awarded', {
-            userId,
-            username,
-            points,
-            totalPoints: current.points
-        });
+    playSound(eventName) {
+        try {
+            const sound = this.db.prepare('SELECT * FROM game_sounds WHERE event_name = ?').get(eventName);
+            if (sound && sound.file_path) {
+                this.api.emit('quiz-show:play-sound', {
+                    eventName,
+                    filePath: sound.file_path,
+                    volume: sound.volume || 1.0
+                });
+            }
+        } catch (error) {
+            this.api.log('Error playing sound: ' + error.message, 'error');
+        }
     }
 
     handleAnswer(userId, username, message) {
+        // Check if user is eliminated (elimination mode)
+        if (this.config.gameMode === 'elimination' && this.gameState.eliminatedUsers.has(userId)) {
+            return;
+        }
+
         // Check if user already answered
         if (this.gameState.answers.has(userId)) {
             return;
@@ -748,6 +1277,49 @@ class QuizShowPlugin {
             timestamp: Date.now()
         });
 
+        // Fastest Finger mode - end round immediately on first correct answer
+        if (this.config.gameMode === 'fastestFinger') {
+            const correctAnswerIndex = this.gameState.currentQuestion.correct;
+            const correctAnswerText = this.gameState.currentQuestion.answers[correctAnswerIndex];
+            
+            if (this.isAnswerCorrect(message, correctAnswerIndex, correctAnswerText)) {
+                // Correct answer - end round immediately
+                setTimeout(() => this.endRound(), 100);
+            }
+        }
+
+        // Marathon mode - check for streak
+        if (this.config.gameMode === 'marathon') {
+            const correctAnswerIndex = this.gameState.currentQuestion.correct;
+            const correctAnswerText = this.gameState.currentQuestion.answers[correctAnswerIndex];
+            
+            if (this.isAnswerCorrect(message, correctAnswerIndex, correctAnswerText)) {
+                if (!this.gameState.marathonPlayerId) {
+                    // First correct answer in marathon
+                    this.gameState.marathonPlayerId = userId;
+                    this.gameState.marathonProgress = 1;
+                } else if (this.gameState.marathonPlayerId === userId) {
+                    // Same player continues streak
+                    this.gameState.marathonProgress++;
+                    
+                    // Check if marathon completed
+                    if (this.gameState.marathonProgress >= this.config.marathonLength) {
+                        this.api.emit('quiz-show:marathon-completed', {
+                            userId,
+                            username,
+                            length: this.gameState.marathonProgress
+                        });
+                        // Award jackpot bonus
+                        this.addPoints(userId, username, this.config.pointsFirstCorrect * 5);
+                    }
+                }
+            } else if (this.gameState.marathonPlayerId === userId) {
+                // Wrong answer - reset streak
+                this.gameState.marathonProgress = 0;
+                this.gameState.marathonPlayerId = null;
+            }
+        }
+
         // Broadcast answer count update
         this.api.emit('quiz-show:answer-received', {
             userId,
@@ -756,7 +1328,7 @@ class QuizShowPlugin {
         });
     }
 
-    handleJokerCommand(userId, username, message) {
+    handleJokerCommand(userId, username, message, isGiftActivated = false) {
         const command = message.toLowerCase().trim();
 
         // Check joker limits
@@ -794,15 +1366,19 @@ class QuizShowPlugin {
                 userId,
                 username,
                 timestamp: Date.now(),
-                data: jokerData
+                data: jokerData,
+                isGiftActivated
             };
 
             this.gameState.jokerEvents.push(jokerEvent);
 
+            // Play joker activation sound
+            this.playSound('joker_activated');
+
             // Broadcast joker activation
             this.api.emit('quiz-show:joker-activated', jokerEvent);
 
-            this.api.log(`Joker ${jokerType} activated by ${username}`, 'info');
+            this.api.log(`Joker ${jokerType} activated by ${username}${isGiftActivated ? ' (via gift)' : ''}`, 'info');
         }
     }
 
@@ -885,8 +1461,31 @@ class QuizShowPlugin {
             },
             jokerEvents: [],
             hiddenAnswers: [],
-            revealedWrongAnswer: null
+            revealedWrongAnswer: null,
+            eliminatedUsers: new Set(),
+            marathonProgress: 0,
+            marathonPlayerId: null
         };
+    }
+
+    getMVPPlayer() {
+        try {
+            const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+            if (!activeSeason) return null;
+
+            const mvp = this.db.prepare(`
+                SELECT user_id as userId, username, points 
+                FROM leaderboard_entries 
+                WHERE season_id = ? 
+                ORDER BY points DESC 
+                LIMIT 1
+            `).get(activeSeason.id);
+
+            return mvp;
+        } catch (error) {
+            this.api.log('Error getting MVP: ' + error.message, 'error');
+            return null;
+        }
     }
 
     async destroy() {
@@ -895,7 +1494,12 @@ class QuizShowPlugin {
             clearInterval(this.timerInterval);
         }
 
-        await this.saveData();
+        // Close database connection
+        if (this.db) {
+            this.db.close();
+        }
+
+        await this.saveConfig();
 
         this.api.log('Quiz Show Plugin destroyed', 'info');
     }
