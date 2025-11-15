@@ -322,6 +322,9 @@ class MappingEngine {
 
               // Use safe regex testing with timeout protection
               if (!this._safeRegexTest(regex, message)) {
+              // Add 'im' flags for case-insensitive and multiline matching
+              const regex = new RegExp(conditions.messagePattern, 'im');
+              if (!regex.test(message)) {
                 return false;
               }
             } catch (error) {

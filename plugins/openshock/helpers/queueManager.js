@@ -223,6 +223,7 @@ class QueueManager extends EventEmitter {
 
       // Cleanup old completed items
       await this._cleanupCompletedItems();
+      this._cleanupCompletedItems();
 
       // Emit queue-changed event
       this.emit('queue-changed');
