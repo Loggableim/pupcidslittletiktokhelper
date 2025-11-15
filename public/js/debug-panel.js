@@ -76,7 +76,7 @@
             document.body.appendChild(container.firstElementChild);
 
             // Attach event listeners
-            document.getElementById('debug-toggle-logs').addEventListener('click', () => this.toggle());
+            document.getElementById('debug-toggle-logs').addEventListener('click', () => this.toggleLogging());
             document.getElementById('debug-clear').addEventListener('click', () => this.clear());
             document.getElementById('debug-export').addEventListener('click', () => this.exportLogs());
             document.getElementById('debug-close').addEventListener('click', () => this.hide());
@@ -89,14 +89,14 @@
             document.addEventListener('keydown', (e) => {
                 if (e.shiftKey && e.key === 'F12') {
                     e.preventDefault();
-                    this.toggle();
+                    this.toggleVisibility();
                 }
             });
 
             console.log('🔧 Debug Panel initialized. Press Shift+F12 to open.');
         },
 
-        toggle() {
+        toggleVisibility() {
             const panel = document.getElementById('debug-panel');
             if (panel.style.display === 'none') {
                 this.show();
