@@ -14,5 +14,9 @@
   "openshock": {
     "enabled": true,
     "loadedAt": "2025-11-14T00:00:00.000Z"
+  },
+  "goals": {
+    "enabled": true,
+    "loadedAt": "2025-11-15T00:00:00.000Z"
   }
 }
