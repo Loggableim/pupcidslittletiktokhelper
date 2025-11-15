@@ -540,108 +540,107 @@ function openMappingModal(mappingId = null) {
     const mapping = isEdit ? mappings.find(m => m.id === mappingId) : null;
 
     // Set modal title
-    document.getElementById('mapping-modal-title').textContent = isEdit ? 'Edit Mapping' : 'Create Mapping';
+    const modalTitle = document.getElementById('mappingModalTitle');
+    if (modalTitle) {
+        modalTitle.textContent = isEdit ? 'Edit Event Mapping' : 'Add Event Mapping';
+    }
+
+    // Store mapping ID in a data attribute if editing
+    if (isEdit) {
+        modal.dataset.editingId = mappingId;
+    } else {
+        delete modal.dataset.editingId;
+    }
 
     // Populate form
-    document.getElementById('mapping-id').value = mappingId || '';
-    document.getElementById('mapping-name').value = mapping?.name || '';
-    document.getElementById('mapping-enabled').checked = mapping?.enabled !== false;
+    const nameInput = document.getElementById('mappingName');
+    const enabledCheckbox = document.getElementById('mappingEnabled');
+    const eventTypeSelect = document.getElementById('mappingEventType');
+    const actionTypeSelect = document.getElementById('mappingActionType');
+    const deviceSelect = document.getElementById('mappingDevice');
 
-    // Trigger configuration
-    document.getElementById('mapping-trigger-type').value = mapping?.trigger.type || 'gift';
+    if (nameInput) nameInput.value = mapping?.name || '';
+    if (enabledCheckbox) enabledCheckbox.checked = mapping?.enabled !== false;
+    if (eventTypeSelect) eventTypeSelect.value = mapping?.trigger?.type || 'gift';
+    if (actionTypeSelect) actionTypeSelect.value = mapping?.action?.type || 'shock';
+    if (deviceSelect) deviceSelect.value = mapping?.action?.deviceId || '';
+
+    // Populate trigger-specific fields
     populateTriggerFields(mapping?.trigger);
 
-    // Action configuration
-    document.getElementById('mapping-action-type').value = mapping?.action.type || 'shock';
-    document.getElementById('mapping-action-device').value = mapping?.action.deviceId || '';
+    // Populate action-specific fields
     populateActionFields(mapping?.action);
 
     openModal('mappingModal');
 }
 
 function populateTriggerFields(trigger) {
-    const type = trigger?.type || document.getElementById('mapping-trigger-type').value;
-    const container = document.getElementById('mapping-trigger-fields');
+    const eventTypeSelect = document.getElementById('mappingEventType');
+    const type = trigger?.type || (eventTypeSelect ? eventTypeSelect.value : 'gift');
 
-    let html = '';
+    // Show/hide condition groups based on event type
+    const conditionGift = document.getElementById('conditionGift');
+    const conditionMinCoins = document.getElementById('conditionMinCoins');
+    const conditionMessagePattern = document.getElementById('conditionMessagePattern');
 
-    if (type === 'gift') {
-        html = `
-            <div class="openshock-form-group">
-                <label>Gift Name (optional)</label>
-                <input type="text" id="trigger-gift-name" class="openshock-input"
-                       placeholder="Leave empty for any gift" value="${escapeHtml(trigger?.giftName || '')}">
-            </div>
-            <div class="openshock-form-group">
-                <label>Minimum Coins</label>
-                <input type="number" id="trigger-min-coins" class="openshock-input"
-                       value="${trigger?.minCoins || 0}" min="0">
-            </div>
-        `;
-    } else if (type === 'follow') {
-        html = `<p class="openshock-help-text">Triggers on new followers</p>`;
-    } else if (type === 'share') {
-        html = `<p class="openshock-help-text">Triggers when someone shares the stream</p>`;
-    } else if (type === 'viewer_count') {
-        html = `
-            <div class="openshock-form-group">
-                <label>Threshold</label>
-                <input type="number" id="trigger-viewer-threshold" class="openshock-input"
-                       value="${trigger?.threshold || 100}" min="0">
-            </div>
-        `;
-    } else if (type === 'keyword') {
-        html = `
-            <div class="openshock-form-group">
-                <label>Keywords (comma-separated)</label>
-                <input type="text" id="trigger-keywords" class="openshock-input"
-                       placeholder="zap, shock, buzz" value="${escapeHtml(trigger?.keywords?.join(', ') || '')}">
-            </div>
-        `;
+    if (conditionGift) conditionGift.style.display = type === 'gift' ? 'block' : 'none';
+    if (conditionMinCoins) conditionMinCoins.style.display = type === 'gift' ? 'block' : 'none';
+    if (conditionMessagePattern) conditionMessagePattern.style.display = type === 'chat' ? 'block' : 'none';
+
+    // Set values if editing
+    if (trigger) {
+        const giftNameInput = document.getElementById('mappingGiftName');
+        const minCoinsInput = document.getElementById('mappingMinCoins');
+        const messagePatternInput = document.getElementById('mappingMessagePattern');
+
+        if (giftNameInput && trigger.giftName) giftNameInput.value = trigger.giftName;
+        if (minCoinsInput && trigger.minCoins !== undefined) minCoinsInput.value = trigger.minCoins;
+        if (messagePatternInput && trigger.messagePattern) messagePatternInput.value = trigger.messagePattern;
     }
-
-    container.innerHTML = html;
 }
 
 function populateActionFields(action) {
-    const type = action?.type || document.getElementById('mapping-action-type').value;
-    const container = document.getElementById('mapping-action-fields');
+    // The action fields are static in the HTML, just set their values
+    const intensitySlider = document.getElementById('mappingIntensity');
+    const intensityValue = document.getElementById('mappingIntensityValue');
+    const durationSlider = document.getElementById('mappingDuration');
+    const durationValue = document.getElementById('mappingDurationValue');
 
-    let html = `
-        <div class="openshock-form-group">
-            <label>Intensity (%)</label>
-            <input type="range" id="action-intensity" class="openshock-slider"
-                   min="1" max="100" value="${action?.intensity || 50}">
-            <span id="action-intensity-value">${action?.intensity || 50}</span>%
-        </div>
-        <div class="openshock-form-group">
-            <label>Duration (ms)</label>
-            <input type="number" id="action-duration" class="openshock-input"
-                   min="100" max="30000" step="100" value="${action?.duration || 1000}">
-        </div>
-    `;
-
-    container.innerHTML = html;
-
-    // Add event listener for intensity slider
-    const intensitySlider = document.getElementById('action-intensity');
-    const intensityValue = document.getElementById('action-intensity-value');
-    if (intensitySlider && intensityValue) {
-        intensitySlider.addEventListener('input', function() {
-            intensityValue.textContent = this.value;
-        });
+    if (action) {
+        if (intensitySlider && action.intensity !== undefined) {
+            intensitySlider.value = action.intensity;
+            if (intensityValue) intensityValue.textContent = action.intensity;
+        }
+        if (durationSlider && action.duration !== undefined) {
+            durationSlider.value = action.duration;
+            if (durationValue) durationValue.textContent = action.duration;
+        }
     }
 }
 
 async function saveMappingModal() {
-    const mappingId = document.getElementById('mapping-id').value;
-    const isEdit = mappingId !== '';
+    const modal = document.getElementById('mappingModal');
+    const mappingId = modal?.dataset.editingId;
+    const isEdit = !!mappingId;
+
+    const nameInput = document.getElementById('mappingName');
+    const enabledCheckbox = document.getElementById('mappingEnabled');
+    const eventTypeSelect = document.getElementById('mappingEventType');
+    const actionTypeSelect = document.getElementById('mappingActionType');
+    const deviceSelect = document.getElementById('mappingDevice');
+    const intensitySlider = document.getElementById('mappingIntensity');
+    const durationSlider = document.getElementById('mappingDuration');
 
     const mapping = {
-        name: document.getElementById('mapping-name').value,
-        enabled: document.getElementById('mapping-enabled').checked,
+        name: nameInput?.value || 'Untitled Mapping',
+        enabled: enabledCheckbox?.checked !== false,
         trigger: collectTriggerData(),
-        action: collectActionData()
+        action: {
+            type: actionTypeSelect?.value || 'shock',
+            deviceId: deviceSelect?.value || '',
+            intensity: parseInt(intensitySlider?.value) || 50,
+            duration: parseInt(durationSlider?.value) || 1000
+        }
     };
 
     try {
@@ -668,31 +667,22 @@ async function saveMappingModal() {
 }
 
 function collectTriggerData() {
-    const type = document.getElementById('mapping-trigger-type').value;
+    const eventTypeSelect = document.getElementById('mappingEventType');
+    const type = eventTypeSelect?.value || 'gift';
     const trigger = { type };
 
     if (type === 'gift') {
-        const giftName = document.getElementById('trigger-gift-name')?.value;
-        const minCoins = document.getElementById('trigger-min-coins')?.value;
-        if (giftName) trigger.giftName = giftName;
-        if (minCoins) trigger.minCoins = parseInt(minCoins);
-    } else if (type === 'viewer_count') {
-        trigger.threshold = parseInt(document.getElementById('trigger-viewer-threshold')?.value || 100);
-    } else if (type === 'keyword') {
-        const keywords = document.getElementById('trigger-keywords')?.value;
-        trigger.keywords = keywords ? keywords.split(',').map(k => k.trim()) : [];
+        const giftNameInput = document.getElementById('mappingGiftName');
+        const minCoinsInput = document.getElementById('mappingMinCoins');
+        
+        if (giftNameInput?.value) trigger.giftName = giftNameInput.value;
+        if (minCoinsInput?.value) trigger.minCoins = parseInt(minCoinsInput.value);
+    } else if (type === 'chat') {
+        const messagePatternInput = document.getElementById('mappingMessagePattern');
+        if (messagePatternInput?.value) trigger.messagePattern = messagePatternInput.value;
     }
 
     return trigger;
-}
-
-function collectActionData() {
-    return {
-        type: document.getElementById('mapping-action-type').value,
-        deviceId: document.getElementById('mapping-action-device').value,
-        intensity: parseInt(document.getElementById('action-intensity')?.value || 50),
-        duration: parseInt(document.getElementById('action-duration')?.value || 1000)
-    };
 }
 
 async function deleteMapping(id) {
@@ -800,11 +790,23 @@ function openPatternModal(patternId = null) {
     const isEdit = patternId !== null;
     const pattern = isEdit ? patterns.find(p => p.id === patternId) : null;
 
-    document.getElementById('pattern-modal-title').textContent = isEdit ? 'Edit Pattern' : 'Create Pattern';
+    const modalTitle = document.getElementById('patternModalTitle');
+    const nameInput = document.getElementById('patternName');
+    const descriptionInput = document.getElementById('patternDescription');
 
-    document.getElementById('pattern-id').value = patternId || '';
-    document.getElementById('pattern-name').value = pattern?.name || '';
-    document.getElementById('pattern-description').value = pattern?.description || '';
+    if (modalTitle) {
+        modalTitle.textContent = isEdit ? 'Edit Pattern' : 'Add Pattern';
+    }
+
+    // Store pattern ID in modal data attribute
+    if (isEdit) {
+        modal.dataset.editingId = patternId;
+    } else {
+        delete modal.dataset.editingId;
+    }
+
+    if (nameInput) nameInput.value = pattern?.name || '';
+    if (descriptionInput) descriptionInput.value = pattern?.description || '';
 
     currentPatternSteps = pattern?.steps ? JSON.parse(JSON.stringify(pattern.steps)) : [];
     renderPatternSteps();
@@ -813,11 +815,11 @@ function openPatternModal(patternId = null) {
 }
 
 function renderPatternSteps() {
-    const container = document.getElementById('pattern-steps-list');
+    const container = document.getElementById('patternSteps');
     if (!container) return;
 
     if (currentPatternSteps.length === 0) {
-        container.innerHTML = '<p class="openshock-help-text">No steps added yet. Click "Add Step" to begin.</p>';
+        container.innerHTML = '<p class="text-muted text-center">No steps added yet. Click "Add Step" to begin.</p>';
         return;
     }
 
@@ -841,20 +843,33 @@ function renderPatternSteps() {
 }
 
 function addPatternStep() {
+    const typeSelect = document.getElementById('stepType');
+    const intensitySlider = document.getElementById('stepIntensity');
+    const durationInput = document.getElementById('stepDuration');
+
     const step = {
-        type: document.getElementById('step-type').value,
-        intensity: parseInt(document.getElementById('step-intensity').value),
-        duration: parseInt(document.getElementById('step-duration').value),
-        delay: parseInt(document.getElementById('step-delay').value) || 0
+        type: typeSelect?.value || 'shock',
+        intensity: parseInt(intensitySlider?.value) || 50,
+        duration: parseInt(durationInput?.value) || 500,
+        delay: 0
     };
 
     currentPatternSteps.push(step);
     renderPatternSteps();
 
     // Reset form
-    document.getElementById('step-intensity').value = 50;
-    document.getElementById('step-duration').value = 1000;
-    document.getElementById('step-delay').value = 0;
+    if (intensitySlider) intensitySlider.value = 50;
+    if (durationInput) durationInput.value = 500;
+    
+    // Update slider value display
+    const intensityValue = document.getElementById('stepIntensityValue');
+    if (intensityValue) intensityValue.textContent = 50;
+
+    // Hide step form
+    const stepForm = document.getElementById('stepForm');
+    if (stepForm) {
+        stepForm.classList.add('step-form-hidden');
+    }
 }
 
 function removePatternStep(index) {
@@ -863,8 +878,13 @@ function removePatternStep(index) {
 }
 
 function renderPatternPreview() {
-    const container = document.getElementById('pattern-preview');
+    const container = document.getElementById('patternPreview');
     if (!container) return;
+
+    if (currentPatternSteps.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center pattern-timeline-text">Add steps to see preview</p>';
+        return;
+    }
 
     container.innerHTML = renderPatternTimeline(currentPatternSteps);
 }
@@ -903,17 +923,21 @@ function renderPatternTimeline(steps) {
 }
 
 async function savePatternModal() {
-    const patternId = document.getElementById('pattern-id').value;
-    const isEdit = patternId !== '';
+    const modal = document.getElementById('patternModal');
+    const patternId = modal?.dataset.editingId;
+    const isEdit = !!patternId;
 
     if (currentPatternSteps.length === 0) {
         showNotification('Pattern must have at least one step', 'error');
         return;
     }
 
+    const nameInput = document.getElementById('patternName');
+    const descriptionInput = document.getElementById('patternDescription');
+
     const pattern = {
-        name: document.getElementById('pattern-name').value,
-        description: document.getElementById('pattern-description').value,
+        name: nameInput?.value || 'Untitled Pattern',
+        description: descriptionInput?.value || '',
         steps: currentPatternSteps
     };
 
