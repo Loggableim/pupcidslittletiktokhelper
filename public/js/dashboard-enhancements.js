@@ -395,7 +395,7 @@
     // ========== RUNTIME TRACKING & SPARKLINE ==========
     function initializeRuntimeTracking() {
         // Listen for connection events
-        if (typeof socket !== 'undefined') {
+        if (typeof socket !== 'undefined' && socket !== null) {
             socket.on('tiktok:connected', (data) => {
                 startRuntimeTracking();
             });
