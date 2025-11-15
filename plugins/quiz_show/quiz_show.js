@@ -39,55 +39,77 @@
 
                 // Add active class to selected
                 button.classList.add('active');
-                document.getElementById(tabName).classList.add('active');
+                const tabContent = document.getElementById(tabName);
+                if (tabContent) {
+                    tabContent.classList.add('active');
+                }
             });
         });
     }
 
     // Event Listeners
     function initializeEventListeners() {
+        // Safe event listener helper
+        const addListener = (id, event, handler) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, handler);
+        };
+
         // Dashboard controls
-        document.getElementById('startQuizBtn').addEventListener('click', startQuiz);
-        document.getElementById('nextQuestionBtn').addEventListener('click', nextQuestion);
-        document.getElementById('stopQuizBtn').addEventListener('click', stopQuiz);
+        addListener('startQuizBtn', 'click', startQuiz);
+        addListener('nextQuestionBtn', 'click', nextQuestion);
+        addListener('stopQuizBtn', 'click', stopQuiz);
 
         // Question management
-        document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
-        document.getElementById('updateQuestionBtn').addEventListener('click', updateQuestion);
-        document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
-        document.getElementById('uploadQuestionsBtn').addEventListener('click', uploadQuestions);
-        document.getElementById('exportQuestionsBtn').addEventListener('click', exportQuestions);
+        addListener('addQuestionBtn', 'click', addQuestion);
+        addListener('updateQuestionBtn', 'click', updateQuestion);
+        addListener('cancelEditBtn', 'click', cancelEdit);
+        addListener('uploadQuestionsBtn', 'click', uploadQuestions);
+        addListener('exportQuestionsBtn', 'click', exportQuestions);
 
         // Settings
-        document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+        addListener('saveSettingsBtn', 'click', saveSettings);
 
         // Leaderboard
-        document.getElementById('exportLeaderboardBtn').addEventListener('click', exportLeaderboard);
-        document.getElementById('importLeaderboardBtn').addEventListener('click', () => {
-            document.getElementById('importModal').classList.remove('hidden');
+        addListener('exportLeaderboardBtn', 'click', exportLeaderboard);
+        addListener('importLeaderboardBtn', 'click', () => {
+            const modal = document.getElementById('importModal');
+            if (modal) modal.classList.remove('hidden');
         });
-        document.getElementById('resetLeaderboardBtn').addEventListener('click', resetLeaderboard);
+        addListener('resetLeaderboardBtn', 'click', resetLeaderboard);
 
         // Import modal
-        document.getElementById('confirmImportBtn').addEventListener('click', importLeaderboard);
-        document.getElementById('cancelImportBtn').addEventListener('click', () => {
-            document.getElementById('importModal').classList.add('hidden');
+        addListener('confirmImportBtn', 'click', importLeaderboard);
+        addListener('cancelImportBtn', 'click', () => {
+            const modal = document.getElementById('importModal');
+            if (modal) modal.classList.add('hidden');
         });
-        document.querySelector('.modal-close').addEventListener('click', () => {
-            document.getElementById('importModal').classList.add('hidden');
-        });
+
+        const modalClose = document.querySelector('.modal-close');
+        if (modalClose) {
+            modalClose.addEventListener('click', () => {
+                const modal = document.getElementById('importModal');
+                if (modal) modal.classList.add('hidden');
+            });
+        }
     }
 
     // Socket.IO Listeners
     function initializeSocketListeners() {
         socket.on('connect', () => {
-            document.getElementById('connectionStatus').textContent = 'Verbunden';
-            document.getElementById('connectionStatus').className = 'status-badge status-connected';
+            const status = document.getElementById('connectionStatus');
+            if (status) {
+                status.textContent = 'Verbunden';
+                status.className = 'status-badge status-connected';
+            }
         });
 
         socket.on('disconnect', () => {
-            document.getElementById('connectionStatus').textContent = 'Getrennt';
-            document.getElementById('connectionStatus').className = 'status-badge status-error';
+            const status = document.getElementById('connectionStatus');
+            if (status) {
+                status.textContent = 'Getrennt';
+                status.className = 'status-badge status-error';
+            }
         });
 
         socket.on('quiz-show:state-update', handleStateUpdate);

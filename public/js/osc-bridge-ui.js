@@ -73,16 +73,29 @@ function formatUptime(ms) {
 }
 
 // Config speichern
-document.getElementById('config-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+const configForm = document.getElementById('config-form');
+if (configForm) {
+    configForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    const config = {
-        enabled: document.getElementById('enabled').checked,
-        sendHost: document.getElementById('sendHost').value,
-        sendPort: parseInt(document.getElementById('sendPort').value),
-        receivePort: parseInt(document.getElementById('receivePort').value),
-        verboseMode: document.getElementById('verboseMode').checked
-    };
+        const enabled = document.getElementById('enabled');
+        const sendHost = document.getElementById('sendHost');
+        const sendPort = document.getElementById('sendPort');
+        const receivePort = document.getElementById('receivePort');
+        const verboseMode = document.getElementById('verboseMode');
+
+        if (!enabled || !sendHost || !sendPort || !receivePort || !verboseMode) {
+            console.warn('Config form elements not found');
+            return;
+        }
+
+        const config = {
+            enabled: enabled.checked,
+            sendHost: sendHost.value,
+            sendPort: parseInt(sendPort.value),
+            receivePort: parseInt(receivePort.value),
+            verboseMode: verboseMode.checked
+        };
 
     const response = await fetch('/api/osc/config', {
         method: 'POST',
@@ -92,45 +105,55 @@ document.getElementById('config-form').addEventListener('submit', async (e) => {
 
     const data = await response.json();
 
-    if (data.success) {
-        alert('Konfiguration gespeichert!');
-        currentConfig = data.config;
-        toggleLogViewer(currentConfig.verboseMode);
-    } else {
-        alert('Fehler beim Speichern: ' + data.error);
-    }
-});
+        if (data.success) {
+            alert('Konfiguration gespeichert!');
+            currentConfig = data.config;
+            toggleLogViewer(currentConfig.verboseMode);
+        } else {
+            alert('Fehler beim Speichern: ' + data.error);
+        }
+    });
+}
 
 // Bridge starten/stoppen
-document.getElementById('btn-start').addEventListener('click', async () => {
-    const response = await fetch('/api/osc/start', { method: 'POST' });
-    const data = await response.json();
+const btnStart = document.getElementById('btn-start');
+if (btnStart) {
+    btnStart.addEventListener('click', async () => {
+        const response = await fetch('/api/osc/start', { method: 'POST' });
+        const data = await response.json();
 
-    if (!data.success) {
-        alert('Fehler beim Starten: ' + data.error);
-    }
-});
+        if (!data.success) {
+            alert('Fehler beim Starten: ' + data.error);
+        }
+    });
+}
 
-document.getElementById('btn-stop').addEventListener('click', async () => {
-    const response = await fetch('/api/osc/stop', { method: 'POST' });
-    const data = await response.json();
+const btnStop = document.getElementById('btn-stop');
+if (btnStop) {
+    btnStop.addEventListener('click', async () => {
+        const response = await fetch('/api/osc/stop', { method: 'POST' });
+        const data = await response.json();
 
-    if (!data.success) {
-        alert('Fehler beim Stoppen: ' + data.error);
-    }
-});
+        if (!data.success) {
+            alert('Fehler beim Stoppen: ' + data.error);
+        }
+    });
+}
 
 // Test-Signal
-document.getElementById('btn-test').addEventListener('click', async () => {
-    const response = await fetch('/api/osc/test', { method: 'POST' });
-    const data = await response.json();
+const btnTest = document.getElementById('btn-test');
+if (btnTest) {
+    btnTest.addEventListener('click', async () => {
+        const response = await fetch('/api/osc/test', { method: 'POST' });
+        const data = await response.json();
 
-    if (data.success) {
-        alert(`Test-Signal gesendet: ${data.address} = ${data.value}`);
-    } else {
-        alert('Fehler: ' + data.error);
-    }
-});
+        if (data.success) {
+            alert(`Test-Signal gesendet: ${data.address} = ${data.value}`);
+        } else {
+            alert('Fehler: ' + data.error);
+        }
+    });
+}
 
 // VRChat Parameter senden
 async function sendVRChatParam(action, slot) {

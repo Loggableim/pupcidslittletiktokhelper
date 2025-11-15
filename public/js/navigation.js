@@ -28,6 +28,11 @@
         const sidebar = document.getElementById('sidebar');
         const toggleBtn = document.getElementById('sidebar-toggle');
 
+        if (!sidebar) {
+            console.warn('Sidebar element not found');
+            return;
+        }
+
         // Apply saved state
         if (sidebarCollapsed) {
             sidebar.classList.add('sidebar-collapsed');
@@ -129,7 +134,9 @@
         // Close mobile sidebar after navigation
         if (window.innerWidth <= 1024) {
             const sidebar = document.getElementById('sidebar');
-            sidebar.classList.remove('mobile-open');
+            if (sidebar) {
+                sidebar.classList.remove('mobile-open');
+            }
         }
     }
 
