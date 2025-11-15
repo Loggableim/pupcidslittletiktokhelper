@@ -1,13 +1,13 @@
 /* Exo 2 Font Replacement with Web-Safe Alternatives */
-/* This provides a CSP-compliant alternative to Google Fonts */
+/* CSP-compliant alternative to Google Fonts - Using modern geometric sans-serif */
 
 @font-face {
   font-family: 'Exo 2';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  /* Use system fonts with similar geometric sans-serif characteristics */
-  src: local('Arial'), local('Helvetica Neue'), local('Helvetica'), local('Liberation Sans');
+  /* Geometric sans-serif with similar characteristics to Exo 2 */
+  src: local('Century Gothic'), local('Futura'), local('Avenir Next'), local('Helvetica Neue'), local('Arial');
 }
 
 @font-face {
@@ -15,11 +15,10 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  /* Use bold system fonts */
-  src: local('Arial Bold'), local('Helvetica Neue Bold'), local('Helvetica Bold'), local('Liberation Sans Bold');
+  src: local('Century Gothic Bold'), local('Futura Bold'), local('Helvetica Neue Bold'), local('Arial Bold');
 }
 
-/* Fallback font stack for Exo 2 */
+/* Enhanced fallback font stack for Exo 2 */
 body {
-  font-family: 'Exo 2', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Exo 2', 'Century Gothic', 'Futura', 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }

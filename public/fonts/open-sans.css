@@ -1,13 +1,13 @@
 /* Open Sans Font Replacement with Web-Safe Alternatives */
-/* This provides a CSP-compliant alternative to Google Fonts */
+/* CSP-compliant alternative to Google Fonts - Humanist sans-serif */
 
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  /* Use system fonts with similar characteristics */
-  src: local('Arial'), local('Helvetica Neue'), local('Helvetica'), local('Liberation Sans');
+  /* Humanist sans-serif with similar characteristics to Open Sans */
+  src: local('Segoe UI'), local('Calibri'), local('Trebuchet MS'), local('Helvetica Neue'), local('Arial');
 }
 
 @font-face {
@@ -15,8 +15,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  /* Use semi-bold system fonts */
-  src: local('Arial Bold'), local('Helvetica Neue Bold'), local('Helvetica Bold'), local('Liberation Sans Bold');
+  src: local('Segoe UI Semibold'), local('Calibri Bold'), local('Trebuchet MS Bold'), local('Arial Bold');
 }
 
 @font-face {
@@ -24,11 +23,10 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  /* Use bold system fonts */
-  src: local('Arial Bold'), local('Helvetica Neue Bold'), local('Helvetica Bold'), local('Liberation Sans Bold');
+  src: local('Segoe UI Bold'), local('Calibri Bold'), local('Trebuchet MS Bold'), local('Arial Bold');
 }
 
-/* Fallback font stack for Open Sans */
+/* Enhanced fallback font stack for Open Sans */
 body {
-  font-family: 'Open Sans', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Open Sans', 'Segoe UI', 'Calibri', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
 }
