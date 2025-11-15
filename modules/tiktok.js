@@ -324,7 +324,9 @@ class TikTokConnector extends EventEmitter {
             giftName: gift.name || gift.giftName || gift.gift_name || null,
             giftId: gift.id || gift.giftId || gift.gift_id || null,
             giftPictureUrl: gift.image?.url_list?.[0] || gift.image?.url || gift.giftPictureUrl || gift.picture_url || null,
-            diamondCount: gift.diamond_count || gift.diamondCount || gift.diamonds || gift.coins || 0,
+            // BUG FIX: Separate diamond_count from coins to prevent double conversion
+            // Do NOT use gift.coins as fallback for diamondCount - they are different values
+            diamondCount: gift.diamond_count || gift.diamondCount || gift.diamonds || 0,
             repeatCount: data.repeatCount || data.repeat_count || 1,
             giftType: data.giftType || data.gift_type || 0,
             repeatEnd: data.repeatEnd || data.repeat_end || false
@@ -461,6 +463,9 @@ class TikTokConnector extends EventEmitter {
                 coins = diamondCount * 2 * repeatCount;
             }
 
+            // BUG FIX LOGGING: Verify gift calculation is correct
+            console.log(`🎁 [GIFT CALC] ${giftData.giftName}: diamondCount=${diamondCount}, repeatCount=${repeatCount}, coins=${coins}`);
+
             // Streak-Ende prüfen
             // Streakable Gifts nur zählen wenn Streak beendet ist
             const isStreakEnd = giftData.repeatEnd;
@@ -551,8 +556,12 @@ class TikTokConnector extends EventEmitter {
                 }
             }
 
-            // Definiere likeCount am Anfang
-            const likeCount = data.likeCount || 1;
+            // BUG FIX: Extract likeCount from multiple possible properties
+            // TikTok API may send 'count', 'likeCount', or 'like_count'
+            const likeCount = data.likeCount || data.count || data.like_count || 1;
+
+            // BUG FIX LOGGING: Track like event data
+            console.log(`💗 [LIKE EVENT] likeCount=${likeCount}, totalLikes=${totalLikes}, data.likeCount=${data.likeCount}, data.count=${data.count}, data.like_count=${data.like_count}`);
 
             // Wenn totalLikes gefunden wurde, verwende diesen Wert direkt
             if (totalLikes !== null) {
