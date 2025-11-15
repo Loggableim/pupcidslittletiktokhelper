@@ -185,6 +185,22 @@
             console.log(`[Toggle Quick Action] Response data:`, result);
 
             if (result.success) {
+                // Clear TTS queue when disabling TTS
+                if (action === 'tts' && !enabled) {
+                    try {
+                        console.log('[Toggle Quick Action] Clearing TTS queue...');
+                        const clearResponse = await fetch('/api/tts/queue/clear', { method: 'POST' });
+                        const clearResult = await clearResponse.json();
+                        if (clearResult.success) {
+                            console.log('[Toggle Quick Action] TTS queue cleared successfully');
+                        } else {
+                            console.warn('[Toggle Quick Action] Failed to clear TTS queue:', clearResult.error);
+                        }
+                    } catch (clearError) {
+                        console.error('[Toggle Quick Action] Error clearing TTS queue:', clearError);
+                    }
+                }
+
                 showQuickActionNotification(action, enabled);
                 return true;
             } else {
