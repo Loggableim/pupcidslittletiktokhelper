@@ -13,58 +13,69 @@ class GoalsDatabase {
      * Initialize all database tables
      */
     initialize() {
-        this.db.exec(`
-            -- Main goals table
-            CREATE TABLE IF NOT EXISTS goals (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                goal_type TEXT NOT NULL,
-                enabled INTEGER DEFAULT 1,
+        try {
+            this.db.exec(`
+                -- Main goals table
+                CREATE TABLE IF NOT EXISTS goals (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    goal_type TEXT NOT NULL,
+                    enabled INTEGER DEFAULT 1,
 
-                -- Values
-                current_value INTEGER DEFAULT 0,
-                target_value INTEGER DEFAULT 1000,
-                start_value INTEGER DEFAULT 0,
+                    -- Values
+                    current_value INTEGER DEFAULT 0,
+                    target_value INTEGER DEFAULT 1000,
+                    start_value INTEGER DEFAULT 0,
 
-                -- Template & Animation
-                template_id TEXT DEFAULT 'compact-bar',
-                animation_on_update TEXT DEFAULT 'smooth-progress',
-                animation_on_reach TEXT DEFAULT 'celebration',
+                    -- Template & Animation
+                    template_id TEXT DEFAULT 'compact-bar',
+                    animation_on_update TEXT DEFAULT 'smooth-progress',
+                    animation_on_reach TEXT DEFAULT 'celebration',
 
-                -- Behavior on reach
-                on_reach_action TEXT DEFAULT 'hide',
-                on_reach_increment INTEGER DEFAULT 100,
+                    -- Behavior on reach
+                    on_reach_action TEXT DEFAULT 'hide',
+                    on_reach_increment INTEGER DEFAULT 100,
 
-                -- Styling (JSON)
-                theme_json TEXT,
-                overlay_width INTEGER DEFAULT 500,
-                overlay_height INTEGER DEFAULT 100,
+                    -- Styling (JSON)
+                    theme_json TEXT,
+                    overlay_width INTEGER DEFAULT 500,
+                    overlay_height INTEGER DEFAULT 100,
 
-                -- Metadata
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
+                    -- Metadata
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
 
-            -- Goal history for analytics
-            CREATE TABLE IF NOT EXISTS goals_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                goal_id TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                old_value INTEGER,
-                new_value INTEGER,
-                metadata TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE CASCADE
-            );
+                -- Goal history for analytics
+                CREATE TABLE IF NOT EXISTS goals_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    goal_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    old_value INTEGER,
+                    new_value INTEGER,
+                    metadata TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE CASCADE
+                );
 
-            -- Create indexes for performance
-            CREATE INDEX IF NOT EXISTS idx_goals_enabled ON goals(enabled);
-            CREATE INDEX IF NOT EXISTS idx_goals_type ON goals(goal_type);
-            CREATE INDEX IF NOT EXISTS idx_history_goal_id ON goals_history(goal_id);
-            CREATE INDEX IF NOT EXISTS idx_history_timestamp ON goals_history(timestamp);
-        `);
+                -- Create indexes for performance
+                CREATE INDEX IF NOT EXISTS idx_goals_enabled ON goals(enabled);
+                CREATE INDEX IF NOT EXISTS idx_goals_type ON goals(goal_type);
+                CREATE INDEX IF NOT EXISTS idx_history_goal_id ON goals_history(goal_id);
+                CREATE INDEX IF NOT EXISTS idx_history_timestamp ON goals_history(timestamp);
+            `);
 
-        this.api.log('✅ Goals database tables initialized', 'info');
+            // Verify table creation
+            const tables = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='goals'").get();
+            if (!tables) {
+                throw new Error('Goals table creation failed');
+            }
+
+            this.api.log('✅ Goals database tables initialized', 'info');
+        } catch (error) {
+            this.api.log(`❌ Failed to initialize goals database tables: ${error.message}`, 'error');
+            throw error;
+        }
     }
 
     /**
