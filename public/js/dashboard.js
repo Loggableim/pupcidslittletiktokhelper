@@ -2219,3 +2219,83 @@ const saveSoundboardBtn = document.getElementById('save-soundboard-btn');
 if (saveSoundboardBtn) {
     saveSoundboardBtn.addEventListener('click', saveSoundboardSettings);
 }
+
+// ========== TIKTOK CONNECTION SETTINGS ==========
+
+// Load TikTok settings on page load
+async function loadTikTokSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        // Load Euler API Key
+        const eulerApiKeyInput = document.getElementById('tiktok-euler-api-key');
+        if (eulerApiKeyInput) {
+            eulerApiKeyInput.value = settings.tiktok_euler_api_key || '';
+        }
+
+        // Load Enable Euler Fallbacks checkbox
+        const eulerFallbacksCheckbox = document.getElementById('tiktok-enable-euler-fallbacks');
+        if (eulerFallbacksCheckbox) {
+            eulerFallbacksCheckbox.checked = settings.tiktok_enable_euler_fallbacks === 'true';
+        }
+
+        // Load Connect with Unique ID checkbox
+        const connectUniqueIdCheckbox = document.getElementById('tiktok-connect-with-unique-id');
+        if (connectUniqueIdCheckbox) {
+            connectUniqueIdCheckbox.checked = settings.tiktok_connect_with_unique_id === 'true';
+        }
+    } catch (error) {
+        console.error('Error loading TikTok settings:', error);
+    }
+}
+
+// Save TikTok settings
+async function saveTikTokSettings() {
+    try {
+        const eulerApiKey = document.getElementById('tiktok-euler-api-key').value.trim();
+        const enableEulerFallbacks = document.getElementById('tiktok-enable-euler-fallbacks').checked;
+        const connectWithUniqueId = document.getElementById('tiktok-connect-with-unique-id').checked;
+
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                tiktok_euler_api_key: eulerApiKey,
+                tiktok_enable_euler_fallbacks: enableEulerFallbacks ? 'true' : 'false',
+                tiktok_connect_with_unique_id: connectWithUniqueId ? 'true' : 'false'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ TikTok Einstellungen gespeichert!\n\nDie Änderungen werden bei der nächsten Verbindung zu TikTok wirksam.\nWenn bereits verbunden, bitte trennen und erneut verbinden.');
+        } else {
+            alert('❌ Fehler beim Speichern: ' + (result.error || 'Unbekannter Fehler'));
+        }
+    } catch (error) {
+        console.error('Error saving TikTok settings:', error);
+        alert('❌ Fehler beim Speichern der Einstellungen');
+    }
+}
+
+// Set up event listener for save button
+const saveTikTokSettingsBtn = document.getElementById('save-tiktok-settings-btn');
+if (saveTikTokSettingsBtn) {
+    saveTikTokSettingsBtn.addEventListener('click', saveTikTokSettings);
+}
+
+// Load TikTok settings when page loads
+if (typeof loadSettings === 'function') {
+    const originalLoadSettings = loadSettings;
+    window.loadSettings = async function() {
+        await originalLoadSettings();
+        await loadTikTokSettings();
+    };
+} else {
+    // If loadSettings doesn't exist, just call loadTikTokSettings directly
+    document.addEventListener('DOMContentLoaded', loadTikTokSettings);
+}

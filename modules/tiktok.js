@@ -51,21 +51,26 @@ class TikTokConnector extends EventEmitter {
             this.currentUsername = username;
 
             // Erweiterte Verbindungsoptionen
+            // FIX: Read settings from database (preferred) or fallback to environment variables
+            const eulerApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.TIKTOK_SIGN_API_KEY;
+            const enableEulerFallbacks = this.db.getSetting('tiktok_enable_euler_fallbacks') === 'true' || process.env.TIKTOK_ENABLE_EULER_FALLBACKS === 'true';
+            const connectWithUniqueId = this.db.getSetting('tiktok_connect_with_unique_id') === 'true' || process.env.TIKTOK_CONNECT_WITH_UNIQUE_ID === 'true';
+            
             const connectionOptions = {
                 processInitialData: true,
                 enableExtendedGiftInfo: true,
                 enableWebsocketUpgrade: true,
                 requestPollingIntervalMs: 1000,
-                // FIX: Disable Euler Stream fallbacks to avoid permission errors
-                // Users can enable by setting TIKTOK_ENABLE_EULER_FALLBACKS=true
-                disableEulerFallbacks: process.env.TIKTOK_ENABLE_EULER_FALLBACKS !== 'true',
+                // FIX: Use Euler Stream fallbacks when API key is configured or explicitly enabled
+                // When API key is present, Euler fallbacks should be enabled by default
+                disableEulerFallbacks: eulerApiKey ? !enableEulerFallbacks : true,
                 // FIX: Enable connectWithUniqueId to bypass captchas on low-quality IPs
                 // This allows the 3rd-party service to determine Room ID without scraping
-                connectWithUniqueId: process.env.TIKTOK_CONNECT_WITH_UNIQUE_ID === 'true',
+                connectWithUniqueId: connectWithUniqueId,
                 // Session-Keys Support (falls vorhanden)
                 ...(options.sessionId && { sessionId: options.sessionId }),
                 // Sign API Key Support (optional, for custom Euler Stream API key)
-                ...(process.env.TIKTOK_SIGN_API_KEY && { signApiKey: process.env.TIKTOK_SIGN_API_KEY })
+                ...(eulerApiKey && { signApiKey: eulerApiKey })
             };
 
             console.log(`🔄 Verbinde mit TikTok LIVE: @${username}${this.retryCount > 0 ? ` (Versuch ${this.retryCount + 1}/${this.maxRetries + 1})` : ''}...`);

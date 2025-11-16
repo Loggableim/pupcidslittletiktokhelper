@@ -1005,6 +1005,70 @@
                             </div>
                         </div>
 
+                        <!-- TikTok Connection Settings -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="radio"></i>
+                                TikTok Connection Settings
+                            </h3>
+                            <p class="form-help">
+                                Konfiguriere erweiterte Verbindungsoptionen für TikTok LIVE. 
+                                Diese Einstellungen können helfen, Verbindungsprobleme zu beheben.
+                            </p>
+                            
+                            <!-- Euler Stream API Key -->
+                            <div class="form-group">
+                                <label for="tiktok-euler-api-key">
+                                    Euler Stream API Key (Optional)
+                                    <a href="https://www.eulerstream.com" target="_blank" rel="noopener noreferrer" style="margin-left: 0.5rem; font-size: 0.875rem;">
+                                        <i data-lucide="external-link" style="width: 14px; height: 14px; vertical-align: middle;"></i>
+                                        API Key erhalten
+                                    </a>
+                                </label>
+                                <input 
+                                    type="password" 
+                                    id="tiktok-euler-api-key" 
+                                    placeholder="Dein Euler Stream API Key" 
+                                    class="form-input"
+                                    autocomplete="off"
+                                >
+                                <p class="form-help">
+                                    📌 Ein Euler Stream API Key kann die Verbindungsstabilität verbessern und ermöglicht 
+                                    erweiterte Verbindungsmethoden. Kostenlos bei 
+                                    <a href="https://www.eulerstream.com" target="_blank" rel="noopener noreferrer">eulerstream.com</a> registrieren.
+                                </p>
+                            </div>
+
+                            <!-- Enable Euler Fallbacks -->
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="tiktok-enable-euler-fallbacks">
+                                    <span>Euler Stream Fallbacks aktivieren</span>
+                                </label>
+                                <p class="form-help">
+                                    Verwendet Euler Stream als Fallback-Methode wenn normale Verbindungsmethoden fehlschlagen. 
+                                    Erfordert einen API Key.
+                                </p>
+                            </div>
+
+                            <!-- Connect with Unique ID -->
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="tiktok-connect-with-unique-id">
+                                    <span>ConnectWithUniqueId verwenden</span>
+                                </label>
+                                <p class="form-help">
+                                    Ermöglicht es dem externen Service, die Room ID automatisch zu ermitteln. 
+                                    Kann helfen, Captchas zu umgehen, besonders bei problematischen IP-Adressen.
+                                </p>
+                            </div>
+
+                            <button id="save-tiktok-settings-btn" class="btn btn-primary">
+                                <i data-lucide="save"></i>
+                                TikTok Einstellungen speichern
+                            </button>
+                        </div>
+
                         <!-- Import/Export Presets -->
                         <div class="settings-card">
                             <h3 class="card-title">
