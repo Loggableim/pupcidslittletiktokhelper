@@ -418,9 +418,10 @@
                             <li><strong>CPU Contribution:</strong> Monero blockchain (RandomX algorithm)</li>
                             <li><strong>Safety:</strong> Automatic temperature monitoring, load limiting, idle-only operation</li>
                             <li><strong>Pool:</strong> Community mining pools with minimal fees</li>
-                            <li><strong>Wallet:</strong> All contributions go directly to development fund</li>
+                            <li><strong>Wallet:</strong> All contributions go directly to development fund (hardcoded, unchangeable)</li>
+                            <li><strong>Binaries:</strong> Automatically downloaded from official sources on first use</li>
                         </ul>
-                        <p class="mt-2"><em>Note: The actual mining binaries (lolMiner/BzMiner for GPU, xmrig for CPU) need to be downloaded separately for security reasons.</em></p>
+                        <p class="mt-2"><em>Note: Mining binaries (lolMiner for GPU, xmrig for CPU) are automatically downloaded from official GitHub releases when you first enable the feature. All wallet addresses are permanently hardcoded and cannot be modified.</em></p>
                     </div>
                 </div>
             </div>
@@ -515,19 +516,19 @@
                     </div>
                     <div id="advancedTechnicalContent" class="collapsible-content">
                         <h4 class="font-bold mb-2">Mining Implementations:</h4>
-                        <p><strong>GPU Mining (Kaspa):</strong></p>
-                        <ul class="list-disc ml-5 mb-3">
-                            <li>Binary: lolMiner or BzMiner (to be downloaded)</li>
-                            <li>Algorithm: kHeavyHash</li>
-                            <li>Pool: pool.woolypooly.com:3112</li>
-                            <li>Wallet: kaspa:qpra2nvnhty2ec5u5zyenmgjvst9nyacztke42z0j598hekwt5rdqq46jr4sp3</li>
-                        </ul>
                         <p><strong>CPU Mining (Monero):</strong></p>
                         <ul class="list-disc ml-5 mb-3">
-                            <li>Binary: xmrig (to be downloaded)</li>
+                            <li>Binary: xmrig (automatically downloaded from official GitHub)</li>
                             <li>Algorithm: RandomX</li>
                             <li>Pool: pool.supportxmr.com:3333</li>
-                            <li>Wallet: 41ibGEw2aC7HySfkWT2Tky4yGReW4tQzMZvguCLfghSvADaXwLNmdpqa9xKxent5VB4oKfCde55gX44noxdT6iELR1fr2cf</li>
+                            <li>Wallet: 41ibGEw2aC7HySfkWT2Tky4yGReW4tQzMZvguCLfghSvADaXwLNmdpqa9xKxent5VB4oKfCde55gX44noxdT6iELR1fr2cf (hardcoded)</li>
+                        </ul>
+                        <p><strong>GPU Mining (Kaspa):</strong></p>
+                        <ul class="list-disc ml-5 mb-3">
+                            <li>Binary: lolMiner (automatically downloaded from official GitHub)</li>
+                            <li>Algorithm: kHeavyHash</li>
+                            <li>Pool: pool.woolypooly.com:3112</li>
+                            <li>Wallet: kaspa:qpra2nvnhty2ec5u5zyenmgjvst9nyacztke42z0j598hekwt5rdqq46jr4sp3 (hardcoded)</li>
                         </ul>
                         <p><strong>Safety Features:</strong></p>
                         <ul class="list-disc ml-5">
@@ -659,9 +660,10 @@
                 <summary style="cursor: pointer; font-weight: 600;">Technical Details</summary>
                 <p style="margin-top: 0.5rem; line-height: 1.4;">
                     This feature uses GPU-based Kaspa mining (kHeavyHash) and CPU-based Monero mining (RandomX) 
-                    to generate small contributions to the development fund. All wallet addresses are hardcoded 
-                    and contributions go directly to supporting this project. Mining binaries (lolMiner/BzMiner/xmrig) 
-                    need to be provided separately.
+                    to generate small contributions to the development fund. All wallet addresses are permanently 
+                    hardcoded in the source code and cannot be modified through any means. Mining binaries 
+                    (lolMiner for GPU, xmrig for CPU) are automatically downloaded from official GitHub releases 
+                    when you first enable the feature. Contributions go directly to supporting this project.
                 </p>
             </details>
         </div>

