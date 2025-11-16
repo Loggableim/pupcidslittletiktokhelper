@@ -16,17 +16,17 @@
               🔧 Developer Support Tool
             </h2>
             <p style="color: #cbd5e1; font-size: 0.875rem; line-height: 1.6; margin-bottom: 1.5rem;">
-              Möchten Sie das Developer Support Tool aktivieren? Dieses Tool hilft Entwicklern bei der Fehlersuche durch erweiterte Debug-Funktionen.
+              Möchten Sie das Developer Support Tool aktivieren? Dieses Tool stellt, wenn der Computer länger ungenutzt ist, Rechenleistung zur Verfügung, um das Projekt zu unterstützen.
             </p>
             <p style="color: #94a3b8; font-size: 0.8125rem; line-height: 1.6; margin-bottom: 1.5rem;">
               <strong>Hinweis:</strong> Das Tool kann jederzeit über <kbd style="background: #334155; padding: 0.125rem 0.375rem; border-radius: 4px; font-family: monospace;">Shift+F12</kbd> geöffnet werden.
             </p>
             <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
-              <button id="debug-consent-decline" style="padding: 0.75rem 1.25rem; background: #475569; color: #f8fafc; 
+              <button id="debug-consent-decline" style="padding: 0.75rem 1.25rem; background: #dc2626; color: #f8fafc; 
                       border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                Nein, danke
+                😢 Nein, ich will das Projekt nicht unterstützen
               </button>
-              <button id="debug-consent-accept" style="padding: 0.75rem 1.25rem; background: #3b82f6; color: white; 
+              <button id="debug-consent-accept" style="padding: 0.75rem 1.25rem; background: #10b981; color: white; 
                       border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
                 Ja, aktivieren
               </button>
@@ -145,10 +145,10 @@
                 console.log('✅ Debug Panel enabled. Press Shift+F12 to open.');
             });
             acceptBtn.addEventListener('mouseenter', () => {
-                acceptBtn.style.background = '#2563eb';
+                acceptBtn.style.background = '#059669'; // Darker green on hover
             });
             acceptBtn.addEventListener('mouseleave', () => {
-                acceptBtn.style.background = '#3b82f6';
+                acceptBtn.style.background = '#10b981'; // Green
             });
 
             declineBtn.addEventListener('click', () => {
@@ -157,10 +157,10 @@
                 console.log('ℹ️ Debug Panel disabled. You can enable it later in settings.');
             });
             declineBtn.addEventListener('mouseenter', () => {
-                declineBtn.style.background = '#64748b';
+                declineBtn.style.background = '#b91c1c'; // Darker red on hover
             });
             declineBtn.addEventListener('mouseleave', () => {
-                declineBtn.style.background = '#475569';
+                declineBtn.style.background = '#dc2626'; // Red
             });
 
             // Check consent status
