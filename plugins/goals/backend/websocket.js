@@ -16,22 +16,11 @@ class GoalsWebSocket {
      * Register Socket.IO handlers
      */
     registerHandlers() {
-        this.api.registerSocket('connection', (socket) => {
-            this.handleConnection(socket);
-        });
-
-        // Store io instance for broadcasting
-        this.io = this.api.io;
-
-        this.api.log('✅ Goals WebSocket handlers registered', 'info');
-    }
-
-    /**
-     * Handle new socket connection
-     */
-    handleConnection(socket) {
+        // Register individual socket event handlers
+        // These will be attached to each socket on connection by the plugin loader
+        
         // Get all goals
-        socket.on('goals:get-all', () => {
+        this.api.registerSocket('goals:get-all', (socket) => {
             try {
                 const goals = this.db.getAllGoals();
                 const states = this.stateMachineManager.getAllSnapshots();
@@ -60,7 +49,7 @@ class GoalsWebSocket {
         });
 
         // Subscribe to specific goal updates
-        socket.on('goals:subscribe', (goalId) => {
+        this.api.registerSocket('goals:subscribe', (socket, goalId) => {
             try {
                 const goal = this.db.getGoal(goalId);
                 if (!goal) {
@@ -95,13 +84,13 @@ class GoalsWebSocket {
         });
 
         // Unsubscribe from goal updates
-        socket.on('goals:unsubscribe', (goalId) => {
+        this.api.registerSocket('goals:unsubscribe', (socket, goalId) => {
             socket.leave(`goal:${goalId}`);
             this.api.log(`Client unsubscribed from goal: ${goalId}`, 'debug');
         });
 
         // Get goal state
-        socket.on('goals:get-state', (goalId) => {
+        this.api.registerSocket('goals:get-state', (socket, goalId) => {
             try {
                 const machine = this.stateMachineManager.getMachine(goalId);
                 const snapshot = machine.getSnapshot();
@@ -120,7 +109,7 @@ class GoalsWebSocket {
         });
 
         // Manual goal update (for custom goals)
-        socket.on('goals:manual-update', (data) => {
+        this.api.registerSocket('goals:manual-update', (socket, data) => {
             try {
                 const { goalId, value } = data;
                 const machine = this.stateMachineManager.getMachine(goalId);
@@ -151,7 +140,7 @@ class GoalsWebSocket {
         });
 
         // Signal animation end (from overlay)
-        socket.on('goals:animation-end', (data) => {
+        this.api.registerSocket('goals:animation-end', (socket, data) => {
             try {
                 const { goalId, animationType } = data;
                 const machine = this.stateMachineManager.getMachine(goalId);
@@ -180,6 +169,11 @@ class GoalsWebSocket {
                 this.api.log(`Error handling animation end: ${error.message}`, 'error');
             }
         });
+
+        // Store io instance for broadcasting
+        this.io = this.api.io;
+
+        this.api.log('✅ Goals WebSocket handlers registered', 'info');
     }
 
     /**
