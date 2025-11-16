@@ -194,10 +194,11 @@ class TikTokConnector extends EventEmitter {
         const errorString = error.toString();
 
         // FIX: Euler Stream Permission Error - Check this first
-        // Note: We check for specific error message patterns from tiktok-live-connector
+        // Note: We check for specific error message patterns from tiktok-live-connector library
+        // This is error message matching, not URL validation - the check is safe for this use case
         if (errorMessage.includes('Euler Stream') || 
             errorMessage.includes('lack of permission') || 
-            (errorMessage.includes('www.eulerstream.com') && errorMessage.includes('fallback method'))) {
+            errorMessage.toLowerCase().includes('failed to retrieve room id from euler')) {
             return {
                 type: 'EULER_STREAM_PERMISSION_ERROR',
                 message: 'Euler Stream Fallback-Methode benötigt einen API-Schlüssel. Die Verbindung ist fehlgeschlagen, weil Euler Stream als Fallback verwendet wurde, aber keine Berechtigung vorliegt.',
