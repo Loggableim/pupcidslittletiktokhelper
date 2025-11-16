@@ -1,5 +1,6 @@
 const { TikTokLiveConnection } = require('tiktok-live-connector');
 const EventEmitter = require('events');
+const ConnectionDiagnostics = require('./connection-diagnostics');
 
 class TikTokConnector extends EventEmitter {
     constructor(io, db) {
@@ -35,6 +36,9 @@ class TikTokConnector extends EventEmitter {
         // Stream duration tracking
         this.streamStartTime = null;
         this.durationInterval = null;
+        
+        // Connection diagnostics
+        this.diagnostics = new ConnectionDiagnostics(db);
     }
 
     // FIX: Decrypt backup Euler API key (last resort fallback)
@@ -111,10 +115,14 @@ class TikTokConnector extends EventEmitter {
             this.registerEventListeners();
 
             // Verbindung herstellen mit Timeout
+            // FIX: Configurable timeout (default 45s, range 25-45s)
+            const connectionTimeout = parseInt(this.db.getSetting('tiktok_connection_timeout')) || 45000;
+            const timeoutSeconds = Math.floor(connectionTimeout / 1000);
+            
             const state = await Promise.race([
                 this.connection.connect(),
                 new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Verbindungs-Timeout nach 30 Sekunden')), 30000)
+                    setTimeout(() => reject(new Error(`Verbindungs-Timeout nach ${timeoutSeconds} Sekunden`)), connectionTimeout)
                 )
             ]);
 
@@ -122,16 +130,42 @@ class TikTokConnector extends EventEmitter {
             this.retryCount = 0; // Reset bei erfolgreicher Verbindung
 
             // Start stream duration tracking
-            // Try to get real stream start time from roomInfo if available
-            if (state.roomInfo && state.roomInfo.create_time) {
-                // TikTok provides create_time in seconds, convert to milliseconds
-                this.streamStartTime = state.roomInfo.create_time * 1000;
-            } else if (state.roomInfo && state.roomInfo.createTime) {
-                // Alternative field name
-                this.streamStartTime = state.roomInfo.createTime * 1000;
-            } else {
-                // Fallback: use current time as start time
+            // FIX: Enhanced fallback chain for stream start time extraction
+            // Try multiple field names and handle both seconds and milliseconds timestamps
+            this.streamStartTime = null;
+            
+            if (state.roomInfo) {
+                // Try create_time (most common, Unix timestamp in seconds)
+                if (state.roomInfo.create_time) {
+                    this.streamStartTime = state.roomInfo.create_time * 1000;
+                    console.log(`📅 Stream start time from create_time: ${new Date(this.streamStartTime).toISOString()}`);
+                }
+                // Try createTime (alternative field)
+                else if (state.roomInfo.createTime) {
+                    // Check if already in milliseconds (> year 2100 in seconds)
+                    this.streamStartTime = state.roomInfo.createTime > 4000000000 
+                        ? state.roomInfo.createTime 
+                        : state.roomInfo.createTime * 1000;
+                    console.log(`📅 Stream start time from createTime: ${new Date(this.streamStartTime).toISOString()}`);
+                }
+                // Try start_time (another alternative)
+                else if (state.roomInfo.start_time) {
+                    this.streamStartTime = state.roomInfo.start_time * 1000;
+                    console.log(`📅 Stream start time from start_time: ${new Date(this.streamStartTime).toISOString()}`);
+                }
+                // Try startTime (camelCase variant)
+                else if (state.roomInfo.startTime) {
+                    this.streamStartTime = state.roomInfo.startTime > 4000000000 
+                        ? state.roomInfo.startTime 
+                        : state.roomInfo.startTime * 1000;
+                    console.log(`📅 Stream start time from startTime: ${new Date(this.streamStartTime).toISOString()}`);
+                }
+            }
+            
+            // Final fallback: use current time
+            if (!this.streamStartTime) {
                 this.streamStartTime = Date.now();
+                console.log(`⚠️ Stream start time nicht verfügbar, verwende aktuelle Zeit: ${new Date(this.streamStartTime).toISOString()}`);
             }
 
             // Start interval to broadcast duration every second
@@ -161,6 +195,9 @@ class TikTokConnector extends EventEmitter {
             this.db.setSetting('last_connected_username', username);
 
             console.log(`✅ Connected to TikTok LIVE: @${username}`);
+            
+            // Log successful connection attempt
+            this.diagnostics.logConnectionAttempt(username, true, null, null);
 
             // Gift-Katalog automatisch aktualisieren (ohne preferConnected, da bereits verbunden)
             setTimeout(() => {
@@ -177,6 +214,9 @@ class TikTokConnector extends EventEmitter {
             this.lastErrorType = errorInfo.type;
 
             console.error(`❌ TikTok Verbindungsfehler (${errorInfo.type}):`, errorInfo.message);
+            
+            // Log failed connection attempt
+            this.diagnostics.logConnectionAttempt(username, false, errorInfo.type, errorInfo.message);
             
             // Zeige Vorschlag an, wenn vorhanden
             if (errorInfo.suggestion) {
@@ -831,6 +871,15 @@ class TikTokConnector extends EventEmitter {
 
     getGiftCatalog() {
         return this.db.getGiftCatalog();
+    }
+    
+    // Connection diagnostics methods
+    async runDiagnostics(username) {
+        return await this.diagnostics.runFullDiagnostics(username || this.currentUsername || 'tiktok');
+    }
+    
+    async getConnectionHealth() {
+        return await this.diagnostics.getConnectionHealth();
     }
 }
 
