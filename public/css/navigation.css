@@ -889,7 +889,8 @@ input:checked + .toggle-slider:before {
     flex-direction: column;
     flex: 1; /* Allow section to grow and fill available space */
     min-height: 0; /* Critical for flexbox sizing */
-    overflow: hidden; /* Prevent section from overflowing */
+    overflow-y: auto; /* FIX: Allow vertical scrolling in settings panel */
+    overflow-x: hidden; /* Prevent horizontal overflow */
 }
 
 .view-header {
