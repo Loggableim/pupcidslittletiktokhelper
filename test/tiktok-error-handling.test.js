@@ -40,6 +40,15 @@ const testSuites = [
                 assert.ok(result.message.includes('blockiert'));
                 assert.ok(result.suggestion.includes('NICHT SOFORT ERNEUT VERSUCHEN'));
             }},
+            { name: 'Sign API 401 errors (invalid API key)', fn: () => {
+                const connector = new TikTokConnector(new MockIO(), new MockDB());
+                const error = new Error('[Sign Error] Unexpected sign server status 401. Payload:\n{"code":401,"message":"The provided API Key is invalid."}');
+                const result = connector.analyzeConnectionError(error);
+                assert.strictEqual(result.type, 'SIGN_API_INVALID_KEY');
+                assert.strictEqual(result.retryable, false);
+                assert.ok(result.message.includes('401'));
+                assert.ok(result.suggestion.includes('eulerstream.com'));
+            }},
             { name: 'Sign API 504 errors', fn: () => {
                 const connector = new TikTokConnector(new MockIO(), new MockDB());
                 const error = new Error('[Sign Error] 504 error occurred');
