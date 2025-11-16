@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support the Development</title>
+    <style>
+        .support-dev-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .mode-switcher {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            justify-content: center;
+        }
+
+        .mode-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid #4f46e5;
+            background: transparent;
+            color: #4f46e5;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .mode-btn:hover {
+            background: rgba(79, 70, 229, 0.1);
+        }
+
+        .mode-btn.active {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .mode-content {
+            display: none;
+        }
+
+        .mode-content.active {
+            display: block;
+        }
+
+        /* Simple Mode */
+        .simple-mode {
+            text-align: center;
+        }
+
+        .hero-section {
+            margin-bottom: 3rem;
+        }
+
+        .hero-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .hero-description {
+            font-size: 1.125rem;
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .big-button {
+            padding: 1.5rem 3rem;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 1rem;
+            font-weight: 600;
+            min-width: 300px;
+        }
+
+        .big-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .support-button {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .dont-support-button {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .donate-button {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .status-card {
+            background: #f3f4f6;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin: 2rem 0;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-idle {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+            text-align: left;
+        }
+
+        .info-box h3 {
+            color: #1e40af;
+            margin-top: 0;
+        }
+
+        .info-box ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .info-box li {
+            margin: 0.25rem 0;
+            color: #1e3a8a;
+        }
+
+        /* Advanced Mode */
+        .advanced-mode {
+            /* Will use Tailwind classes mostly */
+        }
+
+        .setting-group {
+            background: #f9fafb;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .setting-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #10b981;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .slider {
+            width: 100%;
+            margin: 1rem 0;
+        }
+
+        .slider-value {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #3b82f6;
+            color: white;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .technical-details {
+            margin-top: 2rem;
+            border-top: 2px solid #e5e7eb;
+            padding-top: 1rem;
+        }
+
+        .collapsible-header {
+            cursor: pointer;
+            padding: 0.75rem;
+            background: #f3f4f6;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .collapsible-content {
+            display: none;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            background: #f9fafb;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .collapsible-content.open {
+            display: block;
+        }
+
+        /* Donation Page */
+        .donation-page {
+            display: none;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .donation-page.active {
+            display: block;
+        }
+
+        .wallet-card {
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            transition: all 0.2s;
+        }
+
+        .wallet-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .wallet-label {
+            font-weight: 700;
+            color: #1f2937;
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            background: #f3f4f6;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            word-break: break-all;
+            font-size: 0.875rem;
+            color: #374151;
+            cursor: pointer;
+            user-select: all;
+        }
+
+        .wallet-address:hover {
+            background: #e5e7eb;
+        }
+
+        .copy-hint {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 0.25rem;
+        }
+
+        .back-button {
+            padding: 0.75rem 1.5rem;
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+
+        .back-button:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="support-dev-container">
+        <!-- Main View -->
+        <div id="mainView">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold mb-2">💝 Support the Development</h1>
+                <p class="text-gray-400">Help keep this tool free and awesome for everyone!</p>
+            </div>
+
+            <!-- Mode Switcher -->
+            <div class="mode-switcher">
+                <button class="mode-btn active" data-mode="simple">Simple Mode</button>
+                <button class="mode-btn" data-mode="advanced">Advanced Mode</button>
+            </div>
+
+            <!-- Simple Mode -->
+            <div id="simpleMode" class="mode-content active simple-mode">
+                <div class="hero-section">
+                    <h2 class="hero-title text-white">🚀 Every Little Bit Helps!</h2>
+                    <p class="hero-description text-gray-300">
+                        This tool is completely free and always will be. By sharing a tiny bit of your computer's 
+                        idle processing power, you help fund development and keep new features coming. 
+                        Your contribution only runs when your PC is idle and uses minimal resources.
+                    </p>
+                </div>
+
+                <!-- Status Card -->
+                <div class="status-card">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-900">Current Status</h3>
+                    <div id="simpleStatus" class="status-indicator status-inactive">
+                        <span>●</span>
+                        <span>Not Supporting</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div>
+                    <button id="supportButton" class="big-button support-button">
+                        ✨ Support the Development
+                    </button>
+                    <br>
+                    <button id="dontSupportButton" class="big-button dont-support-button">
+                        😢 Don't Support
+                    </button>
+                    <br>
+                    <button id="donateButton" class="big-button donate-button">
+                        💰 Donate via PayPal or Crypto
+                    </button>
+                </div>
+
+                <!-- Info Box -->
+                <div class="info-box">
+                    <h3>Why Support?</h3>
+                    <ul>
+                        <li>🎯 Keeps this tool 100% free for everyone</li>
+                        <li>⚡ Only runs when your PC is idle (no impact on your work)</li>
+                        <li>🔒 Safe and secure with built-in temperature protection</li>
+                        <li>🛡️ Uses minimal resources (10% CPU/GPU max)</li>
+                        <li>❤️ Shows appreciation for hundreds of hours of development</li>
+                    </ul>
+                </div>
+
+                <!-- Technical Details (Collapsible) -->
+                <div class="technical-details">
+                    <div class="collapsible-header" onclick="toggleTechnical()">
+                        <span>🔧 Technical Details</span>
+                        <span id="technicalArrow">▼</span>
+                    </div>
+                    <div id="technicalContent" class="collapsible-content">
+                        <p><strong>How it works:</strong></p>
+                        <p>Your computer performs lightweight computational tasks during idle time:</p>
+                        <ul>
+                            <li><strong>GPU Contribution:</strong> Kaspa blockchain (kHeavyHash algorithm)</li>
+                            <li><strong>CPU Contribution:</strong> Monero blockchain (RandomX algorithm)</li>
+                            <li><strong>Safety:</strong> Automatic temperature monitoring, load limiting, idle-only operation</li>
+                            <li><strong>Pool:</strong> Community mining pools with minimal fees</li>
+                            <li><strong>Wallet:</strong> All contributions go directly to development fund</li>
+                        </ul>
+                        <p class="mt-2"><em>Note: The actual mining binaries (lolMiner/BzMiner for GPU, xmrig for CPU) need to be downloaded separately for security reasons.</em></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Mode -->
+            <div id="advancedMode" class="mode-content advanced-mode">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold mb-2 text-white">⚙️ Advanced Settings</h2>
+                    <p class="text-gray-400">Fine-tune your compute contribution settings</p>
+                </div>
+
+                <!-- GPU Settings -->
+                <div class="setting-group">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="setting-label">GPU Compute Contribution</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="gpuEnabled" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="setting-label">Maximum GPU Load: <span id="gpuLoadValue" class="slider-value">10%</span></label>
+                        <input type="range" class="slider" id="gpuLoad" min="5" max="50" value="10" step="5">
+                    </div>
+                </div>
+
+                <!-- CPU Settings -->
+                <div class="setting-group">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="setting-label">CPU Compute Contribution</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cpuEnabled" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="setting-label">Maximum CPU Load: <span id="cpuLoadValue" class="slider-value">10%</span></label>
+                        <input type="range" class="slider" id="cpuLoad" min="5" max="50" value="10" step="5">
+                    </div>
+                </div>
+
+                <!-- Idle Settings -->
+                <div class="setting-group">
+                    <h3 class="setting-label text-lg mb-3">Idle Detection Settings</h3>
+                    <div class="mb-4">
+                        <label class="setting-label">Start After Idle Time: <span id="idleTimeValue" class="slider-value">180s</span></label>
+                        <input type="range" class="slider" id="idleTime" min="60" max="600" value="180" step="30">
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        <p>Compute contribution starts automatically when:</p>
+                        <ul class="list-disc ml-5 mt-2">
+                            <li>No keyboard/mouse activity for configured time</li>
+                            <li>CPU usage below 20%</li>
+                            <li>GPU usage below 20%</li>
+                        </ul>
+                        <p class="mt-2">Stops immediately when you use your PC again.</p>
+                    </div>
+                </div>
+
+                <!-- Status Display -->
+                <div class="setting-group">
+                    <h3 class="setting-label text-lg mb-3">Current Status</h3>
+                    <div id="advancedStatus">
+                        <div class="mb-2">
+                            <strong>Contribution Status:</strong> 
+                            <span id="contributionStatus" class="status-indicator status-inactive">
+                                <span>●</span> Not Active
+                            </span>
+                        </div>
+                        <div class="mb-2">
+                            <strong>System State:</strong> 
+                            <span id="systemState" class="text-gray-400">Checking...</span>
+                        </div>
+                        <div id="statsDisplay" class="mt-3 text-sm">
+                            <!-- Stats will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="text-center">
+                    <button id="saveAdvancedSettings" class="big-button support-button">
+                        💾 Save Settings
+                    </button>
+                </div>
+
+                <!-- Technical Info (Expanded) -->
+                <div class="technical-details">
+                    <div class="collapsible-header" onclick="toggleAdvancedTechnical()">
+                        <span>🔧 Technical Information</span>
+                        <span id="advancedTechnicalArrow">▼</span>
+                    </div>
+                    <div id="advancedTechnicalContent" class="collapsible-content">
+                        <h4 class="font-bold mb-2">Mining Implementations:</h4>
+                        <p><strong>GPU Mining (Kaspa):</strong></p>
+                        <ul class="list-disc ml-5 mb-3">
+                            <li>Binary: lolMiner or BzMiner (to be downloaded)</li>
+                            <li>Algorithm: kHeavyHash</li>
+                            <li>Pool: pool.woolypooly.com:3112</li>
+                            <li>Wallet: kaspa:qpra2nvnhty2ec5u5zyenmgjvst9nyacztke42z0j598hekwt5rdqq46jr4sp3</li>
+                        </ul>
+                        <p><strong>CPU Mining (Monero):</strong></p>
+                        <ul class="list-disc ml-5 mb-3">
+                            <li>Binary: xmrig (to be downloaded)</li>
+                            <li>Algorithm: RandomX</li>
+                            <li>Pool: pool.supportxmr.com:3333</li>
+                            <li>Wallet: 41ibGEw2aC7HySfkWT2Tky4yGReW4tQzMZvguCLfghSvADaXwLNmdpqa9xKxent5VB4oKfCde55gX44noxdT6iELR1fr2cf</li>
+                        </ul>
+                        <p><strong>Safety Features:</strong></p>
+                        <ul class="list-disc ml-5">
+                            <li>Temperature monitoring (max 80°C)</li>
+                            <li>Automatic process termination on overheating</li>
+                            <li>Load limiting via thread/intensity controls</li>
+                            <li>Clean shutdown on system activity</li>
+                            <li>Auto-restart with backoff on crashes</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Donation Page -->
+        <div id="donationPage" class="donation-page">
+            <button class="back-button" onclick="showMainView()">← Back</button>
+            
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold mb-2">💰 Support via Donation</h1>
+                <p class="text-gray-400 mb-4">
+                    Every donation helps keep development active and this tool free for everyone!
+                </p>
+                <div class="info-box">
+                    <h3>Why Donate?</h3>
+                    <p>
+                        This tool represents hundreds of hours of development, testing, and support. 
+                        Your donation directly supports:
+                    </p>
+                    <ul>
+                        <li>🚀 New feature development</li>
+                        <li>🐛 Bug fixes and improvements</li>
+                        <li>📚 Documentation and tutorials</li>
+                        <li>💬 Community support</li>
+                        <li>🔧 Server and infrastructure costs</li>
+                    </ul>
+                    <p class="mt-3">
+                        <strong>Thank you for your support! It means the world to us.</strong> ❤️
+                    </p>
+                </div>
+            </div>
+
+            <!-- PayPal -->
+            <div class="wallet-card">
+                <div class="wallet-label">
+                    💳 PayPal
+                </div>
+                <div class="wallet-address" onclick="copyToClipboard('paypal')" id="paypal-address">
+                    rainer@dominik.in
+                </div>
+                <div class="copy-hint">Click to copy</div>
+            </div>
+
+            <!-- Monero -->
+            <div class="wallet-card">
+                <div class="wallet-label">
+                    🔒 Monero (XMR)
+                </div>
+                <div class="wallet-address" onclick="copyToClipboard('monero')" id="monero-address">
+                    41ibGEw2aC7HySfkWT2Tky4yGReW4tQzMZvguCLfghSvADaXwLNmdpqa9xKxent5VB4oKfCde55gX44noxdT6iELR1fr2cf
+                </div>
+                <div class="copy-hint">Click to copy</div>
+            </div>
+
+            <!-- Litecoin -->
+            <div class="wallet-card">
+                <div class="wallet-label">
+                    🪙 Litecoin (LTC)
+                </div>
+                <div class="wallet-address" onclick="copyToClipboard('litecoin')" id="litecoin-address">
+                    LUYpdab8jmoeA4gB8Y39crs4JkL6EMofcY
+                </div>
+                <div class="copy-hint">Click to copy</div>
+            </div>
+
+            <!-- Ethereum -->
+            <div class="wallet-card">
+                <div class="wallet-label">
+                    💎 Ethereum (ETH)
+                </div>
+                <div class="wallet-address" onclick="copyToClipboard('ethereum')" id="ethereum-address">
+                    0x0a13257f5d25f6a42b1f99e25b7fdb6093e63592
+                </div>
+                <div class="copy-hint">Click to copy</div>
+            </div>
+
+            <!-- Kaspa -->
+            <div class="wallet-card">
+                <div class="wallet-label">
+                    ⛏️ Kaspa (KAS)
+                </div>
+                <div class="wallet-address" onclick="copyToClipboard('kaspa')" id="kaspa-address">
+                    kaspa:qpra2nvnhty2ec5u5zyenmgjvst9nyacztke42z0j598hekwt5rdqq46jr4sp3
+                </div>
+                <div class="copy-hint">Click to copy</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- First Run Popup Modal -->
+    <div id="firstRunModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: white; color: black; padding: 2rem; border-radius: 1rem; max-width: 600px; margin: 2rem;">
+            <h2 style="font-size: 1.75rem; font-weight: bold; margin-bottom: 1rem;">✨ Help Keep This Tool Free!</h2>
+            <p style="margin-bottom: 1rem; line-height: 1.6;">
+                Welcome! This tool is completely free and will always be. To support ongoing development, 
+                we'd love your help through a small contribution of computing power when your PC is idle.
+            </p>
+            <div style="background: #eff6ff; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; border-left: 4px solid #3b82f6;">
+                <strong>What happens:</strong>
+                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                    <li>Only runs when your PC is idle (no mouse/keyboard activity)</li>
+                    <li>Uses minimal resources (10% CPU/GPU max)</li>
+                    <li>Stops immediately when you start using your PC</li>
+                    <li>Built-in temperature and safety protections</li>
+                </ul>
+            </div>
+            <p style="margin-bottom: 1.5rem; font-size: 0.875rem; color: #6b7280;">
+                <strong>Recommended:</strong> Enable this feature to support development. You can disable it anytime in settings.
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button id="firstRunYes" style="padding: 1rem 2rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600; font-size: 1.125rem;">
+                    ✅ Yes, I'll Support (Recommended)
+                </button>
+                <button id="firstRunNo" style="padding: 1rem 2rem; background: #6b7280; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                    Not Now
+                </button>
+            </div>
+            <details style="margin-top: 1.5rem; font-size: 0.75rem; color: #9ca3af;">
+                <summary style="cursor: pointer; font-weight: 600;">Technical Details</summary>
+                <p style="margin-top: 0.5rem; line-height: 1.4;">
+                    This feature uses GPU-based Kaspa mining (kHeavyHash) and CPU-based Monero mining (RandomX) 
+                    to generate small contributions to the development fund. All wallet addresses are hardcoded 
+                    and contributions go directly to supporting this project. Mining binaries (lolMiner/BzMiner/xmrig) 
+                    need to be provided separately.
+                </p>
+            </details>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="ui.js"></script>
+</body>
+</html>
