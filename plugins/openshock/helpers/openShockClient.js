@@ -63,7 +63,7 @@ class OpenShockClient {
             baseURL: this.baseUrl,
             timeout: this.defaultTimeout,
             headers: {
-                'OpenShockToken': this.apiKey,
+                'Open-Shock-Token': this.apiKey,
                 'Content-Type': 'application/json',
                 'User-Agent': 'OpenShockClient/1.0'
             }
