@@ -456,7 +456,7 @@ function createEventElement(event, layoutMode) {
   if (event.type === 'chat') {
     const username = document.createElement('span');
     username.className = 'event-username';
-    username.textContent = event.data.username || 'Anonymous';
+    username.textContent = event.data.user?.nickname || event.data.username || 'Anonymous';
     element.appendChild(username);
 
     if (layoutMode === 'singleStream') {
@@ -473,7 +473,7 @@ function createEventElement(event, layoutMode) {
   } else if (event.type === 'gift') {
     const username = document.createElement('span');
     username.className = 'event-username';
-    username.textContent = event.data.username || 'Anonymous';
+    username.textContent = event.data.user?.nickname || event.data.username || 'Anonymous';
     element.appendChild(username);
 
     if (layoutMode === 'singleStream') {
@@ -485,15 +485,15 @@ function createEventElement(event, layoutMode) {
 
     const giftInfo = document.createElement('span');
     giftInfo.className = 'event-gift-info';
-    giftInfo.textContent = event.data.giftName ?
-      `${event.data.giftName}${event.data.coins ? ` (${event.data.coins} coins)` : ''}` :
-      (event.data.coins ? `${event.data.coins} coins` : 'sent a gift');
+    giftInfo.textContent = event.data.gift?.name || event.data.giftName ?
+      `${event.data.gift?.name || event.data.giftName}${event.data.gift?.coins || event.data.coins ? ` (${event.data.gift?.coins || event.data.coins} coins)` : ''}` :
+      (event.data.gift?.coins || event.data.coins ? `${event.data.gift?.coins || event.data.coins} coins` : 'sent a gift');
     element.appendChild(giftInfo);
   } else {
     // Standard event (follow, share, sub, treasure, join)
     const username = document.createElement('span');
     username.className = 'event-username';
-    username.textContent = event.data.username || 'Anonymous';
+    username.textContent = event.data.user?.nickname || event.data.username || 'Anonymous';
     element.appendChild(username);
 
     if (layoutMode === 'singleStream') {
