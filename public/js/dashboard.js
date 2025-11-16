@@ -2299,3 +2299,175 @@ if (typeof loadSettings === 'function') {
     // If loadSettings doesn't exist, just call loadTikTokSettings directly
     document.addEventListener('DOMContentLoaded', loadTikTokSettings);
 }
+
+// ========== CONNECTION DIAGNOSTICS ==========
+
+// Run diagnostics
+document.getElementById('run-diagnostics-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('run-diagnostics-btn');
+    const resultDiv = document.getElementById('diagnostics-result');
+    const contentDiv = document.getElementById('diagnostics-content');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Läuft...';
+    
+    try {
+        const username = document.getElementById('username-input').value || 'tiktok';
+        const response = await fetch(`/api/diagnostics?username=${encodeURIComponent(username)}`);
+        const diagnostics = await response.json();
+        
+        // Display results
+        resultDiv.style.display = 'block';
+        
+        let html = '<div style="font-family: monospace; line-height: 1.6;">';
+        
+        // Euler API Key Status
+        html += '<div style="margin-bottom: 1rem;"><strong>🔑 Euler API Key:</strong><br>';
+        const keyInfo = diagnostics.eulerApiKey;
+        if (keyInfo.activeKey) {
+            html += `✅ Aktiv (${keyInfo.activeSource}): ${keyInfo.activeKey}<br>`;
+        } else {
+            html += '❌ Nicht konfiguriert<br>';
+        }
+        html += '</div>';
+        
+        // TikTok API Test
+        html += '<div style="margin-bottom: 1rem;"><strong>🌐 TikTok API:</strong><br>';
+        if (diagnostics.tiktokApi.success) {
+            html += `✅ Erreichbar (${diagnostics.tiktokApi.responseTime}ms)<br>`;
+        } else {
+            html += `❌ Fehler: ${diagnostics.tiktokApi.error || 'Nicht erreichbar'}<br>`;
+        }
+        html += '</div>';
+        
+        // Euler WebSocket Test
+        html += '<div style="margin-bottom: 1rem;"><strong>🔌 Euler WebSocket:</strong><br>';
+        if (diagnostics.eulerWebSocket.success) {
+            html += `✅ Verbindung OK (${diagnostics.eulerWebSocket.responseTime}ms)<br>`;
+        } else {
+            html += `⚠️ ${diagnostics.eulerWebSocket.error || 'Nicht verbunden'}<br>`;
+        }
+        html += '</div>';
+        
+        // Configuration
+        html += '<div style="margin-bottom: 1rem;"><strong>⚙️ Konfiguration:</strong><br>';
+        html += `Euler Fallbacks: ${diagnostics.connectionConfig.enableEulerFallbacks ? '✅ Aktiviert' : '❌ Deaktiviert'}<br>`;
+        html += `Connect with Unique ID: ${diagnostics.connectionConfig.connectWithUniqueId ? '✅ Aktiviert' : '❌ Deaktiviert'}<br>`;
+        html += `Timeout: ${diagnostics.connectionConfig.connectionTimeout / 1000}s<br>`;
+        html += '</div>';
+        
+        // Recent Attempts
+        if (diagnostics.recentAttempts && diagnostics.recentAttempts.length > 0) {
+            html += '<div style="margin-bottom: 1rem;"><strong>📜 Letzte Verbindungsversuche:</strong><br>';
+            diagnostics.recentAttempts.slice(0, 5).forEach(attempt => {
+                const icon = attempt.success ? '✅' : '❌';
+                const time = new Date(attempt.timestamp).toLocaleTimeString('de-DE');
+                html += `${icon} ${time} - @${attempt.username}`;
+                if (!attempt.success) {
+                    html += ` (${attempt.errorType})`;
+                }
+                html += '<br>';
+            });
+            html += '</div>';
+        }
+        
+        // Recommendations
+        if (diagnostics.recommendations && diagnostics.recommendations.length > 0) {
+            html += '<div><strong>💡 Empfehlungen:</strong><br>';
+            diagnostics.recommendations.forEach(rec => {
+                const icon = rec.severity === 'error' ? '🔴' : rec.severity === 'warning' ? '🟡' : '🔵';
+                html += `${icon} ${rec.message}<br>`;
+                html += `<span style="color: var(--text-secondary); font-size: 0.9em;">→ ${rec.action}</span><br><br>`;
+            });
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        contentDiv.innerHTML = html;
+        
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+        
+    } catch (error) {
+        resultDiv.style.display = 'block';
+        contentDiv.innerHTML = `<div style="color: var(--error);">❌ Fehler: ${error.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="activity"></i> Verbindungsdiagnose ausführen';
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+});
+
+// Load connection health on page load
+async function loadConnectionHealth() {
+    try {
+        const response = await fetch('/api/connection-health');
+        const health = await response.json();
+        
+        const healthDiv = document.getElementById('connection-health');
+        const statusSpan = document.getElementById('health-status');
+        const detailsDiv = document.getElementById('health-details');
+        
+        if (healthDiv && statusSpan && detailsDiv) {
+            healthDiv.style.display = 'block';
+            
+            // Set status color
+            let bgColor = 'var(--bg-secondary)';
+            let textColor = 'var(--text-primary)';
+            
+            switch (health.status) {
+                case 'healthy':
+                    bgColor = 'rgba(34, 197, 94, 0.1)';
+                    textColor = 'rgb(34, 197, 94)';
+                    break;
+                case 'warning':
+                    bgColor = 'rgba(234, 179, 8, 0.1)';
+                    textColor = 'rgb(234, 179, 8)';
+                    break;
+                case 'degraded':
+                    bgColor = 'rgba(249, 115, 22, 0.1)';
+                    textColor = 'rgb(249, 115, 22)';
+                    break;
+                case 'critical':
+                    bgColor = 'rgba(239, 68, 68, 0.1)';
+                    textColor = 'rgb(239, 68, 68)';
+                    break;
+            }
+            
+            healthDiv.style.background = bgColor;
+            statusSpan.style.color = textColor;
+            statusSpan.textContent = health.message;
+            
+            let details = '';
+            if (health.eulerKeyConfigured) {
+                details += `Euler Key: ${health.eulerKeySource}`;
+            } else {
+                details += 'Kein Euler Key konfiguriert';
+            }
+            
+            if (health.recentAttempts && health.recentAttempts.length > 0) {
+                const failures = health.recentAttempts.filter(a => !a.success).length;
+                details += ` | ${failures}/${health.recentAttempts.length} fehlgeschlagen`;
+            }
+            
+            detailsDiv.textContent = details;
+            
+            // Re-initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load connection health:', error);
+    }
+}
+
+// Load health on page load
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(loadConnectionHealth, 1000);
+});
+

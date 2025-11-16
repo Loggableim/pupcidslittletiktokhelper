@@ -586,6 +586,30 @@ app.get('/api/status', apiLimiter, (req, res) => {
     });
 });
 
+// ========== CONNECTION DIAGNOSTICS ROUTES ==========
+
+app.get('/api/diagnostics', apiLimiter, async (req, res) => {
+    try {
+        const username = req.query.username || tiktok.currentUsername || 'tiktok';
+        const diagnostics = await tiktok.runDiagnostics(username);
+        logger.info('🔍 Connection diagnostics run');
+        res.json(diagnostics);
+    } catch (error) {
+        logger.error('Diagnostics error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/connection-health', apiLimiter, async (req, res) => {
+    try {
+        const health = await tiktok.getConnectionHealth();
+        res.json(health);
+    } catch (error) {
+        logger.error('Connection health check error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ========== PLUGIN ROUTES ==========
 // Plugin routes are set up in routes/plugin-routes.js (setupPluginRoutes)
 

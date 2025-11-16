@@ -175,6 +175,27 @@
                             </button>
                         </div>
                         <div id="connection-info" class="connection-info"></div>
+                        
+                        <!-- Connection Diagnostics Panel -->
+                        <div class="connection-diagnostics" style="margin-top: 1rem;">
+                            <button id="run-diagnostics-btn" class="btn btn-secondary" style="width: 100%;">
+                                <i data-lucide="activity"></i>
+                                Verbindungsdiagnose ausführen
+                            </button>
+                            <div id="diagnostics-result" style="margin-top: 1rem; display: none;">
+                                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">
+                                    Diagnose-Ergebnis
+                                </h3>
+                                <div id="diagnostics-content" style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; font-size: 0.85rem;"></div>
+                            </div>
+                            <div id="connection-health" style="margin-top: 1rem; padding: 0.75rem; border-radius: 8px; display: none;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i data-lucide="heart-pulse" style="width: 16px; height: 16px;"></i>
+                                    <span id="health-status" style="font-weight: 600;"></span>
+                                </div>
+                                <div id="health-details" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);"></div>
+                            </div>
+                        </div>
                     </section>
 
                     <!-- 2. Quick Actions Section (Compact Button Grid) -->
