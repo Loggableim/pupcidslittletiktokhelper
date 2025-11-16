@@ -158,10 +158,7 @@ class ClarityHUDBackend {
         await this.api.setConfig(`clarityhud.settings.${dock}`, this.settings[dock]);
 
         // Broadcast settings update to overlays
-        this.api.emit(`clarityhud.settings.${dock}`, {
-          dock: dock,
-          settings: this.settings[dock]
-        });
+        this.api.emit(`clarityhud.settings.${dock}`, this.settings[dock]);
 
         this.api.log(`Settings updated for ${dock} HUD`, 'info');
 
@@ -239,10 +236,7 @@ class ClarityHUDBackend {
         await this.api.setConfig(`clarityhud.settings.${dock}`, this.settings[dock]);
 
         // Broadcast settings update to overlays
-        this.api.emit(`clarityhud.settings.${dock}`, {
-          dock: dock,
-          settings: this.settings[dock]
-        });
+        this.api.emit(`clarityhud.settings.${dock}`, this.settings[dock]);
 
         this.api.log(`Settings reset to defaults for ${dock} HUD`, 'info');
 
@@ -351,8 +345,6 @@ class ClarityHUDBackend {
   async handleChatEvent(data) {
     try {
       const chatEvent = {
-        type: 'chat',
-        timestamp: Date.now(),
         user: {
           uniqueId: data.uniqueId || 'unknown',
           nickname: data.nickname || data.uniqueId || 'Anonymous',
@@ -360,13 +352,20 @@ class ClarityHUDBackend {
           badge: data.badge || null
         },
         message: data.comment || '',
+        // Also include old format fields for backward compatibility with chat overlay
+        uniqueId: data.uniqueId || 'unknown',
+        comment: data.comment || '',
         raw: data
       };
 
-      // Add to chat queue
-      this.addToQueue('chat', chatEvent);
+      // Add to chat queue (with type and timestamp for internal storage)
+      this.addToQueue('chat', {
+        type: 'chat',
+        timestamp: Date.now(),
+        ...chatEvent
+      });
 
-      // Broadcast to both HUDs
+      // Broadcast to both HUDs (without type/timestamp - overlays will add them)
       this.api.emit('clarityhud.update.chat', chatEvent);
 
       this.api.log(`Chat event from ${chatEvent.user.nickname}: ${chatEvent.message}`, 'debug');
@@ -387,21 +386,26 @@ class ClarityHUDBackend {
       }
 
       const followEvent = {
-        type: 'follow',
-        timestamp: Date.now(),
         user: {
           uniqueId: data.uniqueId || 'unknown',
           nickname: data.nickname || data.uniqueId || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
+        // Include old format fields for backward compatibility
+        uniqueId: data.uniqueId || 'unknown',
+        username: data.nickname || data.uniqueId || 'Anonymous',
         raw: data
       };
 
-      // Add to follow queue
-      this.addToQueue('follow', followEvent);
+      // Add to follow queue (with type and timestamp for internal storage)
+      this.addToQueue('follow', {
+        type: 'follow',
+        timestamp: Date.now(),
+        ...followEvent
+      });
 
-      // Broadcast to full HUD
+      // Broadcast to full HUD (without type/timestamp - overlay will add them)
       this.api.emit('clarityhud.update.follow', followEvent);
 
       this.api.log(`Follow event from ${followEvent.user.nickname}`, 'debug');
@@ -422,21 +426,26 @@ class ClarityHUDBackend {
       }
 
       const shareEvent = {
-        type: 'share',
-        timestamp: Date.now(),
         user: {
           uniqueId: data.uniqueId || 'unknown',
           nickname: data.nickname || data.uniqueId || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
+        // Include old format fields for backward compatibility
+        uniqueId: data.uniqueId || 'unknown',
+        username: data.nickname || data.uniqueId || 'Anonymous',
         raw: data
       };
 
-      // Add to share queue
-      this.addToQueue('share', shareEvent);
+      // Add to share queue (with type and timestamp for internal storage)
+      this.addToQueue('share', {
+        type: 'share',
+        timestamp: Date.now(),
+        ...shareEvent
+      });
 
-      // Broadcast to full HUD
+      // Broadcast to full HUD (without type/timestamp - overlay will add them)
       this.api.emit('clarityhud.update.share', shareEvent);
 
       this.api.log(`Share event from ${shareEvent.user.nickname}`, 'debug');
@@ -465,8 +474,6 @@ class ClarityHUDBackend {
       }
 
       const giftEvent = {
-        type: 'gift',
-        timestamp: Date.now(),
         user: {
           uniqueId: data.uniqueId || 'unknown',
           nickname: data.nickname || data.uniqueId || 'Anonymous',
@@ -480,13 +487,22 @@ class ClarityHUDBackend {
           image: data.giftPictureUrl || null,
           isTreasureChest: isTreasureChest
         },
+        // Include old format fields for backward compatibility
+        uniqueId: data.uniqueId || 'unknown',
+        username: data.nickname || data.uniqueId || 'Anonymous',
+        giftName: data.giftName || 'Unknown Gift',
+        coins: data.diamondCount || 0,
         raw: data
       };
 
-      // Add to gift queue
-      this.addToQueue('gift', giftEvent);
+      // Add to gift queue (with type and timestamp for internal storage)
+      this.addToQueue('gift', {
+        type: 'gift',
+        timestamp: Date.now(),
+        ...giftEvent
+      });
 
-      // Broadcast to full HUD
+      // Broadcast to full HUD (without type/timestamp - overlay will add them)
       this.api.emit('clarityhud.update.gift', giftEvent);
 
       this.api.log(`Gift event from ${giftEvent.user.nickname}: ${giftEvent.gift.name} x${giftEvent.gift.count}`, 'debug');
@@ -507,8 +523,6 @@ class ClarityHUDBackend {
       }
 
       const subscribeEvent = {
-        type: 'subscribe',
-        timestamp: Date.now(),
         user: {
           uniqueId: data.uniqueId || 'unknown',
           nickname: data.nickname || data.uniqueId || 'Anonymous',
@@ -516,13 +530,20 @@ class ClarityHUDBackend {
           badge: data.badge || null
         },
         subscribeType: data.subscribeType || 'subscribe',
+        // Include old format fields for backward compatibility
+        uniqueId: data.uniqueId || 'unknown',
+        username: data.nickname || data.uniqueId || 'Anonymous',
         raw: data
       };
 
-      // Add to subscribe queue
-      this.addToQueue('subscribe', subscribeEvent);
+      // Add to subscribe queue (with type and timestamp for internal storage)
+      this.addToQueue('subscribe', {
+        type: 'subscribe',
+        timestamp: Date.now(),
+        ...subscribeEvent
+      });
 
-      // Broadcast to full HUD
+      // Broadcast to full HUD (without type/timestamp - overlay will add them)
       this.api.emit('clarityhud.update.subscribe', subscribeEvent);
 
       this.api.log(`Subscribe event from ${subscribeEvent.user.nickname}`, 'debug');
@@ -543,21 +564,26 @@ class ClarityHUDBackend {
       }
 
       const joinEvent = {
-        type: 'join',
-        timestamp: Date.now(),
         user: {
           uniqueId: data.uniqueId || 'unknown',
           nickname: data.nickname || data.uniqueId || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
+        // Include old format fields for backward compatibility
+        uniqueId: data.uniqueId || 'unknown',
+        username: data.nickname || data.uniqueId || 'Anonymous',
         raw: data
       };
 
-      // Add to join queue
-      this.addToQueue('join', joinEvent);
+      // Add to join queue (with type and timestamp for internal storage)
+      this.addToQueue('join', {
+        type: 'join',
+        timestamp: Date.now(),
+        ...joinEvent
+      });
 
-      // Broadcast to full HUD
+      // Broadcast to full HUD (without type/timestamp - overlay will add them)
       this.api.emit('clarityhud.update.join', joinEvent);
 
       this.api.log(`Join event from ${joinEvent.user.nickname}`, 'debug');
