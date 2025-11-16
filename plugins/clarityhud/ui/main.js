@@ -729,4 +729,4 @@ document.getElementById('cancel-settings-btn').addEventListener('click', closeSe
 document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
 
 // Initialize on page load
-init();
+document.addEventListener('DOMContentLoaded', init);
