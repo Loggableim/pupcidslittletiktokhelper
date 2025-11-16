@@ -56,8 +56,16 @@ class TikTokConnector extends EventEmitter {
                 enableExtendedGiftInfo: true,
                 enableWebsocketUpgrade: true,
                 requestPollingIntervalMs: 1000,
+                // FIX: Disable Euler Stream fallbacks to avoid permission errors
+                // Users can enable by setting TIKTOK_ENABLE_EULER_FALLBACKS=true
+                disableEulerFallbacks: process.env.TIKTOK_ENABLE_EULER_FALLBACKS !== 'true',
+                // FIX: Enable connectWithUniqueId to bypass captchas on low-quality IPs
+                // This allows the 3rd-party service to determine Room ID without scraping
+                connectWithUniqueId: process.env.TIKTOK_CONNECT_WITH_UNIQUE_ID === 'true',
                 // Session-Keys Support (falls vorhanden)
-                ...(options.sessionId && { sessionId: options.sessionId })
+                ...(options.sessionId && { sessionId: options.sessionId }),
+                // Sign API Key Support (optional, for custom Euler Stream API key)
+                ...(process.env.TIKTOK_SIGN_API_KEY && { signApiKey: process.env.TIKTOK_SIGN_API_KEY })
             };
 
             console.log(`🔄 Verbinde mit TikTok LIVE: @${username}${this.retryCount > 0 ? ` (Versuch ${this.retryCount + 1}/${this.maxRetries + 1})` : ''}...`);
@@ -185,6 +193,17 @@ class TikTokConnector extends EventEmitter {
         const errorMessage = error.message || '';
         const errorString = error.toString();
 
+        // FIX: Euler Stream Permission Error - Check this first
+        if (errorMessage.includes('Euler Stream') || errorMessage.includes('lack of permission') || 
+            (errorMessage.includes('eulerstream.com') && errorMessage.includes('fallback'))) {
+            return {
+                type: 'EULER_STREAM_PERMISSION_ERROR',
+                message: 'Euler Stream Fallback-Methode benötigt einen API-Schlüssel. Die Verbindung ist fehlgeschlagen, weil Euler Stream als Fallback verwendet wurde, aber keine Berechtigung vorliegt.',
+                suggestion: 'Euler Stream Fallbacks sind jetzt standardmäßig deaktiviert. Falls das Problem weiterhin auftritt, starte den Server neu. Optional: Registriere dich bei https://www.eulerstream.com für einen API-Schlüssel und setze TIKTOK_SIGN_API_KEY in der .env Datei.',
+                retryable: false
+            };
+        }
+
         // SIGI_STATE Fehler (Blockierung) - Höchste Priorität, da definitiv nicht retryable
         if (errorMessage.includes('SIGI_STATE') || errorMessage.includes('blocked by TikTok')) {
             return {
@@ -225,8 +244,10 @@ class TikTokConnector extends EventEmitter {
         }
 
         // Room ID Fehler - oft bedeutet dies, dass der Stream offline ist
+        // FIX: Also check for FetchIsLiveError
         if (errorMessage.includes('Room ID') || errorMessage.includes('room id') || 
-            errorMessage.includes('LIVE_NOT_FOUND') || errorMessage.includes('not live')) {
+            errorMessage.includes('LIVE_NOT_FOUND') || errorMessage.includes('not live') ||
+            errorMessage.includes('FetchIsLiveError') || errorMessage.includes('fetchRoomId')) {
             return {
                 type: 'ROOM_NOT_FOUND',
                 message: 'Stream nicht gefunden oder nicht live. TikTok konnte keine aktive LIVE-Session für diesen User finden.',
