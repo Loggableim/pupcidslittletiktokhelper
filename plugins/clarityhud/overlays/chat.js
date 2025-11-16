@@ -145,16 +145,20 @@ function applySettings(newSettings) {
 
 // Add a message to the display
 function addMessage(chatData) {
-  if (!chatData || !chatData.uniqueId || !chatData.comment) {
-    console.warn('Invalid chat data:', chatData);
+  // Handle both old format (uniqueId, comment) and new format (user.uniqueId, message)
+  const username = chatData.uniqueId || chatData.user?.uniqueId || chatData.user?.nickname || 'Anonymous';
+  const text = chatData.comment || chatData.message || '';
+
+  if (!text) {
+    console.warn('Invalid chat data - no message:', chatData);
     return;
   }
 
   // Create message object
   const messageObj = {
     id: Date.now() + Math.random(),
-    username: chatData.uniqueId,
-    text: chatData.comment,
+    username: username,
+    text: text,
     timestamp: new Date()
   };
 
