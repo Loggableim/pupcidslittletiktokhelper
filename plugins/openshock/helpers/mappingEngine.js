@@ -29,9 +29,10 @@ class MappingEngine {
 
     // Valid action types
     this.validActionTypes = [
-      'shock',
-      'vibrate',
-      'sound',
+      'command', // Single command (shock/vibrate/sound)
+      'shock',   // Legacy support
+      'vibrate', // Legacy support
+      'sound',   // Legacy support
       'pattern',
       'batch'
     ];
