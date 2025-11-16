@@ -422,6 +422,7 @@ body {
     flex-direction: column;
     height: 100%;
     min-height: 0; /* Critical for flexbox sizing */
+    overflow: hidden; /* Prevent content-view from scrolling, allow child .view-section to scroll */
 }
 
 @keyframes fadeIn {
