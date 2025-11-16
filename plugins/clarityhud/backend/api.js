@@ -260,6 +260,87 @@ class ClarityHUDBackend {
       }
     });
 
+    // Test event endpoint for chat HUD
+    this.api.registerRoute('post', '/api/clarityhud/test/chat', async (req, res) => {
+      try {
+        // Create a test chat event
+        const testEvent = {
+          uniqueId: 'testuser123',
+          nickname: 'TestUser',
+          comment: 'This is a test message for the Chat HUD! 🎉',
+          profilePictureUrl: null,
+          badge: null
+        };
+
+        // Handle the event (broadcasts to overlays)
+        await this.handleChatEvent(testEvent);
+
+        this.api.log('Test chat event sent', 'info');
+
+        res.json({
+          success: true,
+          message: 'Test chat event sent successfully'
+        });
+      } catch (error) {
+        this.api.log(`Error sending test chat event: ${error.message}`, 'error');
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+
+    // Test event endpoint for full HUD
+    this.api.registerRoute('post', '/api/clarityhud/test/full', async (req, res) => {
+      try {
+        // Create test events for all event types
+        const testChatEvent = {
+          uniqueId: 'testuser123',
+          nickname: 'TestUser',
+          comment: 'Test chat message for Full HUD! 💬',
+          profilePictureUrl: null,
+          badge: null
+        };
+
+        const testFollowEvent = {
+          uniqueId: 'follower456',
+          nickname: 'NewFollower',
+          profilePictureUrl: null,
+          badge: null
+        };
+
+        const testGiftEvent = {
+          uniqueId: 'gifter789',
+          nickname: 'GenerousGifter',
+          giftName: 'Rose',
+          repeatCount: 5,
+          diamondCount: 50,
+          giftPictureUrl: null,
+          giftType: 0,
+          profilePictureUrl: null,
+          badge: null
+        };
+
+        // Send all test events
+        await this.handleChatEvent(testChatEvent);
+        await this.handleFollowEvent(testFollowEvent);
+        await this.handleGiftEvent(testGiftEvent);
+
+        this.api.log('Test full HUD events sent', 'info');
+
+        res.json({
+          success: true,
+          message: 'Test events sent successfully to Full HUD'
+        });
+      } catch (error) {
+        this.api.log(`Error sending test full HUD events: ${error.message}`, 'error');
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+
     this.api.log('ClarityHUD API routes registered', 'info');
   }
 
