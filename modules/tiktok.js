@@ -37,6 +37,26 @@ class TikTokConnector extends EventEmitter {
         this.durationInterval = null;
     }
 
+    // FIX: Decrypt backup Euler API key (last resort fallback)
+    // This encrypted key is used only when user hasn't provided their own API key
+    _getBackupEulerKey() {
+        try {
+            // Encrypted backup API key (XOR + Base64)
+            const encrypted = 'RkxCV14HT0UPWUwNCk5cUwlDVEdLBAUCV0ZBRVNeARVGUQoXDV9LXlRbQV0QH1BWBwFCQxNWDwZPEAwJFlgKFQ==';
+            const key = 'pupcid-tiktok-helper-2024';
+            
+            const text = Buffer.from(encrypted, 'base64').toString();
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return result;
+        } catch (error) {
+            console.warn('⚠️ Failed to decrypt backup Euler key:', error.message);
+            return null;
+        }
+    }
+
     async connect(username, options = {}) {
         if (this.isConnected) {
             await this.disconnect();
@@ -52,9 +72,19 @@ class TikTokConnector extends EventEmitter {
 
             // Erweiterte Verbindungsoptionen
             // FIX: Read settings from database (preferred) or fallback to environment variables
-            const eulerApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.TIKTOK_SIGN_API_KEY;
+            // Priority: 1. Database setting, 2. Environment variable, 3. Encrypted backup key (last resort)
+            let eulerApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.TIKTOK_SIGN_API_KEY;
             const enableEulerFallbacks = this.db.getSetting('tiktok_enable_euler_fallbacks') === 'true' || process.env.TIKTOK_ENABLE_EULER_FALLBACKS === 'true';
             const connectWithUniqueId = this.db.getSetting('tiktok_connect_with_unique_id') === 'true' || process.env.TIKTOK_CONNECT_WITH_UNIQUE_ID === 'true';
+            
+            // If no API key is configured, use encrypted backup key as last resort
+            const usingBackupKey = !eulerApiKey;
+            if (usingBackupKey) {
+                eulerApiKey = this._getBackupEulerKey();
+                if (eulerApiKey) {
+                    console.log('🔑 Verwende Backup Euler API Key (keine eigene Konfiguration gefunden)');
+                }
+            }
             
             const connectionOptions = {
                 processInitialData: true,
@@ -62,7 +92,7 @@ class TikTokConnector extends EventEmitter {
                 enableWebsocketUpgrade: true,
                 requestPollingIntervalMs: 1000,
                 // FIX: Use Euler Stream fallbacks when API key is configured or explicitly enabled
-                // When API key is present, Euler fallbacks should be enabled by default
+                // When API key is present (including backup), Euler fallbacks should be enabled by default
                 disableEulerFallbacks: eulerApiKey ? !enableEulerFallbacks : true,
                 // FIX: Enable connectWithUniqueId to bypass captchas on low-quality IPs
                 // This allows the 3rd-party service to determine Room ID without scraping
