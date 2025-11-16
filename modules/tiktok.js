@@ -41,9 +41,44 @@ class TikTokConnector extends EventEmitter {
         this.diagnostics = new ConnectionDiagnostics(db);
     }
 
-    // REMOVED: Backup Euler API key was expired/invalid
-    // Users should obtain their own API key from https://www.eulerstream.com
-    // The library works fine without an API key when Euler fallbacks are disabled
+    // Decrypt backup Euler API key (fallback when no user key is configured)
+    // Encrypted keys provided by repository owner for backup use
+    _getBackupEulerKey() {
+        try {
+            // Encrypted Euler API key (XOR + Base64)
+            const encrypted = 'FQAcBhs7YyAgWjk7LUAlCCYbPx9oAH1mch06NCJdKkcfXCUjOQF3LCRdPiEZHH1kZ0wqMT0aJx5oRCcvPRYyVyIINjQzHnd2Ylh7JyBC';
+            const key = 'pupcid-tiktok-helper-2024';
+            
+            const text = Buffer.from(encrypted, 'base64').toString();
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return result;
+        } catch (error) {
+            console.warn('⚠️ Failed to decrypt backup Euler key:', error.message);
+            return null;
+        }
+    }
+
+    // Decrypt backup webhook secret (for future use if needed)
+    _getBackupWebhookSecret() {
+        try {
+            // Encrypted webhook secret (XOR + Base64)
+            const encrypted = 'RkxCV14HT0UPWUwNCk5cUwlDVEdLBAUCV0ZBRVNeARVGUQoXDV9LXlRbQV0QH1BWBwFCQxNWDwZPEAwJFlgKFQ==';
+            const key = 'pupcid-tiktok-helper-2024';
+            
+            const text = Buffer.from(encrypted, 'base64').toString();
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+            }
+            return result;
+        } catch (error) {
+            console.warn('⚠️ Failed to decrypt backup webhook secret:', error.message);
+            return null;
+        }
+    }
 
     async connect(username, options = {}) {
         if (this.isConnected) {
@@ -60,17 +95,28 @@ class TikTokConnector extends EventEmitter {
 
             // Erweiterte Verbindungsoptionen
             // FIX: Read settings from database (preferred) or fallback to environment variables
-            // Priority: 1. Database setting, 2. Environment variable (TIKTOK_SIGN_API_KEY)
+            // Priority: 1. Database setting, 2. Environment variable, 3. Backup key (encrypted)
             let eulerApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.TIKTOK_SIGN_API_KEY;
             const enableEulerFallbacks = this.db.getSetting('tiktok_enable_euler_fallbacks') === 'true' || process.env.TIKTOK_ENABLE_EULER_FALLBACKS === 'true';
             const connectWithUniqueId = this.db.getSetting('tiktok_connect_with_unique_id') === 'true' || process.env.TIKTOK_CONNECT_WITH_UNIQUE_ID === 'true';
+            
+            // If no API key is configured, use encrypted backup key as fallback
+            const usingBackupKey = !eulerApiKey;
+            if (usingBackupKey) {
+                eulerApiKey = this._getBackupEulerKey();
+                if (eulerApiKey) {
+                    console.log('🔑 Verwende Backup Euler API Key (keine eigene Konfiguration gefunden)');
+                }
+            }
             
             // FIX: Set process.env.SIGN_API_KEY for the tiktok-live-connector library
             // The library's SignConfig reads from process.env.SIGN_API_KEY (not TIKTOK_SIGN_API_KEY)
             // This ensures the Euler Stream SDK is properly configured
             if (eulerApiKey) {
                 process.env.SIGN_API_KEY = eulerApiKey;
-                console.log('🔑 Euler API Key konfiguriert (aus Datenbank oder Umgebungsvariable)');
+                if (!usingBackupKey) {
+                    console.log('🔑 Euler API Key konfiguriert (aus Datenbank oder Umgebungsvariable)');
+                }
             } else {
                 // Clear the env var if no key is configured to avoid using stale keys
                 delete process.env.SIGN_API_KEY;

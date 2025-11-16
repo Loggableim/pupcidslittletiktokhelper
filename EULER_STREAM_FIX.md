@@ -1,22 +1,16 @@
-# Euler Stream API Connection Issue - Resolution
+# Euler Stream API Connection Issue - Resolution (Updated)
 
 ## Problem Statement (German)
 "Es gibt immer noch Probleme mit der Euler Stream Connection. Der Fehler zeigt: 401 Unauthorized - The provided API Key is invalid."
 
 ## Root Cause Analysis
 
-After extensive research into the Euler Stream API and tiktok-live-connector library, I identified three critical issues:
+After extensive research into the Euler Stream API and tiktok-live-connector library, I identified two critical issues:
 
 ### 1. Expired Backup API Key
-The code contained an encrypted backup Euler Stream API key that had been revoked or expired:
-```javascript
-// OLD CODE - REMOVED
-_getBackupEulerKey() {
-    // This key was returning 401 errors from Euler Stream
-    const encrypted = 'RkxCV14HT0UPWUwNCk5cUwlDVEdLBAUCV0ZBRVNeARVGUQoXDV9LXlRbQV0QH1BWBwFCQxNWDwZPEAwJFlgKFQ==';
-    // ... decryption logic
-}
-```
+The code contained an encrypted backup Euler Stream API key that had been revoked or expired, causing 401 errors.
+
+**UPDATE:** The repository owner has provided new valid keys that are now encrypted and used as backups.
 
 ### 2. Environment Variable Mismatch
 The application used `TIKTOK_SIGN_API_KEY` but the tiktok-live-connector library expects `SIGN_API_KEY`:
@@ -34,12 +28,30 @@ No specific handling for invalid/expired API keys, leading to confusing error me
 
 ## Solution Implemented
 
-### Change 1: Remove Invalid Backup Key
+### Change 1: Add New Encrypted Backup Keys
 **File:** `modules/tiktok.js`
 ```javascript
-// REMOVED: Backup Euler API key was expired/invalid
-// Users should obtain their own API key from https://www.eulerstream.com
-// The library works fine without an API key when Euler fallbacks are disabled
+// Decrypt backup Euler API key (fallback when no user key is configured)
+// Encrypted keys provided by repository owner for backup use
+_getBackupEulerKey() {
+    try {
+        // Encrypted Euler API key (XOR + Base64)
+        const encrypted = 'FQAcBhs7YyAgWjk7LUAlCCYbPx9oAH1mch06NCJdKkcfXCUjOQF3LCRdPiEZHH1kZ0wqMT0aJx5oRCcvPRYyVyIINjQzHnd2Ylh7JyBC';
+        const key = 'pupcid-tiktok-helper-2024';
+        // ... decryption logic
+        return result; // Returns: euler_NTI1MTFm...
+    } catch (error) {
+        console.warn('⚠️ Failed to decrypt backup Euler key:', error.message);
+        return null;
+    }
+}
+
+_getBackupWebhookSecret() {
+    // Also stores encrypted webhook secret for future use
+    const encrypted = 'RkxCV14HT0UPWUwNCk5cUwlDVEdLBAUCV0ZBRVNeARVGUQoXDV9LXlRbQV0QH1BWBwFCQxNWDwZPEAwJFlgKFQ==';
+    // ... decryption logic
+    return result; // Returns: 69247cb1f28bac46...
+}
 ```
 
 ### Change 2: Fix Environment Variable Handling
@@ -103,22 +115,28 @@ if (errorMessage.includes('401') || errorMessage.toLowerCase().includes('unautho
 
 ## How It Works Now
 
-### Without API Key (Default)
+### Priority Order for API Keys
+1. **Database setting:** `tiktok_euler_api_key` (highest priority)
+2. **Environment variable:** `TIKTOK_SIGN_API_KEY`
+3. **Backup key:** Encrypted key provided by repository owner (used automatically as fallback)
+
+### Without User-Configured API Key (Default - Uses Backup)
 ```javascript
-// Connection options when no API key is configured:
+// When no user key is configured, backup key is automatically used:
+const backupKey = this._getBackupEulerKey();  // Returns valid encrypted key
+process.env.SIGN_API_KEY = backupKey;
 {
-    disableEulerFallbacks: true,  // Don't use Euler Stream at all
+    disableEulerFallbacks: false,  // Euler Stream enabled with backup key
     // ... other options
 }
 ```
-✅ Works perfectly - uses TikTok's native WebSocket connection
+✅ Works out of the box - uses encrypted backup Euler API key
 
-### With API Key (Optional)
+### With User API Key (Optional - Overrides Backup)
 ```javascript
 // User can configure via:
 // 1. Database setting: tiktok_euler_api_key
 // 2. Environment variable: TIKTOK_SIGN_API_KEY
-// 3. Environment variable: SIGN_API_KEY
 
 // When configured:
 process.env.SIGN_API_KEY = eulerApiKey;  // Library picks this up
@@ -127,17 +145,18 @@ process.env.SIGN_API_KEY = eulerApiKey;  // Library picks this up
     // ... other options
 }
 ```
-✅ Works with user's own API key from eulerstream.com
+✅ Uses user's own API key (overrides backup key)
 
 ## User Guidance
 
-### Option 1: No API Key (Recommended for Most Users)
-The application works perfectly without an Euler Stream API key. Simply ensure:
-- `TIKTOK_ENABLE_EULER_FALLBACKS` is not set or set to `false`
-- No `TIKTOK_SIGN_API_KEY` configured
+### Option 1: Use Backup Key (Default - Recommended for Most Users)
+The application comes with encrypted backup API keys and works out of the box:
+- No configuration needed
+- Backup Euler Stream API key is used automatically
+- Full Euler Stream features available
 
-### Option 2: With API Key (For Advanced Features)
-If you want to use Euler Stream features:
+### Option 2: Use Your Own API Key (Optional - For Advanced Users)
+If you want to use your own API key:
 1. Register at https://www.eulerstream.com (free tier available)
 2. Generate an API key in your dashboard
 3. Add to `.env` file:
@@ -145,6 +164,8 @@ If you want to use Euler Stream features:
    TIKTOK_SIGN_API_KEY=your_api_key_here
    TIKTOK_ENABLE_EULER_FALLBACKS=true
    ```
+
+**Note:** Your own key will override the backup key.
 
 ## Testing Results
 
@@ -173,23 +194,27 @@ CodeQL Analysis: 1 alert (false positive)
 ## Impact
 
 ### Before Fix
-❌ Connection failed with 401 error
+❌ Connection failed with 401 error (old expired backup key)
 ❌ Confusing error messages
 ❌ Unnecessary retry attempts
 ❌ Users couldn't connect to TikTok streams
 
-### After Fix
-✅ Connection works without API key
+### After Fix (Updated with New Backup Keys)
+✅ **Connection works out of the box** with new encrypted backup keys
 ✅ Clear error messages with actionable guidance
 ✅ No retries on invalid API key (saves time)
-✅ Users can optionally configure their own API key
+✅ Users can optionally configure their own API key (overrides backup)
 ✅ Proper environment variable handling
+✅ Backup webhook secret also encrypted for future use
 
 ## Files Changed
-1. `modules/tiktok.js` - Core connection logic
+1. `modules/tiktok.js` - Core connection logic with new encrypted keys
 2. `.env.example` - Documentation and examples
 3. `test/tiktok-error-handling.test.js` - Test coverage
+4. `EULER_STREAM_FIX.md` - Updated documentation
 
 ## Commits
-1. `4ac65b6` - Fix Euler Stream API connection issues
+1. `4ac65b6` - Fix Euler Stream API connection issues (removed old key)
 2. `b74930d` - Add test for 401 API key error handling
+3. `2416260` - Add comprehensive documentation
+4. **NEW** - Add new encrypted backup keys from repository owner
