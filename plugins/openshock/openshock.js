@@ -167,7 +167,8 @@ async function loadConfig() {
     try {
         const response = await fetch('/api/openshock/config');
         if (!response.ok) throw new Error('Failed to load config');
-        config = await response.json();
+        const data = await response.json();
+        config = data.config || {};
         console.log('[OpenShock] Config loaded:', config);
 
         // Update UI with config
@@ -189,7 +190,8 @@ async function loadDevices() {
     try {
         const response = await fetch('/api/openshock/devices');
         if (!response.ok) throw new Error('Failed to load devices');
-        devices = await response.json();
+        const data = await response.json();
+        devices = data.devices || [];
         console.log('[OpenShock] Devices loaded:', devices);
         return devices;
     } catch (error) {
@@ -202,7 +204,8 @@ async function loadMappings() {
     try {
         const response = await fetch('/api/openshock/mappings');
         if (!response.ok) throw new Error('Failed to load mappings');
-        mappings = await response.json();
+        const data = await response.json();
+        mappings = data.mappings || [];
         console.log('[OpenShock] Mappings loaded:', mappings);
         return mappings;
     } catch (error) {
@@ -215,7 +218,8 @@ async function loadPatterns() {
     try {
         const response = await fetch('/api/openshock/patterns');
         if (!response.ok) throw new Error('Failed to load patterns');
-        patterns = await response.json();
+        const data = await response.json();
+        patterns = data.patterns || [];
         console.log('[OpenShock] Patterns loaded:', patterns);
         return patterns;
     } catch (error) {
@@ -228,7 +232,8 @@ async function loadStats() {
     try {
         const response = await fetch('/api/openshock/stats');
         if (!response.ok) throw new Error('Failed to load stats');
-        stats = await response.json();
+        const data = await response.json();
+        stats = data.stats || {};
         console.log('[OpenShock] Stats loaded:', stats);
         return stats;
     } catch (error) {
@@ -241,7 +246,8 @@ async function loadQueueStatus() {
     try {
         const response = await fetch('/api/openshock/queue/status');
         if (!response.ok) throw new Error('Failed to load queue status');
-        queueStatus = await response.json();
+        const data = await response.json();
+        queueStatus = data.status || {};
         console.log('[OpenShock] Queue status loaded:', queueStatus);
         return queueStatus;
     } catch (error) {
