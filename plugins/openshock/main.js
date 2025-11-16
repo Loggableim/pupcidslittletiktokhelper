@@ -1156,6 +1156,42 @@ class OpenShockPlugin {
             }
         });
 
+        // Test Connection
+        app.post('/api/openshock/test-connection', authMiddleware, async (req, res) => {
+            try {
+                if (!this.openShockClient) {
+                    return res.status(500).json({
+                        success: false,
+                        error: 'OpenShock client not initialized'
+                    });
+                }
+
+                const result = await this.openShockClient.testConnection();
+                
+                if (result.success) {
+                    res.json({
+                        success: true,
+                        message: 'Connection successful',
+                        latency: result.latency,
+                        deviceCount: result.deviceCount,
+                        timestamp: result.timestamp
+                    });
+                } else {
+                    res.status(500).json({
+                        success: false,
+                        error: result.error || 'Connection test failed'
+                    });
+                }
+
+            } catch (error) {
+                this.api.log(`Connection test failed: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         this.api.log('OpenShock routes registered', 'info');
     }
 

@@ -252,6 +252,45 @@ class OpenShockClient {
     }
 
     /**
+     * Sends a control command to a device (generic wrapper)
+     * Routes to appropriate method based on type
+     *
+     * @param {string} deviceId - Device ID
+     * @param {Object} command - Command object
+     * @param {string} command.type - Command type (shock, vibrate, sound, beep)
+     * @param {number} command.intensity - Intensity (1-100)
+     * @param {number} command.duration - Duration in milliseconds (300-30000)
+     * @param {Object} [options={}] - Additional options
+     * @returns {Promise<Object>} Command response
+     */
+    async sendControl(deviceId, command, options = {}) {
+        const { type, intensity, duration } = command;
+        
+        // Normalize type to match API requirements (capitalize first letter)
+        let normalizedType = type;
+        if (typeof type === 'string') {
+            normalizedType = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+            
+            // Handle 'beep' alias for 'sound'
+            if (normalizedType === 'Beep') {
+                normalizedType = 'Sound';
+            }
+        }
+        
+        // Route to appropriate method
+        switch (normalizedType) {
+            case 'Shock':
+                return this.sendShock(deviceId, intensity, duration, options);
+            case 'Vibrate':
+                return this.sendVibrate(deviceId, intensity, duration, options);
+            case 'Sound':
+                return this.sendSound(deviceId, intensity, duration, options);
+            default:
+                throw new Error(`Unknown command type: ${type}. Must be one of: shock, vibrate, sound`);
+        }
+    }
+
+    /**
      * Sends a command to a device (internal method)
      *
      * @private

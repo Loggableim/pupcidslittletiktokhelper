@@ -155,11 +155,17 @@ async function loadInitialData() {
         renderDeviceList();
         renderMappingList();
         renderPatternList();
+        
+        // Update API status with device count
+        updateApiStatus(devices.length > 0, devices.length);
 
         showNotification('OpenShock plugin loaded successfully', 'success');
     } catch (error) {
         console.error('[OpenShock] Error loading initial data:', error);
         showNotification('Error loading OpenShock data', 'error');
+        
+        // Update API status as failed
+        updateApiStatus(false, 0);
     }
 }
 
@@ -402,11 +408,11 @@ function renderMappingList() {
             <div class="mapping-details">
                 <div class="mapping-detail-item">
                     <span class="mapping-detail-label">Trigger:</span>
-                    <span class="mapping-detail-value">${escapeHtml(mapping.trigger?.type || 'Unknown')}</span>
+                    <span class="mapping-detail-value">${escapeHtml(mapping.eventType || mapping.trigger?.type || 'Unknown')}</span>
                 </div>
                 <div class="mapping-detail-item">
                     <span class="mapping-detail-label">Action:</span>
-                    <span class="mapping-detail-value">${escapeHtml(mapping.action?.type || 'Unknown')}</span>
+                    <span class="mapping-detail-value">${escapeHtml(mapping.action?.commandType || mapping.action?.type || 'Unknown')}</span>
                 </div>
                 ${mapping.action?.intensity ? `
                     <div class="mapping-detail-item">
@@ -542,7 +548,7 @@ function openMappingModal(mappingId = null) {
         delete modal.dataset.editingId;
     }
 
-    // Populate form
+    // Populate form - handle both frontend (trigger) and backend (eventType/conditions) format
     const nameInput = document.getElementById('mappingName');
     const enabledCheckbox = document.getElementById('mappingEnabled');
     const eventTypeSelect = document.getElementById('mappingEventType');
@@ -551,12 +557,24 @@ function openMappingModal(mappingId = null) {
 
     if (nameInput) nameInput.value = mapping?.name || '';
     if (enabledCheckbox) enabledCheckbox.checked = mapping?.enabled !== false;
-    if (eventTypeSelect) eventTypeSelect.value = mapping?.trigger?.type || 'gift';
-    if (actionTypeSelect) actionTypeSelect.value = mapping?.action?.type || 'shock';
+    if (eventTypeSelect) eventTypeSelect.value = mapping?.eventType || mapping?.trigger?.type || 'gift';
+    if (actionTypeSelect) actionTypeSelect.value = mapping?.action?.commandType || mapping?.action?.type || 'shock';
     if (deviceSelect) deviceSelect.value = mapping?.action?.deviceId || '';
 
+    // Convert backend format to frontend format for triggers
+    let triggerData = mapping?.trigger;
+    if (mapping?.eventType && mapping?.conditions) {
+        // Backend format - convert to frontend format
+        triggerData = {
+            type: mapping.eventType,
+            giftName: mapping.conditions.giftName,
+            minCoins: mapping.conditions.minCoins,
+            messagePattern: mapping.conditions.messagePattern
+        };
+    }
+
     // Populate trigger-specific fields
-    populateTriggerFields(mapping?.trigger);
+    populateTriggerFields(triggerData);
 
     // Populate action-specific fields
     populateActionFields(mapping?.action);
@@ -621,12 +639,22 @@ async function saveMappingModal() {
     const intensitySlider = document.getElementById('mappingIntensity');
     const durationSlider = document.getElementById('mappingDuration');
 
+    // Collect trigger data and convert to backend format
+    const triggerData = collectTriggerData();
+    
     const mapping = {
         name: nameInput?.value || 'Untitled Mapping',
         enabled: enabledCheckbox?.checked !== false,
-        trigger: collectTriggerData(),
+        eventType: triggerData.type, // Backend expects eventType, not trigger.type
+        conditions: {
+            // Convert trigger fields to conditions format
+            giftName: triggerData.giftName,
+            minCoins: triggerData.minCoins || 0,
+            messagePattern: triggerData.messagePattern
+        },
         action: {
-            type: actionTypeSelect?.value || 'shock',
+            type: 'command', // Backend action type is 'command' for single commands
+            commandType: actionTypeSelect?.value || 'shock',
             deviceId: deviceSelect?.value || '',
             intensity: parseInt(intensitySlider?.value) || 50,
             duration: parseInt(durationSlider?.value) || 1000
@@ -1158,17 +1186,49 @@ async function testConnection() {
 
         if (response.ok && result.success) {
             showNotification('Connection successful!', 'success');
+            
+            // Update API status display
+            updateApiStatus(true, result.deviceCount || 0);
         } else {
             throw new Error(result.error || 'Connection failed');
         }
     } catch (error) {
         console.error('[OpenShock] Connection test failed:', error);
         showNotification(`Connection failed: ${error.message}`, 'error');
+        
+        // Update API status display
+        updateApiStatus(false, 0);
     } finally {
         if (button) {
             button.disabled = false;
             button.innerHTML = '<i class="fas fa-plug"></i> Test Connection';
         }
+    }
+}
+
+function updateApiStatus(connected, deviceCount) {
+    // Update API Status badge
+    const apiStatusEl = document.getElementById('apiStatus');
+    if (apiStatusEl) {
+        if (connected) {
+            apiStatusEl.textContent = '🟢';
+            apiStatusEl.title = 'API Connected';
+        } else {
+            apiStatusEl.textContent = '🔴';
+            apiStatusEl.title = 'API Disconnected';
+        }
+    }
+    
+    // Update Connection State
+    const connectionStateEl = document.getElementById('connectionState');
+    if (connectionStateEl) {
+        connectionStateEl.textContent = connected ? 'Online' : 'Offline';
+    }
+    
+    // Update Device Count
+    const deviceCountEl = document.getElementById('deviceCount');
+    if (deviceCountEl) {
+        deviceCountEl.textContent = deviceCount;
     }
 }
 
@@ -1186,12 +1246,21 @@ async function refreshDevices() {
 
         if (!response.ok) throw new Error('Failed to refresh devices');
 
+        const result = await response.json();
+        
         await loadDevices();
         renderDeviceList();
+        
+        // Update API status with device count
+        updateApiStatus(true, devices.length);
+        
         showNotification('Devices refreshed successfully', 'success');
     } catch (error) {
         console.error('[OpenShock] Error refreshing devices:', error);
         showNotification('Error refreshing devices', 'error');
+        
+        // Update API status as failed
+        updateApiStatus(false, 0);
     } finally {
         if (button) {
             button.disabled = false;
@@ -1222,7 +1291,7 @@ async function clearQueue() {
 }
 
 async function testDevice(deviceId, type) {
-    if (!await confirmAction(`Send test ${type} command to device?`)) {
+    if (!await confirmAction(`Send test ${type} command to device?\n\nTest: 1 second @ 100% intensity`)) {
         return;
     }
 
@@ -1230,12 +1299,12 @@ async function testDevice(deviceId, type) {
         const response = await fetch(`/api/openshock/test/${deviceId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, intensity: 30, duration: 500 })
+            body: JSON.stringify({ type, intensity: 100, duration: 1000 })
         });
 
         if (!response.ok) throw new Error('Failed to send test command');
 
-        showNotification('Test command sent', 'success');
+        showNotification(`Test ${type} command sent (1s @ 100%)`, 'success');
     } catch (error) {
         console.error('[OpenShock] Error testing device:', error);
         showNotification('Error sending test command', 'error');
