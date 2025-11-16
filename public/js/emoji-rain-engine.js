@@ -95,6 +95,7 @@ let userEmojiMap = {};
 let engine, render;
 let socket;
 let emojis = [];
+let emojiBodyMap = new Map(); // Map physics bodies to emoji objects for fast lookup
 let windForce = 0;
 let debugMode = false;
 let ground, leftWall, rightWall;
@@ -198,9 +199,10 @@ function handleCollision(event) {
     event.pairs.forEach(pair => {
         if (pair.bodyA.label === 'ground' || pair.bodyB.label === 'ground') {
             const emojiBody = pair.bodyA.label === 'ground' ? pair.bodyB : pair.bodyA;
-            const emoji = emojis.find(e => e.body === emojiBody);
+            // Use Map for O(1) lookup instead of O(n) find
+            const emoji = emojiBodyMap.get(emojiBody);
             
-            if (emoji && !emoji.hasBouncedEffect) {
+            if (emoji && !emoji.hasBouncedEffect && !emoji.removed) {
                 emoji.hasBouncedEffect = true;
                 triggerBounceEffect(emoji);
             }
@@ -214,7 +216,22 @@ function handleCollision(event) {
 function triggerBounceEffect(emoji) {
     if (!emoji.element || config.effect === 'none') return;
     
+    // Reset animation to trigger it again properly
+    emoji.element.style.animation = 'none';
+    // Force reflow
+    void emoji.element.offsetWidth;
     emoji.element.style.animation = 'bubbleBlop 0.4s ease-out';
+    
+    // Clean up animation after it completes
+    if (emoji.bounceAnimationTimeout) {
+        clearTimeout(emoji.bounceAnimationTimeout);
+    }
+    emoji.bounceAnimationTimeout = setTimeout(() => {
+        if (emoji.element && !emoji.removed) {
+            emoji.element.style.animation = '';
+        }
+        emoji.bounceAnimationTimeout = null;
+    }, 400);
 }
 
 /**
@@ -240,23 +257,32 @@ function resizeCanvas() {
 function updateBoundaries() {
     const thickness = 100;
 
+    // Update positions and sizes without creating new vertices (prevents memory leak)
     Body.setPosition(ground, {
         x: canvasWidth / 2,
         y: canvasHeight + thickness / 2
     });
-    Body.setVertices(ground, Bodies.rectangle(0, 0, canvasWidth + thickness * 2, thickness).vertices);
-
+    
     Body.setPosition(leftWall, {
         x: -thickness / 2,
         y: canvasHeight / 2
     });
-    Body.setVertices(leftWall, Bodies.rectangle(0, 0, thickness, canvasHeight + thickness * 2).vertices);
 
     Body.setPosition(rightWall, {
         x: canvasWidth + thickness / 2,
         y: canvasHeight / 2
     });
-    Body.setVertices(rightWall, Bodies.rectangle(0, 0, thickness, canvasHeight + thickness * 2).vertices);
+    
+    // Only update vertices if dimensions changed significantly
+    // This reduces the memory allocation overhead
+    const currentGroundWidth = ground.bounds.max.x - ground.bounds.min.x;
+    const targetGroundWidth = canvasWidth + thickness * 2;
+    
+    if (Math.abs(currentGroundWidth - targetGroundWidth) > 10) {
+        Body.setVertices(ground, Bodies.rectangle(0, 0, canvasWidth + thickness * 2, thickness).vertices);
+        Body.setVertices(leftWall, Bodies.rectangle(0, 0, thickness, canvasHeight + thickness * 2).vertices);
+        Body.setVertices(rightWall, Bodies.rectangle(0, 0, thickness, canvasHeight + thickness * 2).vertices);
+    }
 }
 
 /**
@@ -360,6 +386,12 @@ function updateLoop(currentTime) {
             fpsHistory.shift();
         }
         
+        // Additional safety: prevent unbounded growth
+        if (fpsHistory.length > FPS_HISTORY_SIZE * 2) {
+            console.warn('⚠️ FPS history array grew too large, resetting');
+            fpsHistory = fpsHistory.slice(-FPS_HISTORY_SIZE);
+        }
+        
         // Check if FPS optimization is needed
         if (config.fps_optimization_enabled) {
             checkAndOptimizeFPS();
@@ -384,6 +416,16 @@ function updateLoop(currentTime) {
     // Update emojis
     emojis.forEach(emoji => {
         if (emoji.body) {
+            // Check if emoji has escaped the world bounds
+            const pos = emoji.body.position;
+            const margin = 200; // Extra margin outside canvas
+            if (pos.x < -margin || pos.x > canvasWidth + margin || 
+                pos.y < -margin || pos.y > canvasHeight + margin) {
+                // Emoji escaped, remove it
+                removeEmoji(emoji);
+                return;
+            }
+
             // Apply wind
             if (config.wind_enabled) {
                 Body.applyForce(emoji.body, emoji.body.position, {
@@ -409,8 +451,16 @@ function updateLoop(currentTime) {
 
                 emoji.element.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) rotate(${rotation}rad)`;
                 
-                // Apply color theme
-                applyColorTheme(emoji.element);
+                // Update color theme:
+                // - Rainbow mode needs to update every frame for smooth animation
+                // - Other color modes only update periodically to save performance
+                if (config.rainbow_enabled) {
+                    applyColorTheme(emoji.element);
+                    emoji.lastColorUpdate = currentTime;
+                } else if (currentTime - emoji.lastColorUpdate > 100) {
+                    applyColorTheme(emoji.element);
+                    emoji.lastColorUpdate = currentTime;
+                }
             }
         }
 
@@ -532,13 +582,20 @@ function spawnEmoji(emoji, x, y, size, username = null) {
         element.style.fontSize = size + 'px';
     }
 
-    element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+    // Set initial position AND ensure it's applied immediately
+    // This prevents emojis from briefly appearing at 0,0 (top-left corner)
+    element.style.position = 'absolute';
     element.style.left = '0';
     element.style.top = '0';
+    element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
 
-    // Apply pixel effect
+    // Apply pixel effect before adding to DOM
     applyPixelEffect(element);
+    
+    // Apply initial color theme before adding to DOM to prevent flash
+    applyColorTheme(element);
 
+    // Now add to DOM - element already has correct position
     document.getElementById('canvas-container').appendChild(element);
 
     // Track emoji
@@ -552,10 +609,15 @@ function spawnEmoji(emoji, x, y, size, username = null) {
         fading: false,
         removed: false,
         hasBouncedEffect: false,
-        username: username
+        username: username,
+        lastColorUpdate: performance.now() // Track when color was last updated
     };
 
     emojis.push(emojiObj);
+    
+    // Add to body map for fast collision lookup
+    emojiBodyMap.set(body, emojiObj);
+    
     return emojiObj;
 }
 
@@ -563,13 +625,21 @@ function spawnEmoji(emoji, x, y, size, username = null) {
  * Fade out emoji
  */
 function fadeOutEmoji(emoji) {
-    if (emoji.fading) return;
+    if (emoji.fading || emoji.removed) return;
 
     emoji.fading = true;
-    emoji.element.classList.add('fading');
+    if (emoji.element) {
+        emoji.element.classList.add('fading');
+    }
 
-    setTimeout(() => {
+    // Clear any pending timeouts before setting a new one
+    if (emoji.fadeTimeout) {
+        clearTimeout(emoji.fadeTimeout);
+    }
+    
+    emoji.fadeTimeout = setTimeout(() => {
         removeEmoji(emoji);
+        emoji.fadeTimeout = null;
     }, config.emoji_fade_duration_ms);
 }
 
@@ -581,7 +651,19 @@ function removeEmoji(emoji) {
 
     emoji.removed = true;
 
+    // Clean up any pending timeouts to prevent memory leaks
+    if (emoji.fadeTimeout) {
+        clearTimeout(emoji.fadeTimeout);
+        emoji.fadeTimeout = null;
+    }
+    if (emoji.bounceAnimationTimeout) {
+        clearTimeout(emoji.bounceAnimationTimeout);
+        emoji.bounceAnimationTimeout = null;
+    }
+
     if (emoji.body) {
+        // Remove from body map
+        emojiBodyMap.delete(emoji.body);
         World.remove(engine.world, emoji.body);
         emoji.body = null;
     }
@@ -781,9 +863,17 @@ document.addEventListener('keydown', (e) => {
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
+    // Clean up all emojis and their timeouts
     emojis.forEach(emoji => removeEmoji(emoji));
+    emojis = [];
+    emojiBodyMap.clear();
+    
     if (engine) {
+        // Remove event listeners to prevent memory leaks
+        Events.off(engine, 'collisionStart', handleCollision);
         Engine.clear(engine);
+        engine = null;
     }
+    
     console.log('🧹 Cleanup completed');
 });
