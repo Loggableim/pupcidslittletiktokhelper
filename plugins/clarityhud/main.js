@@ -84,32 +84,32 @@ class ClarityHUDPlugin {
    */
   registerEventListeners() {
     // Chat events (both overlays)
-    this.api.registerSocket('chat', async (data) => {
+    this.api.registerTikTokEvent('chat', async (data) => {
       await this.backend.handleChatEvent(data);
     });
 
     // Activity events (full overlay only)
-    this.api.registerSocket('follow', async (data) => {
+    this.api.registerTikTokEvent('follow', async (data) => {
       await this.backend.handleFollowEvent(data);
     });
 
-    this.api.registerSocket('share', async (data) => {
+    this.api.registerTikTokEvent('share', async (data) => {
       await this.backend.handleShareEvent(data);
     });
 
-    this.api.registerSocket('gift', async (data) => {
+    this.api.registerTikTokEvent('gift', async (data) => {
       await this.backend.handleGiftEvent(data);
     });
 
-    this.api.registerSocket('subscribe', async (data) => {
+    this.api.registerTikTokEvent('subscribe', async (data) => {
       await this.backend.handleSubscribeEvent(data);
     });
 
-    this.api.registerSocket('superfan', async (data) => {
+    this.api.registerTikTokEvent('superfan', async (data) => {
       await this.backend.handleSubscribeEvent(data);
     });
 
-    this.api.registerSocket('join', async (data) => {
+    this.api.registerTikTokEvent('join', async (data) => {
       await this.backend.handleJoinEvent(data);
     });
 
