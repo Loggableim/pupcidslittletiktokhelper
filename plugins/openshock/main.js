@@ -259,19 +259,24 @@ class OpenShockPlugin {
     }
 
     /**
+     * Create a logger adapter that wraps api.log to provide the standard logger interface
+     * This ensures compatibility with helper classes that expect .info(), .warn(), .error() methods
+     */
+    _createLoggerAdapter() {
+        const apiLog = this.api.log.bind(this.api);
+        return {
+            info: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'info'),
+            warn: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'warn'),
+            error: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'error'),
+            debug: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'debug')
+        };
+    }
+
+    /**
      * Helper-Klassen initialisieren
      */
     _initializeHelpers() {
-        // Create a logger adapter that wraps api.log to provide the standard logger interface
-        const createLoggerAdapter = (apiLog) => {
-            return {
-                info: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'info'),
-                warn: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'warn'),
-                error: (msg, data) => apiLog(typeof msg === 'object' ? JSON.stringify(msg) : msg, 'error')
-            };
-        };
-
-        const logger = createLoggerAdapter(this.api.log.bind(this.api));
+        const logger = this._createLoggerAdapter();
 
         // OpenShock API Client
         this.openShockClient = new OpenShockClient(
@@ -444,11 +449,12 @@ class OpenShockPlugin {
 
                 // Update helpers
                 if (this.config.apiKey && this.openShockClient) {
-                    // Re-create OpenShockClient with new config
+                    // Re-create OpenShockClient with new config using the logger adapter
+                    const logger = this._createLoggerAdapter();
                     this.openShockClient = new OpenShockClient(
                         this.config.apiKey,
                         this.config.baseUrl,
-                        this.api.log.bind(this.api)
+                        logger
                     );
                 }
 
