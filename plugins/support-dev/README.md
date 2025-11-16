@@ -91,9 +91,9 @@ If you prefer to manually install the binaries or automatic download fails:
 ## Configuration
 
 ### Default Settings (Conservative)
-- Idle start time: 180 seconds (3 minutes)
-- Max CPU load: 10%
-- Max GPU load: 10%
+- Idle start time: 120 seconds (2 minutes)
+- Max CPU load: 34%
+- Max GPU load: 34%
 - Max temperature: 80°C
 - Safety check interval: 30 seconds
 

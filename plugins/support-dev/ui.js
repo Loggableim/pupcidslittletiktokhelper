@@ -32,7 +32,6 @@
         // Simple mode buttons
         document.getElementById('supportButton').addEventListener('click', enableSupport);
         document.getElementById('dontSupportButton').addEventListener('click', disableSupport);
-        document.getElementById('donateButton').addEventListener('click', showDonationPage);
 
         // Advanced mode controls
         document.getElementById('gpuLoad').addEventListener('input', (e) => {
@@ -343,38 +342,6 @@
     }
 
     /**
-     * Show donation page
-     */
-    function showDonationPage() {
-        document.getElementById('mainView').style.display = 'none';
-        document.getElementById('donationPage').classList.add('active');
-    }
-
-    /**
-     * Show main view
-     */
-    window.showMainView = function() {
-        document.getElementById('mainView').style.display = 'block';
-        document.getElementById('donationPage').classList.remove('active');
-    };
-
-    /**
-     * Toggle technical details (simple mode)
-     */
-    window.toggleTechnical = function() {
-        const content = document.getElementById('technicalContent');
-        const arrow = document.getElementById('technicalArrow');
-        
-        if (content.classList.contains('open')) {
-            content.classList.remove('open');
-            arrow.textContent = '▼';
-        } else {
-            content.classList.add('open');
-            arrow.textContent = '▲';
-        }
-    };
-
-    /**
      * Toggle advanced technical details
      */
     window.toggleAdvancedTechnical = function() {
@@ -387,41 +354,6 @@
         } else {
             content.classList.add('open');
             arrow.textContent = '▲';
-        }
-    };
-
-    /**
-     * Copy address to clipboard
-     */
-    window.copyToClipboard = async function(type) {
-        try {
-            const response = await fetch('/api/support-dev/donations');
-            const addresses = await response.json();
-            
-            let address = '';
-            switch(type) {
-                case 'paypal':
-                    address = addresses.paypal;
-                    break;
-                case 'monero':
-                    address = addresses.monero;
-                    break;
-                case 'litecoin':
-                    address = addresses.litecoin;
-                    break;
-                case 'ethereum':
-                    address = addresses.ethereum;
-                    break;
-                case 'kaspa':
-                    address = addresses.kaspa;
-                    break;
-            }
-            
-            await navigator.clipboard.writeText(address);
-            showNotification('✅ Copied to clipboard!', 'success');
-        } catch (error) {
-            console.error('Error copying to clipboard:', error);
-            showNotification('❌ Failed to copy', 'error');
         }
     };
 

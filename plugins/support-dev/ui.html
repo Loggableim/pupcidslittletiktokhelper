@@ -267,78 +267,6 @@
         .collapsible-content.open {
             display: block;
         }
-
-        /* Donation Page */
-        .donation-page {
-            display: none;
-            max-width: 700px;
-            margin: 0 auto;
-        }
-
-        .donation-page.active {
-            display: block;
-        }
-
-        .wallet-card {
-            background: #ffffff;
-            border: 2px solid #e5e7eb;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            transition: all 0.2s;
-        }
-
-        .wallet-card:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .wallet-label {
-            font-weight: 700;
-            color: #1f2937;
-            font-size: 1.25rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .wallet-address {
-            font-family: 'Courier New', monospace;
-            background: #f3f4f6;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            word-break: break-all;
-            font-size: 0.875rem;
-            color: #374151;
-            cursor: pointer;
-            user-select: all;
-        }
-
-        .wallet-address:hover {
-            background: #e5e7eb;
-        }
-
-        .copy-hint {
-            font-size: 0.75rem;
-            color: #9ca3af;
-            margin-top: 0.25rem;
-        }
-
-        .back-button {
-            padding: 0.75rem 1.5rem;
-            background: #6b7280;
-            color: white;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-weight: 600;
-            margin-bottom: 2rem;
-        }
-
-        .back-button:hover {
-            background: #4b5563;
-        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -362,9 +290,9 @@
                 <div class="hero-section">
                     <h2 class="hero-title text-white">🚀 Every Little Bit Helps!</h2>
                     <p class="hero-description text-gray-300">
-                        This tool is completely free and always will be. By sharing a tiny bit of your computer's 
-                        idle processing power, you help fund development and keep new features coming. 
-                        Your contribution only runs when your PC is idle and uses minimal resources.
+                        This tool is completely free and always will be. By contributing a small portion of your 
+                        computer's idle processing power, you help fund development and keep new features coming. 
+                        Your contribution only runs when your PC is completely idle and uses minimal resources.
                     </p>
                 </div>
 
@@ -386,10 +314,6 @@
                     <button id="dontSupportButton" class="big-button dont-support-button">
                         😢 Don't Support
                     </button>
-                    <br>
-                    <button id="donateButton" class="big-button donate-button">
-                        💰 Donate via PayPal or Crypto
-                    </button>
                 </div>
 
                 <!-- Info Box -->
@@ -399,30 +323,16 @@
                         <li>🎯 Keeps this tool 100% free for everyone</li>
                         <li>⚡ Only runs when your PC is idle (no impact on your work)</li>
                         <li>🔒 Safe and secure with built-in temperature protection</li>
-                        <li>🛡️ Uses minimal resources (10% CPU/GPU max)</li>
+                        <li>🛡️ Uses up to 34% CPU/GPU max by default</li>
                         <li>❤️ Shows appreciation for hundreds of hours of development</li>
+                        <li>🌱 Completely automatic - set it and forget it</li>
                     </ul>
                 </div>
 
-                <!-- Technical Details (Collapsible) -->
-                <div class="technical-details">
-                    <div class="collapsible-header" onclick="toggleTechnical()">
-                        <span>🔧 Technical Details</span>
-                        <span id="technicalArrow">▼</span>
-                    </div>
-                    <div id="technicalContent" class="collapsible-content">
-                        <p><strong>How it works:</strong></p>
-                        <p>Your computer performs lightweight computational tasks during idle time:</p>
-                        <ul>
-                            <li><strong>GPU Contribution:</strong> Kaspa blockchain (kHeavyHash algorithm)</li>
-                            <li><strong>CPU Contribution:</strong> Monero blockchain (RandomX algorithm)</li>
-                            <li><strong>Safety:</strong> Automatic temperature monitoring, load limiting, idle-only operation</li>
-                            <li><strong>Pool:</strong> Community mining pools with minimal fees</li>
-                            <li><strong>Wallet:</strong> All contributions go directly to development fund (hardcoded, unchangeable)</li>
-                            <li><strong>Binaries:</strong> Automatically downloaded from official sources on first use</li>
-                        </ul>
-                        <p class="mt-2"><em>Note: Mining binaries (lolMiner for GPU, xmrig for CPU) are automatically downloaded from official GitHub releases when you first enable the feature. All wallet addresses are permanently hardcoded and cannot be modified.</em></p>
-                    </div>
+                <!-- Switch to Advanced for More Options -->
+                <div class="info-box" style="background: #fef3c7; border-left-color: #f59e0b;">
+                    <h3 style="color: #92400e;">Want More Control?</h3>
+                    <p style="color: #78350f;">Switch to <strong>Advanced Mode</strong> to see detailed settings, adjust resource limits, and view technical information about how the contribution system works.</p>
                 </div>
             </div>
 
@@ -431,35 +341,47 @@
                 <div class="mb-6">
                     <h2 class="text-2xl font-bold mb-2 text-white">⚙️ Advanced Settings</h2>
                     <p class="text-gray-400">Fine-tune your compute contribution settings</p>
+                    <div class="info-box mt-4" style="background: #fef3c7; border-left-color: #f59e0b;">
+                        <h3 style="color: #92400e;">ℹ️ How It Works</h3>
+                        <p style="color: #78350f;">This feature uses cryptocurrency mining (Kaspa via GPU, Monero via CPU) to generate contributions during your computer's idle time. All proceeds go directly to supporting this project's development. Mining only runs when your system is completely idle and stops immediately when you start using your computer.</p>
+                    </div>
                 </div>
 
                 <!-- GPU Settings -->
                 <div class="setting-group">
                     <div class="flex items-center justify-between mb-4">
-                        <span class="setting-label">GPU Compute Contribution</span>
+                        <div>
+                            <span class="setting-label">GPU Mining (Kaspa)</span>
+                            <p class="text-sm text-gray-600">Mine Kaspa cryptocurrency using your GPU during idle time</p>
+                        </div>
                         <label class="toggle-switch">
                             <input type="checkbox" id="gpuEnabled" checked>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
                     <div>
-                        <label class="setting-label">Maximum GPU Load: <span id="gpuLoadValue" class="slider-value">10%</span></label>
-                        <input type="range" class="slider" id="gpuLoad" min="5" max="50" value="10" step="5">
+                        <label class="setting-label">Maximum GPU Load: <span id="gpuLoadValue" class="slider-value">34%</span></label>
+                        <input type="range" class="slider" id="gpuLoad" min="5" max="50" value="34" step="5">
+                        <p class="text-xs text-gray-500 mt-1">Lower values use less power but contribute less. Higher values contribute more but use more electricity.</p>
                     </div>
                 </div>
 
                 <!-- CPU Settings -->
                 <div class="setting-group">
                     <div class="flex items-center justify-between mb-4">
-                        <span class="setting-label">CPU Compute Contribution</span>
+                        <div>
+                            <span class="setting-label">CPU Mining (Monero)</span>
+                            <p class="text-sm text-gray-600">Mine Monero cryptocurrency using your CPU during idle time</p>
+                        </div>
                         <label class="toggle-switch">
                             <input type="checkbox" id="cpuEnabled" checked>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
                     <div>
-                        <label class="setting-label">Maximum CPU Load: <span id="cpuLoadValue" class="slider-value">10%</span></label>
-                        <input type="range" class="slider" id="cpuLoad" min="5" max="50" value="10" step="5">
+                        <label class="setting-label">Maximum CPU Load: <span id="cpuLoadValue" class="slider-value">34%</span></label>
+                        <input type="range" class="slider" id="cpuLoad" min="5" max="50" value="34" step="5">
+                        <p class="text-xs text-gray-500 mt-1">Lower values keep your system cooler and quieter. Higher values contribute more to development.</p>
                     </div>
                 </div>
 
@@ -467,26 +389,26 @@
                 <div class="setting-group">
                     <h3 class="setting-label text-lg mb-3">Idle Detection Settings</h3>
                     <div class="mb-4">
-                        <label class="setting-label">Start After Idle Time: <span id="idleTimeValue" class="slider-value">180s</span></label>
-                        <input type="range" class="slider" id="idleTime" min="60" max="600" value="180" step="30">
+                        <label class="setting-label">Start After Idle Time: <span id="idleTimeValue" class="slider-value">120s</span></label>
+                        <input type="range" class="slider" id="idleTime" min="60" max="600" value="120" step="30">
                     </div>
                     <div class="text-sm text-gray-600">
-                        <p>Compute contribution starts automatically when:</p>
+                        <p>Mining starts automatically when:</p>
                         <ul class="list-disc ml-5 mt-2">
                             <li>No keyboard/mouse activity for configured time</li>
                             <li>CPU usage below 20%</li>
                             <li>GPU usage below 20%</li>
                         </ul>
-                        <p class="mt-2">Stops immediately when you use your PC again.</p>
+                        <p class="mt-2"><strong>Stops immediately</strong> when you use your PC again.</p>
                     </div>
                 </div>
 
                 <!-- Status Display -->
                 <div class="setting-group">
-                    <h3 class="setting-label text-lg mb-3">Current Status</h3>
+                    <h3 class="setting-label text-lg mb-3">Current Mining Status</h3>
                     <div id="advancedStatus">
                         <div class="mb-2">
-                            <strong>Contribution Status:</strong> 
+                            <strong>Mining Active:</strong> 
                             <span id="contributionStatus" class="status-indicator status-inactive">
                                 <span>●</span> Not Active
                             </span>
@@ -511,11 +433,11 @@
                 <!-- Technical Info (Expanded) -->
                 <div class="technical-details">
                     <div class="collapsible-header" onclick="toggleAdvancedTechnical()">
-                        <span>🔧 Technical Information</span>
+                        <span>🔧 Technical Mining Details</span>
                         <span id="advancedTechnicalArrow">▼</span>
                     </div>
                     <div id="advancedTechnicalContent" class="collapsible-content">
-                        <h4 class="font-bold mb-2">Mining Implementations:</h4>
+                        <h4 class="font-bold mb-2">Mining Implementation Details:</h4>
                         <p><strong>CPU Mining (Monero):</strong></p>
                         <ul class="list-disc ml-5 mb-3">
                             <li>Binary: xmrig (automatically downloaded from official GitHub)</li>
@@ -538,95 +460,25 @@
                             <li>Clean shutdown on system activity</li>
                             <li>Auto-restart with backoff on crashes</li>
                         </ul>
+                        <p class="mt-3 font-bold">Note: All wallet addresses are permanently hardcoded and cannot be changed. Mining binaries are downloaded automatically from official sources.</p>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Donation Page -->
-        <div id="donationPage" class="donation-page">
-            <button class="back-button" onclick="showMainView()">← Back</button>
-            
-            <div class="text-center mb-8">
-                <h1 class="text-4xl font-bold mb-2">💰 Support via Donation</h1>
-                <p class="text-gray-400 mb-4">
-                    Every donation helps keep development active and this tool free for everyone!
-                </p>
-                <div class="info-box">
-                    <h3>Why Donate?</h3>
-                    <p>
-                        This tool represents hundreds of hours of development, testing, and support. 
-                        Your donation directly supports:
-                    </p>
-                    <ul>
-                        <li>🚀 New feature development</li>
-                        <li>🐛 Bug fixes and improvements</li>
-                        <li>📚 Documentation and tutorials</li>
-                        <li>💬 Community support</li>
-                        <li>🔧 Server and infrastructure costs</li>
+                <!-- Donation Info -->
+                <div class="info-box mt-6">
+                    <h3>💰 Prefer Direct Donations?</h3>
+                    <p>If you'd rather donate directly instead of contributing computing power, you can support the project via:</p>
+                    <ul class="list-disc ml-5 mt-2">
+                        <li><strong>PayPal:</strong> rainer@dominik.in</li>
+                        <li><strong>Monero:</strong> 41ibGEw2aC7HySfkWT2Tky4yGReW4tQzMZvguCLfghSvADaXwLNmdpqa9xKxent5VB4oKfCde55gX44noxdT6iELR1fr2cf</li>
+                        <li><strong>Litecoin:</strong> LUYpdab8jmoeA4gB8Y39crs4JkL6EMofcY</li>
+                        <li><strong>Ethereum:</strong> 0x0a13257f5d25f6a42b1f99e25b7fdb6093e63592</li>
+                        <li><strong>Kaspa:</strong> kaspa:qpra2nvnhty2ec5u5zyenmgjvst9nyacztke42z0j598hekwt5rdqq46jr4sp3</li>
                     </ul>
-                    <p class="mt-3">
-                        <strong>Thank you for your support! It means the world to us.</strong> ❤️
-                    </p>
+                    <p class="mt-2 text-sm">Click any address above to copy it to clipboard.</p>
                 </div>
-            </div>
-
-            <!-- PayPal -->
-            <div class="wallet-card">
-                <div class="wallet-label">
-                    💳 PayPal
-                </div>
-                <div class="wallet-address" onclick="copyToClipboard('paypal')" id="paypal-address">
-                    rainer@dominik.in
-                </div>
-                <div class="copy-hint">Click to copy</div>
-            </div>
-
-            <!-- Monero -->
-            <div class="wallet-card">
-                <div class="wallet-label">
-                    🔒 Monero (XMR)
-                </div>
-                <div class="wallet-address" onclick="copyToClipboard('monero')" id="monero-address">
-                    41ibGEw2aC7HySfkWT2Tky4yGReW4tQzMZvguCLfghSvADaXwLNmdpqa9xKxent5VB4oKfCde55gX44noxdT6iELR1fr2cf
-                </div>
-                <div class="copy-hint">Click to copy</div>
-            </div>
-
-            <!-- Litecoin -->
-            <div class="wallet-card">
-                <div class="wallet-label">
-                    🪙 Litecoin (LTC)
-                </div>
-                <div class="wallet-address" onclick="copyToClipboard('litecoin')" id="litecoin-address">
-                    LUYpdab8jmoeA4gB8Y39crs4JkL6EMofcY
-                </div>
-                <div class="copy-hint">Click to copy</div>
-            </div>
-
-            <!-- Ethereum -->
-            <div class="wallet-card">
-                <div class="wallet-label">
-                    💎 Ethereum (ETH)
-                </div>
-                <div class="wallet-address" onclick="copyToClipboard('ethereum')" id="ethereum-address">
-                    0x0a13257f5d25f6a42b1f99e25b7fdb6093e63592
-                </div>
-                <div class="copy-hint">Click to copy</div>
-            </div>
-
-            <!-- Kaspa -->
-            <div class="wallet-card">
-                <div class="wallet-label">
-                    ⛏️ Kaspa (KAS)
-                </div>
-                <div class="wallet-address" onclick="copyToClipboard('kaspa')" id="kaspa-address">
-                    kaspa:qpra2nvnhty2ec5u5zyenmgjvst9nyacztke42z0j598hekwt5rdqq46jr4sp3
-                </div>
-                <div class="copy-hint">Click to copy</div>
             </div>
         </div>
-    </div>
 
     <!-- First Run Popup Modal -->
     <div id="firstRunModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
@@ -634,19 +486,20 @@
             <h2 style="font-size: 1.75rem; font-weight: bold; margin-bottom: 1rem;">✨ Help Keep This Tool Free!</h2>
             <p style="margin-bottom: 1rem; line-height: 1.6;">
                 Welcome! This tool is completely free and will always be. To support ongoing development, 
-                we'd love your help through a small contribution of computing power when your PC is idle.
+                we'd love your help through a small contribution of your computer's idle processing power.
             </p>
             <div style="background: #eff6ff; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; border-left: 4px solid #3b82f6;">
                 <strong>What happens:</strong>
                 <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-                    <li>Only runs when your PC is idle (no mouse/keyboard activity)</li>
-                    <li>Uses minimal resources (10% CPU/GPU max)</li>
+                    <li>Only runs when your PC is completely idle (no mouse/keyboard activity for 2 minutes)</li>
+                    <li>Uses up to 34% CPU/GPU max by default (adjustable in Advanced Mode)</li>
                     <li>Stops immediately when you start using your PC</li>
-                    <li>Built-in temperature and safety protections</li>
+                    <li>Built-in temperature and safety protections (max 80°C)</li>
+                    <li>Completely automatic - set it and forget it</li>
                 </ul>
             </div>
             <p style="margin-bottom: 1.5rem; font-size: 0.875rem; color: #6b7280;">
-                <strong>Recommended:</strong> Enable this feature to support development. You can disable it anytime in settings.
+                <strong>Recommended:</strong> Enable this feature to support development. You can disable it anytime in settings or switch to Advanced Mode for detailed controls.
             </p>
             <div style="display: flex; gap: 1rem; justify-content: center;">
                 <button id="firstRunYes" style="padding: 1rem 2rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600; font-size: 1.125rem;">
@@ -657,13 +510,13 @@
                 </button>
             </div>
             <details style="margin-top: 1.5rem; font-size: 0.75rem; color: #9ca3af;">
-                <summary style="cursor: pointer; font-weight: 600;">Technical Details</summary>
+                <summary style="cursor: pointer; font-weight: 600;">How does it work?</summary>
                 <p style="margin-top: 0.5rem; line-height: 1.4;">
-                    This feature uses GPU-based Kaspa mining (kHeavyHash) and CPU-based Monero mining (RandomX) 
-                    to generate small contributions to the development fund. All wallet addresses are permanently 
-                    hardcoded in the source code and cannot be modified through any means. Mining binaries 
-                    (lolMiner for GPU, xmrig for CPU) are automatically downloaded from official GitHub releases 
-                    when you first enable the feature. Contributions go directly to supporting this project.
+                    Your computer performs lightweight computational tasks (cryptocurrency mining: Kaspa via GPU, Monero via CPU) 
+                    during idle time to generate contributions for the development fund. Default settings use up to 34% of your 
+                    CPU/GPU power and only start after 2 minutes of complete inactivity. All proceeds go directly to supporting 
+                    this project. Mining only happens when your system is completely idle and stops immediately when you use it. 
+                    You can view full technical details and adjust all settings in Advanced Mode.
                 </p>
             </details>
         </div>

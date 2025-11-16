@@ -17,7 +17,7 @@ class IdleDetector {
         
         // Idle thresholds (configurable)
         this.config = {
-            idleTimeSeconds: 180,      // 3 minutes of no user activity
+            idleTimeSeconds: 120,      // 2 minutes of no user activity
             cpuThresholdPercent: 20,   // CPU must be below 20% to consider idle
             gpuThresholdPercent: 20,   // GPU must be below 20% to consider idle
         };
