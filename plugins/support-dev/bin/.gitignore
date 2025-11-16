@@ -1,0 +1,10 @@
+# Mining binaries - not included in repo for security
+# Users must download these separately
+lolMiner*
+BzMiner*
+xmrig*
+*.exe
+*.bin
+
+# But keep this directory in git
+!.gitignore
