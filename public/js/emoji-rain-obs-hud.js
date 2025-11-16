@@ -163,11 +163,16 @@
             // Add temporary glow
             if (config.enable_glow) {
                 emoji.element.classList.add('glowing');
-                setTimeout(() => {
+                // Clear existing timeout if any
+                if (emoji.glowTimeout) {
+                    clearTimeout(emoji.glowTimeout);
+                }
+                emoji.glowTimeout = setTimeout(() => {
                     // Check if element still exists before removing class
-                    if (emoji.element) {
+                    if (emoji.element && !emoji.removed) {
                         emoji.element.classList.remove('glowing');
                     }
+                    emoji.glowTimeout = null;
                 }, 300);
             }
 
@@ -176,11 +181,16 @@
                 spawnImpactParticles(emoji.body.position.x, emoji.body.position.y, 8);
             }
 
-            setTimeout(() => {
+            // Clear existing timeout if any
+            if (emoji.bounceTimeout) {
+                clearTimeout(emoji.bounceTimeout);
+            }
+            emoji.bounceTimeout = setTimeout(() => {
                 // Check if element still exists before removing class
-                if (emoji.element) {
+                if (emoji.element && !emoji.removed) {
                     emoji.element.classList.remove('bouncing');
                 }
+                emoji.bounceTimeout = null;
             }, 500);
         }
 
@@ -260,6 +270,16 @@
             // Update all emojis
             emojis.forEach(emoji => {
                 if (emoji.body) {
+                    // Check if emoji has escaped the world bounds
+                    const pos = emoji.body.position;
+                    const margin = 200; // Extra margin outside canvas
+                    if (pos.x < -margin || pos.x > canvasWidth + margin || 
+                        pos.y < -margin || pos.y > canvasHeight + margin) {
+                        // Emoji escaped, remove it
+                        removeEmoji(emoji);
+                        return;
+                    }
+
                     // Apply wind
                     Body.applyForce(emoji.body, emoji.body.position, {
                         x: windForce,
@@ -352,10 +372,11 @@
                 element.style.fontSize = size + 'px';
             }
 
-            // Use transform3d for better performance
-            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+            // Set initial position with explicit position style to prevent top-left corner freeze
+            element.style.position = 'absolute';
             element.style.left = '0';
             element.style.top = '0';
+            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
 
             document.getElementById('canvas-container').appendChild(element);
 
@@ -379,13 +400,21 @@
 
         // Fade out emoji
         function fadeOutEmoji(emoji) {
-            if (emoji.fading) return;
+            if (emoji.fading || emoji.removed) return;
 
             emoji.fading = true;
-            emoji.element.classList.add('fading');
+            if (emoji.element) {
+                emoji.element.classList.add('fading');
+            }
 
-            setTimeout(() => {
+            // Clear any pending timeout before setting a new one
+            if (emoji.fadeTimeout) {
+                clearTimeout(emoji.fadeTimeout);
+            }
+            
+            emoji.fadeTimeout = setTimeout(() => {
                 removeEmoji(emoji);
+                emoji.fadeTimeout = null;
             }, config.emoji_fade_duration_ms);
         }
 
@@ -394,6 +423,20 @@
             if (emoji.removed) return;
 
             emoji.removed = true;
+
+            // Clean up all pending timeouts to prevent memory leaks
+            if (emoji.fadeTimeout) {
+                clearTimeout(emoji.fadeTimeout);
+                emoji.fadeTimeout = null;
+            }
+            if (emoji.bounceTimeout) {
+                clearTimeout(emoji.bounceTimeout);
+                emoji.bounceTimeout = null;
+            }
+            if (emoji.glowTimeout) {
+                clearTimeout(emoji.glowTimeout);
+                emoji.glowTimeout = null;
+            }
 
             // Remove from physics world
             if (emoji.body) {
