@@ -425,6 +425,12 @@ body {
     overflow: hidden; /* Prevent content-view from scrolling, allow child .view-section to scroll */
 }
 
+/* FIX: Dashboard view needs to scroll its content, not be fixed height */
+#view-dashboard.content-view.active {
+    overflow-y: auto; /* Enable vertical scrolling for dashboard */
+    overflow-x: hidden; /* Prevent horizontal overflow */
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;
