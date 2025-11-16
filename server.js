@@ -542,6 +542,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+// Overlay-Route (compatibility - redirects to dashboard)
+app.get('/overlay.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
 // Favicon route (prevent 404 errors)
 app.get('/favicon.ico', (req, res) => {
     res.status(204).end();
