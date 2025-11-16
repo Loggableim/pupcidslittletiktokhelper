@@ -1620,6 +1620,30 @@ io.on('connection', (socket) => {
         alerts.testAlert(data.type, data.testData);
     });
 
+    // Test Goals Events (for testing goals overlay)
+    socket.on('test:goal:increment', async (data) => {
+        if (data && data.id && typeof data.amount === 'number') {
+            debugLogger.log('goals', `Test increment for ${data.id}: +${data.amount}`, data);
+            await goals.incrementGoal(data.id, data.amount);
+        }
+    });
+
+    socket.on('test:goal:reset', async (data) => {
+        if (data && data.id) {
+            debugLogger.log('goals', `Test reset for ${data.id}`, data);
+            await goals.setGoal(data.id, 0);
+            // Emit reset event
+            io.to('goals').emit('goals:reset', { goalId: data.id, timestamp: Date.now() });
+        }
+    });
+
+    socket.on('test:goal:set', async (data) => {
+        if (data && data.id && typeof data.value === 'number') {
+            debugLogger.log('goals', `Test set ${data.id} to ${data.value}`, data);
+            await goals.setGoal(data.id, data.value);
+        }
+    });
+
     // VDO.Ninja Socket.IO Events are now handled by VDO.Ninja Plugin
 
 
