@@ -40,6 +40,7 @@ Diese Datei dient als zentraler Einstiegspunkt für LLMs, die an diesem Projekt 
 - **`launcher.js`**: Platform-agnostischer Launcher mit Dependency-Check
 - **`tty-logger.js`**: TTY-sicheres Logging-System
 - **`update-checker.js`**: GitHub Releases API für Auto-Updates
+- **`cloud-sync.js`**: Cloud-Synchronisation für User-Konfigurationen (OneDrive, Google Drive, Dropbox)
 
 ### Plugin-System (`plugins/`)
 
@@ -394,6 +395,41 @@ Nach jeder Änderung:
 
 ---
 
+## ☁️ Cloud Sync System
+
+**Zweck:** Optionale bidirektionale Synchronisation aller User-Konfigurationen mit Cloud-Speichern.
+
+**Unterstützte Anbieter:**
+- OneDrive
+- Google Drive
+- Dropbox
+
+**Synchronisierte Daten:**
+- Alle Dateien in `user_configs/`
+- Plugin-Konfigurationen
+- TTS-Profile
+- Flow-Automationen
+- HUD-Layouts
+- Custom-Assets
+
+**API-Endpoints:**
+- `GET /api/cloud-sync/status`: Status abrufen
+- `POST /api/cloud-sync/enable`: Cloud Sync aktivieren
+- `POST /api/cloud-sync/disable`: Cloud Sync deaktivieren
+- `POST /api/cloud-sync/manual-sync`: Manuellen Sync durchführen
+- `POST /api/cloud-sync/validate-path`: Cloud-Pfad validieren
+
+**Funktionsweise:**
+1. Keine direkten Cloud-API-Calls (nutzt lokale Ordner-Synchronisation)
+2. File-Watcher für Echtzeit-Sync (bidirektional)
+3. Timestamp-basierte Konfliktlösung
+4. Atomare Schreibvorgänge (keine Datenverluste)
+5. Standardmäßig deaktiviert (opt-in)
+
+**Dokumentation:** Siehe `CLOUD_SYNC_DOCUMENTATION.md`
+
+---
+
 ## 🔧 Tech Stack Details
 
 - **Node.js**: >=18.0.0 <24.0.0
@@ -413,10 +449,12 @@ Nach jeder Änderung:
 
 - **CHANGELOG.md**: Detaillierte Versionshistorie
 - **README.md**: User-facing Documentation
+- **CLOUD_SYNC_DOCUMENTATION.md**: Cloud Sync Feature Dokumentation
 - **VDONINJA_USER_GUIDE.md**: VDO.Ninja Anleitung
 - **docs/**: API-Dokumentation, Guides
+- **wiki/**: Wiki-Dokumentation
 
 ---
 
-**Letzte Aktualisierung:** 2025-11-09 (OSC-Bridge Plugin v1.0.2)
+**Letzte Aktualisierung:** 2025-11-17 (Cloud Sync v1.0.0)
 **Maintainer:** Pup Cid

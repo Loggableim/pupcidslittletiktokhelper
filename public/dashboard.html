@@ -1216,6 +1216,122 @@
                             </div>
                         </div>
 
+                        <!-- Cloud Sync Settings -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="cloud"></i>
+                                Cloud Sync (Optional)
+                            </h3>
+                            <p class="form-help">
+                                Synchronisiere deine Konfigurationen automatisch mit OneDrive, Google Drive oder Dropbox.
+                                Alle User-Settings, Plugin-Konfigurationen, TTS-Profile, Flows, HUD-Layouts und Custom-Assets werden automatisch gesichert.
+                            </p>
+
+                            <!-- Sync Status -->
+                            <div id="cloud-sync-status-container" class="alert alert-info" style="margin-bottom: 1rem;">
+                                <i data-lucide="info"></i>
+                                <span id="cloud-sync-status-text">Lade Cloud-Sync-Status...</span>
+                            </div>
+
+                            <!-- Sync Statistics -->
+                            <div id="cloud-sync-stats" style="display: none; margin-bottom: 1rem;">
+                                <div class="settings-info-grid">
+                                    <div class="info-item">
+                                        <span class="info-label">Status:</span>
+                                        <span id="cloud-sync-enabled-status" class="info-value badge badge-secondary">Deaktiviert</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Letzte Synchronisation:</span>
+                                        <span id="cloud-sync-last-sync" class="info-value">Nie</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Dateien hochgeladen:</span>
+                                        <span id="cloud-sync-uploaded" class="info-value">0</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Dateien heruntergeladen:</span>
+                                        <span id="cloud-sync-downloaded" class="info-value">0</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Konflikte gelöst:</span>
+                                        <span id="cloud-sync-conflicts" class="info-value">0</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Erfolgreiche Syncs:</span>
+                                        <span id="cloud-sync-successful" class="info-value">0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cloud Path Configuration -->
+                            <div class="form-group">
+                                <label for="cloud-sync-path">Cloud-Sync Ordner:</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input 
+                                        type="text" 
+                                        id="cloud-sync-path" 
+                                        placeholder="z.B. C:\Users\DeinName\OneDrive\TikTokHelper" 
+                                        class="form-input"
+                                        style="flex: 1;"
+                                        readonly
+                                    >
+                                    <button id="choose-cloud-path-btn" class="btn btn-secondary">
+                                        <i data-lucide="folder"></i>
+                                        Auswählen
+                                    </button>
+                                </div>
+                                <p class="form-help">
+                                    💡 <strong>Unterstützte Cloud-Anbieter:</strong> OneDrive, Google Drive, Dropbox<br>
+                                    Wähle einen Ordner innerhalb deines Cloud-Speicher-Verzeichnisses.<br>
+                                    Die Synchronisation erfolgt automatisch über lokale Ordner-Überwachung.
+                                </p>
+                            </div>
+
+                            <!-- Current Cloud Path Display -->
+                            <div id="cloud-sync-current-path" style="display: none; margin-bottom: 1rem;">
+                                <strong>Aktueller Cloud-Pfad:</strong>
+                                <div style="background: #f5f5f5; padding: 0.5rem; border-radius: 4px; margin-top: 0.25rem; word-break: break-all;">
+                                    <code id="cloud-sync-path-display"></code>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="form-grid" style="margin-bottom: 1rem;">
+                                <button id="enable-cloud-sync-btn" class="btn btn-success" disabled>
+                                    <i data-lucide="cloud"></i>
+                                    Cloud Sync aktivieren
+                                </button>
+                                <button id="disable-cloud-sync-btn" class="btn btn-danger" style="display: none;">
+                                    <i data-lucide="cloud-off"></i>
+                                    Cloud Sync deaktivieren
+                                </button>
+                                <button id="manual-cloud-sync-btn" class="btn btn-primary" style="display: none;">
+                                    <i data-lucide="refresh-cw"></i>
+                                    Manueller Sync
+                                </button>
+                            </div>
+
+                            <div class="alert alert-warning">
+                                <i data-lucide="alert-triangle"></i>
+                                <span>
+                                    <strong>Wichtig:</strong> Der Cloud-Sync ist standardmäßig deaktiviert.
+                                    Stelle sicher, dass der ausgewählte Ordner in deinem Cloud-Speicher liegt (OneDrive, Google Drive, Dropbox).
+                                    Das Tool macht keine direkten API-Aufrufe an die Cloud-Anbieter, sondern nutzt die lokale Synchronisation.
+                                </span>
+                            </div>
+
+                            <div class="form-help" style="margin-top: 1rem;">
+                                <h4>So funktioniert Cloud Sync:</h4>
+                                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                    <li><strong>Ordner wählen:</strong> Wähle einen Ordner in deinem OneDrive/Google Drive/Dropbox Verzeichnis.</li>
+                                    <li><strong>Sync aktivieren:</strong> Das Tool synchronisiert automatisch alle Konfigurationen beim Start.</li>
+                                    <li><strong>Bidirektionale Sync:</strong> Änderungen werden in beide Richtungen synchronisiert (lokal ↔ Cloud).</li>
+                                    <li><strong>Konfliktlösung:</strong> Bei Konflikten wird die neuere Datei (basierend auf Zeitstempel) verwendet.</li>
+                                    <li><strong>Sicherheit:</strong> Alle Schreibvorgänge nutzen atomare Operationen, um Datenverlust zu vermeiden.</li>
+                                </ol>
+                            </div>
+                        </div>
+
                         <!-- Import/Export Presets -->
                         <div class="settings-card">
                             <h3 class="card-title">
@@ -1438,5 +1554,6 @@
     <script src="/js/audio-settings.js"></script>
     <script src="/js/debug-panel.js"></script>
     <script src="/js/wiki.js"></script>
+    <script src="/js/cloud-sync-settings.js"></script>
 </body>
 </html>

@@ -23,6 +23,7 @@
 - **[[Plugin-Dokumentation]]** - Plugin-System, verfügbare Plugins und eigene Plugins erstellen
 - **[[Plugins/VDO-Ninja]]** - Multi-Guest-Streaming mit VDO.Ninja
 - **[[Features/Emoji-Rain]]** - Emoji-Regen-Effekt im Overlay
+- **[[Features/Cloud-Sync]]** - Automatische Cloud-Synchronisation für User-Configs
 
 ---
 
