@@ -116,15 +116,34 @@ class ActionRegistry {
                 { name: 'priority', label: 'Priority', type: 'select', options: ['low', 'normal', 'high'], default: 'normal' }
             ],
             executor: async (action, context, services) => {
-                const tts = services.tts;
-                if (!tts) throw new Error('TTS service not available');
+                const tts = services.tts || services.ttsPlugin;
+                if (!tts) {
+                    services.logger?.warn('TTS service not available');
+                    throw new Error('TTS service not available');
+                }
                 
-                await tts.speak({
-                    text: services.templateEngine.render(action.text, context.data),
+                const text = services.templateEngine.render(action.text || '', context.data);
+                if (!text || text.trim() === '') {
+                    throw new Error('No text provided for TTS');
+                }
+                
+                const ttsOptions = {
+                    text: text,
                     voice: action.voice,
                     volume: action.volume || 80,
                     priority: action.priority || 'normal'
-                });
+                };
+                
+                services.logger?.info(`🎤 TTS: "${text.substring(0, 50)}..."`);
+                
+                // Check if TTS has speak method
+                if (typeof tts.speak === 'function') {
+                    await tts.speak(ttsOptions);
+                } else if (typeof tts.addToQueue === 'function') {
+                    await tts.addToQueue(ttsOptions);
+                } else {
+                    throw new Error('TTS service does not have speak or addToQueue method');
+                }
             }
         });
 
@@ -143,17 +162,28 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const alertManager = services.alertManager;
-                if (!alertManager) throw new Error('Alert manager not available');
+                if (!alertManager) {
+                    services.logger?.warn('Alert manager not available');
+                    throw new Error('Alert manager not available');
+                }
+                
+                const text = services.templateEngine.render(action.text || '', context.data);
                 
                 const alertConfig = {
-                    text_template: services.templateEngine.render(action.text, context.data),
-                    sound_file: action.sound,
+                    text_template: text,
+                    sound_file: action.sound || null,
                     sound_volume: action.volume || 80,
                     duration: action.duration || 5,
                     enabled: true
                 };
                 
-                alertManager.addAlert(action.type || 'custom', context.data, alertConfig);
+                services.logger?.info(`🔔 Alert: "${text.substring(0, 50)}..."`);
+                
+                if (typeof alertManager.addAlert === 'function') {
+                    alertManager.addAlert(action.type || 'custom', context.data, alertConfig);
+                } else {
+                    throw new Error('Alert manager does not have addAlert method');
+                }
             }
         });
 
@@ -246,16 +276,23 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const io = services.io;
-                if (!io) throw new Error('Socket.io not available');
+                if (!io) {
+                    services.logger?.warn('Socket.io not available for emoji rain');
+                    throw new Error('Socket.io not available');
+                }
                 
-                io.emit('emoji_rain:trigger', {
+                const emojiData = {
                     emoji: action.emoji || null,
                     count: action.count || 10,
                     duration: action.duration || 0,
                     intensity: action.intensity || 1.0,
-                    username: context.data?.username,
+                    username: context.data?.username || context.data?.uniqueId,
                     burst: action.burst || false
-                });
+                };
+                
+                services.logger?.info(`🌧️ Emoji Rain: ${emojiData.count}x ${emojiData.emoji || 'random'}`);
+                
+                io.emit('emoji_rain:trigger', emojiData);
             }
         });
 
@@ -330,19 +367,35 @@ class ActionRegistry {
                 { name: 'headers', label: 'Headers (JSON)', type: 'textarea' }
             ],
             executor: async (action, context, services) => {
-                const axios = services.axios;
-                if (!axios) throw new Error('HTTP client not available');
+                const axios = services.axios || require('axios');
+                if (!axios) {
+                    services.logger?.warn('HTTP client (axios) not available');
+                    throw new Error('HTTP client not available');
+                }
                 
-                const body = action.body ? JSON.parse(services.templateEngine.render(action.body, context.data)) : context.data;
-                const headers = action.headers ? JSON.parse(action.headers) : { 'Content-Type': 'application/json' };
+                if (!action.url) {
+                    throw new Error('Webhook URL is required');
+                }
                 
-                await axios({
+                const body = action.body 
+                    ? JSON.parse(services.templateEngine.render(action.body, context.data)) 
+                    : context.data;
+                const headers = action.headers 
+                    ? JSON.parse(action.headers) 
+                    : { 'Content-Type': 'application/json' };
+                
+                services.logger?.info(`🌐 Webhook: ${action.method || 'POST'} ${action.url}`);
+                
+                const response = await axios({
                     method: action.method || 'POST',
                     url: action.url,
                     data: body,
                     headers,
                     timeout: 5000
                 });
+                
+                services.logger?.info(`✅ Webhook response: ${response.status}`);
+                return response.data;
             }
         });
 

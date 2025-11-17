@@ -59,41 +59,64 @@
 
     // Initialize
     async function init() {
-        console.log('🚀 Initializing IFTTT Flow Editor...');
-        
-        await loadRegistries();
-        await loadFlows();
-        await loadStats();
-        
-        setupEventListeners();
-        setupSocketListeners();
-        
-        // Start monitoring
-        setInterval(loadStats, 5000);
-        setInterval(loadExecutionHistory, 2000);
-        
-        console.log('✅ IFTTT Flow Editor initialized');
+        try {
+            console.log('🚀 Initializing IFTTT Flow Editor...');
+            
+            // Check if Socket.io is available
+            if (typeof io === 'undefined') {
+                console.error('Socket.io not loaded!');
+                showNotification('Socket.io library not loaded. Real-time features will not work.', 'error');
+            }
+            
+            await loadRegistries();
+            await loadFlows();
+            await loadStats();
+            
+            setupEventListeners();
+            setupSocketListeners();
+            
+            // Start monitoring
+            setInterval(loadStats, 5000);
+            setInterval(loadExecutionHistory, 2000);
+            
+            console.log('✅ IFTTT Flow Editor initialized');
+            showNotification('Flow Editor ready! 🎉', 'success');
+        } catch (error) {
+            console.error('❌ Failed to initialize Flow Editor:', error);
+            showNotification('Failed to initialize: ' + error.message, 'error');
+        }
     }
 
     // Load IFTTT registries
     async function loadRegistries() {
         try {
+            console.log('Loading IFTTT registries...');
             const [triggersRes, conditionsRes, actionsRes] = await Promise.all([
                 fetch('/api/ifttt/triggers'),
                 fetch('/api/ifttt/conditions'),
                 fetch('/api/ifttt/actions')
             ]);
 
+            if (!triggersRes.ok || !conditionsRes.ok || !actionsRes.ok) {
+                throw new Error('Failed to fetch IFTTT components');
+            }
+
             state.triggers = await triggersRes.json();
             const conditionData = await conditionsRes.json();
             state.conditions = conditionData.conditions || [];
             state.actions = await actionsRes.json();
 
+            console.log('Registries loaded:', {
+                triggers: state.triggers.length,
+                conditions: state.conditions.length,
+                actions: state.actions.length
+            });
+
             renderComponents();
             console.log(`✅ Loaded ${state.triggers.length} triggers, ${state.conditions.length} conditions, ${state.actions.length} actions`);
         } catch (error) {
             console.error('Error loading registries:', error);
-            showNotification('Failed to load IFTTT components', 'error');
+            showNotification('Failed to load IFTTT components: ' + error.message, 'error');
         }
     }
 
@@ -226,7 +249,7 @@
 
     // Setup event listeners
     function setupEventListeners() {
-        // Component drag & drop
+        // Component drag & drop - Use event delegation for dynamically added elements
         elements.triggerList.addEventListener('dragstart', handleComponentDragStart);
         elements.conditionList.addEventListener('dragstart', handleComponentDragStart);
         elements.actionList.addEventListener('dragstart', handleComponentDragStart);
@@ -238,26 +261,43 @@
         elements.flowCanvas.addEventListener('mousedown', handleCanvasMouseDown);
         elements.flowCanvas.addEventListener('mousemove', handleCanvasMouseMove);
         elements.flowCanvas.addEventListener('mouseup', handleCanvasMouseUp);
+        document.addEventListener('mouseup', handleCanvasMouseUp); // Also listen globally
 
         // Toolbar buttons
-        elements.saveFlowBtn.addEventListener('click', saveFlow);
-        elements.testFlowBtn.addEventListener('click', testFlow);
-        elements.clearCanvasBtn.addEventListener('click', clearCanvas);
-        elements.zoomInBtn.addEventListener('click', () => setZoom(state.zoom + 0.1));
-        elements.zoomOutBtn.addEventListener('click', () => setZoom(state.zoom - 0.1));
+        if (elements.saveFlowBtn) {
+            elements.saveFlowBtn.addEventListener('click', saveFlow);
+        }
+        if (elements.testFlowBtn) {
+            elements.testFlowBtn.addEventListener('click', testFlow);
+        }
+        if (elements.clearCanvasBtn) {
+            elements.clearCanvasBtn.addEventListener('click', clearCanvas);
+        }
+        if (elements.zoomInBtn) {
+            elements.zoomInBtn.addEventListener('click', () => setZoom(state.zoom + 0.1));
+        }
+        if (elements.zoomOutBtn) {
+            elements.zoomOutBtn.addEventListener('click', () => setZoom(state.zoom - 0.1));
+        }
 
         // Flow properties
-        elements.flowNameInput.addEventListener('input', () => {
-            state.currentFlow.name = elements.flowNameInput.value;
-        });
+        if (elements.flowNameInput) {
+            elements.flowNameInput.addEventListener('input', () => {
+                state.currentFlow.name = elements.flowNameInput.value;
+            });
+        }
         
-        elements.flowDescriptionInput.addEventListener('input', () => {
-            state.currentFlow.description = elements.flowDescriptionInput.value;
-        });
+        if (elements.flowDescriptionInput) {
+            elements.flowDescriptionInput.addEventListener('input', () => {
+                state.currentFlow.description = elements.flowDescriptionInput.value;
+            });
+        }
         
-        elements.flowEnabledInput.addEventListener('change', () => {
-            state.currentFlow.enabled = elements.flowEnabledInput.checked;
-        });
+        if (elements.flowEnabledInput) {
+            elements.flowEnabledInput.addEventListener('change', () => {
+                state.currentFlow.enabled = elements.flowEnabledInput.checked;
+            });
+        }
     }
 
     // Setup Socket.io listeners
@@ -273,12 +313,14 @@
 
     // Component drag & drop handlers
     function handleComponentDragStart(e) {
-        if (!e.target.classList.contains('component-item')) return;
+        const item = e.target.closest('.component-item');
+        if (!item) return;
         
         e.dataTransfer.effectAllowed = 'copy';
-        e.dataTransfer.setData('component-type', e.target.dataset.type);
-        e.dataTransfer.setData('component-id', e.target.dataset.id);
-        e.dataTransfer.setData('component-name', e.target.dataset.name);
+        e.dataTransfer.setData('component-type', item.dataset.type);
+        e.dataTransfer.setData('component-id', item.dataset.id);
+        e.dataTransfer.setData('component-name', item.dataset.name);
+        console.log('Dragging component:', item.dataset.name);
     }
 
     function handleCanvasDragOver(e) {
@@ -562,44 +604,49 @@
 
     // Save flow
     async function saveFlow() {
-        if (!state.currentFlow.name) {
-            showNotification('Please enter a flow name', 'error');
-            return;
-        }
-
-        if (state.currentFlow.nodes.length === 0) {
-            showNotification('Please add at least one node to the flow', 'error');
-            return;
-        }
-
-        // Build flow structure
-        const trigger = state.currentFlow.nodes.find(n => n.type === 'trigger');
-        if (!trigger) {
-            showNotification('Flow must have a trigger', 'error');
-            return;
-        }
-
-        const actions = state.currentFlow.nodes
-            .filter(n => n.type === 'action')
-            .map(n => ({
-                type: n.componentId,
-                ...n.config
-            }));
-
-        if (actions.length === 0) {
-            showNotification('Flow must have at least one action', 'error');
-            return;
-        }
-
-        const flowData = {
-            name: state.currentFlow.name,
-            trigger_type: trigger.componentId,
-            trigger_condition: trigger.config,
-            actions: actions,
-            enabled: state.currentFlow.enabled
-        };
-
         try {
+            console.log('Saving flow...', state.currentFlow);
+            
+            if (!state.currentFlow.name || state.currentFlow.name.trim() === '') {
+                showNotification('Please enter a flow name', 'error');
+                elements.flowNameInput.focus();
+                return;
+            }
+
+            if (state.currentFlow.nodes.length === 0) {
+                showNotification('Please add at least one node to the flow', 'error');
+                return;
+            }
+
+            // Build flow structure
+            const trigger = state.currentFlow.nodes.find(n => n.type === 'trigger');
+            if (!trigger) {
+                showNotification('Flow must have a trigger', 'error');
+                return;
+            }
+
+            const actions = state.currentFlow.nodes
+                .filter(n => n.type === 'action')
+                .map(n => ({
+                    type: n.componentId,
+                    ...n.config
+                }));
+
+            if (actions.length === 0) {
+                showNotification('Flow must have at least one action', 'error');
+                return;
+            }
+
+            const flowData = {
+                name: state.currentFlow.name.trim(),
+                trigger_type: trigger.componentId,
+                trigger_condition: trigger.config || {},
+                actions: actions,
+                enabled: state.currentFlow.enabled ? 1 : 0
+            };
+
+            console.log('Flow data to save:', flowData);
+
             const url = state.currentFlow.id ? `/api/flows/${state.currentFlow.id}` : '/api/flows';
             const method = state.currentFlow.id ? 'PUT' : 'POST';
             
@@ -609,49 +656,79 @@
                 body: JSON.stringify(flowData)
             });
 
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
+
             const result = await response.json();
+            console.log('Save result:', result);
             
             if (result.success !== false) {
-                showNotification('Flow saved successfully', 'success');
+                if (result.id && !state.currentFlow.id) {
+                    state.currentFlow.id = result.id;
+                }
+                showNotification('Flow saved successfully! ✅', 'success');
                 await loadFlows();
                 await loadStats();
             } else {
-                showNotification(`Error: ${result.error}`, 'error');
+                showNotification(`Error: ${result.error || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('Error saving flow:', error);
-            showNotification('Failed to save flow', 'error');
+            showNotification('Failed to save flow: ' + error.message, 'error');
         }
     }
 
     // Test flow
     async function testFlow() {
-        if (!state.currentFlow.id) {
-            showNotification('Please save the flow first', 'error');
-            return;
-        }
-
         try {
-            const response = await fetch(`/api/ifttt/trigger/${state.currentFlow.id}`, {
+            console.log('Testing flow...');
+            
+            if (!state.currentFlow.id) {
+                showNotification('Please save the flow first before testing', 'error');
+                return;
+            }
+
+            const testData = {
+                username: 'TestUser',
+                nickname: 'Test User',
+                message: 'Test message from flow editor',
+                giftName: 'Rose',
+                coins: 100,
+                repeatCount: 5,
+                likeCount: 10
+            };
+
+            console.log('Test data:', testData);
+
+            const response = await fetch(`/api/flows/${state.currentFlow.id}/test`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: 'TestUser',
-                    message: 'Test message',
-                    coins: 100
-                })
+                body: JSON.stringify(testData)
             });
 
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
+
             const result = await response.json();
+            console.log('Test result:', result);
             
-            if (result.success) {
-                showNotification('Flow test triggered', 'success');
+            if (result.success !== false) {
+                showNotification('Flow test triggered successfully! 🧪', 'success');
+                addLogEntry({
+                    flowName: state.currentFlow.name,
+                    success: true,
+                    executionTime: result.executionTime || 0
+                });
             } else {
-                showNotification(`Test failed: ${result.error}`, 'error');
+                showNotification(`Test failed: ${result.error || 'Unknown error'}`, 'error');
             }
         } catch (error) {
             console.error('Error testing flow:', error);
-            showNotification('Failed to test flow', 'error');
+            showNotification('Failed to test flow: ' + error.message, 'error');
         }
     }
 
