@@ -631,6 +631,35 @@ app.get('/api/status', apiLimiter, (req, res) => {
     });
 });
 
+// Get deduplication statistics
+app.get('/api/deduplication-stats', apiLimiter, (req, res) => {
+    try {
+        const tiktokStats = tiktok.getDeduplicationStats();
+        res.json({
+            success: true,
+            tiktok: tiktokStats
+        });
+    } catch (error) {
+        logger.error('Deduplication stats error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Clear deduplication cache (for debugging/testing)
+app.post('/api/deduplication-clear', authLimiter, (req, res) => {
+    try {
+        tiktok.clearDeduplicationCache();
+        logger.info('🧹 Deduplication cache cleared');
+        res.json({
+            success: true,
+            message: 'Deduplication cache cleared'
+        });
+    } catch (error) {
+        logger.error('Clear deduplication cache error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ========== CONNECTION DIAGNOSTICS ROUTES ==========
 
 app.get('/api/diagnostics', apiLimiter, async (req, res) => {

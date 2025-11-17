@@ -964,7 +964,30 @@ class TikTokConnector extends EventEmitter {
     }
 
     getStats() {
-        return this.stats;
+        return {
+            ...this.stats,
+            deduplicationCacheSize: this.processedEvents.size
+        };
+    }
+
+    /**
+     * Get deduplication statistics
+     * @returns {object} Deduplication stats
+     */
+    getDeduplicationStats() {
+        return {
+            cacheSize: this.processedEvents.size,
+            maxCacheSize: this.maxProcessedEvents,
+            expirationMs: this.eventExpirationMs
+        };
+    }
+
+    /**
+     * Clear deduplication cache (for debugging/testing)
+     */
+    clearDeduplicationCache() {
+        this.processedEvents.clear();
+        console.log('🧹 Event deduplication cache manually cleared');
     }
 
     isActive() {
