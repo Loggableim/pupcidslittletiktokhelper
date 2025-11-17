@@ -4,7 +4,26 @@
 
 The dashboard was showing the software start time instead of the actual TikTok stream duration. This happened because the `streamStartTime` was being set to `Date.now()` when the TikTok API roomInfo didn't contain the expected time fields.
 
-### Root Causes
+## Latest Updates (2024-11-17)
+
+### Enhanced Detection System
+- ✅ Expanded field checking from 10 to 30+ possible field locations
+- ✅ Added support for nested roomInfo structures (room, data, common objects)
+- ✅ Added duration-based calculation support
+- ✅ Comprehensive debug logging showing all available roomInfo keys
+- ✅ Added detection method tracking
+- ✅ Added visual debug panel in dashboard
+- ✅ Optional roomInfo structure dump to JSON file
+- ✅ Auto-correction when first event arrives
+
+### Debug Features
+See [STREAM_TIME_DEBUG.md](./STREAM_TIME_DEBUG.md) for complete debug guide including:
+- How to interpret the debug panel
+- How to dump roomInfo structure
+- Troubleshooting common issues
+- API field reference
+
+## Root Causes
 
 1. **Limited field checking**: Only 4 field names were being checked (`create_time`, `createTime`, `start_time`, `startTime`)
 2. **No fallback mechanism**: If roomInfo didn't have these fields, it would fall back to current time

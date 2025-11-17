@@ -367,6 +367,7 @@ class TikTokConnector extends EventEmitter {
                 const startTime = Date.now() - (durationSeconds * 1000);
                 console.log(`📅 ✅ Stream start time calculated from duration: ${new Date(startTime).toISOString()}`);
                 console.log(`   ⏱️  Stream duration: ${durationSeconds}s`);
+                this._streamTimeDetectionMethod = 'Calculated from roomInfo.duration';
                 return startTime;
             }
         }
