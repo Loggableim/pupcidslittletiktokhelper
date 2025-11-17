@@ -199,12 +199,22 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const io = services.io;
-                if (!io) throw new Error('Socket.io not available');
+                if (!io) {
+                    services.logger?.warn('Socket.io not available for sound playback');
+                    throw new Error('Socket.io not available');
+                }
                 
-                io.emit('play_sound', {
+                if (!action.file) {
+                    throw new Error('Sound file is required');
+                }
+                
+                const soundData = {
                     file: action.file,
                     volume: action.volume || 80
-                });
+                };
+                
+                services.logger?.info(`🔊 Sound: ${action.file} (${soundData.volume}%)`);
+                io.emit('play_sound', soundData);
             }
         });
 
@@ -223,15 +233,25 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const io = services.io;
-                if (!io) throw new Error('Socket.io not available');
+                if (!io) {
+                    services.logger?.warn('Socket.io not available for image overlay');
+                    throw new Error('Socket.io not available');
+                }
                 
-                io.emit('overlay:image', {
+                if (!action.url) {
+                    throw new Error('Image URL is required');
+                }
+                
+                const overlayData = {
                     url: action.url,
                     duration: action.duration || 5,
                     position: action.position || 'center',
                     width: action.width,
                     height: action.height
-                });
+                };
+                
+                services.logger?.info(`🖼️ Image Overlay: ${action.url.substring(0, 50)}...`);
+                io.emit('overlay:image', overlayData);
             }
         });
 
@@ -249,15 +269,26 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const io = services.io;
-                if (!io) throw new Error('Socket.io not available');
+                if (!io) {
+                    services.logger?.warn('Socket.io not available for text overlay');
+                    throw new Error('Socket.io not available');
+                }
                 
-                io.emit('overlay:text', {
-                    text: services.templateEngine.render(action.text, context.data),
+                const text = services.templateEngine.render(action.text || '', context.data);
+                if (!text || text.trim() === '') {
+                    throw new Error('Text is required for overlay');
+                }
+                
+                const overlayData = {
+                    text: text,
                     duration: action.duration || 5,
                     position: action.position || 'center',
                     fontSize: action.fontSize || 48,
                     color: action.color || '#ffffff'
-                });
+                };
+                
+                services.logger?.info(`📝 Text Overlay: "${text.substring(0, 50)}..."`);
+                io.emit('overlay:text', overlayData);
             }
         });
 
@@ -309,27 +340,45 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const db = services.db;
-                if (!db) throw new Error('Database not available');
-                
-                const goal = db.getGoal(action.goalId);
-                if (!goal) throw new Error('Goal not found');
-                
-                let newValue = goal.current;
-                if (action.operation === 'add') {
-                    newValue += action.value;
-                } else if (action.operation === 'subtract') {
-                    newValue -= action.value;
-                } else if (action.operation === 'set') {
-                    newValue = action.value;
+                if (!db) {
+                    services.logger?.warn('Database not available for goal update');
+                    throw new Error('Database not available');
                 }
                 
-                db.updateGoal(action.goalId, { current: newValue });
+                const goalId = action.goalId;
+                if (!goalId) {
+                    throw new Error('Goal ID is required');
+                }
                 
-                services.io?.emit('goal:updated', {
-                    goalId: action.goalId,
-                    current: newValue,
-                    target: goal.target
-                });
+                const goal = db.getGoal(goalId);
+                if (!goal) {
+                    throw new Error(`Goal ${goalId} not found`);
+                }
+                
+                let newValue = goal.current || 0;
+                const value = parseFloat(action.value) || 0;
+                
+                if (action.operation === 'add') {
+                    newValue += value;
+                } else if (action.operation === 'subtract') {
+                    newValue -= value;
+                } else if (action.operation === 'set') {
+                    newValue = value;
+                }
+                
+                services.logger?.info(`🎯 Goal Update: ${goal.name} ${action.operation} ${value} => ${newValue}`);
+                
+                db.updateGoal(goalId, { current: newValue });
+                
+                if (services.io) {
+                    services.io.emit('goal:updated', {
+                        goalId: goalId,
+                        current: newValue,
+                        target: goal.target
+                    });
+                }
+                
+                return { newValue, goalName: goal.name };
             }
         });
 
@@ -345,12 +394,23 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const io = services.io;
-                if (!io) throw new Error('Socket.io not available');
+                if (!io) {
+                    services.logger?.warn('Socket.io not available for spotlight');
+                    throw new Error('Socket.io not available');
+                }
                 
-                io.emit('spotlight:set', {
-                    username: services.templateEngine.render(action.username, context.data),
+                const username = services.templateEngine.render(action.username || '', context.data);
+                if (!username || username.trim() === '') {
+                    throw new Error('Username is required for spotlight');
+                }
+                
+                const spotlightData = {
+                    username: username,
                     duration: action.duration || 10
-                });
+                };
+                
+                services.logger?.info(`⭐ Spotlight: ${username} for ${spotlightData.duration}s`);
+                io.emit('spotlight:set', spotlightData);
             }
         });
 
@@ -412,17 +472,30 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const variables = services.variables;
-                if (!variables) throw new Error('Variable store not available');
+                if (!variables) {
+                    services.logger?.warn('Variable store not available');
+                    throw new Error('Variable store not available');
+                }
                 
-                let value = services.templateEngine.render(action.value, context.data);
+                if (!action.name) {
+                    throw new Error('Variable name is required');
+                }
+                
+                let value = services.templateEngine.render(action.value || '', context.data);
                 
                 if (action.type === 'number') {
                     value = parseFloat(value);
+                    if (isNaN(value)) {
+                        throw new Error('Invalid number value');
+                    }
                 } else if (action.type === 'boolean') {
                     value = value.toLowerCase() === 'true' || value === '1';
                 }
                 
+                services.logger?.info(`💾 Variable Set: ${action.name} = ${value}`);
                 variables.set(action.name, value);
+                
+                return { name: action.name, value };
             }
         });
 
@@ -437,10 +510,23 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const variables = services.variables;
-                if (!variables) throw new Error('Variable store not available');
+                if (!variables) {
+                    services.logger?.warn('Variable store not available');
+                    throw new Error('Variable store not available');
+                }
+                
+                if (!action.name) {
+                    throw new Error('Variable name is required');
+                }
                 
                 const current = variables.get(action.name) || 0;
-                variables.set(action.name, current + (action.amount || 1));
+                const amount = parseFloat(action.amount) || 1;
+                const newValue = current + amount;
+                
+                services.logger?.info(`➕ Variable Increment: ${action.name} ${current} + ${amount} = ${newValue}`);
+                variables.set(action.name, newValue);
+                
+                return { name: action.name, oldValue: current, newValue };
             }
         });
 
@@ -457,11 +543,30 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const pluginLoader = services.pluginLoader;
-                if (!pluginLoader) throw new Error('Plugin loader not available');
+                if (!pluginLoader) {
+                    services.logger?.warn('Plugin loader not available');
+                    throw new Error('Plugin loader not available');
+                }
                 
-                const params = action.params ? JSON.parse(services.templateEngine.render(action.params, context.data)) : {};
+                if (!action.pluginId) {
+                    throw new Error('Plugin ID is required');
+                }
                 
-                await pluginLoader.triggerPluginAction(action.pluginId, action.action, params, context.data);
+                if (!action.action) {
+                    throw new Error('Action name is required');
+                }
+                
+                const params = action.params 
+                    ? JSON.parse(services.templateEngine.render(action.params, context.data)) 
+                    : {};
+                
+                services.logger?.info(`🧩 Plugin: ${action.pluginId}.${action.action}`);
+                
+                if (typeof pluginLoader.triggerPluginAction === 'function') {
+                    await pluginLoader.triggerPluginAction(action.pluginId, action.action, params, context.data);
+                } else {
+                    throw new Error('Plugin loader does not have triggerPluginAction method');
+                }
             }
         });
 
@@ -476,11 +581,27 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const obs = services.obs;
-                if (!obs) throw new Error('OBS WebSocket not available');
+                if (!obs) {
+                    services.logger?.warn('OBS WebSocket not available');
+                    throw new Error('OBS WebSocket not available');
+                }
                 
-                await obs.setCurrentProgramScene({
-                    sceneName: services.templateEngine.render(action.sceneName, context.data)
-                });
+                const sceneName = services.templateEngine.render(action.sceneName || '', context.data);
+                if (!sceneName || sceneName.trim() === '') {
+                    throw new Error('Scene name is required');
+                }
+                
+                services.logger?.info(`📹 OBS: Switching to scene "${sceneName}"`);
+                
+                if (typeof obs.setCurrentProgramScene === 'function') {
+                    await obs.setCurrentProgramScene({ sceneName: sceneName });
+                } else if (typeof obs.call === 'function') {
+                    await obs.call('SetCurrentProgramScene', { sceneName: sceneName });
+                } else {
+                    throw new Error('OBS WebSocket not connected or incompatible');
+                }
+                
+                return { sceneName };
             }
         });
 
@@ -496,10 +617,24 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const osc = services.osc;
-                if (!osc) throw new Error('OSC service not available');
+                if (!osc) {
+                    services.logger?.warn('OSC service not available');
+                    throw new Error('OSC service not available');
+                }
+                
+                if (!action.address) {
+                    throw new Error('OSC address is required');
+                }
                 
                 const args = action.args ? JSON.parse(action.args) : [];
-                osc.send(action.address, ...args);
+                
+                services.logger?.info(`📡 OSC: ${action.address} ${JSON.stringify(args)}`);
+                
+                if (typeof osc.send === 'function') {
+                    osc.send(action.address, ...args);
+                } else {
+                    throw new Error('OSC service does not have send method');
+                }
             }
         });
 
@@ -513,7 +648,9 @@ class ActionRegistry {
                 { name: 'duration', label: 'Duration (milliseconds)', type: 'number', min: 100, max: 60000, default: 1000 }
             ],
             executor: async (action, context, services) => {
-                await new Promise(resolve => setTimeout(resolve, action.duration || 1000));
+                const duration = action.duration || 1000;
+                services.logger?.info(`⏱️ Delay: ${duration}ms`);
+                await new Promise(resolve => setTimeout(resolve, duration));
             }
         });
 
@@ -529,10 +666,20 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const iftttEngine = services.iftttEngine;
-                if (!iftttEngine) throw new Error('IFTTT engine not available');
+                if (!iftttEngine) {
+                    services.logger?.warn('IFTTT engine not available');
+                    throw new Error('IFTTT engine not available');
+                }
                 
-                const newContext = action.passContext ? context : {};
-                await iftttEngine.executeFlowById(action.flowId, newContext);
+                if (!action.flowId) {
+                    throw new Error('Flow ID is required');
+                }
+                
+                const flowData = action.passContext ? context.data : {};
+                
+                services.logger?.info(`🔀 Flow Trigger: Executing flow ${action.flowId}`);
+                
+                await iftttEngine.executeFlowById(action.flowId, flowData);
             }
         });
 
@@ -543,6 +690,7 @@ class ActionRegistry {
             icon: 'square',
             fields: [],
             executor: async (action, context, services) => {
+                services.logger?.info('⏹️ Flow execution stopped');
                 context.stopExecution = true;
             }
         });
@@ -559,12 +707,19 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const logger = services.logger;
-                if (!logger) throw new Error('Logger not available');
+                if (!logger) {
+                    console.log('[Flow Log]', action.message || '(no message)');
+                    return;
+                }
                 
-                const message = services.templateEngine.render(action.message, context.data);
+                const message = services.templateEngine.render(action.message || '', context.data);
                 const level = action.level || 'info';
                 
-                logger[level](`[Flow Log] ${message}`);
+                if (typeof logger[level] === 'function') {
+                    logger[level](`[Flow Log] ${message}`);
+                } else {
+                    logger.info(`[Flow Log] ${message}`);
+                }
             }
         });
 
@@ -580,11 +735,18 @@ class ActionRegistry {
                 { name: 'append', label: 'Append', type: 'checkbox', default: true }
             ],
             executor: async (action, context, services) => {
-                const fs = services.fs;
-                const path = services.path;
+                const fs = services.fs || require('fs').promises;
+                const path = services.path || require('path');
                 const safeDir = services.safeDir;
                 
-                if (!fs || !path || !safeDir) throw new Error('File system not available');
+                if (!fs || !path || !safeDir) {
+                    services.logger?.warn('File system not available');
+                    throw new Error('File system not available');
+                }
+                
+                if (!action.filename) {
+                    throw new Error('Filename is required');
+                }
                 
                 const filename = path.basename(action.filename);
                 const safePath = path.join(safeDir, filename);
@@ -593,13 +755,17 @@ class ActionRegistry {
                     throw new Error('Path traversal attempt detected');
                 }
                 
-                const content = services.templateEngine.render(action.content, context.data);
+                const content = services.templateEngine.render(action.content || '', context.data);
+                
+                services.logger?.info(`📁 File Write: ${filename} (${action.append ? 'append' : 'write'})`);
                 
                 if (action.append) {
                     await fs.appendFile(safePath, content + '\n', 'utf8');
                 } else {
                     await fs.writeFile(safePath, content, 'utf8');
                 }
+                
+                return { filename, safePath };
             }
         });
 
@@ -616,14 +782,23 @@ class ActionRegistry {
             ],
             executor: async (action, context, services) => {
                 const io = services.io;
-                if (!io) throw new Error('Socket.io not available');
+                if (!io) {
+                    services.logger?.warn('Socket.io not available for notifications');
+                    throw new Error('Socket.io not available');
+                }
                 
-                io.emit('notification', {
-                    title: services.templateEngine.render(action.title, context.data),
-                    message: services.templateEngine.render(action.message, context.data),
+                const title = services.templateEngine.render(action.title || '', context.data);
+                const message = services.templateEngine.render(action.message || '', context.data);
+                
+                const notificationData = {
+                    title: title,
+                    message: message,
                     type: action.type || 'info',
                     timestamp: Date.now()
-                });
+                };
+                
+                services.logger?.info(`🔔 Notification: ${title} - ${message.substring(0, 50)}...`);
+                io.emit('notification', notificationData);
             }
         });
     }
