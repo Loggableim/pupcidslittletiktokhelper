@@ -14,7 +14,7 @@ Diese Anleitung erklärt, wie du:
 - ✅ Node.js 18+ installiert
 - ✅ Server läuft (`npm start`)
 - ✅ Internetverbindung vorhanden
-- ✅ Speechify API-Key: `RB2weemocwY746BGQcAubfrXgeiC-3KAJao84867EuQ=`
+- ✅ Speechify API-Key: ` `
 
 ---
 
