@@ -181,6 +181,22 @@
                         </div>
                         <div id="connection-info" class="connection-info"></div>
                         
+                        <!-- Stream Time Debug Panel -->
+                        <div id="stream-time-debug" style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; display: none;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <i data-lucide="clock" style="width: 16px; height: 16px; color: #3b82f6;"></i>
+                                <span style="font-weight: 600; color: #60a5fa;">Stream Time Debug Info</span>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                                <div><strong>Stream Start Time:</strong> <span id="debug-stream-start">--</span></div>
+                                <div><strong>Current Duration:</strong> <span id="debug-stream-duration">--</span></div>
+                                <div><strong>Detection Method:</strong> <span id="debug-detection-method">--</span></div>
+                                <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                    <em>This panel shows how the stream start time was detected. If it shows "Connection Time" instead of a roomInfo field, the API may not be providing stream start time.</em>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Connection Diagnostics Panel -->
                         <div class="connection-diagnostics" style="margin-top: 1rem;">
                             <button id="run-diagnostics-btn" class="btn btn-secondary" style="width: 100%;">
