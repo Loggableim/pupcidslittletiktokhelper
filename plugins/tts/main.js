@@ -802,7 +802,13 @@ class TTSPlugin {
                 defaultVoice: this.config.defaultVoice
             });
 
-            // Auto language detection if no voice assigned
+            // Use configured default voice if no per-user voice is assigned
+            if (!selectedVoice && this.config.defaultVoice) {
+                selectedVoice = this.config.defaultVoice;
+                this._logDebug('SPEAK_STEP4', 'Using configured default voice', { selectedVoice });
+            }
+
+            // Auto language detection as fallback only if no default voice is configured
             if (!selectedVoice && this.config.autoLanguageDetection) {
                 let engineClass = TikTokEngine;
                 if (selectedEngine === 'speechify' && this.engines.speechify) {
@@ -813,7 +819,7 @@ class TTSPlugin {
                     engineClass = ElevenLabsEngine;
                 }
 
-                this._logDebug('SPEAK_STEP4', 'Detecting language', {
+                this._logDebug('SPEAK_STEP4', 'Detecting language (fallback)', {
                     text: finalText.substring(0, 50),
                     engineClass: engineClass.name
                 });
@@ -832,10 +838,10 @@ class TTSPlugin {
                 }
             }
 
-            // Final fallback to default voice
+            // Final fallback to hardcoded default if nothing else worked
             if (!selectedVoice) {
-                selectedVoice = this.config.defaultVoice;
-                this._logDebug('SPEAK_STEP4', 'Using default voice', { selectedVoice });
+                selectedVoice = 'en_us_ghostface'; // Hardcoded fallback
+                this._logDebug('SPEAK_STEP4', 'Using hardcoded fallback voice', { selectedVoice });
             }
 
             // Validate engine availability
