@@ -40,7 +40,19 @@ class ClarityHUDBackend {
       dyslexiaFont: false,
       accessibilityPreset: 'default',
       opacity: 1,
-      keepOnTop: false
+      keepOnTop: false,
+      // New settings for enhanced features
+      transparency: 100, // 0-100%
+      emojiRenderMode: 'image', // 'image' or 'unicode'
+      badgeSize: 'medium', // 'small', 'medium', 'large'
+      teamLevelStyle: 'icon-glow', // 'icon-color', 'icon-glow', 'number-only'
+      showTeamLevel: true,
+      showModerator: true,
+      showSubscriber: true,
+      showGifter: true,
+      showFanClub: true,
+      useVirtualScrolling: false,
+      usernameColorByTeamLevel: true
     };
 
     // Default settings for Full HUD (includes all chat settings plus activity settings)

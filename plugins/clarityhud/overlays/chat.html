@@ -20,6 +20,7 @@
       --chat-padding: 20px;
       --chat-message-spacing: 12px;
       --chat-opacity: 1;
+      --chat-background-opacity: 0.7;
     }
 
     * {
@@ -66,6 +67,34 @@
       hyphens: auto;
       text-align: var(--chat-alignment);
       line-height: var(--chat-line-height);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .chat-message-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    
+    .badge-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+    
+    .tiktok-emote {
+      display: inline-block;
+      height: 1.5em;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+    
+    .unicode-emoji {
+      display: inline;
+      margin: 0 1px;
     }
 
     .chat-message.visible {
@@ -151,6 +180,10 @@
   <!-- Libraries -->
   <script src="/plugins/clarityhud/lib/animations.js"></script>
   <script src="/plugins/clarityhud/lib/accessibility.js"></script>
+  <script src="/plugins/clarityhud/lib/emoji-parser.js"></script>
+  <script src="/plugins/clarityhud/lib/badge-renderer.js"></script>
+  <script src="/plugins/clarityhud/lib/message-parser.js"></script>
+  <script src="/plugins/clarityhud/lib/virtual-scroller.js"></script>
 
   <script src="/plugins/clarityhud/overlays/chat.js"></script>
 </body>

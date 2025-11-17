@@ -229,11 +229,11 @@ function renderTabContent(dock, tabId) {
               <div class="range-group">
                 <div class="range-value">
                   <label>Opacity</label>
-                  <span id="opacity-value">${typeof s.opacity !== 'undefined' ? Math.round(s.opacity * 100) : 100}%</span>
+                  <span id="transparency-value">${typeof s.transparency !== 'undefined' ? s.transparency : 100}%</span>
                 </div>
-                <input type="range" id="opacity" min="0" max="100" value="${typeof s.opacity !== 'undefined' ? Math.round(s.opacity * 100) : 100}" data-range-target="opacity" data-range-suffix="%">
+                <input type="range" id="transparency" min="0" max="100" value="${typeof s.transparency !== 'undefined' ? s.transparency : 100}" data-range-target="transparency" data-range-suffix="%">
               </div>
-              <span class="help-text">0% = fully transparent, 100% = fully opaque</span>
+              <span class="help-text">0% = fully transparent, 100% = fully opaque. Changes apply in real-time.</span>
             </div>
           </div>
           <div class="checkbox-group">
@@ -241,6 +241,71 @@ function renderTabContent(dock, tabId) {
             <label for="keepOnTop">Keep overlay window always on top</label>
           </div>
           <span class="help-text" style="margin-left: 32px; display: block; margin-top: -10px;">Overlay will stay in front of all other windows, including fullscreen apps</span>
+          <div class="checkbox-group">
+            <input type="checkbox" id="useVirtualScrolling" ${s.useVirtualScrolling ? 'checked' : ''}>
+            <label for="useVirtualScrolling">Enable virtual scrolling for high performance</label>
+          </div>
+          <span class="help-text" style="margin-left: 32px; display: block; margin-top: -10px;">Recommended for streams with 200+ messages per minute</span>
+        </div>
+        <div class="settings-group">
+          <h3>Badge Settings</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Badge Size</label>
+              <select id="badgeSize">
+                <option value="small" ${s.badgeSize === 'small' ? 'selected' : ''}>Small</option>
+                <option value="medium" ${s.badgeSize === 'medium' ? 'selected' : ''}>Medium</option>
+                <option value="large" ${s.badgeSize === 'large' ? 'selected' : ''}>Large</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Team Level Style</label>
+              <select id="teamLevelStyle">
+                <option value="icon-color" ${s.teamLevelStyle === 'icon-color' ? 'selected' : ''}>Icon with Color</option>
+                <option value="icon-glow" ${s.teamLevelStyle === 'icon-glow' ? 'selected' : ''}>Icon with Glow</option>
+                <option value="number-only" ${s.teamLevelStyle === 'number-only' ? 'selected' : ''}>Number Only</option>
+              </select>
+              <span class="help-text">Team Level shows TikTok team hearts (NOT subscriptions)</span>
+            </div>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showTeamLevel" ${s.showTeamLevel !== false ? 'checked' : ''}>
+            <label for="showTeamLevel">Show Team Level (Hearts)</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showModerator" ${s.showModerator !== false ? 'checked' : ''}>
+            <label for="showModerator">Show Moderator Badge</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showSubscriber" ${s.showSubscriber !== false ? 'checked' : ''}>
+            <label for="showSubscriber">Show Subscriber Badge</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showGifter" ${s.showGifter !== false ? 'checked' : ''}>
+            <label for="showGifter">Show Gifter Level Badge</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showFanClub" ${s.showFanClub !== false ? 'checked' : ''}>
+            <label for="showFanClub">Show Fan Club Badge</label>
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3>Emoji & Color Settings</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Emoji Render Mode</label>
+              <select id="emojiRenderMode">
+                <option value="image" ${s.emojiRenderMode === 'image' ? 'selected' : ''}>TikTok Images + Unicode</option>
+                <option value="unicode" ${s.emojiRenderMode === 'unicode' ? 'selected' : ''}>Unicode Only</option>
+              </select>
+              <span class="help-text">Image mode shows TikTok custom emotes when available</span>
+            </div>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="usernameColorByTeamLevel" ${s.usernameColorByTeamLevel !== false ? 'checked' : ''}>
+            <label for="usernameColorByTeamLevel">Color usernames by Team Level</label>
+          </div>
+          <span class="help-text" style="margin-left: 32px; display: block; margin-top: -10px;">Usernames will be colored based on their team heart level</span>
         </div>
       `;
 
@@ -606,8 +671,22 @@ async function saveSettings() {
     dyslexiaFont: getFieldValue('dyslexiaFont', 'checkbox'),
 
     // Window settings
-    opacity: parseFloat(getFieldValue('opacity')) / 100, // Convert percentage to 0-1
-    keepOnTop: getFieldValue('keepOnTop', 'checkbox')
+    transparency: parseFloat(getFieldValue('transparency')), // 0-100
+    keepOnTop: getFieldValue('keepOnTop', 'checkbox'),
+    useVirtualScrolling: getFieldValue('useVirtualScrolling', 'checkbox'),
+
+    // Badge settings
+    badgeSize: getFieldValue('badgeSize'),
+    teamLevelStyle: getFieldValue('teamLevelStyle'),
+    showTeamLevel: getFieldValue('showTeamLevel', 'checkbox'),
+    showModerator: getFieldValue('showModerator', 'checkbox'),
+    showSubscriber: getFieldValue('showSubscriber', 'checkbox'),
+    showGifter: getFieldValue('showGifter', 'checkbox'),
+    showFanClub: getFieldValue('showFanClub', 'checkbox'),
+
+    // Emoji and color settings
+    emojiRenderMode: getFieldValue('emojiRenderMode'),
+    usernameColorByTeamLevel: getFieldValue('usernameColorByTeamLevel', 'checkbox')
   };
 
   // Add full-specific settings
