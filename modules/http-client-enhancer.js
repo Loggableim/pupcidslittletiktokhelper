@@ -1,4 +1,20 @@
 /**
+ * @deprecated This module is deprecated as of the connection system refactoring.
+ * HTTP client configuration is now handled via the webClientOptions parameter
+ * in TikTokLiveConnection constructor.
+ * 
+ * Use this instead:
+ * ```
+ * new TikTokLiveConnection(username, {
+ *   webClientOptions: {
+ *     timeout: 20000,
+ *     headers: { ... }
+ *   }
+ * })
+ * ```
+ * 
+ * This module is kept for backward compatibility only.
+ * 
  * HTTP Client Enhancer for TikTok Live Connector
  * 
  * This module enhances the tiktok-live-connector library's HTTP client
