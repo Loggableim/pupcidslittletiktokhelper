@@ -46,13 +46,49 @@ const STATE = {
   badgeRenderer: null,
   messageParser: null,
   virtualScroller: null,
-  messagesContainer: null
+  messagesContainer: null,
+  eventCount: 0
 };
+
+// ==================== DEBUG HELPERS ====================
+function updateDebugStatus(status) {
+  const debugStatus = document.getElementById('debug-status');
+  if (debugStatus) {
+    debugStatus.textContent = `Status: ${status}`;
+  }
+  console.log(`[CHAT HUD] Status: ${status}`);
+}
+
+function updateDebugSocket(status) {
+  const debugSocket = document.getElementById('debug-socket');
+  if (debugSocket) {
+    debugSocket.textContent = `Socket: ${status}`;
+  }
+}
+
+function updateDebugEvents() {
+  STATE.eventCount++;
+  const debugEvents = document.getElementById('debug-events');
+  if (debugEvents) {
+    debugEvents.textContent = `Events: ${STATE.eventCount}`;
+  }
+}
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('[CHAT HUD] 🚀 DOMContentLoaded - Starting initialization...');
+  updateDebugStatus('DOM Ready');
+  
   // Get DOM elements
   STATE.messagesContainer = document.getElementById('messages');
+  
+  if (!STATE.messagesContainer) {
+    console.error('[CHAT HUD] ❌ CRITICAL ERROR: #messages container not found in DOM!');
+    updateDebugStatus('ERROR: #messages not found!');
+    return;
+  }
+  
+  console.log('[CHAT HUD] ✅ DOM elements found');
   
   // Initialize systems
   initializeSystems();
@@ -62,57 +98,117 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Detect system preference for reduced motion
   detectSystemPreferences();
+  
+  // Enable debug console toggle with Ctrl+D
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'd') {
+      e.preventDefault();
+      const debugConsole = document.getElementById('debug-console');
+      if (debugConsole) {
+        debugConsole.style.display = debugConsole.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+  });
+  
+  console.log('[CHAT HUD] Initialization complete, waiting for socket connection...');
 });
 
 /**
  * Initialize all subsystems
  */
 function initializeSystems() {
-  // Animation system
-  STATE.animationRegistry = new AnimationRegistry();
-  STATE.animationRenderer = new AnimationRenderer(STATE.animationRegistry);
+  console.log('[CHAT HUD] Initializing subsystems...');
   
-  // Accessibility manager
-  STATE.accessibilityManager = new AccessibilityManager(document.body);
-  
-  // Emoji parser
-  STATE.emojiParser = new EmojiParser();
-  
-  // Badge renderer
-  STATE.badgeRenderer = new BadgeRenderer(STATE.settings);
-  
-  // Message parser
-  STATE.messageParser = new MessageParser();
-  
-  console.log('Chat overlay systems initialized');
+  try {
+    // Animation system
+    if (typeof AnimationRegistry !== 'undefined') {
+      STATE.animationRegistry = new AnimationRegistry();
+      STATE.animationRenderer = new AnimationRenderer(STATE.animationRegistry);
+      console.log('[CHAT HUD] ✅ Animation system initialized');
+    } else {
+      console.warn('[CHAT HUD] ⚠️ AnimationRegistry not available');
+    }
+    
+    // Accessibility manager
+    if (typeof AccessibilityManager !== 'undefined') {
+      STATE.accessibilityManager = new AccessibilityManager(document.body);
+      console.log('[CHAT HUD] ✅ Accessibility manager initialized');
+    } else {
+      console.warn('[CHAT HUD] ⚠️ AccessibilityManager not available');
+    }
+    
+    // Emoji parser
+    if (typeof EmojiParser !== 'undefined') {
+      STATE.emojiParser = new EmojiParser();
+      console.log('[CHAT HUD] ✅ Emoji parser initialized');
+    } else {
+      console.warn('[CHAT HUD] ⚠️ EmojiParser not available');
+    }
+    
+    // Badge renderer
+    if (typeof BadgeRenderer !== 'undefined') {
+      STATE.badgeRenderer = new BadgeRenderer(STATE.settings);
+      console.log('[CHAT HUD] ✅ Badge renderer initialized');
+    } else {
+      console.warn('[CHAT HUD] ⚠️ BadgeRenderer not available');
+    }
+    
+    // Message parser
+    if (typeof MessageParser !== 'undefined') {
+      STATE.messageParser = new MessageParser();
+      console.log('[CHAT HUD] ✅ Message parser initialized');
+    } else {
+      console.warn('[CHAT HUD] ⚠️ MessageParser not available');
+    }
+    
+    console.log('[CHAT HUD] All subsystems initialized successfully');
+  } catch (error) {
+    console.error('[CHAT HUD] ❌ Error initializing subsystems:', error);
+  }
 }
 
 /**
  * Connect to Socket.IO
  */
 function connectSocket() {
+  console.log('[CHAT HUD] Initializing Socket.IO connection...');
+  updateDebugStatus('Connecting to Socket.IO...');
+  
   STATE.socket = io();
   
   STATE.socket.on('connect', () => {
-    console.log('Connected to server');
+    console.log('[CHAT HUD] ✅ CONNECTED to server - Socket ID:', STATE.socket.id);
+    updateDebugSocket('Connected ✅');
+    updateDebugStatus('Connected, loading settings...');
     init();
   });
   
   STATE.socket.on('disconnect', () => {
-    console.log('Disconnected from server');
+    console.log('[CHAT HUD] ⚠️ DISCONNECTED from server');
+    updateDebugSocket('Disconnected ⚠️');
+    updateDebugStatus('Disconnected from server');
+  });
+  
+  STATE.socket.on('connect_error', (error) => {
+    console.error('[CHAT HUD] ❌ CONNECTION ERROR:', error);
+    updateDebugSocket('Error ❌');
+    updateDebugStatus(`Connection Error: ${error.message}`);
   });
   
   // Listen for chat updates
   STATE.socket.on('clarityhud.update.chat', (chatData) => {
-    console.log('Received chat update:', chatData);
+    console.log('[CHAT HUD] 📨 EVENT RECEIVED - clarityhud.update.chat:', chatData);
+    updateDebugEvents();
     addMessage(chatData);
   });
   
   // Listen for settings updates
   STATE.socket.on('clarityhud.settings.chat', (newSettings) => {
-    console.log('Received settings update:', newSettings);
+    console.log('[CHAT HUD] ⚙️ SETTINGS UPDATE:', newSettings);
     applySettings(newSettings);
   });
+  
+  console.log('[CHAT HUD] Socket listeners registered');
 }
 
 /**
@@ -145,23 +241,34 @@ function detectSystemPreferences() {
 
 // ==================== INITIALIZATION ====================
 async function init() {
+  console.log('[CHAT HUD] 📡 Loading settings from server...');
+  updateDebugStatus('Loading settings...');
+  
   try {
     // Load settings
     const settingsResponse = await fetch('/api/clarityhud/settings/chat');
     const settingsData = await settingsResponse.json();
 
+    console.log('[CHAT HUD] Settings response:', settingsData);
+
     if (settingsData.success && settingsData.settings) {
+      console.log('[CHAT HUD] ✅ Settings loaded successfully');
       applySettings(settingsData.settings);
+    } else {
+      console.warn('[CHAT HUD] ⚠️ Settings response not successful, using defaults');
     }
 
     // Initialize virtual scrolling if enabled
     if (STATE.settings.useVirtualScrolling) {
+      console.log('[CHAT HUD] Initializing virtual scrolling...');
       initializeVirtualScrolling();
     }
 
-    console.log('Chat overlay initialized');
+    console.log('[CHAT HUD] ✅ Chat overlay initialized and ready to receive events');
+    updateDebugStatus('Ready - Waiting for events');
   } catch (error) {
-    console.error('Error initializing overlay:', error);
+    console.error('[CHAT HUD] ❌ Error initializing overlay:', error);
+    updateDebugStatus(`Error: ${error.message}`);
   }
 }
 
@@ -291,28 +398,47 @@ function applySettings(newSettings) {
 
 // ==================== MESSAGE HANDLING ====================
 function addMessage(chatData) {
-  // Parse message using robust message parser
-  const formattedMessage = STATE.messageParser.createFormattedMessage(chatData);
+  console.log('[CHAT HUD] Received chat event:', chatData);
   
-  if (!formattedMessage.text) {
-    console.warn('Invalid chat data - no message:', chatData);
+  // Normalize the data structure from backend
+  // Backend sends: { user: {...}, message: "...", comment: "...", raw: {...} }
+  const normalizedData = {
+    user: chatData.user || {
+      uniqueId: chatData.uniqueId || 'unknown',
+      nickname: chatData.nickname || chatData.uniqueId || 'Anonymous',
+      profilePictureUrl: chatData.profilePictureUrl || null,
+      badge: chatData.badge || null
+    },
+    text: chatData.message || chatData.comment || '',
+    emotes: [],
+    raw: chatData.raw || chatData,
+    timestamp: Date.now(),
+    id: `chat_${Date.now()}_${Math.random()}`
+  };
+
+  console.log('[CHAT HUD] Normalized data:', normalizedData);
+
+  if (!normalizedData.text) {
+    console.warn('[CHAT HUD] Invalid chat data - no message:', chatData);
     return;
   }
 
   // Add to messages array
-  STATE.messages.push(formattedMessage);
+  STATE.messages.push(normalizedData);
 
   // Trim to max messages
   trimMessages();
 
+  console.log('[CHAT HUD] Rendering message...');
+
   // Render message
   if (STATE.virtualScroller) {
     // Add to virtual scroller
-    STATE.virtualScroller.addItems([formattedMessage], false);
+    STATE.virtualScroller.addItems([normalizedData], false);
     STATE.virtualScroller.scrollToBottom('smooth');
   } else {
     // Regular rendering
-    renderMessage(formattedMessage);
+    renderMessage(normalizedData);
   }
 }
 
@@ -320,94 +446,163 @@ function addMessage(chatData) {
  * Render a message element (for both regular and virtual scrolling)
  */
 function renderMessageElement(messageData, index) {
-  // Create message element
-  const messageEl = document.createElement('div');
-  messageEl.className = 'chat-message';
-  messageEl.dataset.id = messageData.id;
+  console.log('[CHAT HUD] Rendering message element:', messageData);
+  
+  try {
+    // Create message element
+    const messageEl = document.createElement('div');
+    messageEl.className = 'chat-message';
+    messageEl.dataset.id = messageData.id || `msg_${Date.now()}`;
 
-  // Create header with badges and username
-  const headerEl = document.createElement('div');
-  headerEl.className = 'chat-message-header';
+    // Create header with badges and username
+    const headerEl = document.createElement('div');
+    headerEl.className = 'chat-message-header';
 
-  // Extract badges
-  const badges = STATE.badgeRenderer.extractBadges(messageData.raw);
+    // Extract badges if badge renderer is available
+    let badges = { teamLevel: 0 };
+    if (STATE.badgeRenderer && messageData.raw) {
+      try {
+        badges = STATE.badgeRenderer.extractBadges(messageData.raw);
+      } catch (badgeError) {
+        console.warn('[CHAT HUD] Badge extraction error:', badgeError);
+      }
+    }
 
-  // Create badge container
-  const badgeContainer = document.createElement('div');
-  badgeContainer.className = 'badge-container';
-  STATE.badgeRenderer.renderToHTML(badges, badgeContainer);
-  headerEl.appendChild(badgeContainer);
+    // Create badge container
+    if (STATE.badgeRenderer && badges) {
+      try {
+        const badgeContainer = document.createElement('div');
+        badgeContainer.className = 'badge-container';
+        STATE.badgeRenderer.renderToHTML(badges, badgeContainer);
+        headerEl.appendChild(badgeContainer);
+      } catch (badgeRenderError) {
+        console.warn('[CHAT HUD] Badge rendering error:', badgeRenderError);
+      }
+    }
 
-  // Create username span
-  const usernameEl = document.createElement('span');
-  usernameEl.className = 'chat-username';
-  usernameEl.textContent = messageData.user.nickname;
+    // Create username span with fallback
+    const usernameEl = document.createElement('span');
+    usernameEl.className = 'chat-username';
+    const username = messageData.user?.nickname || 
+                     messageData.nickname || 
+                     messageData.user?.uniqueId || 
+                     'Anonymous';
+    usernameEl.textContent = username;
 
-  // Apply username color based on team level if enabled
-  if (STATE.settings.usernameColorByTeamLevel && badges.teamLevel > 0) {
-    const color = STATE.badgeRenderer.getUsernameColor(badges.teamLevel);
-    usernameEl.style.color = color;
+    // Apply username color based on team level if enabled
+    if (STATE.settings.usernameColorByTeamLevel && badges.teamLevel > 0 && STATE.badgeRenderer) {
+      try {
+        const color = STATE.badgeRenderer.getUsernameColor(badges.teamLevel);
+        usernameEl.style.color = color;
+      } catch (colorError) {
+        console.warn('[CHAT HUD] Username color error:', colorError);
+      }
+    }
+
+    headerEl.appendChild(usernameEl);
+
+    // Add colon separator
+    const colonEl = document.createElement('span');
+    colonEl.textContent = ':';
+    colonEl.className = 'chat-username';
+    headerEl.appendChild(colonEl);
+
+    messageEl.appendChild(headerEl);
+
+    // Create text container with emojis
+    const textEl = document.createElement('div');
+    textEl.className = 'chat-text';
+
+    // Get message text with fallback
+    const messageText = messageData.text || messageData.message || messageData.comment || '';
+
+    // Parse emojis if parser is available
+    if (STATE.emojiParser) {
+      try {
+        const emojiSegments = STATE.emojiParser.parse(
+          messageText,
+          messageData.emotes || [],
+          STATE.settings.emojiRenderMode || 'image'
+        );
+        STATE.emojiParser.renderToHTML(emojiSegments, textEl);
+      } catch (emojiError) {
+        console.warn('[CHAT HUD] Emoji parsing error:', emojiError);
+        textEl.textContent = messageText;
+      }
+    } else {
+      // Fallback to plain text
+      textEl.textContent = messageText;
+    }
+
+    messageEl.appendChild(textEl);
+
+    // Add timestamp if enabled
+    if (STATE.settings.showTimestamps) {
+      const timestampEl = document.createElement('span');
+      timestampEl.className = 'chat-timestamp';
+      timestampEl.textContent = formatTimestamp(messageData.timestamp || Date.now());
+      messageEl.appendChild(timestampEl);
+    }
+
+    console.log('[CHAT HUD] Message element created successfully');
+    return messageEl;
+  } catch (error) {
+    console.error('[CHAT HUD] Error rendering message element:', error);
+    // Return a simple error message element
+    const errorEl = document.createElement('div');
+    errorEl.className = 'chat-message';
+    errorEl.textContent = `Error rendering message: ${error.message}`;
+    return errorEl;
   }
-
-  headerEl.appendChild(usernameEl);
-
-  // Add colon separator
-  const colonEl = document.createElement('span');
-  colonEl.textContent = ':';
-  colonEl.className = 'chat-username';
-  headerEl.appendChild(colonEl);
-
-  messageEl.appendChild(headerEl);
-
-  // Create text container with emojis
-  const textEl = document.createElement('div');
-  textEl.className = 'chat-text';
-
-  // Parse emojis
-  const emojiSegments = STATE.emojiParser.parse(
-    messageData.text,
-    messageData.emotes,
-    STATE.settings.emojiRenderMode
-  );
-
-  // Render emoji segments
-  STATE.emojiParser.renderToHTML(emojiSegments, textEl);
-
-  messageEl.appendChild(textEl);
-
-  // Add timestamp if enabled
-  if (STATE.settings.showTimestamps) {
-    const timestampEl = document.createElement('span');
-    timestampEl.className = 'chat-timestamp';
-    timestampEl.textContent = formatTimestamp(messageData.timestamp);
-    messageEl.appendChild(timestampEl);
-  }
-
-  return messageEl;
 }
 
 /**
  * Render a message (non-virtual scrolling mode)
  */
 function renderMessage(messageData) {
-  const messageEl = renderMessageElement(messageData);
+  console.log('[CHAT HUD] 🎨 Rendering message to DOM:', messageData);
+  
+  try {
+    const messageEl = renderMessageElement(messageData);
 
-  // Add to container
-  STATE.messagesContainer.appendChild(messageEl);
+    if (!messageEl) {
+      console.error('[CHAT HUD] ❌ renderMessageElement returned null/undefined');
+      return;
+    }
 
-  // Animate in
-  requestAnimationFrame(() => {
-    STATE.animationRenderer.animateIn(
-      messageEl,
-      STATE.settings.animationType || 'slide',
-      STATE.settings.animationSpeed || 'medium'
-    ).then(() => {
-      messageEl.classList.add('visible');
+    // Add to container
+    STATE.messagesContainer.appendChild(messageEl);
+    console.log('[CHAT HUD] ✅ Message element added to DOM');
+
+    // Animate in
+    requestAnimationFrame(() => {
+      if (STATE.animationRenderer) {
+        STATE.animationRenderer.animateIn(
+          messageEl,
+          STATE.settings.animationType || 'slide',
+          STATE.settings.animationSpeed || 'medium'
+        ).then(() => {
+          messageEl.classList.add('visible');
+          console.log('[CHAT HUD] ✅ Message animated and visible');
+        }).catch(error => {
+          console.warn('[CHAT HUD] Animation error:', error);
+          // Fallback: make it visible anyway
+          messageEl.classList.add('visible');
+          messageEl.style.opacity = '1';
+        });
+      } else {
+        // No animation renderer, just make it visible
+        messageEl.classList.add('visible');
+        messageEl.style.opacity = '1';
+        console.log('[CHAT HUD] ✅ Message visible (no animation)');
+      }
     });
-  });
 
-  // Trim old messages
-  trimMessagesFromDOM();
+    // Trim old messages
+    trimMessagesFromDOM();
+  } catch (error) {
+    console.error('[CHAT HUD] ❌ Error in renderMessage:', error);
+  }
 }
 
 /**

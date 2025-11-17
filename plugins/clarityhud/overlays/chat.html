@@ -170,6 +170,13 @@
   </style>
 </head>
 <body>
+  <!-- Debug Console -->
+  <div id="debug-console" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.9); color: #0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; max-width: 300px; z-index: 10000; display: none;">
+    <div id="debug-status">Status: Initializing...</div>
+    <div id="debug-socket">Socket: Disconnected</div>
+    <div id="debug-events">Events: 0</div>
+  </div>
+
   <div id="chat-container">
     <div id="messages"></div>
   </div>
