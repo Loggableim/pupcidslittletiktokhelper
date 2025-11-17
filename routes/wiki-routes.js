@@ -98,7 +98,11 @@ function extractTOC(markdown) {
         if (match) {
             const level = match[1].length;
             const text = match[2].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Remove links
-            const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            const id = text.toLowerCase()
+                .replace(/[^a-z0-9äöüß\s-]/g, '') // Keep German umlauts
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
             
             headings.push({
                 level,
@@ -184,14 +188,56 @@ router.get('/page/:pageId', async (req, res) => {
         // Extract TOC
         const toc = extractTOC(markdown);
         
+        // Process markdown to fix internal links before rendering
+        let processedMarkdown = markdown;
+        
+        // Convert relative wiki links to absolute #wiki: links
+        // Pattern: [text](../path/file.md) or [text](path/file.md)
+        processedMarkdown = processedMarkdown.replace(/\[([^\]]+)\]\(([^)]+\.md)\)/g, (match, text, link) => {
+            // Extract just the filename without path and extension
+            const fileName = link.split('/').pop().replace('.md', '');
+            
+            // Try to find the page ID from the structure
+            let pageId = null;
+            for (const section of WIKI_STRUCTURE.sections) {
+                const foundPage = section.pages.find(p => 
+                    p.file.toLowerCase().includes(fileName.toLowerCase()) ||
+                    p.id === fileName.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+                );
+                if (foundPage) {
+                    pageId = foundPage.id;
+                    break;
+                }
+            }
+            
+            // If we found a matching page, convert to wiki link
+            if (pageId) {
+                return `[${text}](#wiki:${pageId})`;
+            }
+            
+            // Otherwise keep the original link
+            return match;
+        });
+        
         // Render markdown to HTML
-        let html = marked(markdown);
+        let html = marked(processedMarkdown);
         
         // Process image paths to be relative to server
         html = html.replace(/src="(?!http)([^"]+)"/g, (match, imgPath) => {
             // Convert relative image paths
             const assetsPath = `/assets/wiki/${imgPath}`;
             return `src="${assetsPath}"`;
+        });
+        
+        // Add IDs to headings for TOC linking
+        html = html.replace(/<h([2-6])>(.+?)<\/h\1>/g, (match, level, text) => {
+            const cleanText = text.replace(/<[^>]+>/g, ''); // Remove any HTML tags
+            const id = cleanText.toLowerCase()
+                .replace(/[^a-z0-9äöüß\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            return `<h${level} id="${id}">${text}</h${level}>`;
         });
         
         // Build breadcrumb
