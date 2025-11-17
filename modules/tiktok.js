@@ -157,6 +157,14 @@ class TikTokConnector extends EventEmitter {
                 roomId: state.roomId,
                 roomInfo: state.roomInfo
             });
+            
+            // Emit connected event for IFTTT engine
+            this.emit('connected', {
+                username,
+                roomId: state.roomId,
+                roomInfo: state.roomInfo,
+                timestamp: new Date().toISOString()
+            });
 
             // Save last connected username
             this.db.setSetting('last_connected_username', username);
@@ -565,6 +573,13 @@ class TikTokConnector extends EventEmitter {
             console.log('🔴 WebSocket disconnected');
             this.isConnected = false;
             this.broadcastStatus('disconnected');
+            
+            // Emit disconnected event for IFTTT engine
+            this.emit('disconnected', {
+                username: this.currentUsername,
+                timestamp: new Date().toISOString(),
+                reason: 'Connection lost'
+            });
 
             // Auto-Reconnect mit Limit
             if (this.currentUsername && this.autoReconnectCount < this.maxAutoReconnects) {
@@ -594,6 +609,13 @@ class TikTokConnector extends EventEmitter {
 
         this.connection.on('error', (err) => {
             console.error('❌ Connection error:', err);
+            
+            // Emit error event for IFTTT engine
+            this.emit('error', {
+                error: err.message || String(err),
+                module: 'tiktok-connection',
+                timestamp: new Date().toISOString()
+            });
         });
 
         // ========== CHAT ==========
@@ -796,6 +818,12 @@ class TikTokConnector extends EventEmitter {
         this.connection.on('roomUser', (data) => {
             this.stats.viewers = data.viewerCount || 0;
             this.broadcastStats();
+            
+            // Emit viewerChange event for IFTTT engine
+            this.emit('viewerChange', {
+                viewerCount: data.viewerCount || 0,
+                timestamp: new Date().toISOString()
+            });
         });
 
         // ========== SUBSCRIBE ==========
