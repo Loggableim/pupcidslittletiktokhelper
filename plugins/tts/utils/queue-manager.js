@@ -1,6 +1,6 @@
 /**
  * TTS Queue Manager
- * Manages TTS queue with prioritization, rate limiting, and flood control
+ * Manages TTS queue with prioritization, rate limiting, flood control, and deduplication
  */
 class QueueManager {
     constructor(config, logger) {
@@ -15,13 +15,70 @@ class QueueManager {
         // Rate limiting: track user message timestamps
         this.userRateLimits = new Map();
 
+        // Deduplication: track recently queued items by content hash
+        this.recentHashes = new Map();
+        this.maxRecentHashes = 500; // Keep last 500 hashes
+        this.hashExpirationMs = 30000; // Hashes expire after 30 seconds
+
         // Queue statistics
         this.stats = {
             totalQueued: 0,
             totalPlayed: 0,
             totalDropped: 0,
-            totalRateLimited: 0
+            totalRateLimited: 0,
+            totalDuplicatesBlocked: 0
         };
+    }
+
+    /**
+     * Generate hash for content deduplication
+     * @param {object} item - Queue item
+     * @returns {string} Content hash
+     */
+    _generateContentHash(item) {
+        // Create hash from userId + text (normalized)
+        const text = (item.text || '').toLowerCase().trim();
+        const userId = item.userId || 'unknown';
+        
+        // Include timestamp rounded to nearest 5 seconds to allow same user to say same thing
+        // but prevent rapid duplicates (within 5 second window)
+        const timestamp = Math.floor(Date.now() / 5000);
+        
+        return `${userId}|${text}|${timestamp}`;
+    }
+
+    /**
+     * Check if item is duplicate based on content hash
+     * @param {object} item - Queue item
+     * @returns {boolean} true if duplicate, false if unique
+     */
+    _isDuplicate(item) {
+        const hash = this._generateContentHash(item);
+        const now = Date.now();
+        
+        // Clean up expired hashes
+        for (const [h, timestamp] of this.recentHashes.entries()) {
+            if (now - timestamp > this.hashExpirationMs) {
+                this.recentHashes.delete(h);
+            }
+        }
+        
+        // Check if hash exists
+        if (this.recentHashes.has(hash)) {
+            this.logger.warn(`Duplicate TTS item blocked: "${item.text?.substring(0, 30)}..." from ${item.username}`);
+            return true;
+        }
+        
+        // Add hash to tracking
+        this.recentHashes.set(hash, now);
+        
+        // Limit cache size
+        if (this.recentHashes.size > this.maxRecentHashes) {
+            const firstKey = this.recentHashes.keys().next().value;
+            this.recentHashes.delete(firstKey);
+        }
+        
+        return false;
     }
 
     /**
@@ -31,6 +88,16 @@ class QueueManager {
      */
     enqueue(item) {
         try {
+            // Check for duplicate content
+            if (this._isDuplicate(item)) {
+                this.stats.totalDuplicatesBlocked++;
+                return {
+                    success: false,
+                    reason: 'duplicate_content',
+                    message: 'This message was already queued recently'
+                };
+            }
+
             // Check rate limit
             if (!this._checkRateLimit(item.userId, item.username)) {
                 this.stats.totalRateLimited++;
@@ -303,7 +370,9 @@ class QueueManager {
         const count = this.queue.length;
         this.queue = [];
         this.currentItem = null;
-        this.logger.info(`Queue cleared: ${count} items removed`);
+        // Also clear deduplication cache when clearing queue
+        this.clearDeduplicationCache();
+        this.logger.info(`Queue cleared: ${count} items removed, deduplication cache cleared`);
         return count;
     }
 
@@ -362,7 +431,8 @@ class QueueManager {
         return {
             ...this.stats,
             currentQueueSize: this.queue.length,
-            rateLimitedUsers: this.userRateLimits.size
+            rateLimitedUsers: this.userRateLimits.size,
+            recentHashesSize: this.recentHashes.size
         };
     }
 
@@ -374,7 +444,8 @@ class QueueManager {
             totalQueued: 0,
             totalPlayed: 0,
             totalDropped: 0,
-            totalRateLimited: 0
+            totalRateLimited: 0,
+            totalDuplicatesBlocked: 0
         };
         this.logger.info('Queue statistics reset');
     }
@@ -393,6 +464,14 @@ class QueueManager {
     clearAllRateLimits() {
         this.userRateLimits.clear();
         this.logger.info('All rate limits cleared');
+    }
+
+    /**
+     * Clear deduplication cache
+     */
+    clearDeduplicationCache() {
+        this.recentHashes.clear();
+        this.logger.info('Deduplication cache cleared');
     }
 }
 
