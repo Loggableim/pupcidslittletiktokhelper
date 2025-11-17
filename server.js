@@ -2082,6 +2082,30 @@ tiktok.on('like', async (data) => {
     await iftttEngine.processEvent('tiktok:like', data);
 });
 
+// Connected Event (System)
+tiktok.on('connected', async (data) => {
+    debugLogger.log('system', 'TikTok connected', { username: data.username });
+    await iftttEngine.processEvent('system:connected', data);
+});
+
+// Disconnected Event (System)
+tiktok.on('disconnected', async (data) => {
+    debugLogger.log('system', 'TikTok disconnected', { username: data.username });
+    await iftttEngine.processEvent('system:disconnected', data);
+});
+
+// Error Event (System)
+tiktok.on('error', async (data) => {
+    debugLogger.log('system', 'TikTok error', { error: data.error });
+    await iftttEngine.processEvent('system:error', data);
+});
+
+// Viewer Change Event
+tiktok.on('viewerChange', async (data) => {
+    debugLogger.log('tiktok', 'Viewer count changed', { viewerCount: data.viewerCount }, 'debug');
+    await iftttEngine.processEvent('tiktok:viewerChange', data);
+});
+
 // ========== SERVER STARTEN ==========
 
 const PORT = process.env.PORT || 3000;
