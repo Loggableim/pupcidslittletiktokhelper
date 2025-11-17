@@ -266,7 +266,7 @@ class MappingEngine {
 
       // Whitelist check (user must be in whitelist with userId OR userName)
       if (conditions.whitelist && conditions.whitelist.length > 0) {
-        if (!conditions.whitelist.includes(userId) || !conditions.whitelist.includes(userName)) {
+        if (!conditions.whitelist.includes(userId) && !conditions.whitelist.includes(userName)) {
           return false;
         }
       }
