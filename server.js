@@ -1856,6 +1856,20 @@ io.on('connection', (socket) => {
     // Send initialization state to client
     socket.emit('init:state', initState.getState());
 
+    // Send current TikTok connection status to newly connected client
+    if (tiktok.isActive()) {
+        socket.emit('tiktok:status', {
+            status: 'connected',
+            username: tiktok.currentUsername
+        });
+        // Also send current stats
+        socket.emit('tiktok:stats', tiktok.getStats());
+    } else {
+        socket.emit('tiktok:status', {
+            status: 'disconnected'
+        });
+    }
+
     // Plugin Socket Events registrieren
     pluginLoader.registerPluginSocketEvents(socket);
 
