@@ -23,6 +23,9 @@ class TikTokConnector extends EventEmitter {
         this.isConnected = false;
         this.currentUsername = null;
 
+        // Increase max listeners to avoid warnings when multiple plugins listen to the same events
+        this.setMaxListeners(20);
+
         // Auto-Reconnect configuration
         this.autoReconnectCount = 0;
         this.maxAutoReconnects = 5;
