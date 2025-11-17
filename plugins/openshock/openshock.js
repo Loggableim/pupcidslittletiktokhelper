@@ -559,13 +559,14 @@ function openMappingModal(mappingId = null) {
     const enabledCheckbox = document.getElementById('mappingEnabled');
     const eventTypeSelect = document.getElementById('mappingEventType');
     const actionTypeSelect = document.getElementById('mappingActionType');
-    const deviceSelect = document.getElementById('mappingDevice');
 
     if (nameInput) nameInput.value = mapping?.name || '';
     if (enabledCheckbox) enabledCheckbox.checked = mapping?.enabled !== false;
     if (eventTypeSelect) eventTypeSelect.value = mapping?.eventType || mapping?.trigger?.type || 'gift';
     if (actionTypeSelect) actionTypeSelect.value = mapping?.action?.commandType || mapping?.action?.type || 'shock';
-    if (deviceSelect) deviceSelect.value = mapping?.action?.deviceId || '';
+    
+    // Populate device dropdown with available devices
+    updateMappingDeviceList(mapping?.action?.deviceId || '');
 
     // Convert backend format to frontend format for triggers
     let triggerData = mapping?.trigger;
@@ -1172,6 +1173,7 @@ async function saveApiSettings() {
         try {
             await loadDevices();
             renderDeviceList();
+            renderPatternList();
             updateApiStatus(devices.length > 0, devices.length);
         } catch (loadError) {
             console.error('[OpenShock] Could not load devices after saving settings:', loadError);
@@ -1269,6 +1271,26 @@ function updateTestShockDeviceList() {
     }
 }
 
+function updateMappingDeviceList(selectedDeviceId = '') {
+    const deviceSelect = document.getElementById('mappingDevice');
+    
+    if (!deviceSelect) return;
+    
+    // Clear existing options
+    deviceSelect.innerHTML = '<option value="">Select Device...</option>';
+    
+    // Add device options
+    devices.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.id;
+        option.textContent = device.name || device.id;
+        if (device.id === selectedDeviceId) {
+            option.selected = true;
+        }
+        deviceSelect.appendChild(option);
+    });
+}
+
 async function executeTestShock() {
     const testShockDevice = document.getElementById('testShockDevice');
     const deviceId = testShockDevice ? testShockDevice.value : '';
@@ -1330,6 +1352,9 @@ async function refreshDevices() {
         
         await loadDevices();
         renderDeviceList();
+        
+        // Update pattern device dropdowns
+        renderPatternList();
         
         // Update API status with device count
         updateApiStatus(devices.length > 0, devices.length);
