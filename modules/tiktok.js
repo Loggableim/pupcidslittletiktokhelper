@@ -1,6 +1,8 @@
 const { TikTokLiveConnection } = require('tiktok-live-connector');
 const EventEmitter = require('events');
 const ConnectionDiagnostics = require('./connection-diagnostics');
+const RoomIdResolver = require('./room-id-resolver');
+const HttpClientEnhancer = require('./http-client-enhancer');
 
 class TikTokConnector extends EventEmitter {
     constructor(io, db) {
@@ -39,6 +41,12 @@ class TikTokConnector extends EventEmitter {
         
         // Connection diagnostics
         this.diagnostics = new ConnectionDiagnostics(db);
+        
+        // Enhanced Room ID resolution with multiple fallback methods
+        this.roomIdResolver = new RoomIdResolver(db, this.diagnostics);
+        
+        // HTTP client enhancements for better timeout handling
+        this.httpEnhancer = new HttpClientEnhancer();
     }
 
     // Decrypt backup Euler API key (fallback when no user key is configured)
@@ -123,6 +131,14 @@ class TikTokConnector extends EventEmitter {
                 console.log('ℹ️  Kein Euler API Key konfiguriert - verwende Standard-Verbindung ohne Euler Stream Fallbacks');
             }
             
+            // ENHANCEMENT: Configure HTTP client with increased timeouts to prevent premature failures
+            // Read timeout from database or use default of 20 seconds (increased from 10s)
+            const httpTimeout = parseInt(this.db.getSetting('tiktok_http_timeout')) || 20000;
+            this.httpEnhancer.enhance({ 
+                timeout: httpTimeout,
+                verbose: true 
+            });
+            
             const connectionOptions = {
                 processInitialData: true,
                 enableExtendedGiftInfo: true,
@@ -149,8 +165,8 @@ class TikTokConnector extends EventEmitter {
             this.registerEventListeners();
 
             // Verbindung herstellen mit Timeout
-            // FIX: Configurable timeout (default 45s, range 25-45s)
-            const connectionTimeout = parseInt(this.db.getSetting('tiktok_connection_timeout')) || 45000;
+            // FIX: Configurable timeout (default 60s, increased from 45s for slow connections)
+            const connectionTimeout = parseInt(this.db.getSetting('tiktok_connection_timeout')) || 60000;
             const timeoutSeconds = Math.floor(connectionTimeout / 1000);
             
             const state = await Promise.race([
@@ -302,6 +318,28 @@ class TikTokConnector extends EventEmitter {
         const errorMessage = error.message || '';
         const errorString = error.toString();
 
+        // FIX: ECONNABORTED - Axios timeout error (most common with slow connections)
+        if (errorMessage.includes('ECONNABORTED') || error.code === 'ECONNABORTED') {
+            return {
+                type: 'HTTP_TIMEOUT',
+                message: 'HTTP-Anfrage abgebrochen (ECONNABORTED). Die Verbindung zu TikTok wurde wegen Timeout beendet.',
+                suggestion: 'Dies passiert bei langsamen Verbindungen oder wenn TikTok langsam antwortet. Die Timeouts wurden automatisch erhöht. Falls das Problem weiterhin besteht: 1) Prüfe deine Internetverbindung, 2) Versuche es zu einer anderen Zeit, 3) Verwende einen VPN.',
+                retryable: true
+            };
+        }
+
+        // FIX: HTML Fetch Errors - Pattern mismatch or blocked
+        if (errorMessage.includes('extract') && errorMessage.includes('HTML') ||
+            errorMessage.includes('SIGI_STATE') && errorMessage.includes('pattern') ||
+            errorMessage.includes('Failed to extract the LiveRoom object')) {
+            return {
+                type: 'HTML_PARSE_ERROR',
+                message: 'HTML-Parsing fehlgeschlagen. TikTok hat möglicherweise die Seitenstruktur geändert oder blockiert den Zugriff.',
+                suggestion: 'Dies kann verschiedene Ursachen haben: 1) TikTok hat die HTML-Struktur geändert (update tiktok-live-connector), 2) Du wurdest von TikTok blockiert (warte 10+ Minuten), 3) Geo-Block oder Cloudflare-Schutz ist aktiv (verwende VPN).',
+                retryable: true
+            };
+        }
+
         // FIX: Euler Stream Permission Error - Check this first
         // Note: We check for specific error message patterns from tiktok-live-connector library
         // This is error message matching, not URL validation - the check is safe for this use case
@@ -376,10 +414,11 @@ class TikTokConnector extends EventEmitter {
         }
 
         // Room ID Fehler - oft bedeutet dies, dass der Stream offline ist
-        // FIX: Also check for FetchIsLiveError
+        // FIX: Also check for FetchIsLiveError and "Failed to retrieve Room ID"
         if (errorMessage.includes('Room ID') || errorMessage.includes('room id') || 
             errorMessage.includes('LIVE_NOT_FOUND') || errorMessage.includes('not live') ||
-            errorMessage.includes('FetchIsLiveError') || errorMessage.includes('fetchRoomId')) {
+            errorMessage.includes('FetchIsLiveError') || errorMessage.includes('fetchRoomId') ||
+            errorMessage.includes('Failed to retrieve Room ID')) {
             return {
                 type: 'ROOM_NOT_FOUND',
                 message: 'Stream nicht gefunden oder nicht live. TikTok konnte keine aktive LIVE-Session für diesen User finden.',
@@ -392,8 +431,8 @@ class TikTokConnector extends EventEmitter {
         if (errorMessage.includes('Timeout') || errorMessage.includes('timeout')) {
             return {
                 type: 'CONNECTION_TIMEOUT',
-                message: 'Verbindungs-Timeout. Die Verbindung zu TikTok dauerte zu lange (>30 Sekunden).',
-                suggestion: 'Überprüfe deine Internetverbindung und Firewall-Einstellungen. Stelle sicher, dass ausgehende Verbindungen zu TikTok nicht blockiert werden.',
+                message: 'Verbindungs-Timeout. Die Verbindung zu TikTok dauerte zu lange.',
+                suggestion: 'Überprüfe deine Internetverbindung und Firewall-Einstellungen. Stelle sicher, dass ausgehende Verbindungen zu TikTok nicht blockiert werden. Die Timeouts wurden automatisch erhöht.',
                 retryable: true
             };
         }
@@ -934,6 +973,20 @@ class TikTokConnector extends EventEmitter {
     
     async getConnectionHealth() {
         return await this.diagnostics.getConnectionHealth();
+    }
+    
+    // Room ID resolver methods - expose cache management
+    clearRoomIdCache(username = null) {
+        this.roomIdResolver.clearCache(username);
+    }
+    
+    getRoomIdCacheStats() {
+        return this.roomIdResolver.getCacheStats();
+    }
+    
+    // Expose HTTP client configuration
+    getHttpClientConfig() {
+        return this.httpEnhancer.getConfiguration();
     }
 }
 
