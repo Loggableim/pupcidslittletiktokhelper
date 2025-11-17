@@ -13,6 +13,10 @@ const EventEmitter = require('events');
  * - Event handling (chat, gifts, likes, etc.)
  * - Retry logic and error handling
  * - Optional Euler Stream fallbacks
+ * 
+ * STREAM TIME FIX: This module now properly extracts and persists the actual
+ * TikTok stream start time from roomInfo and event metadata, preventing the
+ * timer from showing software start time instead of real stream duration.
  */
 class TikTokConnector extends EventEmitter {
     constructor(io, db) {
