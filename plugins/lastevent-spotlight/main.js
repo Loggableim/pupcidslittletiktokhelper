@@ -84,7 +84,7 @@ class LastEventSpotlightPlugin {
   /**
    * Initialize plugin
    */
-  async onLoad() {
+  async init() {
     this.api.log('LastEvent Spotlight plugin loading...');
 
     // Initialize settings for all types if not exist
@@ -151,12 +151,24 @@ class LastEventSpotlightPlugin {
         const overlayPath = path.join(__dirname, 'overlays', `${type}.html`);
         res.sendFile(overlayPath);
       });
+      
+      // Serve overlay JS files
+      this.api.registerRoute('GET', `/plugins/lastevent-spotlight/overlays/${type}.js`, (req, res) => {
+        const jsPath = path.join(__dirname, 'overlays', `${type}.js`);
+        res.sendFile(jsPath);
+      });
     }
 
     // Serve plugin UI
     this.api.registerRoute('GET', '/lastevent-spotlight/ui', (req, res) => {
       const uiPath = path.join(__dirname, 'ui', 'main.html');
       res.sendFile(uiPath);
+    });
+    
+    // Serve UI JS
+    this.api.registerRoute('GET', '/plugins/lastevent-spotlight/ui/main.js', (req, res) => {
+      const jsPath = path.join(__dirname, 'ui', 'main.js');
+      res.sendFile(jsPath);
     });
 
     // Serve library files
@@ -297,13 +309,13 @@ class LastEventSpotlightPlugin {
     };
 
     for (const [eventName, overlayType] of Object.entries(eventMappings)) {
-      this.api.registerSocket(eventName, async (data) => {
+      this.api.registerTikTokEvent(eventName, async (data) => {
         await this.handleEvent(eventName, overlayType, data);
       });
     }
 
     // Also handle 'superfan' as subscriber
-    this.api.registerSocket('superfan', async (data) => {
+    this.api.registerTikTokEvent('superfan', async (data) => {
       await this.handleEvent('superfan', 'subscriber', data);
     });
 
@@ -344,7 +356,7 @@ class LastEventSpotlightPlugin {
 
     if (data.user) {
       user = data.user;
-    } else if (data.uniqueId) {
+    } else if (data.uniqueId || data.username) {
       user = data;
     }
 
@@ -353,9 +365,9 @@ class LastEventSpotlightPlugin {
     }
 
     return {
-      uniqueId: user.uniqueId || user.userId || 'unknown',
-      nickname: user.nickname || user.displayName || user.uniqueId || 'Anonymous',
-      profilePictureUrl: user.profilePictureUrl || user.avatarUrl || user.profilePicUrl || '',
+      uniqueId: user.uniqueId || user.username || user.userId || 'unknown',
+      nickname: user.nickname || user.displayName || user.uniqueId || user.username || 'Anonymous',
+      profilePictureUrl: user.profilePictureUrl || user.avatarUrl || user.profilePicUrl || user.profilePicture || '',
       timestamp: new Date().toISOString(),
       eventType: overlayType,
       label: this.eventTypes[overlayType].label,
@@ -372,7 +384,7 @@ class LastEventSpotlightPlugin {
   /**
    * Cleanup on plugin unload
    */
-  async onUnload() {
+  async destroy() {
     this.api.log('LastEvent Spotlight plugin unloading...');
   }
 }
