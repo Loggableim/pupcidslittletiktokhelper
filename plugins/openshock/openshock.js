@@ -564,13 +564,14 @@ function openMappingModal(mappingId = null) {
     const enabledCheckbox = document.getElementById('mappingEnabled');
     const eventTypeSelect = document.getElementById('mappingEventType');
     const actionTypeSelect = document.getElementById('mappingActionType');
-    const deviceSelect = document.getElementById('mappingDevice');
 
     if (nameInput) nameInput.value = mapping?.name || '';
     if (enabledCheckbox) enabledCheckbox.checked = mapping?.enabled !== false;
     if (eventTypeSelect) eventTypeSelect.value = mapping?.eventType || mapping?.trigger?.type || 'gift';
     if (actionTypeSelect) actionTypeSelect.value = mapping?.action?.commandType || mapping?.action?.type || 'shock';
-    if (deviceSelect) deviceSelect.value = mapping?.action?.deviceId || '';
+    
+    // Populate device dropdown with available devices
+    updateMappingDeviceList(mapping?.action?.deviceId || '');
 
     // Convert backend format to frontend format for triggers
     let triggerData = mapping?.trigger;
@@ -1177,6 +1178,7 @@ async function saveApiSettings() {
         try {
             await loadDevices();
             renderDeviceList();
+            renderPatternList();
             updateApiStatus(devices.length > 0, devices.length);
         } catch (loadError) {
             console.error('[OpenShock] Could not load devices after saving settings:', loadError);
@@ -1274,29 +1276,24 @@ function updateTestShockDeviceList() {
     }
 }
 
-function updateMappingDeviceList() {
-    const mappingDevice = document.getElementById('mappingDevice');
+function updateMappingDeviceList(selectedDeviceId = '') {
+    const deviceSelect = document.getElementById('mappingDevice');
     
-    if (!mappingDevice) return;
-    
-    // Store currently selected value to restore it after repopulation
-    const currentValue = mappingDevice.value;
+    if (!deviceSelect) return;
     
     // Clear existing options
-    mappingDevice.innerHTML = '<option value="">Select Device...</option>';
+    deviceSelect.innerHTML = '<option value="">Select Device...</option>';
     
     // Add device options
     devices.forEach(device => {
         const option = document.createElement('option');
         option.value = device.id;
         option.textContent = device.name || device.id;
-        mappingDevice.appendChild(option);
+        if (device.id === selectedDeviceId) {
+            option.selected = true;
+        }
+        deviceSelect.appendChild(option);
     });
-    
-    // Restore previously selected value if it still exists
-    if (currentValue && devices.some(d => d.id === currentValue)) {
-        mappingDevice.value = currentValue;
-    }
 }
 
 async function executeTestShock() {
@@ -1360,6 +1357,9 @@ async function refreshDevices() {
         
         await loadDevices();
         renderDeviceList();
+        
+        // Update pattern device dropdowns
+        renderPatternList();
         
         // Update API status with device count
         updateApiStatus(devices.length > 0, devices.length);
