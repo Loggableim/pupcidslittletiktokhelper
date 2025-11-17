@@ -246,6 +246,25 @@
       line-height: 1;
     }
 
+    .event-badges {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      margin-right: 4px;
+    }
+
+    .tiktok-emote {
+      display: inline-block;
+      height: 1.3em;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+
+    .unicode-emoji {
+      display: inline;
+      margin: 0 1px;
+    }
+
     .event-username {
       font-weight: 600;
       flex-shrink: 0;
@@ -367,6 +386,11 @@
   <!-- Libraries -->
   <script src="/plugins/clarityhud/lib/animations.js"></script>
   <script src="/plugins/clarityhud/lib/layout-engine.js"></script>
+  <script src="/plugins/clarityhud/lib/accessibility.js"></script>
+  <script src="/plugins/clarityhud/lib/emoji-parser.js"></script>
+  <script src="/plugins/clarityhud/lib/badge-renderer.js"></script>
+  <script src="/plugins/clarityhud/lib/message-parser.js"></script>
+  <script src="/plugins/clarityhud/lib/virtual-scroller.js"></script>
 
   <script src="/plugins/clarityhud/overlays/full.js"></script>
 </body>
