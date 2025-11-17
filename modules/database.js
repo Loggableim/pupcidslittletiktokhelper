@@ -706,6 +706,38 @@ class DatabaseManager {
             physics_wind_strength: 0.0005,
             physics_wind_variation: 0.0003,
 
+            // Wind Simulation
+            wind_enabled: false,
+            wind_strength: 50,
+            wind_direction: 'auto',
+
+            // Bounce Physics
+            floor_enabled: true,
+            bounce_enabled: true,
+            bounce_height: 0.6,
+            bounce_damping: 0.1,
+
+            // Color Theme
+            color_mode: 'off',
+            color_intensity: 0.5,
+
+            // Rainbow Mode
+            rainbow_enabled: false,
+            rainbow_speed: 1.0,
+
+            // Pixel Mode
+            pixel_enabled: false,
+            pixel_size: 4,
+
+            // SuperFan Burst
+            superfan_burst_enabled: true,
+            superfan_burst_intensity: 3.0,
+            superfan_burst_duration: 2000,
+
+            // FPS Optimization
+            fps_optimization_enabled: true,
+            fps_sensitivity: 0.8,
+
             // Appearance Settings
             emoji_min_size_px: 40,
             emoji_max_size_px: 80,
