@@ -2300,6 +2300,180 @@ if (typeof loadSettings === 'function') {
     document.addEventListener('DOMContentLoaded', loadTikTokSettings);
 }
 
+// ========== SESSION EXTRACTOR ==========
+
+// Load session status
+async function loadSessionStatus() {
+    try {
+        const response = await fetch('/api/session/status');
+        const status = await response.json();
+        
+        const statusContainer = document.getElementById('session-status-container');
+        const statusText = document.getElementById('session-status-text');
+        
+        if (status.hasSession) {
+            statusContainer.className = 'alert alert-success';
+            statusText.innerHTML = `✅ Session-ID aktiv: ${status.sessionId}<br>` +
+                                  `Extrahiert am: ${new Date(status.extractedAt).toLocaleString('de-DE')}`;
+        } else {
+            statusContainer.className = 'alert alert-info';
+            statusText.textContent = 'ℹ️ Keine Session-ID konfiguriert';
+        }
+    } catch (error) {
+        console.error('Failed to load session status:', error);
+    }
+}
+
+// Extract session (automatic)
+document.getElementById('extract-session-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('extract-session-btn');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Extrahiere...';
+    lucide.createIcons();
+    
+    try {
+        const response = await fetch('/api/session/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ headless: true })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('✅ Session-ID erfolgreich extrahiert!', 'success');
+            await loadSessionStatus();
+        } else if (result.requiresLogin) {
+            showNotification('⚠️ Nicht eingeloggt. Verwende "Manuell" und logge dich in TikTok ein.', 'warning');
+        } else {
+            showNotification(`❌ Fehler: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Session extraction error:', error);
+        showNotification('❌ Fehler bei der Session-Extraktion', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        lucide.createIcons();
+    }
+});
+
+// Extract session (manual login)
+document.getElementById('extract-session-manual-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('extract-session-manual-btn');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Browser öffnet...';
+    lucide.createIcons();
+    
+    showNotification('🌐 Browser wird geöffnet. Bitte logge dich in TikTok ein.', 'info');
+    
+    try {
+        const response = await fetch('/api/session/extract-manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('✅ Session-ID erfolgreich extrahiert!', 'success');
+            await loadSessionStatus();
+        } else {
+            showNotification(`❌ Fehler: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Manual session extraction error:', error);
+        showNotification('❌ Fehler bei der manuellen Session-Extraktion', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        lucide.createIcons();
+    }
+});
+
+// Clear session
+document.getElementById('clear-session-btn')?.addEventListener('click', async () => {
+    if (!confirm('Möchtest du die gespeicherte Session-ID wirklich löschen?')) {
+        return;
+    }
+    
+    const btn = document.getElementById('clear-session-btn');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Lösche...';
+    lucide.createIcons();
+    
+    try {
+        const response = await fetch('/api/session/clear', {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('✅ Session-ID gelöscht', 'success');
+            await loadSessionStatus();
+        } else {
+            showNotification(`❌ Fehler: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('Session clear error:', error);
+        showNotification('❌ Fehler beim Löschen der Session', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        lucide.createIcons();
+    }
+});
+
+// Test browser availability
+document.getElementById('test-browser-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('test-browser-btn');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Teste...';
+    lucide.createIcons();
+    
+    try {
+        const response = await fetch('/api/session/test-browser');
+        const result = await response.json();
+        
+        if (result.available) {
+            showNotification('✅ Browser-Automation verfügbar!', 'success');
+        } else {
+            showNotification(`⚠️ Browser nicht verfügbar: ${result.message}`, 'warning');
+        }
+    } catch (error) {
+        console.error('Browser test error:', error);
+        showNotification('❌ Fehler beim Browser-Test', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        lucide.createIcons();
+    }
+});
+
+// Load session status when settings page is opened
+document.addEventListener('DOMContentLoaded', () => {
+    const settingsTab = document.querySelector('[data-page="settings"]');
+    if (settingsTab) {
+        settingsTab.addEventListener('click', () => {
+            setTimeout(loadSessionStatus, 100);
+        });
+    }
+    
+    // Also load on page load if on settings page
+    if (window.location.hash === '#settings' || !window.location.hash) {
+        setTimeout(loadSessionStatus, 500);
+    }
+});
+
 // ========== CONNECTION DIAGNOSTICS ==========
 
 // Run diagnostics

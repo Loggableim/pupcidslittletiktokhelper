@@ -19,6 +19,7 @@ const FlowEngine = require('./modules/flows');
 const { GoalManager } = require('./modules/goals');
 const UserProfileManager = require('./modules/user-profiles');
 const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integration
+const SessionExtractor = require('./modules/session-extractor');
 
 // Import New Modules
 const logger = require('./modules/logger');
@@ -259,6 +260,10 @@ const tiktok = new TikTokConnector(io, db, logger);
 const alerts = new AlertManager(io, db, logger);
 const flows = new FlowEngine(db, alerts, logger);
 const goals = new GoalManager(db, io, logger);
+
+// Session Extractor for TikTok authentication
+const sessionExtractor = new SessionExtractor(db);
+logger.info('🔐 Session Extractor initialized');
 
 // New Modules
 const obs = new OBSWebSocket(db, io, logger);
@@ -619,6 +624,106 @@ app.get('/api/connection-health', apiLimiter, async (req, res) => {
     } catch (error) {
         logger.error('Connection health check error:', error);
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ========== SESSION EXTRACTOR ROUTES ==========
+
+app.post('/api/session/extract', authLimiter, async (req, res) => {
+    try {
+        logger.info('🔐 Starting session extraction...');
+        const options = {
+            headless: req.body.headless !== false,
+            executablePath: req.body.executablePath || null
+        };
+        
+        const result = await sessionExtractor.extractSessionId(options);
+        
+        if (result.success) {
+            logger.info('✅ Session extraction successful');
+        } else {
+            logger.warn('⚠️  Session extraction failed:', result.message);
+        }
+        
+        res.json(result);
+    } catch (error) {
+        logger.error('Session extraction error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            message: 'Session extraction failed'
+        });
+    }
+});
+
+app.post('/api/session/extract-manual', authLimiter, async (req, res) => {
+    try {
+        logger.info('🔐 Starting manual session extraction...');
+        const options = {
+            executablePath: req.body.executablePath || null
+        };
+        
+        const result = await sessionExtractor.extractWithManualLogin(options);
+        
+        if (result.success) {
+            logger.info('✅ Manual session extraction successful');
+        } else {
+            logger.warn('⚠️  Manual session extraction failed:', result.message);
+        }
+        
+        res.json(result);
+    } catch (error) {
+        logger.error('Manual session extraction error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            message: 'Manual session extraction failed'
+        });
+    }
+});
+
+app.get('/api/session/status', apiLimiter, (req, res) => {
+    try {
+        const status = sessionExtractor.getSessionStatus();
+        res.json(status);
+    } catch (error) {
+        logger.error('Session status error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+app.delete('/api/session/clear', authLimiter, (req, res) => {
+    try {
+        logger.info('🗑️  Clearing session data...');
+        const result = sessionExtractor.clearSessionData();
+        
+        if (result.success) {
+            logger.info('✅ Session data cleared');
+        }
+        
+        res.json(result);
+    } catch (error) {
+        logger.error('Session clear error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+app.get('/api/session/test-browser', apiLimiter, async (req, res) => {
+    try {
+        const result = await sessionExtractor.testBrowserAvailability();
+        res.json(result);
+    } catch (error) {
+        logger.error('Browser test error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
     }
 });
 
