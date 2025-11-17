@@ -194,8 +194,42 @@ class OpenShockClient {
             return [];
         }
         const response = await this._executeRequest('GET', '/1/shockers/own', null, 1);
-        // OpenShock API returns { data: [...] }, extract the data array
-        return response.data || response || [];
+        
+        // OpenShock API returns LegacyDataResponse { Message, Data }
+        // where Data is an array of devices, each containing an array of shockers
+        const devicesWithShockers = response.data || response.Data || response || [];
+        
+        // Flatten the structure: extract all shockers from all devices
+        // Each shocker gets device info added to it for context
+        const allShockers = [];
+        
+        for (const device of devicesWithShockers) {
+            if (device.shockers || device.Shockers) {
+                const shockers = device.shockers || device.Shockers;
+                for (const shocker of shockers) {
+                    // Map OpenShock API field names to plugin expected format
+                    allShockers.push({
+                        id: shocker.id || shocker.Id,
+                        name: shocker.name || shocker.Name,
+                        rfId: shocker.rfId || shocker.RfId,
+                        model: shocker.model || shocker.Model,
+                        isPaused: shocker.isPaused || shocker.IsPaused || false,
+                        createdOn: shocker.createdOn || shocker.CreatedOn,
+                        // Add device info for context
+                        deviceId: device.id || device.Id,
+                        deviceName: device.name || device.Name,
+                        // Additional fields that may be present
+                        type: shocker.model || shocker.Model || 'Shocker',
+                        online: true, // Assume online if returned by API
+                        battery: shocker.battery || shocker.Battery,
+                        rssi: shocker.rssi || shocker.Rssi
+                    });
+                }
+            }
+        }
+        
+        this.logger.info(`Extracted ${allShockers.length} shockers from ${devicesWithShockers.length} devices`);
+        return allShockers;
     }
 
     /**
