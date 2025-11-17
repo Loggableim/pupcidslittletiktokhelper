@@ -1125,6 +1125,64 @@
                             </button>
                         </div>
 
+                        <!-- Session Extractor -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="key"></i>
+                                TikTok Session-ID Extraktion
+                            </h3>
+                            <p class="form-help">
+                                Extrahiere eine Session-ID von TikTok, um die Verbindungsstabilität zu verbessern. 
+                                Dies ist besonders hilfreich bei 504-Fehlern vom Sign-Server.
+                            </p>
+
+                            <!-- Session Status -->
+                            <div id="session-status-container" class="alert alert-info" style="margin-bottom: 1rem;">
+                                <i data-lucide="info"></i>
+                                <span id="session-status-text">Lade Session-Status...</span>
+                            </div>
+
+                            <!-- Extraction Buttons -->
+                            <div class="form-grid" style="margin-bottom: 1rem;">
+                                <button id="extract-session-btn" class="btn btn-primary">
+                                    <i data-lucide="download"></i>
+                                    Session-ID extrahieren (Automatisch)
+                                </button>
+                                <button id="extract-session-manual-btn" class="btn btn-secondary">
+                                    <i data-lucide="user"></i>
+                                    Session-ID extrahieren (Manuell)
+                                </button>
+                            </div>
+
+                            <div class="form-group">
+                                <button id="clear-session-btn" class="btn btn-danger">
+                                    <i data-lucide="trash-2"></i>
+                                    Session-ID löschen
+                                </button>
+                                <button id="test-browser-btn" class="btn btn-secondary">
+                                    <i data-lucide="check-circle"></i>
+                                    Browser-Verfügbarkeit testen
+                                </button>
+                            </div>
+
+                            <div class="alert alert-warning">
+                                <i data-lucide="alert-triangle"></i>
+                                <span>
+                                    <strong>Hinweis:</strong> Die automatische Extraktion funktioniert nur, wenn du bereits in TikTok eingeloggt bist.
+                                    Verwende "Manuell" wenn du dich erst einloggen musst.
+                                </span>
+                            </div>
+
+                            <div class="form-help" style="margin-top: 1rem;">
+                                <h4>So funktioniert's:</h4>
+                                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                    <li><strong>Automatisch:</strong> Startet einen unsichtbaren Browser, navigiert zu TikTok und extrahiert die Session-ID aus deinen Cookies.</li>
+                                    <li><strong>Manuell:</strong> Öffnet einen sichtbaren Browser. Du kannst dich einloggen und die Session-ID wird nach 60 Sekunden automatisch extrahiert.</li>
+                                    <li>Die extrahierte Session-ID wird automatisch bei der nächsten Verbindung verwendet.</li>
+                                </ol>
+                            </div>
+                        </div>
+
                         <!-- Import/Export Presets -->
                         <div class="settings-card">
                             <h3 class="card-title">

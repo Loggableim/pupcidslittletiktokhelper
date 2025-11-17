@@ -403,7 +403,7 @@ class TikTokConnector extends EventEmitter {
                 return {
                     type: 'SIGN_API_GATEWAY_TIMEOUT',
                     message: 'TikTok Sign-Server antwortet nicht (504 Gateway Timeout). Der externe Sign-API-Dienst ist überlastet oder nicht erreichbar.',
-                    suggestion: 'Warte 2-5 Minuten bevor du es erneut versuchst. Dies ist ein Problem mit dem externen Sign-Server, nicht mit deiner Verbindung. Falls dauerhaft: Prüfe ob tiktok-live-connector Updates verfügbar sind.',
+                    suggestion: 'Warte 2-5 Minuten bevor du es erneut versuchst. ODER: Extrahiere eine Session-ID über das Dashboard (Einstellungen → Session-ID extrahieren), um die Verbindung zu verbessern. Falls dauerhaft: Prüfe ob tiktok-live-connector Updates verfügbar sind.',
                     retryable: true
                 };
             }
@@ -412,7 +412,7 @@ class TikTokConnector extends EventEmitter {
                 return {
                     type: 'SIGN_API_ERROR',
                     message: 'TikTok Sign-Server meldet einen internen Fehler (500). Der externe Sign-API-Dienst hat ein Problem.',
-                    suggestion: 'Warte 1-2 Minuten und versuche es erneut. Dies ist ein temporäres Problem des Sign-Servers. Falls dauerhaft: Prüfe ob tiktok-live-connector Updates verfügbar sind.',
+                    suggestion: 'Warte 1-2 Minuten und versuche es erneut. ODER: Extrahiere eine Session-ID über das Dashboard (Einstellungen → Session-ID extrahieren), um die Verbindung zu verbessern. Falls dauerhaft: Prüfe ob tiktok-live-connector Updates verfügbar sind.',
                     retryable: true
                 };
             }
@@ -420,7 +420,7 @@ class TikTokConnector extends EventEmitter {
             return {
                 type: 'SIGN_API_ERROR',
                 message: 'Fehler beim TikTok Sign-Server. Der externe Signatur-Dienst ist möglicherweise nicht verfügbar.',
-                suggestion: 'Warte 1-2 Minuten und versuche es erneut. Falls das Problem anhält: Prüfe auf Updates der tiktok-live-connector Library.',
+                suggestion: 'Warte 1-2 Minuten und versuche es erneut. ODER: Extrahiere eine Session-ID über das Dashboard (Einstellungen → Session-ID extrahieren). Falls das Problem anhält: Prüfe auf Updates der tiktok-live-connector Library.',
                 retryable: true
             };
         }
