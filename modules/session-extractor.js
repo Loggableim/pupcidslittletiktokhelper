@@ -298,11 +298,14 @@ class SessionExtractor {
         const extractedAt = this.db.getSetting('tiktok_session_extracted_at');
         const ttTargetIdc = this.db.getSetting('tiktok_tt_target_idc');
 
+        // Check for valid session (not null, not empty, not the string "null")
+        const hasValidSession = sessionId && sessionId !== 'null' && sessionId.length > 0;
+
         return {
-            hasSession: !!sessionId,
-            sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : null,
-            ttTargetIdc: ttTargetIdc || null,
-            extractedAt,
+            hasSession: hasValidSession,
+            sessionId: hasValidSession ? `${sessionId.substring(0, 10)}...` : null,
+            ttTargetIdc: (ttTargetIdc && ttTargetIdc !== 'null') ? ttTargetIdc : null,
+            extractedAt: (extractedAt && extractedAt !== 'null') ? extractedAt : null,
             isExtracting: this.isExtracting
         };
     }
