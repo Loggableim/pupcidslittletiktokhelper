@@ -282,8 +282,9 @@ function renderDeviceList() {
             <p class="text-muted text-center">No devices found. Configure API key first.</p>
         `;
         
-        // Also update test shock dropdown
+        // Also update test shock dropdown and mapping device dropdown
         updateTestShockDeviceList();
+        updateMappingDeviceList();
         return;
     }
 
@@ -352,8 +353,9 @@ function renderDeviceList() {
 
     container.innerHTML = html;
     
-    // Also update test shock dropdown
+    // Also update test shock dropdown and mapping device dropdown
     updateTestShockDeviceList();
+    updateMappingDeviceList();
 }
 
 function renderCommandLog(commands) {
@@ -553,6 +555,9 @@ function openMappingModal(mappingId = null) {
     } else {
         delete modal.dataset.editingId;
     }
+
+    // Populate device dropdown with current devices
+    updateMappingDeviceList();
 
     // Populate form - handle both frontend (trigger) and backend (eventType/conditions) format
     const nameInput = document.getElementById('mappingName');
@@ -1266,6 +1271,31 @@ function updateTestShockDeviceList() {
     // Enable/disable button based on device availability
     if (testShockButton) {
         testShockButton.disabled = devices.length === 0;
+    }
+}
+
+function updateMappingDeviceList() {
+    const mappingDevice = document.getElementById('mappingDevice');
+    
+    if (!mappingDevice) return;
+    
+    // Store currently selected value to restore it after repopulation
+    const currentValue = mappingDevice.value;
+    
+    // Clear existing options
+    mappingDevice.innerHTML = '<option value="">Select Device...</option>';
+    
+    // Add device options
+    devices.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.id;
+        option.textContent = device.name || device.id;
+        mappingDevice.appendChild(option);
+    });
+    
+    // Restore previously selected value if it still exists
+    if (currentValue && devices.some(d => d.id === currentValue)) {
+        mappingDevice.value = currentValue;
     }
 }
 
@@ -2247,6 +2277,7 @@ window.openShock = {
     testConnection,
     refreshDevices,
     updateTestShockDeviceList,
+    updateMappingDeviceList,
     executeTestShock,
     clearQueue,
     testDevice,
