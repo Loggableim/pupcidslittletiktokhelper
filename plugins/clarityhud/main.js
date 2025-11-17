@@ -73,6 +73,26 @@ class ClarityHUDPlugin {
       res.sendFile(libPath);
     });
 
+    this.api.registerRoute('GET', '/plugins/clarityhud/lib/emoji-parser.js', (req, res) => {
+      const libPath = path.join(__dirname, 'lib', 'emoji-parser.js');
+      res.sendFile(libPath);
+    });
+
+    this.api.registerRoute('GET', '/plugins/clarityhud/lib/badge-renderer.js', (req, res) => {
+      const libPath = path.join(__dirname, 'lib', 'badge-renderer.js');
+      res.sendFile(libPath);
+    });
+
+    this.api.registerRoute('GET', '/plugins/clarityhud/lib/message-parser.js', (req, res) => {
+      const libPath = path.join(__dirname, 'lib', 'message-parser.js');
+      res.sendFile(libPath);
+    });
+
+    this.api.registerRoute('GET', '/plugins/clarityhud/lib/virtual-scroller.js', (req, res) => {
+      const libPath = path.join(__dirname, 'lib', 'virtual-scroller.js');
+      res.sendFile(libPath);
+    });
+
     // Serve overlay JavaScript files
     this.api.registerRoute('GET', '/plugins/clarityhud/overlays/chat.js', (req, res) => {
       const jsPath = path.join(__dirname, 'overlays', 'chat.js');
