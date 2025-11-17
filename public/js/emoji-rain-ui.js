@@ -119,8 +119,6 @@ function updateUI() {
         setRangeValue('physics_air', config.physics_air);
         setRangeValue('physics_friction', config.physics_friction);
         setRangeValue('physics_restitution', config.physics_restitution);
-        setRangeValue('physics_wind_strength', config.physics_wind_strength);
-        setRangeValue('physics_wind_variation', config.physics_wind_variation);
 
         // Appearance
         console.log('🎨 [EMOJI RAIN UI] Setting appearance...');
@@ -190,8 +188,20 @@ function updateUI() {
 function setRangeValue(id, value) {
     const input = document.getElementById(id);
     const valueDisplay = document.getElementById(id + '_value');
+    
+    // Check if elements exist before accessing them
+    if (!input) {
+        console.warn(`⚠️ [EMOJI RAIN UI] Element with id "${id}" not found`);
+        return;
+    }
+    
     input.value = value;
-    valueDisplay.textContent = value;
+    
+    if (valueDisplay) {
+        valueDisplay.textContent = value;
+    } else {
+        console.warn(`⚠️ [EMOJI RAIN UI] Value display element "${id}_value" not found`);
+    }
 }
 
 // Save configuration
