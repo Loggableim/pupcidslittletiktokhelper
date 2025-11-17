@@ -177,16 +177,26 @@ class VariableStore {
      */
     updateState(path, value) {
         const parts = path.split('.');
+        
+        // Prevent prototype pollution
+        if (parts.some(part => part === '__proto__' || part === 'constructor' || part === 'prototype')) {
+            this.logger?.warn(`Blocked prototype pollution attempt in updateState: ${path}`);
+            return;
+        }
+        
         let current = this.state;
         
         for (let i = 0; i < parts.length - 1; i++) {
-            if (!current[parts[i]]) {
+            if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
                 current[parts[i]] = {};
             }
             current = current[parts[i]];
         }
         
-        current[parts[parts.length - 1]] = value;
+        const lastKey = parts[parts.length - 1];
+        if (lastKey !== '__proto__' && lastKey !== 'constructor' && lastKey !== 'prototype') {
+            current[lastKey] = value;
+        }
         this.logger?.debug(`State updated: ${path} = ${JSON.stringify(value)}`);
     }
 
@@ -287,16 +297,26 @@ class VariableStore {
      */
     setNestedValue(obj, path, value) {
         const parts = path.split('.');
+        
+        // Prevent prototype pollution
+        if (parts.some(part => part === '__proto__' || part === 'constructor' || part === 'prototype')) {
+            this.logger?.warn(`Blocked prototype pollution attempt in setNestedValue: ${path}`);
+            return;
+        }
+        
         let current = obj;
         
         for (let i = 0; i < parts.length - 1; i++) {
-            if (!current[parts[i]]) {
+            if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
                 current[parts[i]] = {};
             }
             current = current[parts[i]];
         }
         
-        current[parts[parts.length - 1]] = value;
+        const lastKey = parts[parts.length - 1];
+        if (lastKey !== '__proto__' && lastKey !== 'constructor' && lastKey !== 'prototype') {
+            current[lastKey] = value;
+        }
     }
 
     /**
