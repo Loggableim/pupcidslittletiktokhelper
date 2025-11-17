@@ -16,6 +16,9 @@ class TTSPlugin {
         this.api = api;
         this.logger = api.logger;
 
+        // Startup timestamp - used to ignore historical chat messages
+        this.startupTimestamp = new Date().toISOString();
+
         // Debug logging system
         this.debugLogs = [];
         this.maxDebugLogs = 500;
@@ -67,7 +70,8 @@ class TTSPlugin {
             defaultEngine: this.config.defaultEngine,
             defaultVoice: this.config.defaultVoice,
             enabledForChat: this.config.enabledForChat,
-            autoLanguageDetection: this.config.autoLanguageDetection
+            autoLanguageDetection: this.config.autoLanguageDetection,
+            startupTimestamp: this.startupTimestamp
         });
 
         this.logger.info('TTS Plugin initialized successfully');
@@ -519,6 +523,17 @@ class TTSPlugin {
     _registerTikTokEvents() {
         this.api.registerTikTokEvent('chat', async (data) => {
             try {
+                // Skip historical messages - only process messages that arrive after plugin startup
+                if (data.timestamp && data.timestamp < this.startupTimestamp) {
+                    this._logDebug('TIKTOK_EVENT', 'Skipping historical chat message', {
+                        messageTimestamp: data.timestamp,
+                        startupTimestamp: this.startupTimestamp,
+                        username: data.uniqueId || data.nickname
+                    });
+                    this.logger.info(`TTS: Skipping historical chat message from ${data.uniqueId || data.nickname}`);
+                    return;
+                }
+
                 // Extract text from either 'message' or 'comment' field
                 const chatText = data.message || data.comment;
 
@@ -535,7 +550,8 @@ class TTSPlugin {
                     isSubscriber: data.isSubscriber,
                     userId: data.userId,
                     normalizedUserId: userId,
-                    normalizedUsername: username
+                    normalizedUsername: username,
+                    timestamp: data.timestamp
                 });
 
                 this.logger.info(`TTS: Received chat event from ${username}: "${chatText}"`);
