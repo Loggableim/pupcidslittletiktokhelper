@@ -99,6 +99,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Detect system preference for reduced motion
   detectSystemPreferences();
   
+  // Enable debug console toggle with Ctrl+D
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'd') {
+      e.preventDefault();
+      const debugConsole = document.getElementById('debug-console');
+      if (debugConsole) {
+        debugConsole.style.display = debugConsole.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+  });
+  
   console.log('[CHAT HUD] Initialization complete, waiting for socket connection...');
 });
 

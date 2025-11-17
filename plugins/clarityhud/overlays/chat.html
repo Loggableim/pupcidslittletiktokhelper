@@ -193,16 +193,5 @@
   <script src="/plugins/clarityhud/lib/virtual-scroller.js"></script>
 
   <script src="/plugins/clarityhud/overlays/chat.js"></script>
-  
-  <!-- Enable debug console with Ctrl+D -->
-  <script>
-    document.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.key === 'd') {
-        e.preventDefault();
-        const debugConsole = document.getElementById('debug-console');
-        debugConsole.style.display = debugConsole.style.display === 'none' ? 'block' : 'none';
-      }
-    });
-  </script>
 </body>
 </html>
