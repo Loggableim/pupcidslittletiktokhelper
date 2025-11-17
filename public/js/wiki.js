@@ -10,9 +10,14 @@
     let wikiStructure = null;
     let wikiCache = new Map();
     let currentPage = 'home';
+    let isInitialized = false;
+    let viewObserver = null;
+    let searchTimeout = null;
 
     // ========== CONFIGURATION ==========
     const WIKI_API_BASE = '/api/wiki';
+    const SEARCH_DEBOUNCE_MS = 300;
+    const CACHE_MAX_SIZE = 50; // Limit cache size to prevent memory issues
 
     // ========== INITIALIZATION ==========
     document.addEventListener('DOMContentLoaded', async () => {
@@ -20,24 +25,31 @@
         const wikiView = document.getElementById('view-wiki');
         if (!wikiView) return;
 
-        // Set up observer to load wiki when view becomes active
-        const observer = new MutationObserver(() => {
-            if (wikiView.classList.contains('active') && !wikiStructure) {
+        // Set up observer to load wiki when view becomes active (lazy initialization)
+        viewObserver = new MutationObserver(() => {
+            if (wikiView.classList.contains('active') && !isInitialized) {
                 initializeWiki();
             }
         });
 
-        observer.observe(wikiView, { attributes: true, attributeFilter: ['class'] });
+        viewObserver.observe(wikiView, { attributes: true, attributeFilter: ['class'] });
 
         // Also check if it's already active
         if (wikiView.classList.contains('active')) {
             initializeWiki();
         }
+
+        // Handle URL hash navigation
+        handleHashNavigation();
+        window.addEventListener('hashchange', handleHashNavigation);
     });
 
     // ========== WIKI INITIALIZATION ==========
     async function initializeWiki() {
+        if (isInitialized) return;
+        
         console.log('📚 [Wiki] Initializing wiki system...');
+        isInitialized = true;
 
         try {
             // Load wiki structure
@@ -50,19 +62,44 @@
             // Build navigation
             buildNavigation();
 
-            // Set up search
+            // Set up search (consolidated event listener)
             setupSearch();
 
-            // Load home page by default
-            await loadPage('home');
+            // Load initial page based on hash or default to home
+            const hashPage = getPageFromHash();
+            await loadPage(hashPage || 'home');
 
-            // Re-initialize Lucide icons
+            // Re-initialize Lucide icons once
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
         } catch (error) {
             console.error('❌ [Wiki] Initialization failed:', error);
             showError('Failed to load wiki. Please try again later.');
+        }
+    }
+
+    // ========== URL HASH NAVIGATION ==========
+    function handleHashNavigation() {
+        const pageId = getPageFromHash();
+        if (pageId && wikiStructure) {
+            loadPage(pageId);
+        }
+    }
+
+    function getPageFromHash() {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#wiki:')) {
+            return hash.replace('#wiki:', '');
+        }
+        return null;
+    }
+
+    function setPageHash(pageId) {
+        if (pageId && pageId !== 'home') {
+            window.history.pushState({ page: pageId }, '', `#wiki:${pageId}`);
+        } else {
+            window.history.pushState({ page: 'home' }, '', window.location.pathname);
         }
     }
 
@@ -77,6 +114,7 @@
         wikiStructure.sections.forEach(section => {
             const sectionEl = document.createElement('div');
             sectionEl.className = 'wiki-nav-section';
+            sectionEl.dataset.sectionId = section.id;
 
             // Section header
             const headerEl = document.createElement('div');
@@ -86,10 +124,6 @@
                 <span>${section.title}</span>
                 <i data-lucide="chevron-down" class="wiki-nav-chevron"></i>
             `;
-            headerEl.addEventListener('click', () => {
-                sectionEl.classList.toggle('collapsed');
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            });
 
             sectionEl.appendChild(headerEl);
 
@@ -100,16 +134,12 @@
             section.pages.forEach(page => {
                 const itemEl = document.createElement('a');
                 itemEl.className = 'wiki-nav-item';
-                itemEl.href = '#';
+                itemEl.href = `#wiki:${page.id}`;
                 itemEl.dataset.page = page.id;
                 itemEl.innerHTML = `
                     <i data-lucide="${page.icon || 'file-text'}"></i>
                     <span>${page.title}</span>
                 `;
-                itemEl.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await loadPage(page.id);
-                });
 
                 itemsContainer.appendChild(itemEl);
             });
@@ -118,7 +148,32 @@
             navContainer.appendChild(sectionEl);
         });
 
-        // Re-initialize Lucide icons
+        // Event delegation for section headers
+        navContainer.addEventListener('click', (e) => {
+            const header = e.target.closest('.wiki-nav-section-header');
+            if (header) {
+                const section = header.closest('.wiki-nav-section');
+                section.classList.toggle('collapsed');
+                // Re-initialize icons only for the changed chevron
+                if (typeof lucide !== 'undefined') {
+                    const chevron = header.querySelector('.wiki-nav-chevron');
+                    if (chevron) {
+                        lucide.createIcons({ icons: { 'chevron-down': lucide.icons['chevron-down'] } });
+                    }
+                }
+                return;
+            }
+
+            // Event delegation for navigation items
+            const navItem = e.target.closest('.wiki-nav-item');
+            if (navItem) {
+                e.preventDefault();
+                const pageId = navItem.dataset.page;
+                loadPage(pageId);
+            }
+        });
+
+        // Re-initialize Lucide icons once
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
@@ -131,6 +186,9 @@
 
         const articleContainer = document.getElementById('wiki-article');
         if (!articleContainer) return;
+
+        // Save scroll position before loading new page
+        const scrollPosition = articleContainer.scrollTop;
 
         // Show loading state
         articleContainer.innerHTML = `
@@ -152,6 +210,13 @@
                 if (!response.ok) throw new Error(`Failed to load page: ${pageId}`);
                 
                 content = await response.json();
+                
+                // Add to cache with size limit
+                if (wikiCache.size >= CACHE_MAX_SIZE) {
+                    // Remove oldest entry (first key)
+                    const firstKey = wikiCache.keys().next().value;
+                    wikiCache.delete(firstKey);
+                }
                 wikiCache.set(pageId, content);
             }
 
@@ -161,7 +226,10 @@
             // Update active state in navigation
             updateActiveNav(pageId);
 
-            // Scroll to top
+            // Update URL hash
+            setPageHash(pageId);
+
+            // Scroll to top of article container
             articleContainer.scrollTop = 0;
 
         } catch (error) {
@@ -186,16 +254,8 @@
                 if (index === content.breadcrumb.length - 1) {
                     return `<span>${item.title}</span>`;
                 }
-                return `<a href="#" data-page="${item.id}">${item.title}</a>`;
+                return `<a href="#wiki:${item.id}" data-page="${item.id}">${item.title}</a>`;
             }).join('<i data-lucide="chevron-right"></i>');
-            
-            // Add click handlers
-            breadcrumb.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await loadPage(e.target.dataset.page);
-                });
-            });
             
             article.appendChild(breadcrumb);
         }
@@ -241,16 +301,55 @@
         articleContainer.innerHTML = '';
         articleContainer.appendChild(article);
 
-        // Re-initialize Lucide icons
+        // Re-initialize Lucide icons once
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
 
-        // Set up internal link handlers
-        setupInternalLinks(articleContainer);
+        // Set up event delegation for internal links, breadcrumbs, TOC, and images
+        setupArticleEventHandlers(article);
+    }
 
-        // Set up image viewers
-        setupImageViewers(articleContainer);
+    // ========== EVENT DELEGATION FOR ARTICLE ==========
+    function setupArticleEventHandlers(article) {
+        article.addEventListener('click', (e) => {
+            // Handle breadcrumb clicks
+            const breadcrumbLink = e.target.closest('.wiki-breadcrumb a[data-page]');
+            if (breadcrumbLink) {
+                e.preventDefault();
+                loadPage(breadcrumbLink.dataset.page);
+                return;
+            }
+
+            // Handle TOC clicks (smooth scroll to heading)
+            const tocLink = e.target.closest('.wiki-toc-nav a[href^="#"]');
+            if (tocLink) {
+                e.preventDefault();
+                const targetId = tocLink.getAttribute('href').substring(1);
+                const targetElement = article.querySelector(`#${targetId}, [id="${targetId}"]`);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                return;
+            }
+
+            // Handle wiki internal links (#wiki:pageId)
+            const wikiLink = e.target.closest('a[href^="#wiki:"]');
+            if (wikiLink) {
+                e.preventDefault();
+                const pageId = wikiLink.getAttribute('href').replace('#wiki:', '');
+                loadPage(pageId);
+                return;
+            }
+
+            // Handle image clicks (lightbox)
+            const img = e.target.closest('.wiki-markdown-content img');
+            if (img) {
+                e.preventDefault();
+                showImageModal(img.src, img.alt);
+                return;
+            }
+        });
     }
 
     function buildTOC(toc) {
@@ -281,40 +380,25 @@
         }
     }
 
-    function setupInternalLinks(container) {
-        // Handle internal wiki links
-        container.querySelectorAll('a[href^="#"]').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href.startsWith('#wiki:')) {
-                const pageId = href.replace('#wiki:', '');
-                link.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await loadPage(pageId);
-                });
-            }
-        });
-    }
-
-    function setupImageViewers(container) {
-        // Add click handlers to images for lightbox view
-        container.querySelectorAll('img').forEach(img => {
-            img.addEventListener('click', () => {
-                showImageModal(img.src, img.alt);
-            });
-        });
-    }
-
     // ========== SEARCH ==========
     function setupSearch() {
         const searchInput = document.getElementById('wiki-search');
         if (!searchInput) return;
 
-        let searchTimeout;
+        // Use single event listener with debouncing
         searchInput.addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 performSearch(e.target.value);
-            }, 300);
+            }, SEARCH_DEBOUNCE_MS);
+        });
+
+        // Close search results when clicking outside
+        document.addEventListener('click', (e) => {
+            const searchContainer = e.target.closest('.wiki-search-container');
+            if (!searchContainer) {
+                hideSearchResults();
+            }
         });
     }
 
@@ -361,28 +445,30 @@
             `;
         } else {
             resultsContainer.innerHTML = results.map(result => `
-                <a href="#" class="wiki-search-result" data-page="${result.id}">
+                <a href="#wiki:${result.id}" class="wiki-search-result" data-page="${result.id}">
                     <div class="wiki-search-result-title">${highlightMatch(result.title, result.matches)}</div>
                     <div class="wiki-search-result-excerpt">${highlightMatch(result.excerpt, result.matches)}</div>
                 </a>
             `).join('');
-
-            // Add click handlers
-            resultsContainer.querySelectorAll('.wiki-search-result').forEach(result => {
-                result.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await loadPage(result.dataset.page);
-                    hideSearchResults();
-                    document.getElementById('wiki-search').value = '';
-                });
-            });
         }
 
+        // Event delegation for search results (already handled by navigation click handler)
         resultsContainer.style.display = 'block';
         
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
+
+        // Add click handler for search results
+        resultsContainer.addEventListener('click', (e) => {
+            const result = e.target.closest('.wiki-search-result');
+            if (result) {
+                e.preventDefault();
+                loadPage(result.dataset.page);
+                hideSearchResults();
+                document.getElementById('wiki-search').value = '';
+            }
+        }, { once: false }); // Reusable handler
     }
 
     function hideSearchResults() {
@@ -426,19 +512,24 @@
 
         document.body.appendChild(modal);
 
-        // Close handlers
+        // Close handler
         const close = () => {
             modal.remove();
+            document.removeEventListener('keydown', escHandler);
         };
 
-        modal.querySelector('.wiki-image-modal-close').addEventListener('click', close);
-        modal.querySelector('.wiki-image-modal-backdrop').addEventListener('click', close);
+        // Close button and backdrop clicks
+        modal.addEventListener('click', (e) => {
+            if (e.target.classList.contains('wiki-image-modal-backdrop') ||
+                e.target.closest('.wiki-image-modal-close')) {
+                close();
+            }
+        });
 
         // ESC key handler
         const escHandler = (e) => {
             if (e.key === 'Escape') {
                 close();
-                document.removeEventListener('keydown', escHandler);
             }
         };
         document.addEventListener('keydown', escHandler);
@@ -470,9 +561,34 @@
         }
     }
 
+    // ========== CLEANUP ==========
+    function cleanup() {
+        // Clear cache
+        wikiCache.clear();
+        
+        // Clear search timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+            searchTimeout = null;
+        }
+        
+        // Disconnect observer
+        if (viewObserver) {
+            viewObserver.disconnect();
+            viewObserver = null;
+        }
+        
+        // Reset initialization flag
+        isInitialized = false;
+        
+        console.log('🧹 [Wiki] Cleanup completed');
+    }
+
     // ========== EXPORT ==========
     window.WikiSystem = {
         loadPage,
-        getCurrentPage: () => currentPage
+        getCurrentPage: () => currentPage,
+        clearCache: () => wikiCache.clear(),
+        cleanup
     };
 })();
