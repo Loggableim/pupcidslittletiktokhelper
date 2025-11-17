@@ -37,6 +37,7 @@ const UpdateManager = require('./modules/update-manager');
 const { Validators, ValidationError } = require('./modules/validators');
 const getAutoStartManager = require('./modules/auto-start');
 const PresetManager = require('./modules/preset-manager');
+const CloudSyncEngine = require('./modules/cloud-sync');
 
 // ========== EXPRESS APP ==========
 const app = express();
@@ -318,6 +319,10 @@ logger.info('🚀 Auto-Start Manager initialized');
 const presetManager = new PresetManager(db.db);
 logger.info('📦 Preset Manager initialized');
 
+// Cloud-Sync-Engine initialisieren
+const cloudSync = new CloudSyncEngine(db.db);
+logger.info('☁️  Cloud Sync Engine initialized');
+
 logger.info('✅ All modules initialized');
 
 // ========== SWAGGER DOCUMENTATION ==========
@@ -565,6 +570,141 @@ app.post('/api/presets/import', authLimiter, async (req, res) => {
         });
     } catch (error) {
         logger.error(`Preset import failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ========== CLOUD SYNC ROUTES ==========
+
+/**
+ * GET /api/cloud-sync/status - Gibt Cloud-Sync Status zurück
+ */
+app.get('/api/cloud-sync/status', apiLimiter, (req, res) => {
+    try {
+        const status = cloudSync.getStatus();
+        res.json({
+            success: true,
+            ...status
+        });
+    } catch (error) {
+        logger.error(`Cloud sync status check failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/cloud-sync/enable - Aktiviert Cloud-Sync mit angegebenem Pfad
+ */
+app.post('/api/cloud-sync/enable', authLimiter, async (req, res) => {
+    try {
+        const { cloudPath } = req.body;
+
+        if (!cloudPath) {
+            return res.status(400).json({
+                success: false,
+                error: 'Cloud path is required'
+            });
+        }
+
+        // Validate cloud path
+        const validation = cloudSync.validateCloudPath(cloudPath);
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                error: validation.error
+            });
+        }
+
+        const result = await cloudSync.enable(cloudPath);
+        logger.info(`Cloud sync enabled with path: ${cloudPath}`);
+        
+        res.json({
+            success: true,
+            message: 'Cloud sync enabled successfully',
+            ...cloudSync.getStatus()
+        });
+    } catch (error) {
+        logger.error(`Cloud sync enable failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/cloud-sync/disable - Deaktiviert Cloud-Sync
+ */
+app.post('/api/cloud-sync/disable', authLimiter, async (req, res) => {
+    try {
+        const result = await cloudSync.disable();
+        logger.info('Cloud sync disabled');
+        
+        res.json({
+            success: true,
+            message: 'Cloud sync disabled successfully',
+            ...cloudSync.getStatus()
+        });
+    } catch (error) {
+        logger.error(`Cloud sync disable failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/cloud-sync/manual-sync - Führt manuellen Sync durch
+ */
+app.post('/api/cloud-sync/manual-sync', authLimiter, async (req, res) => {
+    try {
+        const result = await cloudSync.manualSync();
+        logger.info('Manual cloud sync completed');
+        
+        res.json({
+            success: true,
+            message: 'Manual sync completed successfully',
+            ...result
+        });
+    } catch (error) {
+        logger.error(`Manual cloud sync failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/cloud-sync/validate-path - Validiert einen Cloud-Pfad
+ */
+app.post('/api/cloud-sync/validate-path', authLimiter, (req, res) => {
+    try {
+        const { cloudPath } = req.body;
+
+        if (!cloudPath) {
+            return res.status(400).json({
+                success: false,
+                error: 'Cloud path is required'
+            });
+        }
+
+        const validation = cloudSync.validateCloudPath(cloudPath);
+        
+        res.json({
+            success: validation.valid,
+            valid: validation.valid,
+            error: validation.error || null
+        });
+    } catch (error) {
+        logger.error(`Cloud path validation failed: ${error.message}`);
         res.status(500).json({
             success: false,
             error: error.message
@@ -2283,6 +2423,13 @@ const PORT = process.env.PORT || 3000;
         }, 3000);
     }
 
+        // Cloud Sync initialisieren (wenn aktiviert)
+        try {
+            await cloudSync.initialize();
+        } catch (error) {
+            logger.warn(`⚠️  Cloud Sync konnte nicht initialisiert werden: ${error.message}`);
+        }
+
         // Auto-Update-Check starten (alle 24 Stunden)
         // Nur wenn Update-Manager verfügbar ist
         try {
@@ -2371,6 +2518,13 @@ process.on('SIGINT', async () => {
     // OBS-Verbindung trennen
     if (obs.isConnected()) {
         await obs.disconnect();
+    }
+
+    // Cloud Sync beenden
+    try {
+        await cloudSync.shutdown();
+    } catch (error) {
+        logger.error('Error shutting down cloud sync:', error);
     }
 
     // Datenbank schließen
