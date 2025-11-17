@@ -12,6 +12,23 @@
 
     // ========== INITIALIZATION ==========
     document.addEventListener('DOMContentLoaded', async () => {
+        // Initialize UI immediately for better responsiveness
+        initializeSidebar();
+        initializeNavigation();
+        initializeShortcuts();
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+
+        // Load plugin visibility asynchronously (non-blocking)
+        // This prevents the dashboard from appearing unresponsive
+        initializePluginVisibilityAsync();
+    });
+
+    // Async wrapper for plugin visibility initialization
+    async function initializePluginVisibilityAsync() {
         // Wait for server to be fully initialized before loading plugins
         if (window.initHelper) {
             try {
@@ -23,16 +40,9 @@
             }
         }
 
-        initializeSidebar();
-        initializeNavigation();
-        initializeShortcuts();
+        // Load plugin visibility
         await initializePluginVisibility();
-
-        // Re-initialize Lucide icons
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-    });
+    }
 
     // ========== SIDEBAR MANAGEMENT ==========
     function initializeSidebar() {
@@ -304,7 +314,7 @@
     // Old toggle-based implementation has been removed
 
     // ========== PLUGIN VISIBILITY ==========
-    async function initializePluginVisibility(retryCount = 0, maxRetries = 5) {
+    async function initializePluginVisibility(retryCount = 0, maxRetries = 3) {
         try {
             // Load plugin list from server
             const response = await fetch('/api/plugins');
@@ -314,7 +324,7 @@
                     console.log(`Plugin API not ready, retrying... (${retryCount + 1}/${maxRetries})`);
                     setTimeout(() => {
                         initializePluginVisibility(retryCount + 1, maxRetries);
-                    }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s, 4s, 5s
+                    }, 500 * (retryCount + 1)); // Faster retry: 500ms, 1s, 1.5s
                     return;
                 }
                 console.warn('Failed to load plugins for visibility check after retries');
@@ -334,7 +344,7 @@
                     .map(p => p.id)
             );
 
-            console.log('Active plugins:', Array.from(activePlugins));
+            console.log('✅ [Navigation] Active plugins loaded:', Array.from(activePlugins));
 
             // Hide sidebar items and shortcuts for inactive plugins
             const pluginElements = document.querySelectorAll('[data-plugin]');
@@ -360,7 +370,7 @@
                 console.log(`Error loading plugins, retrying... (${retryCount + 1}/${maxRetries})`);
                 setTimeout(() => {
                     initializePluginVisibility(retryCount + 1, maxRetries);
-                }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s, 4s, 5s
+                }, 500 * (retryCount + 1)); // Faster retry: 500ms, 1s, 1.5s
                 return;
             }
             console.error('Error checking plugin visibility after retries:', error);
