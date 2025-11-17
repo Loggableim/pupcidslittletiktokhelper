@@ -94,6 +94,45 @@ class SafetyManager {
   }
 
   /**
+   * Validate a command and apply safety limits
+   * This is a wrapper around checkCommand that provides a simpler interface
+   * compatible with main.js expectations
+   * 
+   * @param {Object} params - Command parameters
+   * @param {string} params.deviceId - Device ID
+   * @param {string} params.type - Command type (shock, vibrate, sound)
+   * @param {number} params.intensity - Intensity (1-100)
+   * @param {number} params.duration - Duration in milliseconds
+   * @param {string} params.userId - User ID
+   * @param {string} [params.source] - Command source (for logging)
+   * @returns {Object} { allowed: boolean, reason: string, adjustedIntensity: number, adjustedDuration: number }
+   */
+  validateCommand(params) {
+    const { deviceId, type, intensity, duration, userId, source } = params;
+    
+    const command = { type, intensity, duration, source };
+    const result = this.checkCommand(command, userId, deviceId);
+    
+    // If allowed, extract adjusted values from modifiedCommand
+    if (result.allowed && result.modifiedCommand) {
+      return {
+        allowed: true,
+        reason: result.reason,
+        adjustedIntensity: result.modifiedCommand.intensity,
+        adjustedDuration: result.modifiedCommand.duration
+      };
+    }
+    
+    // If not allowed, return with original values
+    return {
+      allowed: result.allowed,
+      reason: result.reason,
+      adjustedIntensity: intensity,
+      adjustedDuration: duration
+    };
+  }
+
+  /**
    * Check if a command is allowed
    * @param {Object} command - Command object { type, intensity, duration }
    * @param {string} userId - User ID

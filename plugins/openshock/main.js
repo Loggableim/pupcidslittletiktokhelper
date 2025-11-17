@@ -285,16 +285,6 @@ class OpenShockPlugin {
             logger
         );
 
-        // Mapping Engine
-        this.mappingEngine = new MappingEngine(
-            logger
-        );
-
-        // Pattern Engine
-        this.patternEngine = new PatternEngine(
-            logger
-        );
-
         // Safety Manager
         this.safetyManager = new SafetyManager(
             {
@@ -303,6 +293,16 @@ class OpenShockPlugin {
                 userLimits: this.config.userLimits,
                 emergencyStop: this.config.emergencyStop
             },
+            logger
+        );
+
+        // Mapping Engine
+        this.mappingEngine = new MappingEngine(
+            logger
+        );
+
+        // Pattern Engine
+        this.patternEngine = new PatternEngine(
             logger
         );
 
@@ -456,6 +456,11 @@ class OpenShockPlugin {
                         this.config.baseUrl,
                         logger
                     );
+                    
+                    // Update queue manager's client reference
+                    if (this.queueManager) {
+                        this.queueManager.openShockClient = this.openShockClient;
+                    }
                 }
 
                 if (this.safetyManager) {
@@ -978,7 +983,7 @@ class OpenShockPlugin {
             try {
                 const settings = req.body;
 
-                this.safetyManager.updateLimits(settings);
+                this.safetyManager.updateConfig(settings);
 
                 // Update config
                 this.config.globalLimits = settings.globalLimits || this.config.globalLimits;
@@ -1005,7 +1010,7 @@ class OpenShockPlugin {
         app.post('/api/openshock/emergency-stop', authMiddleware, async (req, res) => {
             try {
                 // Emergency Stop aktivieren
-                this.safetyManager.activateEmergencyStop();
+                this.safetyManager.triggerEmergencyStop('Manual emergency stop triggered via API');
                 this.config.emergencyStop.enabled = true;
 
                 await this.saveData();
@@ -1041,7 +1046,7 @@ class OpenShockPlugin {
         app.post('/api/openshock/emergency-clear', authMiddleware, async (req, res) => {
             try {
                 // Emergency Stop deaktivieren
-                this.safetyManager.deactivateEmergencyStop();
+                this.safetyManager.clearEmergencyStop();
                 this.config.emergencyStop.enabled = false;
 
                 await this.saveData();
