@@ -208,6 +208,11 @@
                             </div>
                         </div>
 
+                        <div class="form-group">
+                            <label>Info (optional - wird nach der Runde angezeigt):</label>
+                            <textarea id="questionInfo" class="form-control" rows="2" placeholder="Zusätzliche Informationen zur Antwort (optional)"></textarea>
+                        </div>
+
                         <div class="button-group">
                             <button id="addQuestionBtn" class="btn btn-primary">➕ Frage Hinzufügen</button>
                             <button id="updateQuestionBtn" class="btn btn-secondary hidden">💾 Frage Aktualisieren</button>
@@ -372,6 +377,27 @@
                             <label>Marathon Länge (Anzahl richtiger Antworten):</label>
                             <input type="number" id="marathonLength" class="form-control" min="5" max="50" value="15">
                             <div class="help-text small">Wie viele Fragen muss ein Spieler in Folge richtig beantworten?</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auto Mode Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>⚡ Auto Modus</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="autoMode">
+                                <span>Auto Modus aktiviert (Automatisch zur nächsten Frage)</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Wartezeit vor nächster Frage (Sekunden):</label>
+                            <input type="number" id="autoModeDelay" class="form-control" min="3" max="30" value="5">
+                            <div class="help-text small">Zeit in Sekunden zwischen Antwortanzeige und nächster Frage</div>
                         </div>
                     </div>
                 </div>

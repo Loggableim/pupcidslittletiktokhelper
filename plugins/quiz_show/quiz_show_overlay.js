@@ -106,7 +106,13 @@
                 if (config.success && config.config) {
                     hudConfig = { ...hudConfig, ...config.config };
                     applyHUDConfig();
+                } else {
+                    // Apply default config if none loaded
+                    applyHUDConfig();
                 }
+            } else {
+                // Apply default config if fetch failed
+                applyHUDConfig();
             }
 
             // Load brand kit
@@ -119,6 +125,8 @@
             }
         } catch (error) {
             console.error('Error loading HUD config:', error);
+            // Apply default config even on error
+            applyHUDConfig();
         }
     }
 
@@ -471,11 +479,18 @@
                 timeRemaining: state.timeRemaining,
                 totalTime: state.totalTime,
                 hiddenAnswers: state.hiddenAnswers || [],
-                revealedWrongAnswer: state.revealedWrongAnswer
+                revealedWrongAnswer: state.revealedWrongAnswer,
+                info: state.currentQuestion.info || null
             };
 
             displayQuestion(gameData.question);
             displayAnswers(gameData.answers);
+            
+            // Update round indicator to show question is ready
+            const roundIndicator = document.getElementById('roundIndicator');
+            if (roundIndicator) {
+                roundIndicator.textContent = 'Aktuelle Frage';
+            }
 
             if (gameData.hiddenAnswers.length > 0) {
                 hideAnswers(gameData.hiddenAnswers);
@@ -507,6 +522,9 @@
     function handleRoundEnded(data) {
         console.log('Round ended:', data);
         gameData.correctIndex = data.correctAnswer;
+        gameData.correctAnswerLetter = data.correctAnswerLetter;
+        gameData.correctAnswerText = data.correctAnswerText;
+        gameData.info = data.info || null;
 
         if (currentState === States.RUNNING || currentState === States.TIME_LOW) {
             transitionToState(States.TIME_UP);
@@ -752,8 +770,23 @@
             const animClass = `anim-${hudConfig.correctAnimation}`;
             correctCard.classList.add(animClass);
 
-            // Show correct reveal overlay
+            // Show correct reveal overlay with proper info
             const correctReveal = document.getElementById('correctReveal');
+            const correctRevealContent = correctReveal.querySelector('.correct-reveal-content');
+            
+            // Build the popup content
+            let popupHTML = `
+                <div class="correct-icon">✓</div>
+                <div class="correct-text">Richtige Antwort: ${gameData.correctAnswerLetter || String.fromCharCode(65 + gameData.correctIndex)}</div>
+            `;
+            
+            // Add info if available
+            if (gameData.info) {
+                popupHTML += `<div class="correct-info">${escapeHtml(gameData.info)}</div>`;
+            }
+            
+            correctRevealContent.innerHTML = popupHTML;
+            
             correctReveal.classList.remove('hidden');
             correctReveal.classList.add('animate-reveal');
 
