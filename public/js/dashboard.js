@@ -276,6 +276,11 @@ function initializeSocketListeners() {
         updateStats(stats);
     });
 
+    // Stream Time Info (Debug)
+    socket.on('tiktok:streamTimeInfo', (info) => {
+        updateStreamTimeDebug(info);
+    });
+
     // Event
     socket.on('tiktok:event', (event) => {
         addEventToLog(event.type, event.data);
@@ -374,6 +379,12 @@ function updateConnectionStatus(status, data = {}) {
             if (runtimeEl) {
                 runtimeEl.textContent = '--:--:--';
             }
+            
+            // Hide debug panel
+            const debugPanel = document.getElementById('stream-time-debug');
+            if (debugPanel) {
+                debugPanel.style.display = 'none';
+            }
             break;
 
         case 'retrying':
@@ -461,6 +472,38 @@ function updateStats(stats) {
     if (giftsElement) {
         // Use stats.gifts if available, otherwise fallback to counting gifts from events
         giftsElement.textContent = (stats.gifts || 0).toLocaleString();
+    }
+}
+
+// ========== STREAM TIME DEBUG ==========
+function updateStreamTimeDebug(info) {
+    const debugPanel = document.getElementById('stream-time-debug');
+    const startEl = document.getElementById('debug-stream-start');
+    const durationEl = document.getElementById('debug-stream-duration');
+    const methodEl = document.getElementById('debug-detection-method');
+
+    if (debugPanel && startEl && durationEl && methodEl) {
+        // Show the debug panel
+        debugPanel.style.display = 'block';
+        
+        // Update values
+        startEl.textContent = info.streamStartISO || '--';
+        
+        const hours = Math.floor(info.currentDuration / 3600);
+        const minutes = Math.floor((info.currentDuration % 3600) / 60);
+        const seconds = info.currentDuration % 60;
+        durationEl.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        methodEl.textContent = info.detectionMethod || '--';
+        
+        // Color code based on detection method
+        if (info.detectionMethod && info.detectionMethod.includes('roomInfo')) {
+            methodEl.style.color = '#10b981'; // Green - good
+        } else if (info.detectionMethod && info.detectionMethod.includes('Event')) {
+            methodEl.style.color = '#f59e0b'; // Orange - acceptable
+        } else {
+            methodEl.style.color = '#ef4444'; // Red - fallback
+        }
     }
 }
 

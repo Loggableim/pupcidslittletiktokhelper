@@ -143,6 +143,24 @@ class TikTokConnector extends EventEmitter {
 
             this.isConnected = true;
 
+            // Save roomInfo for debugging (optional - can be enabled via setting)
+            const debugRoomInfo = this.db.getSetting('tiktok_debug_roominfo') === 'true';
+            if (debugRoomInfo) {
+                try {
+                    const fs = require('fs');
+                    const path = require('path');
+                    const debugDir = path.join(__dirname, '..', 'data', 'debug');
+                    if (!fs.existsSync(debugDir)) {
+                        fs.mkdirSync(debugDir, { recursive: true });
+                    }
+                    const debugFile = path.join(debugDir, `roomInfo_${username}_${Date.now()}.json`);
+                    fs.writeFileSync(debugFile, JSON.stringify(state.roomInfo, null, 2));
+                    console.log(`🐛 DEBUG: roomInfo saved to ${debugFile}`);
+                } catch (err) {
+                    console.warn(`⚠️  Could not save debug roomInfo:`, err.message);
+                }
+            }
+
             // Extract stream start time from room info
             // If we're reconnecting and have a persisted start time, use that instead
             if (this._persistedStreamStart && this.currentUsername === username) {
@@ -160,6 +178,14 @@ class TikTokConnector extends EventEmitter {
             this.durationInterval = setInterval(() => {
                 this.broadcastStats();
             }, 1000);
+
+            // Broadcast stream time info for debugging
+            this.io.emit('tiktok:streamTimeInfo', {
+                streamStartTime: this.streamStartTime,
+                streamStartISO: new Date(this.streamStartTime).toISOString(),
+                detectionMethod: this._streamTimeDetectionMethod || 'Unknown',
+                currentDuration: Math.floor((Date.now() - this.streamStartTime) / 1000)
+            });
 
             // Reset auto-reconnect counter after 5 minutes of stable connection
             if (this.autoReconnectResetTimeout) {
@@ -228,6 +254,7 @@ class TikTokConnector extends EventEmitter {
 
     /**
      * Extract stream start time from room info
+     * Tries multiple field locations and formats to find the actual stream start timestamp
      * @private
      */
     _extractStreamStartTime(roomInfo) {
@@ -236,44 +263,111 @@ class TikTokConnector extends EventEmitter {
             return Date.now();
         }
 
-        // Log full roomInfo structure for debugging (only keys to avoid sensitive data)
+        // Log full roomInfo structure for debugging (only top-level keys to avoid sensitive data)
         console.log(`🔍 [DEBUG] roomInfo keys available:`, Object.keys(roomInfo).join(', '));
+        
+        // Log nested structure if available
+        if (roomInfo.room) {
+            console.log(`🔍 [DEBUG] roomInfo.room keys:`, Object.keys(roomInfo.room).join(', '));
+        }
+        if (roomInfo.data) {
+            console.log(`🔍 [DEBUG] roomInfo.data keys:`, Object.keys(roomInfo.data).join(', '));
+        }
 
-        // Try multiple field names (TikTok API may use different names)
+        // Helper function to try extracting timestamp from a value
+        const tryExtractTimestamp = (value, fieldPath) => {
+            if (value === undefined || value === null || value === 0 || value === '0') {
+                return null;
+            }
+
+            // Handle both seconds and milliseconds timestamps
+            // Also handle string timestamps
+            let timestamp = typeof value === 'string' ? parseInt(value, 10) : value;
+            
+            // Skip if not a valid number
+            if (isNaN(timestamp)) {
+                return null;
+            }
+            
+            // Convert to milliseconds if in seconds (timestamps before year 2100)
+            if (timestamp < 4000000000) {
+                timestamp = timestamp * 1000;
+            }
+            
+            // Validate timestamp is reasonable (not in future, not before 2020)
+            const now = Date.now();
+            const minTime = new Date('2020-01-01').getTime();
+            
+            if (timestamp > minTime && timestamp <= now) {
+                console.log(`📅 ✅ Stream start time extracted from ${fieldPath}: ${new Date(timestamp).toISOString()}`);
+                console.log(`   ⏱️  Stream duration at connection: ${Math.floor((now - timestamp) / 1000)}s`);
+                this._streamTimeDetectionMethod = fieldPath; // Track detection method
+                return timestamp;
+            } else {
+                console.log(`🔍 [DEBUG] Rejected timestamp from ${fieldPath}: ${timestamp} (out of valid range)`);
+                return null;
+            }
+        };
+
+        // Try multiple field names and locations
         // Priority order: most specific to least specific
-        const timeFields = [
-            'start_time',           // TikTok standard field for stream start
-            'startTime',            // Camel case variant
-            'create_time',          // Room creation time (may differ from stream start)
-            'createTime',           // Camel case variant
-            'finish_time',          // Fallback - if stream ended, this might help
-            'finishTime',           // Camel case variant
-            'liveStartTime',        // Possible alternate field
-            'live_start_time',      // Snake case variant
-            'streamStartTime',      // Another possible field
-            'stream_start_time'     // Snake case variant
+        const fieldPaths = [
+            // Top-level fields (most likely)
+            { path: 'start_time', desc: 'roomInfo.start_time' },
+            { path: 'startTime', desc: 'roomInfo.startTime' },
+            { path: 'create_time', desc: 'roomInfo.create_time' },
+            { path: 'createTime', desc: 'roomInfo.createTime' },
+            { path: 'finish_time', desc: 'roomInfo.finish_time' },
+            { path: 'finishTime', desc: 'roomInfo.finishTime' },
+            { path: 'liveStartTime', desc: 'roomInfo.liveStartTime' },
+            { path: 'live_start_time', desc: 'roomInfo.live_start_time' },
+            { path: 'streamStartTime', desc: 'roomInfo.streamStartTime' },
+            { path: 'stream_start_time', desc: 'roomInfo.stream_start_time' },
+            
+            // Nested under room object
+            { obj: 'room', path: 'start_time', desc: 'roomInfo.room.start_time' },
+            { obj: 'room', path: 'startTime', desc: 'roomInfo.room.startTime' },
+            { obj: 'room', path: 'create_time', desc: 'roomInfo.room.create_time' },
+            { obj: 'room', path: 'createTime', desc: 'roomInfo.room.createTime' },
+            
+            // Nested under data object
+            { obj: 'data', path: 'start_time', desc: 'roomInfo.data.start_time' },
+            { obj: 'data', path: 'startTime', desc: 'roomInfo.data.startTime' },
+            { obj: 'data', path: 'create_time', desc: 'roomInfo.data.create_time' },
+            { obj: 'data', path: 'createTime', desc: 'roomInfo.data.createTime' },
+            
+            // Additional possible locations
+            { path: 'duration', desc: 'roomInfo.duration' }, // Some APIs provide duration since start
         ];
         
-        for (const field of timeFields) {
-            const value = roomInfo[field];
-            if (value !== undefined && value !== null && value !== 0 && value !== '0') {
-                // Handle both seconds and milliseconds timestamps
-                // Also handle string timestamps
-                let timestamp = typeof value === 'string' ? parseInt(value, 10) : value;
-                
-                // Convert to milliseconds if in seconds (timestamps before year 2100)
-                if (timestamp < 4000000000) {
-                    timestamp = timestamp * 1000;
-                }
-                
-                // Validate timestamp is reasonable (not in future, not before 2020)
-                const now = Date.now();
-                const minTime = new Date('2020-01-01').getTime();
-                
-                if (timestamp > minTime && timestamp <= now) {
-                    console.log(`📅 ✅ Stream start time extracted from roomInfo.${field}: ${new Date(timestamp).toISOString()}`);
-                    return timestamp;
-                }
+        // Try all field paths
+        for (const field of fieldPaths) {
+            let value;
+            if (field.obj) {
+                // Nested field
+                value = roomInfo[field.obj] && roomInfo[field.obj][field.path];
+            } else {
+                // Top-level field
+                value = roomInfo[field.path];
+            }
+            
+            const timestamp = tryExtractTimestamp(value, field.desc);
+            if (timestamp) {
+                return timestamp;
+            }
+        }
+
+        // Special case: if duration is provided, calculate start time
+        if (roomInfo.duration) {
+            const durationSeconds = typeof roomInfo.duration === 'string' 
+                ? parseInt(roomInfo.duration, 10) 
+                : roomInfo.duration;
+            
+            if (!isNaN(durationSeconds) && durationSeconds > 0) {
+                const startTime = Date.now() - (durationSeconds * 1000);
+                console.log(`📅 ✅ Stream start time calculated from duration: ${new Date(startTime).toISOString()}`);
+                console.log(`   ⏱️  Stream duration: ${durationSeconds}s`);
+                return startTime;
             }
         }
 
@@ -281,15 +375,19 @@ class TikTokConnector extends EventEmitter {
         if (roomInfo.stream_url && roomInfo.stream_url.live_core_sdk_data) {
             const sdkData = roomInfo.stream_url.live_core_sdk_data;
             if (sdkData.pull_data && sdkData.pull_data.stream_data) {
-                const streamData = JSON.parse(sdkData.pull_data.stream_data);
-                if (streamData.data && streamData.data.origin && streamData.data.origin.main) {
-                    const mainStream = streamData.data.origin.main;
-                    if (mainStream.sdk_params) {
-                        const params = JSON.parse(mainStream.sdk_params);
-                        if (params.vbitrate) {
-                            console.log(`🔍 Found stream data, but no explicit start time`);
+                try {
+                    const streamData = JSON.parse(sdkData.pull_data.stream_data);
+                    console.log(`🔍 [DEBUG] Found stream_data, checking for time fields...`);
+                    
+                    if (streamData.data && streamData.data.origin && streamData.data.origin.main) {
+                        const mainStream = streamData.data.origin.main;
+                        if (mainStream.sdk_params) {
+                            const params = JSON.parse(mainStream.sdk_params);
+                            console.log(`🔍 [DEBUG] Stream SDK params available:`, Object.keys(params).join(', '));
                         }
                     }
+                } catch (e) {
+                    console.log(`🔍 [DEBUG] Could not parse stream_data:`, e.message);
                 }
             }
         }
@@ -299,16 +397,35 @@ class TikTokConnector extends EventEmitter {
             console.log(`🔍 [DEBUG] Owner stats available:`, Object.keys(roomInfo.owner.stats).join(', '));
         }
 
-        // Fallback: Try to get earliest message createTime if available
+        // Check common field
+        if (roomInfo.common) {
+            console.log(`🔍 [DEBUG] roomInfo.common keys:`, Object.keys(roomInfo.common).join(', '));
+            const commonTimestamp = tryExtractTimestamp(
+                roomInfo.common.create_time || roomInfo.common.createTime, 
+                'roomInfo.common.create_time'
+            );
+            if (commonTimestamp) {
+                return commonTimestamp;
+            }
+        }
+
+        // Fallback: Try to get earliest event createTime if available
         // This would be set by the first event we receive
         if (this._earliestEventTime) {
             console.log(`📅 ⚠️  Using earliest event time as fallback: ${new Date(this._earliestEventTime).toISOString()}`);
+            this._streamTimeDetectionMethod = 'Earliest Event Time (Fallback)';
             return this._earliestEventTime;
         }
 
         // Final fallback to current time
         console.log(`⚠️  Stream start time not found in roomInfo. Using current time as fallback.`);
-        console.log(`💡 This may happen if: (1) Stream started before connection, (2) TikTok API changed fields, (3) Limited room data`);
+        console.log(`💡 Possible reasons:`);
+        console.log(`   1. Stream started before connection established`);
+        console.log(`   2. TikTok API changed field names/structure`);
+        console.log(`   3. Limited room data due to permissions/privacy`);
+        console.log(`💡 The timer will auto-correct when first event is received (earliest event time)`);
+        
+        this._streamTimeDetectionMethod = 'Connection Time (No API data - will auto-correct on first event)';
         return Date.now();
     }
 
@@ -682,7 +799,16 @@ class TikTokConnector extends EventEmitter {
                         if (!this.streamStartTime) {
                             this.streamStartTime = this._earliestEventTime;
                             this._persistedStreamStart = this.streamStartTime;
+                            this._streamTimeDetectionMethod = 'First Event Timestamp';
                             console.log(`📅 Set stream start time from earliest event`);
+                            
+                            // Broadcast updated stream time info
+                            this.io.emit('tiktok:streamTimeInfo', {
+                                streamStartTime: this.streamStartTime,
+                                streamStartISO: new Date(this.streamStartTime).toISOString(),
+                                detectionMethod: this._streamTimeDetectionMethod,
+                                currentDuration: Math.floor((Date.now() - this.streamStartTime) / 1000)
+                            });
                         }
                     }
                 }
