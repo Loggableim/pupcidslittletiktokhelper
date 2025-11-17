@@ -22,6 +22,7 @@ class MetricsCollector {
             cpu: [],
             memory: [],
             gpu: [],
+            network: [],
             timestamps: []
         };
 
@@ -31,6 +32,7 @@ class MetricsCollector {
             memory: null,
             gpu: null,
             os: null,
+            network: null,
             lastUpdate: 0
         };
 
@@ -40,6 +42,10 @@ class MetricsCollector {
         // GPU availability flag
         this.hasGPU = false;
         this.gpuCheckDone = false;
+
+        // Network stats tracking
+        this.lastNetworkStats = null;
+        this.lastNetworkStatsTime = 0;
     }
 
     /**
@@ -126,6 +132,16 @@ class MetricsCollector {
                 hostname: osInfo.hostname
             };
 
+            // Get network interface info
+            const networkInterfaces = await si.networkInterfaces();
+            this.staticInfo.network = networkInterfaces.map(iface => ({
+                iface: iface.iface,
+                ifaceName: iface.ifaceName,
+                type: iface.type,
+                speed: iface.speed,
+                internal: iface.internal
+            }));
+
             this.staticInfo.lastUpdate = now;
 
         } catch (error) {
@@ -150,14 +166,18 @@ class MetricsCollector {
                 cpuTemp,
                 processData,
                 uptimeData,
-                gpuData
+                gpuData,
+                networkData,
+                processesData
             ] = await Promise.all([
                 this.getCPUMetrics(),
                 this.getMemoryMetrics(),
                 this.getCPUTemperature(),
                 this.getProcessMetrics(),
                 this.getUptimeMetrics(),
-                this.hasGPU ? this.getGPUMetrics() : Promise.resolve(null)
+                this.hasGPU ? this.getGPUMetrics() : Promise.resolve(null),
+                this.getNetworkMetrics(),
+                this.getTopProcesses()
             ]);
 
             // Combine all metrics
@@ -167,6 +187,8 @@ class MetricsCollector {
                 memory: memData,
                 process: processData,
                 uptime: uptimeData,
+                network: networkData,
+                processes: processesData,
                 static: this.staticInfo
             };
 
@@ -382,6 +404,102 @@ class MetricsCollector {
     }
 
     /**
+     * Get network metrics (upload/download rates)
+     */
+    async getNetworkMetrics() {
+        try {
+            const networkStats = await si.networkStats();
+            const now = Date.now();
+
+            if (!networkStats || networkStats.length === 0) {
+                return {
+                    rx_sec: 0,
+                    tx_sec: 0,
+                    rx_bytes: 0,
+                    tx_bytes: 0
+                };
+            }
+
+            // Use the primary (non-internal) network interface
+            let primaryInterface = networkStats.find(iface => !iface.iface.startsWith('lo'));
+            if (!primaryInterface) {
+                primaryInterface = networkStats[0];
+            }
+
+            // Calculate rates if we have previous data
+            let rx_sec = 0;
+            let tx_sec = 0;
+
+            if (this.lastNetworkStats && this.lastNetworkStatsTime > 0) {
+                const timeDiff = (now - this.lastNetworkStatsTime) / 1000; // in seconds
+
+                if (timeDiff > 0) {
+                    const rxDiff = primaryInterface.rx_bytes - this.lastNetworkStats.rx_bytes;
+                    const txDiff = primaryInterface.tx_bytes - this.lastNetworkStats.tx_bytes;
+
+                    rx_sec = Math.max(0, rxDiff / timeDiff);
+                    tx_sec = Math.max(0, txDiff / timeDiff);
+                }
+            }
+
+            // Store current stats for next calculation
+            this.lastNetworkStats = {
+                rx_bytes: primaryInterface.rx_bytes,
+                tx_bytes: primaryInterface.tx_bytes
+            };
+            this.lastNetworkStatsTime = now;
+
+            return {
+                rx_sec: Math.round(rx_sec),
+                tx_sec: Math.round(tx_sec),
+                rx_bytes: primaryInterface.rx_bytes,
+                tx_bytes: primaryInterface.tx_bytes,
+                iface: primaryInterface.iface,
+                operstate: primaryInterface.operstate
+            };
+        } catch (error) {
+            this.log(`Error getting network metrics: ${error.message}`, 'warn');
+            return {
+                rx_sec: 0,
+                tx_sec: 0,
+                rx_bytes: 0,
+                tx_bytes: 0
+            };
+        }
+    }
+
+    /**
+     * Get top processes by memory usage
+     */
+    async getTopProcesses() {
+        try {
+            const processes = await si.processes();
+
+            if (!processes || !processes.list || processes.list.length === 0) {
+                return [];
+            }
+
+            // Sort by memory usage and take top 10
+            const sorted = processes.list
+                .filter(proc => proc.mem > 0) // Filter out processes with no memory
+                .sort((a, b) => b.mem - a.mem)
+                .slice(0, 10);
+
+            return sorted.map(proc => ({
+                pid: proc.pid,
+                name: proc.name,
+                cpu: Math.round(proc.cpu * 100) / 100,
+                memory: proc.mem, // Percentage
+                memMb: Math.round(proc.memRss / 1024), // Convert KB to MB
+                command: proc.command
+            }));
+        } catch (error) {
+            this.log(`Error getting top processes: ${error.message}`, 'warn');
+            return [];
+        }
+    }
+
+    /**
      * Add metrics to historical buffer
      */
     addToHistory(metrics) {
@@ -412,6 +530,17 @@ class MetricsCollector {
                 });
             }
 
+            // Add network data if available
+            if (metrics.network) {
+                if (!this.history.network) {
+                    this.history.network = [];
+                }
+                this.history.network.push({
+                    rx_sec: metrics.network.rx_sec || 0,
+                    tx_sec: metrics.network.tx_sec || 0
+                });
+            }
+
             // Trim history to maintain size limit
             if (this.history.timestamps.length > this.historySize) {
                 const excess = this.history.timestamps.length - this.historySize;
@@ -420,6 +549,9 @@ class MetricsCollector {
                 this.history.memory.splice(0, excess);
                 if (this.history.gpu.length > 0) {
                     this.history.gpu.splice(0, excess);
+                }
+                if (this.history.network && this.history.network.length > 0) {
+                    this.history.network.splice(0, excess);
                 }
             }
         } catch (error) {
@@ -435,7 +567,8 @@ class MetricsCollector {
             timestamps: [...this.history.timestamps],
             cpu: [...this.history.cpu],
             memory: [...this.history.memory],
-            gpu: [...this.history.gpu]
+            gpu: [...this.history.gpu],
+            network: this.history.network ? [...this.history.network] : []
         };
     }
 
@@ -447,6 +580,7 @@ class MetricsCollector {
             cpu: [],
             memory: [],
             gpu: [],
+            network: [],
             timestamps: []
         };
         this.log('History cleared', 'info');

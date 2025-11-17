@@ -509,6 +509,16 @@
                         <span class="tooltip-text">CPU Temperature</span>
                     </div>
                     <div class="tooltip">
+                        <div class="text-gray-400">This Process</div>
+                        <div class="font-semibold text-white" id="cpu-process">0%</div>
+                        <span class="tooltip-text">CPU usage by this application</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">System Total</div>
+                        <div class="font-semibold text-white" id="cpu-system">0%</div>
+                        <span class="tooltip-text">Total system CPU usage</span>
+                    </div>
+                    <div class="tooltip">
                         <div class="text-gray-400">Peak Usage</div>
                         <div class="font-semibold text-white" id="cpu-peak">0%</div>
                         <span class="tooltip-text">Highest recorded usage</span>
@@ -672,6 +682,72 @@
                     <hr class="border-gray-700 my-4">
                     <h3 class="text-lg font-semibold text-white mb-3">GPU Information</h3>
                     <div id="gpu-info" class="text-sm text-gray-400 space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Second Row: Network Card -->
+        <div class="grid grid-cols-1 gap-6 mb-6">
+            <!-- Network Card -->
+            <div class="card">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-white mb-1">Network Traffic</h2>
+                        <p class="text-sm text-gray-400" id="network-iface">Loading...</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-white transition" data-toggle="network-details">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Network Stats Grid -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="text-center p-4 bg-gray-800 rounded-lg">
+                        <div class="text-gray-400 text-sm mb-2">↓ Download</div>
+                        <div class="text-2xl font-bold text-green-400" id="network-download">0 KB/s</div>
+                    </div>
+                    <div class="text-center p-4 bg-gray-800 rounded-lg">
+                        <div class="text-gray-400 text-sm mb-2">↑ Upload</div>
+                        <div class="text-2xl font-bold text-blue-400" id="network-upload">0 KB/s</div>
+                    </div>
+                </div>
+
+                <!-- Network Stats Details -->
+                <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+                    <div class="tooltip">
+                        <div class="text-gray-400">Total Download</div>
+                        <div class="font-semibold text-white" id="network-total-rx">-</div>
+                        <span class="tooltip-text">Total bytes received</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Total Upload</div>
+                        <div class="font-semibold text-white" id="network-total-tx">-</div>
+                        <span class="tooltip-text">Total bytes transmitted</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Interface</div>
+                        <div class="font-semibold text-white" id="network-interface">-</div>
+                        <span class="tooltip-text">Active network interface</span>
+                    </div>
+                    <div class="tooltip">
+                        <div class="text-gray-400">Status</div>
+                        <div class="font-semibold text-white" id="network-status">-</div>
+                        <span class="tooltip-text">Connection status</span>
+                    </div>
+                </div>
+
+                <!-- Network Chart -->
+                <div class="chart-container">
+                    <canvas id="network-chart"></canvas>
+                </div>
+
+                <!-- Expandable: Network Details -->
+                <div id="network-details" class="collapsible">
+                    <hr class="border-gray-700 my-4">
+                    <h3 class="text-lg font-semibold text-white mb-3">Network Information</h3>
+                    <div id="network-info" class="text-sm text-gray-400 space-y-2"></div>
                 </div>
             </div>
         </div>

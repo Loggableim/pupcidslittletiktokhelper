@@ -510,7 +510,7 @@
             const data = await response.json();
 
             if (data.success && data.metrics) {
-                const { cpu, memory, ram, gpu } = data.metrics;
+                const { cpu, memory, ram, gpu, network } = data.metrics;
 
                 // Update CPU
                 updateCompactResource('cpu', cpu.usage || 0);
@@ -520,18 +520,35 @@
                 updateCompactResource('ram', ramData?.usedPercent || ramData?.percent || 0);
 
                 // Update GPU (if available)
-                if (gpu && gpu.length > 0) {
-                    const gpuUsage = gpu[0].utilization || 0;
+                if (gpu && Array.isArray(gpu) && gpu.length > 0 && gpu[0].utilizationGpu !== null) {
+                    const gpuUsage = gpu[0].utilizationGpu || 0;
                     const gpuElement = document.getElementById('resource-gpu-compact');
                     if (gpuElement) {
                         gpuElement.textContent = gpuUsage.toFixed(1) + '%';
                     }
+
+                    // Update GPU sparkline
+                    updateGPUSparkline(gpuUsage);
+                } else {
+                    const gpuElement = document.getElementById('resource-gpu-compact');
+                    if (gpuElement) {
+                        gpuElement.textContent = 'N/A';
+                    }
                 }
 
-                // Update Network (placeholder)
-                const networkElement = document.getElementById('resource-network-compact');
-                if (networkElement) {
-                    networkElement.textContent = '-- KB/s';
+                // Update Network (if available)
+                if (network) {
+                    const rxSec = network.rx_sec || 0;
+                    const txSec = network.tx_sec || 0;
+                    const totalSec = rxSec + txSec;
+
+                    const networkElement = document.getElementById('resource-network-compact');
+                    if (networkElement) {
+                        networkElement.textContent = formatBytesShort(totalSec) + '/s';
+                    }
+
+                    // Update network sparkline
+                    updateNetworkSparkline(totalSec);
                 }
             }
 
@@ -562,6 +579,72 @@
                 barElement.style.background = 'linear-gradient(90deg, #10b981, #3b82f6)';
             }
         }
+    }
+
+    // ========== SPARKLINE DATA ==========
+    let gpuSparklineData = [];
+    let networkSparklineData = [];
+    const MAX_SPARKLINE_DATA_POINTS = 20;
+
+    function updateGPUSparkline(value) {
+        gpuSparklineData.push(value);
+        if (gpuSparklineData.length > MAX_SPARKLINE_DATA_POINTS) {
+            gpuSparklineData.shift();
+        }
+        drawSparkline('gpu-sparkline', gpuSparklineData, '#8b5cf6');
+    }
+
+    function updateNetworkSparkline(value) {
+        networkSparklineData.push(value / 1024); // Convert to KB/s
+        if (networkSparklineData.length > MAX_SPARKLINE_DATA_POINTS) {
+            networkSparklineData.shift();
+        }
+        drawSparkline('network-sparkline', networkSparklineData, '#3b82f6');
+    }
+
+    function drawSparkline(canvasId, data, color) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+
+        if (data.length < 2) return;
+
+        // Calculate scaling
+        const max = Math.max(...data, 1);
+        const step = width / (data.length - 1);
+
+        // Draw line
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+
+        data.forEach((value, index) => {
+            const x = index * step;
+            const y = height - (value / max) * height;
+
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+
+        ctx.stroke();
+    }
+
+    function formatBytesShort(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
     // ========== RESOURCE DETAILS LINK ==========
