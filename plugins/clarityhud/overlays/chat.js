@@ -26,38 +26,67 @@ let animationRegistry = null;
 let animationRenderer = null;
 let accessibilityManager = null;
 
-// DOM elements
-const messagesContainer = document.getElementById('messages');
+// DOM elements - will be initialized after DOM is ready
+let messagesContainer = null;
 
-// Initialize animation system
-animationRegistry = new AnimationRegistry();
-animationRenderer = new AnimationRenderer(animationRegistry);
-
-// Initialize accessibility manager
-accessibilityManager = new AccessibilityManager();
-
-// Connect to socket
-socket = io();
-
-socket.on('connect', () => {
-  console.log('Connected to server');
-  init();
-});
-
-socket.on('disconnect', () => {
-  console.log('Disconnected from server');
-});
-
-// Listen for chat updates
-socket.on('clarityhud.update.chat', (chatData) => {
-  console.log('Received chat update:', chatData);
-  addMessage(chatData);
-});
-
-// Listen for settings updates
-socket.on('clarityhud.settings.chat', (newSettings) => {
-  console.log('Received settings update:', newSettings);
-  applySettings(newSettings);
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  // Get DOM elements
+  messagesContainer = document.getElementById('messages');
+  
+  // Initialize animation system
+  animationRegistry = new AnimationRegistry();
+  animationRenderer = new AnimationRenderer(animationRegistry);
+  
+  // Initialize accessibility manager
+  accessibilityManager = new AccessibilityManager();
+  
+  // Connect to socket
+  socket = io();
+  
+  socket.on('connect', () => {
+    console.log('Connected to server');
+    init();
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Disconnected from server');
+  });
+  
+  // Listen for chat updates
+  socket.on('clarityhud.update.chat', (chatData) => {
+    console.log('Received chat update:', chatData);
+    addMessage(chatData);
+  });
+  
+  // Listen for settings updates
+  socket.on('clarityhud.settings.chat', (newSettings) => {
+    console.log('Received settings update:', newSettings);
+    applySettings(newSettings);
+  });
+  
+  // Detect system preference for reduced motion
+  if (window.matchMedia) {
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (motionQuery.matches && !settings.reduceMotion) {
+      settings.reduceMotion = true;
+      if (animationRenderer) {
+        animationRenderer.setReduceMotion(true);
+      }
+      document.body.classList.add('reduce-motion');
+    }
+    
+    // Listen for changes
+    motionQuery.addEventListener('change', (e) => {
+      if (!settings.reduceMotion) {
+        const shouldReduce = e.matches;
+        if (animationRenderer) {
+          animationRenderer.setReduceMotion(shouldReduce);
+        }
+        document.body.classList.toggle('reduce-motion', shouldReduce);
+      }
+    });
+  }
 });
 
 // Initialize overlay
@@ -123,6 +152,16 @@ function applySettings(newSettings) {
 
   if (settings.messageSpacing) {
     root.style.setProperty('--chat-message-spacing', settings.messageSpacing);
+  }
+
+  // Apply transparency (opacity)
+  if (typeof settings.opacity !== 'undefined') {
+    root.style.setProperty('--chat-opacity', settings.opacity);
+  }
+
+  // Apply keep-on-top setting (Note: this requires parent window support)
+  if (typeof settings.keepOnTop !== 'undefined' && window.parent && window.parent.setAlwaysOnTop) {
+    window.parent.setAlwaysOnTop(settings.keepOnTop);
   }
 
   // Apply accessibility settings
@@ -257,23 +296,4 @@ function formatTimestamp(date) {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   const seconds = date.getSeconds().toString().padStart(2, '0');
   return `${hours}:${minutes}:${seconds}`;
-}
-
-// Detect system preference for reduced motion
-if (window.matchMedia) {
-  const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-  if (motionQuery.matches && !settings.reduceMotion) {
-    settings.reduceMotion = true;
-    animationRenderer.setReduceMotion(true);
-    document.body.classList.add('reduce-motion');
-  }
-
-  // Listen for changes
-  motionQuery.addEventListener('change', (e) => {
-    if (!settings.reduceMotion) {
-      const shouldReduce = e.matches;
-      animationRenderer.setReduceMotion(shouldReduce);
-      document.body.classList.toggle('reduce-motion', shouldReduce);
-    }
-  });
 }

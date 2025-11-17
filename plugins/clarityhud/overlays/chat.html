@@ -19,6 +19,7 @@
       --chat-alignment: left;
       --chat-padding: 20px;
       --chat-message-spacing: 12px;
+      --chat-opacity: 1;
     }
 
     * {
@@ -43,6 +44,7 @@
       flex-direction: column;
       justify-content: flex-end;
       overflow: hidden;
+      opacity: var(--chat-opacity);
     }
 
     #messages {
@@ -63,6 +65,7 @@
       overflow-wrap: break-word;
       hyphens: auto;
       text-align: var(--chat-alignment);
+      line-height: var(--chat-line-height);
     }
 
     .chat-message.visible {
