@@ -34,7 +34,16 @@
         timeRemaining: 0,
         totalTime: 30,
         hiddenAnswers: [],
-        revealedWrongAnswer: null
+        revealedWrongAnswer: null,
+        votersPerAnswer: { 0: [], 1: [], 2: [], 3: [] },
+        voterIconsConfig: {
+            enabled: true,
+            size: 'medium',
+            maxVisible: 10,
+            compactMode: true,
+            animation: 'fade',
+            position: 'above'
+        }
     };
 
     // HUD Configuration (loaded from server)
@@ -480,7 +489,16 @@
                 totalTime: state.totalTime,
                 hiddenAnswers: state.hiddenAnswers || [],
                 revealedWrongAnswer: state.revealedWrongAnswer,
-                info: state.currentQuestion.info || null
+                info: state.currentQuestion.info || null,
+                votersPerAnswer: state.votersPerAnswer || { 0: [], 1: [], 2: [], 3: [] },
+                voterIconsConfig: state.voterIconsConfig || {
+                    enabled: true,
+                    size: 'medium',
+                    maxVisible: 10,
+                    compactMode: true,
+                    animation: 'fade',
+                    position: 'above'
+                }
             };
 
             displayQuestion(gameData.question);
@@ -497,6 +515,11 @@
             }
             if (gameData.revealedWrongAnswer !== null) {
                 markWrongAnswer(gameData.revealedWrongAnswer);
+            }
+            
+            // Update voter icons during voting phase
+            if (gameData.voterIconsConfig.enabled) {
+                updateVoterIcons();
             }
 
             if (currentState === States.IDLE || currentState === States.WAIT_NEXT) {
@@ -525,6 +548,21 @@
         gameData.correctAnswerLetter = data.correctAnswerLetter;
         gameData.correctAnswerText = data.correctAnswerText;
         gameData.info = data.info || null;
+        
+        // Update voter data from round ended event
+        if (data.votersPerAnswer) {
+            gameData.votersPerAnswer = data.votersPerAnswer;
+        }
+        if (data.voterIconsConfig) {
+            gameData.voterIconsConfig = data.voterIconsConfig;
+        }
+        
+        // Display final voter icons after TTS
+        if (gameData.voterIconsConfig.enabled) {
+            setTimeout(() => {
+                animateVoterIcons();
+            }, 500); // Small delay to sync with TTS
+        }
 
         if (currentState === States.RUNNING || currentState === States.TIME_LOW) {
             transitionToState(States.TIME_UP);
@@ -579,6 +617,9 @@
     }
 
     function displayAnswers(answers) {
+        // Clear voter icons first when displaying new answers
+        clearVoterIcons();
+        
         answers.forEach((answer, index) => {
             const element = document.getElementById(`answer${String.fromCharCode(65 + index)}`);
             if (element) {
@@ -997,6 +1038,151 @@
             }
             logoElement.src = brandKit.logo_path;
         }
+    }
+
+    // ============================================
+    // VOTER ICONS SYSTEM
+    // ============================================
+
+    function updateVoterIcons() {
+        if (!gameData.voterIconsConfig.enabled) return;
+        
+        // Update icons for each answer during voting phase (non-animated)
+        for (let i = 0; i < 4; i++) {
+            const container = document.querySelector(`.voter-icons-container[data-answer="${i}"]`);
+            if (!container) continue;
+            
+            const voters = gameData.votersPerAnswer[i] || [];
+            renderVoterIcons(container, voters, false);
+        }
+    }
+
+    function animateVoterIcons() {
+        if (!gameData.voterIconsConfig.enabled) return;
+        
+        // Animate icons when revealing correct answer
+        for (let i = 0; i < 4; i++) {
+            const container = document.querySelector(`.voter-icons-container[data-answer="${i}"]`);
+            if (!container) continue;
+            
+            const voters = gameData.votersPerAnswer[i] || [];
+            renderVoterIcons(container, voters, true);
+        }
+    }
+
+    function renderVoterIcons(container, voters, animate = false) {
+        const config = gameData.voterIconsConfig;
+        
+        // Clear previous icons
+        container.innerHTML = '';
+        
+        if (!voters || voters.length === 0) {
+            container.classList.remove('has-voters');
+            return;
+        }
+        
+        container.classList.add('has-voters');
+        
+        // Determine icon size
+        const sizeMap = {
+            small: '24px',
+            medium: '32px',
+            large: '40px'
+        };
+        const iconSize = sizeMap[config.size] || '32px';
+        
+        // Limit visible icons
+        const maxVisible = config.maxVisible || 10;
+        const visibleVoters = voters.slice(0, maxVisible);
+        const overflowCount = voters.length - maxVisible;
+        
+        // Create icon wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'voter-icons-wrapper';
+        wrapper.style.setProperty('--icon-size', iconSize);
+        
+        // Add position class
+        if (config.position) {
+            wrapper.classList.add(`position-${config.position}`);
+        }
+        
+        // Add animation class
+        if (animate && config.animation) {
+            wrapper.classList.add(`animate-${config.animation}`);
+        }
+        
+        // Compact mode for many voters
+        if (config.compactMode && voters.length > 5) {
+            wrapper.classList.add('compact-mode');
+        }
+        
+        // Render voter avatars
+        visibleVoters.forEach((voter, index) => {
+            const icon = createVoterIcon(voter, index, animate);
+            wrapper.appendChild(icon);
+        });
+        
+        // Add overflow indicator if needed
+        if (overflowCount > 0) {
+            const overflow = document.createElement('div');
+            overflow.className = 'voter-icon overflow-indicator';
+            overflow.textContent = `+${overflowCount}`;
+            overflow.style.animationDelay = animate ? `${visibleVoters.length * 0.05}s` : '0s';
+            wrapper.appendChild(overflow);
+        }
+        
+        container.appendChild(wrapper);
+    }
+
+    function createVoterIcon(voter, index, animate) {
+        const icon = document.createElement('div');
+        icon.className = 'voter-icon';
+        icon.title = voter.username || 'Anonymous';
+        
+        // Add animation delay for staggered appearance
+        if (animate) {
+            icon.style.animationDelay = `${index * 0.05}s`;
+        }
+        
+        // Create avatar image
+        if (voter.profilePictureUrl) {
+            const img = document.createElement('img');
+            img.src = voter.profilePictureUrl;
+            img.alt = voter.username || 'User';
+            img.className = 'voter-avatar';
+            
+            // Handle image load error
+            img.addEventListener('error', () => {
+                icon.classList.add('no-image');
+                icon.textContent = getInitials(voter.username);
+            });
+            
+            icon.appendChild(img);
+        } else {
+            // Fallback to initials
+            icon.classList.add('no-image');
+            icon.textContent = getInitials(voter.username);
+        }
+        
+        return icon;
+    }
+
+    function getInitials(username) {
+        if (!username) return '?';
+        
+        const parts = username.trim().split(/\s+/);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return username.substring(0, 2).toUpperCase();
+    }
+
+    function clearVoterIcons() {
+        const containers = document.querySelectorAll('.voter-icons-container');
+        containers.forEach(container => {
+            container.innerHTML = '';
+            container.classList.remove('has-voters');
+        });
     }
 
     // ============================================
