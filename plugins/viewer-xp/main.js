@@ -413,10 +413,12 @@ class ViewerXPPlugin extends EventEmitter {
 
     this.db.updateLastSeen(username);
 
+    // FIX: Use data.coins (already calculated as diamondCount * 2 * repeatCount)
+    // instead of data.gift?.diamond_count (which is just the raw diamond value per gift)
+    const coins = data.coins || 0;
+    
     // Determine gift tier based on coin value
     let actionType = 'gift_tier1';
-    const coins = data.gift?.diamond_count || 0;
-    
     if (coins >= 1000) {
       actionType = 'gift_tier3';
     } else if (coins >= 100) {
@@ -424,7 +426,7 @@ class ViewerXPPlugin extends EventEmitter {
     }
 
     this.awardXP(username, actionType, {
-      giftName: data.gift?.name,
+      giftName: data.giftName || data.gift?.name,
       coins: coins,
       repeatCount: data.repeatCount || 1
     });
