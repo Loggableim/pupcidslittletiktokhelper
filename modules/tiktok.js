@@ -2,14 +2,17 @@ const { TikTokLiveConnection } = require('tiktok-live-connector');
 const EventEmitter = require('events');
 
 /**
- * TikTok Live Connector - Refactored to use Official API
+ * TikTok Live Connector - Official Webcast API
  * 
- * This module has been completely refactored to use ONLY the official
- * TikTok-Live-Connector API from https://github.com/zerodytrash/TikTok-Live-Connector
+ * This module uses EXCLUSIVELY the official TikTok-Live-Connector library
+ * from https://github.com/zerodytrash/TikTok-Live-Connector
  * 
- * All custom HTML scraping, Room ID resolution, and Euler Stream workarounds
- * have been removed. The library handles all of this internally with better
- * reliability and maintainability.
+ * The library handles all connection logic internally via the Webcast API:
+ * - Room ID resolution (automatic)
+ * - WebSocket connection management
+ * - Event handling (chat, gifts, likes, etc.)
+ * - Retry logic and error handling
+ * - Optional Euler Stream fallbacks
  */
 class TikTokConnector extends EventEmitter {
     constructor(io, db) {
@@ -89,8 +92,8 @@ class TikTokConnector extends EventEmitter {
                 connectWithUniqueId: connectWithUniqueId,
                 
                 // Control Euler Stream fallback usage
-                // When true, disables Euler Stream fallbacks (use only HTML scraping)
-                // When false, uses Euler Stream as fallback when HTML scraping fails
+                // When true, disables Euler Stream fallbacks (library uses default Webcast API)
+                // When false, uses Euler Stream as fallback when Webcast API fails
                 disableEulerFallbacks: !enableEulerFallbacks,
                 
                 // Web client options (HTTP requests for HTML/API)
@@ -106,7 +109,7 @@ class TikTokConnector extends EventEmitter {
             };
 
             console.log(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
-            console.log(`⚙️  Connection Mode: ${connectWithUniqueId ? 'UniqueId (Euler)' : 'HTML Scraping'}, Euler Fallbacks: ${!enableEulerFallbacks ? 'Disabled' : 'Enabled'}`);
+            console.log(`⚙️  Connection Mode: ${connectWithUniqueId ? 'Webcast API via UniqueId (Euler)' : 'Webcast API (Standard)'}, Euler Fallbacks: ${enableEulerFallbacks ? 'Enabled' : 'Disabled'}`);
 
             // Create connection using official API
             this.connection = new TikTokLiveConnection(username, connectionOptions);
@@ -334,31 +337,32 @@ class TikTokConnector extends EventEmitter {
             };
         }
 
-        // SIGI_STATE Fehler (Blockierung) - Check this BEFORE general HTML parse errors
-        // This has highest priority as it specifically indicates blocking
+        // SIGI_STATE error or blocking detected by the library
+        // This error comes from the tiktok-live-connector library when it can't access TikTok
         if (errorMessage.includes('SIGI_STATE') || errorMessage.includes('blocked by TikTok')) {
             return {
                 type: 'BLOCKED_BY_TIKTOK',
-                message: 'TikTok blockiert den Zugriff. Die HTML-Seite konnte nicht geparst werden (SIGI_STATE-Fehler).',
+                message: 'TikTok blockiert den Zugriff (Webcast API konnte keine Daten abrufen).',
                 suggestion: 'NICHT SOFORT ERNEUT VERSUCHEN! Warte mindestens 5-10 Minuten. Zu viele Verbindungsversuche können zu längeren Blockierungen führen. Alternativen: VPN verwenden, andere IP-Adresse nutzen oder Session-Keys konfigurieren.',
                 retryable: false
             };
         }
 
-        // FIX: HTML Fetch Errors - Pattern mismatch or structure changes
-        // This catches general HTML parsing issues (not blocking)
+        // Webcast API parsing errors from the library
+        // This catches errors when the library can't parse TikTok's response
         if (errorMessage.includes('extract') && errorMessage.includes('HTML') ||
             errorMessage.includes('Failed to extract the LiveRoom object') ||
             errorMessage.includes('structure changed')) {
             return {
                 type: 'HTML_PARSE_ERROR',
-                message: 'HTML-Parsing fehlgeschlagen. TikTok hat möglicherweise die Seitenstruktur geändert.',
-                suggestion: 'Dies kann verschiedene Ursachen haben: 1) TikTok hat die HTML-Struktur geändert (update tiktok-live-connector), 2) Geo-Block oder Cloudflare-Schutz ist aktiv (verwende VPN).',
+                message: 'Webcast API Parsing fehlgeschlagen. TikTok hat möglicherweise die API-Struktur geändert.',
+                suggestion: 'Dies kann verschiedene Ursachen haben: 1) TikTok hat die API-Struktur geändert (update tiktok-live-connector library), 2) Geo-Block oder Cloudflare-Schutz ist aktiv (verwende VPN).',
                 retryable: true
             };
         }
 
-        // FIX: Euler Stream Permission Error
+        // Euler Stream fallback errors from the library
+        // The tiktok-live-connector library throws these when Euler Stream is used but fails
         // Note: We check for specific error message patterns from tiktok-live-connector library
         // This is error message matching, not URL validation - the check is safe for this use case
         if (errorMessage.includes('Euler Stream') || 
@@ -366,8 +370,8 @@ class TikTokConnector extends EventEmitter {
             errorMessage.toLowerCase().includes('failed to retrieve room id from euler')) {
             return {
                 type: 'EULER_STREAM_PERMISSION_ERROR',
-                message: 'Euler Stream Fallback-Methode benötigt einen API-Schlüssel. Die Verbindung ist fehlgeschlagen, weil Euler Stream als Fallback verwendet wurde, aber keine Berechtigung vorliegt.',
-                suggestion: 'Euler Stream Fallbacks sind jetzt standardmäßig deaktiviert. Falls das Problem weiterhin auftritt, starte den Server neu. Optional: Registriere dich bei https://www.eulerstream.com für einen API-Schlüssel und setze TIKTOK_SIGN_API_KEY in der .env Datei.',
+                message: 'Euler Stream Fallback benötigt einen API-Schlüssel. Die tiktok-live-connector library konnte nicht auf Euler Stream zugreifen.',
+                suggestion: 'Registriere dich bei https://www.eulerstream.com für einen API-Schlüssel und setze TIKTOK_SIGN_API_KEY in der .env Datei, oder deaktiviere Euler Fallbacks in den Einstellungen.',
                 retryable: false
             };
         }
