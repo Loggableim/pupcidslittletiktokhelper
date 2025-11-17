@@ -707,28 +707,50 @@ async function loadFlows() {
         container.innerHTML = '';
 
         if (flows.length === 0) {
-            container.innerHTML = '<div class="text-center text-gray-400 py-8">No flows yet. Create one to get started!</div>';
+            container.innerHTML = `
+                <div class="text-center text-gray-400 py-8">
+                    <p>No flows yet. Create your first automation flow!</p>
+                    <a href="/ifttt-flow-editor.html" target="_blank" class="btn btn-primary mt-4" style="display: inline-block;">
+                        Open Visual Flow Editor
+                    </a>
+                </div>
+            `;
             return;
         }
 
         flows.forEach(flow => {
             const flowDiv = document.createElement('div');
-            flowDiv.className = 'bg-gray-700 rounded p-4';
+            flowDiv.className = 'bg-gray-700 rounded p-4 mb-3';
+            
+            // Get trigger name
+            const triggerName = flow.trigger_type.replace('tiktok:', '').replace(':', ' ');
+            const triggerIcon = getTriggerIcon(flow.trigger_type);
+            
             flowDiv.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
                         <h3 class="font-bold text-lg">${flow.name}</h3>
-                        <div class="text-sm text-gray-400 mt-1">
-                            Trigger: ${flow.trigger_type}
-                            ${flow.trigger_condition ? ` (${flow.trigger_condition.field} ${flow.trigger_condition.operator} ${flow.trigger_condition.value})` : ''}
+                        <div class="text-sm text-gray-400 mt-2 flex items-center gap-2">
+                            <span>${triggerIcon}</span>
+                            <span><strong>Trigger:</strong> ${triggerName}</span>
                         </div>
+                        ${flow.trigger_condition ? `
+                            <div class="text-sm text-gray-400 mt-1">
+                                <strong>Condition:</strong> ${flow.trigger_condition.field || ''} ${flow.trigger_condition.operator || ''} ${flow.trigger_condition.value || ''}
+                            </div>
+                        ` : ''}
                         <div class="text-sm text-gray-400 mt-1">
-                            Actions: ${flow.actions.length}
+                            <strong>Actions:</strong> ${flow.actions.length} action(s)
                         </div>
                     </div>
                     <div class="flex gap-2">
+                        <button onclick="testFlow(${flow.id})" 
+                                class="px-3 py-1 rounded text-sm bg-blue-600 hover:bg-blue-700"
+                                title="Test flow">
+                            🧪 Test
+                        </button>
                         <button onclick="toggleFlow(${flow.id}, ${!flow.enabled})"
-                                class="px-3 py-1 rounded text-sm ${flow.enabled ? 'bg-green-600' : 'bg-gray-600'}">
+                                class="px-3 py-1 rounded text-sm ${flow.enabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}">
                             ${flow.enabled ? '✅ Enabled' : '⏸️ Disabled'}
                         </button>
                         <button onclick="deleteFlow(${flow.id})" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">
@@ -742,6 +764,50 @@ async function loadFlows() {
 
     } catch (error) {
         console.error('Error loading flows:', error);
+    }
+}
+
+function getTriggerIcon(triggerType) {
+    const icons = {
+        'tiktok:gift': '🎁',
+        'tiktok:chat': '💬',
+        'tiktok:follow': '👤',
+        'tiktok:share': '🔗',
+        'tiktok:like': '❤️',
+        'tiktok:subscribe': '⭐',
+        'tiktok:join': '👋',
+        'timer:interval': '⏰',
+        'timer:countdown': '⏱️',
+        'system:connected': '📡',
+        'system:disconnected': '📴',
+        'goal:reached': '🎯'
+    };
+    return icons[triggerType] || '⚡';
+}
+
+async function testFlow(id) {
+    try {
+        const response = await fetch(`/api/ifttt/trigger/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: 'TestUser',
+                message: 'Test message from dashboard',
+                coins: 100,
+                giftName: 'Rose'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Flow test triggered successfully!');
+        } else {
+            alert(`❌ Test failed: ${result.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error testing flow:', error);
+        alert('❌ Error testing flow');
     }
 }
 
