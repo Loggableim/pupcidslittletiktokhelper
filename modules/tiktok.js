@@ -48,6 +48,12 @@ class TikTokConnector extends EventEmitter {
         // Connection attempt tracking for diagnostics
         this.connectionAttempts = [];
         this.maxAttempts = 10;
+
+        // Event deduplication tracking
+        // Stores processed event hashes to prevent duplicate event handling
+        this.processedEvents = new Map();
+        this.maxProcessedEvents = 1000; // Keep last 1000 events
+        this.eventExpirationMs = 60000; // Events expire after 60 seconds
     }
 
     /**
@@ -497,6 +503,10 @@ class TikTokConnector extends EventEmitter {
         }
         this.streamStartTime = null;
 
+        // Clear event deduplication cache on disconnect
+        this.processedEvents.clear();
+        console.log('🧹 Event deduplication cache cleared');
+
         this.resetStats();
         this.broadcastStatus('disconnected');
         console.log('⚫ Disconnected from TikTok LIVE');
@@ -848,7 +858,97 @@ class TikTokConnector extends EventEmitter {
         });
     }
 
+    /**
+     * Generate unique event hash for deduplication
+     * @param {string} eventType - Type of event (chat, gift, follow, etc.)
+     * @param {object} data - Event data
+     * @returns {string} Event hash
+     */
+    _generateEventHash(eventType, data) {
+        // Create hash based on event type, user, and content
+        const components = [eventType];
+        
+        // Add user identifier
+        if (data.userId) components.push(data.userId);
+        if (data.uniqueId) components.push(data.uniqueId);
+        if (data.username) components.push(data.username);
+        
+        // Add content-specific identifiers
+        switch (eventType) {
+            case 'chat':
+                // For chat: use message + timestamp (rounded to second to catch rapid duplicates)
+                if (data.message) components.push(data.message);
+                if (data.comment) components.push(data.comment);
+                if (data.timestamp) {
+                    // Round to nearest second to catch duplicates within same second
+                    const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
+                    components.push(roundedTime.toString());
+                }
+                break;
+            case 'gift':
+                // For gifts: use giftId + repeatCount + timestamp
+                if (data.giftId) components.push(data.giftId.toString());
+                if (data.giftName) components.push(data.giftName);
+                if (data.repeatCount) components.push(data.repeatCount.toString());
+                break;
+            case 'follow':
+            case 'share':
+            case 'subscribe':
+                // For follow/share/subscribe: use timestamp (rounded to second)
+                if (data.timestamp) {
+                    const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
+                    components.push(roundedTime.toString());
+                }
+                break;
+        }
+        
+        // Create simple hash from components
+        return components.join('|');
+    }
+
+    /**
+     * Check if event has already been processed (deduplication)
+     * @param {string} eventType - Type of event
+     * @param {object} data - Event data
+     * @returns {boolean} true if event is duplicate, false if new
+     */
+    _isDuplicateEvent(eventType, data) {
+        const eventHash = this._generateEventHash(eventType, data);
+        const now = Date.now();
+        
+        // Clean up expired events
+        for (const [hash, timestamp] of this.processedEvents.entries()) {
+            if (now - timestamp > this.eventExpirationMs) {
+                this.processedEvents.delete(hash);
+            }
+        }
+        
+        // Check if event already processed
+        if (this.processedEvents.has(eventHash)) {
+            console.log(`🔄 [DUPLICATE BLOCKED] ${eventType} event already processed: ${eventHash}`);
+            return true;
+        }
+        
+        // Mark event as processed
+        this.processedEvents.set(eventHash, now);
+        
+        // Limit cache size (LRU - remove oldest if too many)
+        if (this.processedEvents.size > this.maxProcessedEvents) {
+            const firstKey = this.processedEvents.keys().next().value;
+            this.processedEvents.delete(firstKey);
+        }
+        
+        return false;
+    }
+
     handleEvent(eventType, data) {
+        // Check for duplicate events
+        if (this._isDuplicateEvent(eventType, data)) {
+            // Duplicate event detected - do not process
+            console.log(`⚠️  Duplicate ${eventType} event ignored`);
+            return;
+        }
+
         // Event an Server-Module weiterleiten
         this.emit(eventType, data);
 
@@ -892,7 +992,30 @@ class TikTokConnector extends EventEmitter {
     }
 
     getStats() {
-        return this.stats;
+        return {
+            ...this.stats,
+            deduplicationCacheSize: this.processedEvents.size
+        };
+    }
+
+    /**
+     * Get deduplication statistics
+     * @returns {object} Deduplication stats
+     */
+    getDeduplicationStats() {
+        return {
+            cacheSize: this.processedEvents.size,
+            maxCacheSize: this.maxProcessedEvents,
+            expirationMs: this.eventExpirationMs
+        };
+    }
+
+    /**
+     * Clear deduplication cache (for debugging/testing)
+     */
+    clearDeduplicationCache() {
+        this.processedEvents.clear();
+        console.log('🧹 Event deduplication cache manually cleared');
     }
 
     isActive() {
