@@ -294,6 +294,10 @@ setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger);
 // ========== DEBUG ROUTES ==========
 setupDebugRoutes(app, debugLogger, logger);
 
+// ========== WIKI ROUTES ==========
+const wikiRoutes = require('./routes/wiki-routes');
+app.use('/api/wiki', wikiRoutes);
+
 // NOTE: Plugin static files middleware will be registered AFTER plugins are loaded
 // to ensure plugin-registered routes take precedence over static file serving
 
