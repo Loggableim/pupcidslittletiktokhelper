@@ -281,6 +281,9 @@ function renderDeviceList() {
         container.innerHTML = `
             <p class="text-muted text-center">No devices found. Configure API key first.</p>
         `;
+        
+        // Also update test shock dropdown
+        updateTestShockDeviceList();
         return;
     }
 
@@ -348,6 +351,9 @@ function renderDeviceList() {
     `;
 
     container.innerHTML = html;
+    
+    // Also update test shock dropdown
+    updateTestShockDeviceList();
 }
 
 function renderCommandLog(commands) {
@@ -1107,10 +1113,7 @@ async function saveSafetyConfig() {
 }
 
 async function triggerEmergencyStop() {
-    if (!await confirmAction('EMERGENCY STOP - This will immediately stop all active commands. Continue?')) {
-        return;
-    }
-
+    // Emergency stop should execute immediately without confirmation
     try {
         const response = await fetch('/api/openshock/emergency-stop', {
             method: 'POST'
@@ -1118,7 +1121,7 @@ async function triggerEmergencyStop() {
 
         if (!response.ok) throw new Error('Failed to trigger emergency stop');
 
-        showNotification('EMERGENCY STOP ACTIVATED', 'error');
+        showNotification('🛑 EMERGENCY STOP ACTIVATED', 'error');
     } catch (error) {
         console.error('[OpenShock] Error triggering emergency stop:', error);
         showNotification('Error triggering emergency stop', 'error');
@@ -1164,9 +1167,20 @@ async function saveApiSettings() {
 
         await loadConfig();
         showNotification('API settings saved successfully', 'success');
+        
+        // After saving API settings, refresh devices and update API status
+        try {
+            await loadDevices();
+            renderDeviceList();
+            updateApiStatus(devices.length > 0, devices.length);
+        } catch (loadError) {
+            console.error('[OpenShock] Could not load devices after saving settings:', loadError);
+            updateApiStatus(false, 0);
+        }
     } catch (error) {
         console.error('[OpenShock] Error saving API settings:', error);
         showNotification('Error saving API settings', 'error');
+        updateApiStatus(false, 0);
     }
 }
 
@@ -1232,6 +1246,72 @@ function updateApiStatus(connected, deviceCount) {
     }
 }
 
+function updateTestShockDeviceList() {
+    const testShockDevice = document.getElementById('testShockDevice');
+    const testShockButton = document.getElementById('testShockButton');
+    
+    if (!testShockDevice) return;
+    
+    // Clear existing options
+    testShockDevice.innerHTML = '<option value="">-- Select a device --</option>';
+    
+    // Add device options
+    devices.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.id;
+        option.textContent = device.name || device.id;
+        testShockDevice.appendChild(option);
+    });
+    
+    // Enable/disable button based on device availability
+    if (testShockButton) {
+        testShockButton.disabled = devices.length === 0;
+    }
+}
+
+async function executeTestShock() {
+    const testShockDevice = document.getElementById('testShockDevice');
+    const deviceId = testShockDevice ? testShockDevice.value : '';
+    
+    if (!deviceId) {
+        showNotification('Please select a device for test shock', 'error');
+        return;
+    }
+    
+    const button = document.getElementById('testShockButton');
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    }
+    
+    try {
+        const response = await fetch(`/api/openshock/test/${deviceId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'shock',
+                intensity: 100,
+                duration: 1000
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Test shock failed');
+        }
+        
+        showNotification('⚡ Test shock sent successfully!', 'success');
+    } catch (error) {
+        console.error('[OpenShock] Error sending test shock:', error);
+        showNotification(`Error sending test shock: ${error.message}`, 'error');
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '⚡ Test Shock (1s, 100%)';
+        }
+    }
+}
+
 async function refreshDevices() {
     const button = document.querySelector('.refresh-devices-btn');
     if (button) {
@@ -1252,9 +1332,9 @@ async function refreshDevices() {
         renderDeviceList();
         
         // Update API status with device count
-        updateApiStatus(true, devices.length);
+        updateApiStatus(devices.length > 0, devices.length);
         
-        showNotification('Devices refreshed successfully', 'success');
+        showNotification(`Devices refreshed successfully - loaded ${devices.length} device(s)`, 'success');
     } catch (error) {
         console.error('[OpenShock] Error refreshing devices:', error);
         showNotification('Error refreshing devices', 'error');
@@ -1659,6 +1739,26 @@ function initializeEventDelegation() {
         testConnectionBtn.addEventListener('click', (e) => {
             e.preventDefault();
             testConnection();
+        });
+    }
+    
+    // Test shock button
+    const testShockButton = document.getElementById('testShockButton');
+    if (testShockButton) {
+        testShockButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            executeTestShock();
+        });
+    }
+    
+    // Test shock device selector - enable/disable button when selection changes
+    const testShockDevice = document.getElementById('testShockDevice');
+    if (testShockDevice) {
+        testShockDevice.addEventListener('change', (e) => {
+            const button = document.getElementById('testShockButton');
+            if (button) {
+                button.disabled = !e.target.value;
+            }
         });
     }
 
@@ -2146,6 +2246,8 @@ window.openShock = {
     saveApiSettings,
     testConnection,
     refreshDevices,
+    updateTestShockDeviceList,
+    executeTestShock,
     clearQueue,
     testDevice,
     saveSafetyConfig,
