@@ -38,7 +38,9 @@ class GoalsEventHandlers {
      */
     handleGift(data) {
         try {
-            const coins = data.diamondCount || 0;
+            // FIX: Use data.coins (already calculated as diamondCount * 2 * repeatCount)
+            // instead of data.diamondCount (which is just the raw diamond value per gift)
+            const coins = data.coins || 0;
             if (coins === 0) return;
 
             // Get all enabled coin goals
@@ -49,7 +51,7 @@ class GoalsEventHandlers {
                 this.incrementGoal(goal.id, coins);
             }
 
-            this.api.log(`Gift received: ${coins} coins`, 'debug');
+            this.api.log(`Gift received: ${coins} coins (${data.giftName || 'unknown'} x${data.repeatCount || 1})`, 'debug');
         } catch (error) {
             this.api.log(`Error handling gift event: ${error.message}`, 'error');
         }

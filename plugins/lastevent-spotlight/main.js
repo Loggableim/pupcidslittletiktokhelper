@@ -376,7 +376,9 @@ class LastEventSpotlightPlugin {
         giftName: data.giftName,
         giftCount: data.repeatCount || data.count || 1,
         message: data.comment || data.message,
-        coins: data.coins || data.diamondCount
+        // FIX: Use data.coins (already calculated), only fallback to 0 if not present
+        // Don't fallback to diamondCount as it's the raw diamond value, not coins
+        coins: data.coins || 0
       }
     };
   }

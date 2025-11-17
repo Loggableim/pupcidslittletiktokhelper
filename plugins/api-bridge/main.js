@@ -150,9 +150,10 @@ class APIBridgePlugin {
                     nickname: data.nickname,
                     gift: data.giftName,
                     giftId: data.giftId,
-                    amount: data.giftCount,
+                    amount: data.repeatCount || 1, // FIX: Use repeatCount instead of giftCount
                     diamondCost: data.diamondCount,
-                    totalDiamonds: data.giftCount * data.diamondCount,
+                    totalDiamonds: (data.repeatCount || 1) * data.diamondCount,
+                    coins: data.coins || 0, // Add calculated coins value
                     profilePictureUrl: data.profilePictureUrl
                 }
             };

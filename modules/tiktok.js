@@ -645,6 +645,20 @@ class TikTokConnector extends EventEmitter {
 
         // ========== GIFT ==========
         this.connection.on('gift', (data) => {
+            // DEBUG: Log raw gift event structure for analysis
+            console.log(`🔍 [RAW GIFT EVENT]`, {
+                hasGift: !!data.gift,
+                hasRepeatCount: data.repeatCount !== undefined,
+                hasRepeatEnd: data.repeatEnd !== undefined,
+                hasDiamondCount: data.diamondCount !== undefined || (data.gift && data.gift.diamond_count !== undefined),
+                giftType: data.giftType,
+                rawRepeatCount: data.repeatCount,
+                rawRepeatEnd: data.repeatEnd,
+                rawDiamondCount: data.diamondCount,
+                giftObjectDiamondCount: data.gift?.diamond_count,
+                topLevelKeys: Object.keys(data).slice(0, 20)
+            });
+
             // Extrahiere Gift-Daten
             const giftData = this.extractGiftData(data);
 
@@ -671,7 +685,7 @@ class TikTokConnector extends EventEmitter {
             }
 
             // BUG FIX LOGGING: Verify gift calculation is correct
-            console.log(`🎁 [GIFT CALC] ${giftData.giftName}: diamondCount=${diamondCount}, repeatCount=${repeatCount}, coins=${coins}`);
+            console.log(`🎁 [GIFT CALC] ${giftData.giftName}: diamondCount=${diamondCount}, repeatCount=${repeatCount}, coins=${coins}, giftType=${giftData.giftType}, repeatEnd=${giftData.repeatEnd}`);
 
             // Streak-Ende prüfen
             // Streakable Gifts nur zählen wenn Streak beendet ist
@@ -687,6 +701,7 @@ class TikTokConnector extends EventEmitter {
 
                 const userData = this.extractUserData(data);
                 const eventData = {
+                    uniqueId: userData.username, // Add uniqueId for compatibility
                     username: userData.username,
                     nickname: userData.nickname,
                     giftName: giftData.giftName,
@@ -697,15 +712,18 @@ class TikTokConnector extends EventEmitter {
                     coins: coins,
                     totalCoins: this.stats.totalCoins,
                     isStreakEnd: isStreakEnd,
+                    giftType: giftData.giftType, // Add giftType for debugging
                     timestamp: new Date().toISOString()
                 };
+
+                console.log(`✅ [GIFT COUNTED] Total coins now: ${this.stats.totalCoins}`);
 
                 this.handleEvent('gift', eventData);
                 this.db.logEvent('gift', eventData.username, eventData);
                 this.broadcastStats();
             } else {
                 // Streak läuft noch - nicht zählen, aber loggen für Debugging
-                console.log(`🎁 Streak läuft: ${giftData.giftName || 'Unknown Gift'} x${repeatCount} (noch nicht gezählt)`);
+                console.log(`⏳ [STREAK RUNNING] ${giftData.giftName || 'Unknown Gift'} x${repeatCount} (${coins} coins, not counted yet)`);
             }
         });
 
