@@ -611,12 +611,6 @@ function spawnEmoji(emoji, x, y, size, username = null, color = null) {
     element.style.top = '0';
     element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
 
-    // Apply pixel effect before adding to DOM
-    applyPixelEffect(element);
-    
-    // Apply initial color theme before adding to DOM to prevent flash
-    applyColorTheme(element, emojiObj);
-
     // Now add to DOM - element already has correct position
     document.getElementById('canvas-container').appendChild(element);
 
@@ -640,6 +634,12 @@ function spawnEmoji(emoji, x, y, size, username = null, color = null) {
     
     // Add to body map for fast collision lookup
     emojiBodyMap.set(body, emojiObj);
+
+    // Apply pixel effect after creating emojiObj
+    applyPixelEffect(element);
+    
+    // Apply initial color theme after creating emojiObj to prevent flash
+    applyColorTheme(element, emojiObj);
     
     return emojiObj;
 }

@@ -445,6 +445,9 @@ class EmojiRainPlugin {
                 return;
             }
 
+            // Log event data for debugging
+            this.api.log(`🎯 [EMOJI RAIN EVENT] Reason: ${reason}, Username: ${data.uniqueId || data.username}, Data keys: ${Object.keys(data).join(', ')}`, 'debug');
+
             // Calculate count based on reason if not provided
             if (!count) {
                 if (reason === 'gift' && data.coins) {
@@ -491,7 +494,7 @@ class EmojiRainPlugin {
                 burst: isBurst
             });
 
-            this.api.log(`🌧️ Emoji rain spawned: ${count}x ${emoji} for ${reason}${isBurst ? ' [SUPERFAN BURST]' : ''}`, 'debug');
+            this.api.log(`🌧️ Emoji rain spawned: ${count}x ${emoji} for ${reason} by ${username}${isBurst ? ' [SUPERFAN BURST]' : ''}`, 'debug');
         } catch (error) {
             this.api.log(`Error spawning emoji rain: ${error.message}`, 'error');
         }
