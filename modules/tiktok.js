@@ -328,19 +328,31 @@ class TikTokConnector extends EventEmitter {
             };
         }
 
-        // FIX: HTML Fetch Errors - Pattern mismatch or blocked
+        // SIGI_STATE Fehler (Blockierung) - Check this BEFORE general HTML parse errors
+        // This has highest priority as it specifically indicates blocking
+        if (errorMessage.includes('SIGI_STATE') || errorMessage.includes('blocked by TikTok')) {
+            return {
+                type: 'BLOCKED_BY_TIKTOK',
+                message: 'TikTok blockiert den Zugriff. Die HTML-Seite konnte nicht geparst werden (SIGI_STATE-Fehler).',
+                suggestion: 'NICHT SOFORT ERNEUT VERSUCHEN! Warte mindestens 5-10 Minuten. Zu viele Verbindungsversuche können zu längeren Blockierungen führen. Alternativen: VPN verwenden, andere IP-Adresse nutzen oder Session-Keys konfigurieren.',
+                retryable: false
+            };
+        }
+
+        // FIX: HTML Fetch Errors - Pattern mismatch or structure changes
+        // This catches general HTML parsing issues (not blocking)
         if (errorMessage.includes('extract') && errorMessage.includes('HTML') ||
-            errorMessage.includes('SIGI_STATE') && errorMessage.includes('pattern') ||
-            errorMessage.includes('Failed to extract the LiveRoom object')) {
+            errorMessage.includes('Failed to extract the LiveRoom object') ||
+            errorMessage.includes('structure changed')) {
             return {
                 type: 'HTML_PARSE_ERROR',
-                message: 'HTML-Parsing fehlgeschlagen. TikTok hat möglicherweise die Seitenstruktur geändert oder blockiert den Zugriff.',
-                suggestion: 'Dies kann verschiedene Ursachen haben: 1) TikTok hat die HTML-Struktur geändert (update tiktok-live-connector), 2) Du wurdest von TikTok blockiert (warte 10+ Minuten), 3) Geo-Block oder Cloudflare-Schutz ist aktiv (verwende VPN).',
+                message: 'HTML-Parsing fehlgeschlagen. TikTok hat möglicherweise die Seitenstruktur geändert.',
+                suggestion: 'Dies kann verschiedene Ursachen haben: 1) TikTok hat die HTML-Struktur geändert (update tiktok-live-connector), 2) Geo-Block oder Cloudflare-Schutz ist aktiv (verwende VPN).',
                 retryable: true
             };
         }
 
-        // FIX: Euler Stream Permission Error - Check this first
+        // FIX: Euler Stream Permission Error
         // Note: We check for specific error message patterns from tiktok-live-connector library
         // This is error message matching, not URL validation - the check is safe for this use case
         if (errorMessage.includes('Euler Stream') || 
@@ -350,16 +362,6 @@ class TikTokConnector extends EventEmitter {
                 type: 'EULER_STREAM_PERMISSION_ERROR',
                 message: 'Euler Stream Fallback-Methode benötigt einen API-Schlüssel. Die Verbindung ist fehlgeschlagen, weil Euler Stream als Fallback verwendet wurde, aber keine Berechtigung vorliegt.',
                 suggestion: 'Euler Stream Fallbacks sind jetzt standardmäßig deaktiviert. Falls das Problem weiterhin auftritt, starte den Server neu. Optional: Registriere dich bei https://www.eulerstream.com für einen API-Schlüssel und setze TIKTOK_SIGN_API_KEY in der .env Datei.',
-                retryable: false
-            };
-        }
-
-        // SIGI_STATE Fehler (Blockierung) - Höchste Priorität, da definitiv nicht retryable
-        if (errorMessage.includes('SIGI_STATE') || errorMessage.includes('blocked by TikTok')) {
-            return {
-                type: 'BLOCKED_BY_TIKTOK',
-                message: 'TikTok blockiert den Zugriff. Die HTML-Seite konnte nicht geparst werden (SIGI_STATE-Fehler).',
-                suggestion: 'NICHT SOFORT ERNEUT VERSUCHEN! Warte mindestens 5-10 Minuten. Zu viele Verbindungsversuche können zu längeren Blockierungen führen. Alternativen: VPN verwenden, andere IP-Adresse nutzen oder Session-Keys konfigurieren.',
                 retryable: false
             };
         }
