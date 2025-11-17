@@ -356,7 +356,7 @@ class LastEventSpotlightPlugin {
 
     if (data.user) {
       user = data.user;
-    } else if (data.uniqueId) {
+    } else if (data.uniqueId || data.username) {
       user = data;
     }
 
@@ -365,9 +365,9 @@ class LastEventSpotlightPlugin {
     }
 
     return {
-      uniqueId: user.uniqueId || user.userId || 'unknown',
-      nickname: user.nickname || user.displayName || user.uniqueId || 'Anonymous',
-      profilePictureUrl: user.profilePictureUrl || user.avatarUrl || user.profilePicUrl || '',
+      uniqueId: user.uniqueId || user.username || user.userId || 'unknown',
+      nickname: user.nickname || user.displayName || user.uniqueId || user.username || 'Anonymous',
+      profilePictureUrl: user.profilePictureUrl || user.avatarUrl || user.profilePicUrl || user.profilePicture || '',
       timestamp: new Date().toISOString(),
       eventType: overlayType,
       label: this.eventTypes[overlayType].label,
