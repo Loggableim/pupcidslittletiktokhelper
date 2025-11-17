@@ -131,13 +131,16 @@
                     <div class="panel-body">
                         <div class="upload-section">
                             <div class="help-text">
-                                Format: <code>[{"question": "...", "answers": ["A", "B", "C", "D"], "correct": 0}]</code>
+                                Format: <code>[{"question": "...", "answers": ["A", "B", "C", "D"], "correct": 0, "difficulty": 2, "category": "...", "info": "..."}]</code>
                             </div>
                             <textarea id="jsonUpload" class="json-input" placeholder='[
   {
     "question": "Was ist die Hauptstadt von Deutschland?",
     "answers": ["Berlin", "München", "Hamburg", "Köln"],
-    "correct": 0
+    "correct": 0,
+    "difficulty": 2,
+    "category": "Geographie",
+    "info": "Berlin ist seit 1990 die Hauptstadt des wiedervereinigten Deutschlands"
   }
 ]'></textarea>
                             <div class="button-group">

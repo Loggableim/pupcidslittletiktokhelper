@@ -193,7 +193,9 @@ class OpenShockClient {
             this.logger.warn('OpenShockClient: Cannot get devices - API key not configured');
             return [];
         }
-        return this._executeRequest('GET', '/1/shockers/own', null, 1);
+        const response = await this._executeRequest('GET', '/1/shockers/own', null, 1);
+        // OpenShock API returns { data: [...] }, extract the data array
+        return response.data || response || [];
     }
 
     /**
