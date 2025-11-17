@@ -6,13 +6,15 @@ let metrics = {
     cpu: { usage: 0, cores: [], temp: null, model: '', peak: 0, history: [] },
     ram: { used: 0, total: 0, percent: 0, process: 0, peak: 0, history: [], breakdown: {} },
     gpu: { usage: null, vram: { used: 0, total: 0 }, temp: null, model: '', enabled: false, history: [] },
+    network: { rx_sec: 0, tx_sec: 0, history: [] },
     processes: []
 };
 
 let charts = {
     cpu: null,
     ram: null,
-    gpu: null
+    gpu: null,
+    network: null
 };
 
 let compactMode = false;
@@ -115,17 +117,23 @@ function updateMetrics(data) {
 
     // Update CPU
     if (data.cpu) {
-        updateCPU(data.cpu);
+        updateCPU(data.cpu, data.process);
     }
 
-    // Update RAM
-    if (data.ram) {
-        updateRAM(data.ram);
+    // Update RAM (handle both 'ram' and 'memory' keys for compatibility)
+    const ramData = data.ram || data.memory;
+    if (ramData) {
+        updateRAM(ramData);
     }
 
     // Update GPU
     if (data.gpu) {
         updateGPU(data.gpu);
+    }
+
+    // Update Network
+    if (data.network) {
+        updateNetwork(data.network);
     }
 
     // Update processes
@@ -146,7 +154,7 @@ function safeUpdateElement(id, callback) {
 }
 
 // Update CPU display
-function updateCPU(cpu) {
+function updateCPU(cpu, processData) {
     const usage = Math.round(cpu.usage || 0);
 
     // Update percentage with animation
@@ -162,11 +170,20 @@ function updateCPU(cpu) {
         document.getElementById('cpu-model').textContent = cpu.model;
     }
 
-    // Update cores
-    document.getElementById('cpu-cores').textContent = `${cpu.physicalCores || 0} / ${cpu.logicalCores || 0}`;
+    // Update cores (handle both formats)
+    const physicalCores = cpu.physicalCores || cpu.cores?.length || 0;
+    const logicalCores = cpu.logicalCores || cpu.cores?.length || 0;
+    document.getElementById('cpu-cores').textContent = `${physicalCores} / ${logicalCores}`;
 
     // Update temperature
-    document.getElementById('cpu-temp').textContent = cpu.temp ? `${cpu.temp}°C` : 'N/A';
+    const tempValue = cpu.temperature?.main || cpu.temp;
+    document.getElementById('cpu-temp').textContent = tempValue ? `${tempValue}°C` : 'N/A';
+
+    // Update process and system CPU usage
+    if (processData) {
+        safeUpdateElement('cpu-process', (el) => el.textContent = (processData.cpu || 0).toFixed(1) + '%');
+    }
+    safeUpdateElement('cpu-system', (el) => el.textContent = usage + '%');
 
     // Update progress bars and circles
     const color = getColorClass(usage, 5, 8);
@@ -197,16 +214,17 @@ function updateCPU(cpu) {
 
     // Update per-core display
     if (cpu.cores && cpu.cores.length > 0) {
-        updateCoresGrid(cpu.cores);
+        const coreLoads = cpu.cores.map(core => core.load || core.loadUser || 0);
+        updateCoresGrid(coreLoads);
     }
 }
 
 // Update RAM display
 function updateRAM(ram) {
-    const percent = Math.round(ram.percent || 0);
+    const percent = Math.round(ram.usedPercent || ram.percent || 0);
     const used = formatBytes(ram.used || 0);
     const total = formatBytes(ram.total || 0);
-    const free = formatBytes(ram.free || 0);
+    const free = formatBytes(ram.free || ram.available || 0);
 
     // Update percentage with animation
     safeUpdateElement('ram-percentage', (el) => {
@@ -252,7 +270,10 @@ function updateRAM(ram) {
 
 // Update GPU display
 function updateGPU(gpu) {
-    if (!gpu || !gpu.enabled) {
+    // Handle both array format [gpu] and single object format
+    const gpuData = Array.isArray(gpu) ? gpu[0] : gpu;
+
+    if (!gpuData || (!gpuData.enabled && gpuData.utilizationGpu === null && gpuData.utilizationGpu === undefined)) {
         document.getElementById('gpu-percentage').textContent = 'N/A';
         document.getElementById('gpu-status').textContent = 'Disabled';
         document.getElementById('gpu-model').textContent = 'GPU Acceleration: Disabled';
@@ -260,7 +281,7 @@ function updateGPU(gpu) {
         return;
     }
 
-    const usage = Math.round(gpu.usage || 0);
+    const usage = Math.round(gpuData.utilizationGpu || gpuData.usage || 0);
 
     // Update percentage
     const percentEl = document.getElementById('gpu-percentage');
@@ -271,19 +292,22 @@ function updateGPU(gpu) {
     percentEl.textContent = usage + '%';
 
     // Update model
-    if (gpu.model) {
-        document.getElementById('gpu-model').textContent = gpu.model;
+    if (gpuData.model) {
+        document.getElementById('gpu-model').textContent = gpuData.model;
     }
 
     // Update VRAM
-    document.getElementById('gpu-vram-used').textContent = formatBytes(gpu.vram?.used || 0);
-    document.getElementById('gpu-vram-total').textContent = formatBytes(gpu.vram?.total || 0);
+    const vramUsed = gpuData.memoryUsed || gpuData.vram?.used || 0;
+    const vramTotal = gpuData.memoryTotal || gpuData.vram?.total || 0;
+    document.getElementById('gpu-vram-used').textContent = formatBytes(vramUsed * 1024 * 1024); // Convert MB to bytes
+    document.getElementById('gpu-vram-total').textContent = formatBytes(vramTotal * 1024 * 1024);
 
     // Update temperature
-    document.getElementById('gpu-temp').textContent = gpu.temp ? `${gpu.temp}°C` : 'N/A';
+    const tempValue = gpuData.temperatureGpu || gpuData.temp;
+    document.getElementById('gpu-temp').textContent = tempValue ? `${tempValue}°C` : 'N/A';
 
     // Update acceleration status
-    document.getElementById('gpu-acceleration').textContent = gpu.enabled ? 'Enabled' : 'Disabled';
+    document.getElementById('gpu-acceleration').textContent = 'Enabled';
     document.getElementById('gpu-status').textContent = 'Active';
 
     // Update progress bars and circles
@@ -301,7 +325,7 @@ function updateGPU(gpu) {
     updateChart('gpu', metrics.gpu.history, color);
 
     // Update GPU info
-    updateGPUInfo(gpu);
+    updateGPUInfo(gpuData);
 }
 
 // Update processes table
@@ -318,9 +342,68 @@ function updateProcesses(processes) {
             <td class="py-3 pr-4">${proc.name || 'Unknown'}</td>
             <td class="py-3 pr-4">${proc.pid || '-'}</td>
             <td class="py-3 pr-4">${proc.cpu ? proc.cpu.toFixed(1) + '%' : '-'}</td>
-            <td class="py-3">${formatBytes(proc.memory || 0)}</td>
+            <td class="py-3">${proc.memMb ? proc.memMb + ' MB' : formatBytes(proc.memory || 0)}</td>
         </tr>
     `).join('');
+}
+
+// Update network display
+function updateNetwork(network) {
+    if (!network) return;
+
+    const rxSec = network.rx_sec || 0;
+    const txSec = network.tx_sec || 0;
+    const totalSec = rxSec + txSec;
+
+    // Update download/upload rates
+    safeUpdateElement('network-download', (el) => el.textContent = formatBytesShort(rxSec) + '/s');
+    safeUpdateElement('network-upload', (el) => el.textContent = formatBytesShort(txSec) + '/s');
+
+    // Update total bytes
+    safeUpdateElement('network-total-rx', (el) => el.textContent = formatBytes(network.rx_bytes || 0));
+    safeUpdateElement('network-total-tx', (el) => el.textContent = formatBytes(network.tx_bytes || 0));
+
+    // Update interface info
+    safeUpdateElement('network-interface', (el) => el.textContent = network.iface || '-');
+    safeUpdateElement('network-iface', (el) => el.textContent = network.iface ? `Interface: ${network.iface}` : 'Loading...');
+    safeUpdateElement('network-status', (el) => {
+        const status = network.operstate || 'unknown';
+        el.textContent = status.toUpperCase();
+        el.className = `font-semibold ${status === 'up' ? 'text-green-400' : 'text-gray-400'}`;
+    });
+
+    // Update compact view if exists
+    const networkElement = document.getElementById('resource-network-compact');
+    if (networkElement) {
+        networkElement.textContent = formatBytesShort(totalSec) + '/s';
+    }
+
+    // Update history
+    metrics.network.history.push(totalSec / 1024); // Convert to KB/s for chart consistency
+    if (metrics.network.history.length > 60) {
+        metrics.network.history.shift();
+    }
+
+    // Update chart
+    updateNetworkChart(metrics.network.history);
+}
+
+// Update network chart
+function updateNetworkChart(data) {
+    if (!charts.network) return;
+
+    charts.network.data.labels = Array(data.length).fill('');
+    charts.network.data.datasets[0].data = data;
+    charts.network.update('none');
+}
+
+// Helper to format bytes in short form
+function formatBytesShort(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
 // Update cores grid
@@ -453,18 +536,29 @@ function initCharts() {
     };
 
     // Create charts
-    ['cpu', 'ram', 'gpu'].forEach(type => {
+    ['cpu', 'ram', 'gpu', 'network'].forEach(type => {
         const ctx = document.getElementById(`${type}-chart`).getContext('2d');
+        const isNetwork = type === 'network';
         charts[type] = new Chart(ctx, {
             ...chartConfig,
             data: {
                 labels: Array(60).fill(''),
                 datasets: [{
                     data: Array(60).fill(0),
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderColor: isNetwork ? '#3b82f6' : '#10b981',
+                    backgroundColor: isNetwork ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
                     fill: true
                 }]
+            },
+            options: {
+                ...chartConfig.options,
+                scales: {
+                    ...chartConfig.options.scales,
+                    y: {
+                        ...chartConfig.options.scales.y,
+                        max: isNetwork ? undefined : 100 // No max for network traffic
+                    }
+                }
             }
         });
     });
