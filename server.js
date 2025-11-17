@@ -125,7 +125,7 @@ app.use((req, res, next) => {
         // which prevents XSS attacks via inline script injection.
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self'; ` +  // No 'unsafe-inline' - all scripts must be external files
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='; ` +  // Allow specific Socket.IO inline script via hash
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
@@ -141,7 +141,7 @@ app.use((req, res, next) => {
         // Strict CSP for other routes (including overlays for OBS)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self'; ` +
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='; ` +  // Allow specific Socket.IO inline script via hash
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
@@ -158,6 +158,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static('public'));
+
+// Serve TTS UI files (legacy support)
+app.use('/tts', express.static(path.join(__dirname, 'tts')));
 
 // i18n Middleware
 app.use(i18n.init);

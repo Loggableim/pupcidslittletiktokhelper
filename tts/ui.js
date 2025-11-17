@@ -99,9 +99,15 @@ document.addEventListener('DOMContentLoaded', () => {
             loadVoices();
         }
 
-        const ws = new WebSocket('ws://localhost:8080');
+        // Use the current page's host and port for WebSocket connection
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.hostname || 'localhost';
+        const port = window.location.port || '3000';
+        const wsUrl = `${protocol}//${host}:${port}`;
+        
+        const ws = new WebSocket(wsUrl);
 
-        ws.onopen = () => console.log('WebSocket connected');
+        ws.onopen = () => console.log('WebSocket connected to', wsUrl);
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type === 'tts') {
