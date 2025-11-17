@@ -16,6 +16,7 @@ const Database = require('./modules/database');
 const TikTokConnector = require('./modules/tiktok');
 const AlertManager = require('./modules/alerts');
 const FlowEngine = require('./modules/flows');
+const { IFTTTEngine } = require('./modules/ifttt'); // New IFTTT Engine
 const { GoalManager } = require('./modules/goals');
 const UserProfileManager = require('./modules/user-profiles');
 const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integration
@@ -260,6 +261,20 @@ const tiktok = new TikTokConnector(io, db, logger);
 const alerts = new AlertManager(io, db, logger);
 const flows = new FlowEngine(db, alerts, logger);
 const goals = new GoalManager(db, io, logger);
+
+// Initialize IFTTT Engine with services
+const axios = require('axios');
+const iftttServices = {
+    io,
+    db,
+    alertManager: alerts,
+    axios,
+    fs: require('fs').promises,
+    path: require('path'),
+    safeDir: path.join(__dirname, 'user_data', 'flow_logs')
+};
+const iftttEngine = new IFTTTEngine(db, logger, iftttServices);
+logger.info('⚡ IFTTT Engine initialized');
 
 // Session Extractor for TikTok authentication
 const sessionExtractor = new SessionExtractor(db);
@@ -1094,6 +1109,152 @@ app.post('/api/flows/:id/test', apiLimiter, async (req, res) => {
     }
 });
 
+// ========== IFTTT ROUTES ==========
+
+/**
+ * GET /api/ifttt/triggers - Get all available triggers
+ */
+app.get('/api/ifttt/triggers', apiLimiter, (req, res) => {
+    try {
+        const triggers = iftttEngine.triggers.getAll();
+        res.json(triggers);
+    } catch (error) {
+        logger.error('Error getting triggers:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/conditions - Get all available conditions
+ */
+app.get('/api/ifttt/conditions', apiLimiter, (req, res) => {
+    try {
+        const conditions = iftttEngine.conditions.getAll();
+        const operators = iftttEngine.conditions.getAllOperators();
+        res.json({ conditions, operators });
+    } catch (error) {
+        logger.error('Error getting conditions:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/actions - Get all available actions
+ */
+app.get('/api/ifttt/actions', apiLimiter, (req, res) => {
+    try {
+        const actions = iftttEngine.actions.getAll();
+        res.json(actions);
+    } catch (error) {
+        logger.error('Error getting actions:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/stats - Get IFTTT engine statistics
+ */
+app.get('/api/ifttt/stats', apiLimiter, (req, res) => {
+    try {
+        const stats = iftttEngine.getStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error('Error getting IFTTT stats:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/execution-history - Get execution history
+ */
+app.get('/api/ifttt/execution-history', apiLimiter, (req, res) => {
+    try {
+        const count = parseInt(req.query.count) || 20;
+        const history = iftttEngine.getExecutionHistory(count);
+        res.json(history);
+    } catch (error) {
+        logger.error('Error getting execution history:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/variables - Get all variables
+ */
+app.get('/api/ifttt/variables', apiLimiter, (req, res) => {
+    try {
+        const variables = iftttEngine.variables.getAll();
+        const stats = iftttEngine.variables.getStats();
+        res.json({ variables, stats });
+    } catch (error) {
+        logger.error('Error getting variables:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/ifttt/variables/:name - Set a variable
+ */
+app.post('/api/ifttt/variables/:name', apiLimiter, (req, res) => {
+    try {
+        const { name } = req.params;
+        const { value } = req.body;
+        iftttEngine.variables.set(name, value);
+        logger.info(`📝 Variable set: ${name} = ${value}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error setting variable:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * DELETE /api/ifttt/variables/:name - Delete a variable
+ */
+app.delete('/api/ifttt/variables/:name', apiLimiter, (req, res) => {
+    try {
+        const { name } = req.params;
+        iftttEngine.variables.delete(name);
+        logger.info(`🗑️ Variable deleted: ${name}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error deleting variable:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/ifttt/trigger/:flowId - Manually trigger a flow
+ */
+app.post('/api/ifttt/trigger/:flowId', apiLimiter, async (req, res) => {
+    try {
+        const { flowId } = req.params;
+        const eventData = req.body || {};
+        await iftttEngine.executeFlowById(flowId, eventData);
+        logger.info(`⚡ Manually triggered flow: ${flowId}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error triggering flow:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/ifttt/event/:eventType - Manually trigger an event
+ */
+app.post('/api/ifttt/event/:eventType', apiLimiter, async (req, res) => {
+    try {
+        const { eventType } = req.params;
+        const eventData = req.body || {};
+        await iftttEngine.processEvent(eventType, eventData);
+        logger.info(`📡 Manually triggered event: ${eventType}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error triggering event:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ========== ALERT ROUTES ==========
 
 app.get('/api/alerts', apiLimiter, (req, res) => {
@@ -1839,8 +2000,11 @@ tiktok.on('gift', async (data) => {
     // Leaderboard: Update user stats
     await leaderboard.trackGift(data.username, data.giftName, data.coins);
 
-    // Flows verarbeiten
+    // Flows verarbeiten (legacy)
     await flows.processEvent('gift', data);
+    
+    // IFTTT Engine verarbeiten
+    await iftttEngine.processEvent('tiktok:gift', data);
 });
 
 // Follow Event
@@ -1857,6 +2021,7 @@ tiktok.on('follow', async (data) => {
     await leaderboard.trackFollow(data.username);
 
     await flows.processEvent('follow', data);
+    await iftttEngine.processEvent('tiktok:follow', data);
 });
 
 // Subscribe Event
@@ -1876,6 +2041,7 @@ tiktok.on('subscribe', async (data) => {
     await leaderboard.trackSubscription(data.username);
 
     await flows.processEvent('subscribe', data);
+    await iftttEngine.processEvent('tiktok:subscribe', data);
 });
 
 // Share Event
@@ -1886,6 +2052,7 @@ tiktok.on('share', async (data) => {
     await leaderboard.trackShare(data.username);
 
     await flows.processEvent('share', data);
+    await iftttEngine.processEvent('tiktok:share', data);
 });
 
 // Chat Event
@@ -1895,6 +2062,7 @@ tiktok.on('chat', async (data) => {
 
     // Flows verarbeiten
     await flows.processEvent('chat', data);
+    await iftttEngine.processEvent('tiktok:chat', data);
 });
 
 // Like Event
@@ -1923,6 +2091,7 @@ tiktok.on('like', async (data) => {
     // Likes normalerweise nicht als Alert (zu viele)
     // Aber Flows könnten darauf reagieren
     await flows.processEvent('like', data);
+    await iftttEngine.processEvent('tiktok:like', data);
 });
 
 // ========== SERVER STARTEN ==========
@@ -1978,6 +2147,44 @@ const PORT = process.env.PORT || 3000;
                 flows.ttsEngine = ttsPlugin;
                 logger.info('✅ TTS injected into Flows');
             }
+
+            // IFTTT Engine: Plugin-Injektionen
+            if (vdoninjaPlugin && vdoninjaPlugin.getManager) {
+                iftttServices.vdoninja = vdoninjaPlugin.getManager();
+                logger.info('✅ VDO.Ninja Manager injected into IFTTT Engine');
+            }
+
+            if (oscBridgePlugin && oscBridgePlugin.getOSCBridge) {
+                iftttServices.osc = oscBridgePlugin.getOSCBridge();
+                logger.info('✅ OSC-Bridge injected into IFTTT Engine');
+            }
+
+            if (ttsPlugin) {
+                iftttServices.tts = ttsPlugin;
+                logger.info('✅ TTS injected into IFTTT Engine');
+            }
+
+            iftttServices.pluginLoader = pluginLoader;
+            iftttServices.obs = obs;
+            iftttServices.goals = goals;
+            logger.info('✅ All services injected into IFTTT Engine');
+
+            // Allow plugins to register IFTTT components
+            pluginLoader.plugins.forEach((plugin, pluginId) => {
+                if (plugin.registerIFTTTComponents) {
+                    try {
+                        plugin.registerIFTTTComponents(iftttEngine.getRegistries());
+                        logger.info(`✅ Plugin "${pluginId}" registered IFTTT components`);
+                    } catch (error) {
+                        logger.error(`❌ Plugin "${pluginId}" failed to register IFTTT components:`, error);
+                    }
+                }
+            });
+
+            // Setup timer-based triggers
+            iftttEngine.setupTimerTriggers();
+            logger.info('⏰ IFTTT timer triggers initialized');
+        }
 
             initState.setPluginInjectionsComplete();
         } else {
