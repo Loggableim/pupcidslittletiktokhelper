@@ -6,6 +6,7 @@
     <title>Pup Cid's Little TikTok Helper</title>
     <link rel="stylesheet" href="/css/tailwind.output.css">
     <link rel="stylesheet" href="/css/navigation.css">
+    <link rel="stylesheet" href="/css/wiki.css">
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -118,6 +119,10 @@
 
                 <!-- Settings (Fixed at bottom) -->
                 <div class="sidebar-spacer"></div>
+                <a href="#" class="sidebar-item" data-view="wiki">
+                    <i data-lucide="book-open"></i>
+                    <span class="sidebar-item-text">Wiki</span>
+                </a>
                 <a href="#" class="sidebar-item" data-view="settings">
                     <i data-lucide="settings"></i>
                     <span class="sidebar-item-text">Settings</span>
@@ -971,6 +976,34 @@
                     </section>
                 </div>
 
+                <!-- View: Wiki -->
+                <div id="view-wiki" class="content-view">
+                    <div class="wiki-container">
+                        <!-- Wiki Sidebar -->
+                        <aside class="wiki-sidebar">
+                            <div class="wiki-search-container">
+                                <div class="wiki-search-input-wrapper">
+                                    <i data-lucide="search"></i>
+                                    <input type="text" id="wiki-search" placeholder="Search documentation..." class="wiki-search-input">
+                                </div>
+                            </div>
+                            <nav class="wiki-nav" id="wiki-nav">
+                                <!-- Will be dynamically populated -->
+                            </nav>
+                        </aside>
+                        
+                        <!-- Wiki Content -->
+                        <main class="wiki-content">
+                            <div class="wiki-article" id="wiki-article">
+                                <div class="wiki-loading">
+                                    <i data-lucide="loader"></i>
+                                    <span>Loading documentation...</span>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+
                 <!-- View: Settings -->
                 <div id="view-settings" class="content-view">
                     <section class="view-section">
@@ -1313,5 +1346,6 @@
     <script src="/js/update-checker.js"></script>
     <script src="/js/audio-settings.js"></script>
     <script src="/js/debug-panel.js"></script>
+    <script src="/js/wiki.js"></script>
 </body>
 </html>
