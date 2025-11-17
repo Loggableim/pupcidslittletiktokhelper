@@ -65,6 +65,7 @@ class OpenShockClient {
             headers: {
                 'Open-Shock-Token': this.apiKey,
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'User-Agent': 'OpenShockClient/1.0'
             }
         });
