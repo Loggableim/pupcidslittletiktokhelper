@@ -158,6 +158,49 @@
                     </div>
                 </div>
 
+                <!-- Language Detection Settings -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4">🌍 Language Detection</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Fallback Language (Default if Detection Uncertain)</label>
+                            <select id="fallbackLanguage" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="de">Deutsch (German)</option>
+                                <option value="en">English</option>
+                                <option value="es">Español (Spanish)</option>
+                                <option value="fr">Français (French)</option>
+                                <option value="it">Italiano (Italian)</option>
+                                <option value="pt">Português (Portuguese)</option>
+                                <option value="ja">日本語 (Japanese)</option>
+                                <option value="ko">한국어 (Korean)</option>
+                                <option value="zh">中文 (Chinese)</option>
+                                <option value="ru">Русский (Russian)</option>
+                                <option value="ar">العربية (Arabic)</option>
+                                <option value="tr">Türkçe (Turkish)</option>
+                                <option value="nl">Nederlands (Dutch)</option>
+                                <option value="pl">Polski (Polish)</option>
+                                <option value="vi">Tiếng Việt (Vietnamese)</option>
+                                <option value="th">ภาษาไทย (Thai)</option>
+                                <option value="id">Bahasa Indonesia (Indonesian)</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Used when language detection confidence is below threshold or text is too short</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Confidence Threshold: <span id="confidenceThresholdValue">90</span>%</label>
+                            <input type="range" id="languageConfidenceThreshold" min="0.5" max="1.0" step="0.05" value="0.90" class="w-full">
+                            <p class="text-xs text-gray-400 mt-1">Minimum confidence required to use detected language (recommended: 90%)</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Minimum Text Length for Detection</label>
+                            <input type="number" id="languageMinTextLength" min="5" max="50" value="10" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                            <p class="text-xs text-gray-400 mt-1">Short texts (e.g., "ok", "lol", "hi") will use fallback language</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Rate Limiting & Queue -->
                 <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
                     <h2 class="text-2xl font-bold mb-4">⏱️ Rate Limiting & Queue</h2>

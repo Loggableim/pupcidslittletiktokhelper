@@ -3,10 +3,19 @@ const { franc } = require('franc-min');
 /**
  * Language Detector
  * Detects language from text and routes to appropriate voice
+ * Enhanced with confidence threshold and fallback language support
  */
 class LanguageDetector {
-    constructor(logger) {
+    constructor(logger, config = {}) {
         this.logger = logger;
+
+        // Configuration with defaults
+        this.config = {
+            confidenceThreshold: config.confidenceThreshold || 0.90, // 90% confidence required
+            fallbackLanguage: config.fallbackLanguage || 'de', // German as system default
+            minTextLength: config.minTextLength || 10, // Minimum text length for reliable detection
+            ...config
+        };
 
         // Language code mapping (franc uses ISO 639-3, we need ISO 639-1)
         this.languageMap = {
@@ -54,62 +63,142 @@ class LanguageDetector {
             'tel': 'te'  // Telugu
         };
 
-        // Confidence threshold (franc confidence score 0-1)
-        this.confidenceThreshold = 0.5;
-
         // Cache recent detections for performance
         this.cache = new Map();
         this.maxCacheSize = 1000;
+
+        this.logger.info(`LanguageDetector initialized: confidenceThreshold=${this.config.confidenceThreshold}, fallbackLanguage=${this.config.fallbackLanguage}, minTextLength=${this.config.minTextLength}`);
     }
 
     /**
-     * Detect language from text
+     * Detect language from text with confidence-based fallback
      * @param {string} text - Text to analyze
-     * @returns {object} { langCode, confidence, detected }
+     * @param {string} customFallbackLang - Optional custom fallback language (overrides config)
+     * @returns {object} { langCode, confidence, detected, usedFallback, reason }
      */
-    detect(text) {
-        if (!text || typeof text !== 'string' || text.trim().length < 3) {
-            return { langCode: 'en', confidence: 0, detected: false };
+    detect(text, customFallbackLang = null) {
+        // Safety check for null/undefined/empty text
+        if (!text || typeof text !== 'string') {
+            const fallbackLang = customFallbackLang || this.config.fallbackLanguage;
+            this.logger.warn(`Language detection: null/undefined text, using fallback language: ${fallbackLang}`);
+            return {
+                langCode: fallbackLang,
+                confidence: 0,
+                detected: false,
+                usedFallback: true,
+                reason: 'null_or_undefined_text'
+            };
+        }
+
+        const trimmedText = text.trim();
+
+        // Check for minimum text length (short texts are unreliable)
+        if (trimmedText.length < this.config.minTextLength) {
+            const fallbackLang = customFallbackLang || this.config.fallbackLanguage;
+            this.logger.info(`Language detection: Text too short (${trimmedText.length} chars < ${this.config.minTextLength}), using fallback language: ${fallbackLang}`);
+            return {
+                langCode: fallbackLang,
+                confidence: 0,
+                detected: false,
+                usedFallback: true,
+                reason: 'text_too_short',
+                textLength: trimmedText.length
+            };
         }
 
         // Check cache - use hash of full text to avoid collisions
-        const cacheKey = this._hashText(text);
+        const cacheKey = this._hashText(trimmedText);
         if (this.cache.has(cacheKey)) {
-            return this.cache.get(cacheKey);
+            const cachedResult = this.cache.get(cacheKey);
+            this.logger.info(`Language detection: Using cached result for "${trimmedText.substring(0, 30)}..."`);
+            return cachedResult;
         }
 
         try {
             // Use franc for detection
-            const detected = franc(text, { minLength: 3 });
+            const detected = franc(trimmedText, { minLength: 3 });
 
-            if (detected === 'und') {
-                // Undefined - fall back to English
-                const result = { langCode: 'en', confidence: 0, detected: false };
+            if (detected === 'und' || !detected) {
+                // Undefined detection - use fallback
+                const fallbackLang = customFallbackLang || this.config.fallbackLanguage;
+                this.logger.warn(`Language detection: franc returned 'undefined', using fallback language: ${fallbackLang}`);
+                const result = {
+                    langCode: fallbackLang,
+                    confidence: 0,
+                    detected: false,
+                    usedFallback: true,
+                    reason: 'detection_undefined'
+                };
                 this._addToCache(cacheKey, result);
                 return result;
             }
 
             // Map to ISO 639-1
-            const langCode = this.languageMap[detected] || 'en';
+            const detectedLangCode = this.languageMap[detected];
+            
+            if (!detectedLangCode) {
+                // Unknown language code - use fallback
+                const fallbackLang = customFallbackLang || this.config.fallbackLanguage;
+                this.logger.warn(`Language detection: Unknown language code '${detected}', using fallback language: ${fallbackLang}`);
+                const result = {
+                    langCode: fallbackLang,
+                    confidence: 0,
+                    detected: false,
+                    usedFallback: true,
+                    reason: 'unknown_language_code',
+                    detectedCode: detected
+                };
+                this._addToCache(cacheKey, result);
+                return result;
+            }
 
             // Estimate confidence (franc doesn't provide this, so we use heuristics)
-            const confidence = this._estimateConfidence(text, detected);
+            const confidence = this._estimateConfidence(trimmedText, detected);
+
+            // Check if confidence meets threshold
+            const meetsThreshold = confidence >= this.config.confidenceThreshold;
+            const usedFallback = !meetsThreshold;
+            const finalLangCode = meetsThreshold ? detectedLangCode : (customFallbackLang || this.config.fallbackLanguage);
 
             const result = {
-                langCode,
+                langCode: finalLangCode,
                 confidence,
                 detected: true,
-                detectedCode: detected
+                usedFallback,
+                detectedLangCode: detectedLangCode,
+                detectedCode: detected,
+                reason: usedFallback ? 'confidence_below_threshold' : 'confidence_above_threshold',
+                threshold: this.config.confidenceThreshold
             };
 
             this._addToCache(cacheKey, result);
-            this.logger.info(`Language detected: ${langCode} (${detected}) with confidence ${confidence.toFixed(2)} for text: "${text.substring(0, 30)}..."`);
+
+            if (usedFallback) {
+                this.logger.info(
+                    `Language detection: Detected ${detectedLangCode} (${detected}) with confidence ${confidence.toFixed(2)} ` +
+                    `< threshold ${this.config.confidenceThreshold}, using fallback: ${finalLangCode} for text: "${trimmedText.substring(0, 30)}..."`
+                );
+            } else {
+                this.logger.info(
+                    `Language detection: Detected ${detectedLangCode} (${detected}) with confidence ${confidence.toFixed(2)} ` +
+                    `>= threshold ${this.config.confidenceThreshold} for text: "${trimmedText.substring(0, 30)}..."`
+                );
+            }
 
             return result;
 
         } catch (error) {
-            this.logger.warn(`Language detection failed: ${error.message}`);
-            const result = { langCode: 'en', confidence: 0, detected: false };
+            // Error in detection - use fallback
+            const fallbackLang = customFallbackLang || this.config.fallbackLanguage;
+            this.logger.error(`Language detection failed with error: ${error.message}, using fallback language: ${fallbackLang}`);
+            const result = {
+                langCode: fallbackLang,
+                confidence: 0,
+                detected: false,
+                usedFallback: true,
+                reason: 'detection_error',
+                error: error.message
+            };
             this._addToCache(cacheKey, result);
             return result;
         }
@@ -117,16 +206,66 @@ class LanguageDetector {
 
     /**
      * Estimate confidence based on text characteristics
+     * Enhanced heuristics for better confidence estimation
      */
     _estimateConfidence(text, detectedCode) {
-        // Heuristic: longer text = higher confidence
-        const length = text.trim().length;
+        const trimmedText = text.trim();
+        const length = trimmedText.length;
 
-        if (length < 10) return 0.3;
-        if (length < 20) return 0.5;
-        if (length < 50) return 0.7;
-        if (length < 100) return 0.8;
-        return 0.9;
+        // Base confidence on text length - longer text = more reliable
+        let baseConfidence = 0;
+        if (length < 10) {
+            baseConfidence = 0.3; // Very low confidence for very short text
+        } else if (length < 20) {
+            baseConfidence = 0.5; // Low confidence
+        } else if (length < 50) {
+            baseConfidence = 0.7; // Moderate confidence
+        } else if (length < 100) {
+            baseConfidence = 0.85; // Good confidence
+        } else {
+            baseConfidence = 0.95; // High confidence for long text
+        }
+
+        // Check for special characters that indicate specific languages
+        const hasSpecialChars = this._hasLanguageSpecificChars(trimmedText, detectedCode);
+        if (hasSpecialChars) {
+            // Boost confidence if language-specific characters are present
+            baseConfidence = Math.min(0.98, baseConfidence + 0.1);
+        }
+
+        // Penalize very short exclamations or single words
+        const wordCount = trimmedText.split(/\s+/).length;
+        if (wordCount < 3 && length < 15) {
+            // Single word or very short phrases are unreliable
+            baseConfidence = Math.min(baseConfidence, 0.6);
+        }
+
+        return baseConfidence;
+    }
+
+    /**
+     * Check if text contains language-specific characters
+     */
+    _hasLanguageSpecificChars(text, detectedCode) {
+        // Character ranges for specific languages
+        const charPatterns = {
+            'jpn': /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/, // Hiragana, Katakana, Kanji
+            'kor': /[\uAC00-\uD7AF\u1100-\u11FF]/, // Hangul
+            'zho': /[\u4E00-\u9FFF]/, // Chinese characters
+            'cmn': /[\u4E00-\u9FFF]/, // Chinese characters
+            'ara': /[\u0600-\u06FF]/, // Arabic script
+            'heb': /[\u0590-\u05FF]/, // Hebrew script
+            'tha': /[\u0E00-\u0E7F]/, // Thai script
+            'rus': /[\u0400-\u04FF]/, // Cyrillic script
+            'ukr': /[\u0400-\u04FF]/, // Cyrillic script
+            'deu': /[äöüÄÖÜß]/, // German umlauts
+            'fra': /[àâäæçéèêëïîôùûüÿœ]/, // French accents
+            'spa': /[áéíóúñ¿¡]/, // Spanish accents
+            'por': /[ãõáéíóúâêôç]/ // Portuguese accents
+        };
+
+        const pattern = charPatterns[detectedCode];
+        return pattern ? pattern.test(text) : false;
     }
 
     /**
@@ -171,22 +310,99 @@ class LanguageDetector {
 
     /**
      * Detect language and get default voice for detected language
+     * Enhanced with confidence threshold and fallback logic
+     * @param {string} text - Text to analyze
+     * @param {object} engineClass - Engine class with getDefaultVoiceForLanguage method
+     * @param {string} customFallbackLang - Optional custom fallback language
+     * @returns {object|null} { langCode, confidence, voiceId, languageName, usedFallback, reason }
      */
-    detectAndGetVoice(text, engineVoices) {
-        const { langCode, confidence } = this.detect(text);
-
-        if (!engineVoices || typeof engineVoices.getDefaultVoiceForLanguage !== 'function') {
+    detectAndGetVoice(text, engineClass, customFallbackLang = null) {
+        // Safety check for engineClass
+        if (!engineClass || typeof engineClass.getDefaultVoiceForLanguage !== 'function') {
+            this.logger.error('Language detection: Invalid engine class provided, missing getDefaultVoiceForLanguage method');
             return null;
         }
 
-        const voiceId = engineVoices.getDefaultVoiceForLanguage(langCode);
+        // Detect language with confidence
+        const detectionResult = this.detect(text, customFallbackLang);
+        
+        // Safety check for detection result
+        if (!detectionResult || !detectionResult.langCode) {
+            this.logger.error('Language detection: Detection returned null or invalid result');
+            const fallbackLang = customFallbackLang || this.config.fallbackLanguage;
+            const voiceId = engineClass.getDefaultVoiceForLanguage(fallbackLang);
+            return {
+                langCode: fallbackLang,
+                confidence: 0,
+                voiceId: voiceId,
+                languageName: this.getLanguageName(fallbackLang),
+                usedFallback: true,
+                reason: 'detection_returned_null'
+            };
+        }
+
+        const { langCode, confidence, usedFallback, reason } = detectionResult;
+
+        // Get voice for the selected language (either detected or fallback)
+        const voiceId = engineClass.getDefaultVoiceForLanguage(langCode);
+
+        // Safety check for voiceId
+        if (!voiceId || voiceId === 'undefined' || voiceId === 'null') {
+            this.logger.error(`Language detection: getDefaultVoiceForLanguage returned invalid voiceId for language: ${langCode}`);
+            const systemFallbackLang = customFallbackLang || this.config.fallbackLanguage;
+            const systemFallbackVoice = engineClass.getDefaultVoiceForLanguage(systemFallbackLang);
+            return {
+                langCode: systemFallbackLang,
+                confidence: 0,
+                voiceId: systemFallbackVoice,
+                languageName: this.getLanguageName(systemFallbackLang),
+                usedFallback: true,
+                reason: 'invalid_voice_id_for_detected_language'
+            };
+        }
 
         return {
             langCode,
             confidence,
             voiceId,
-            languageName: this.getLanguageName(langCode)
+            languageName: this.getLanguageName(langCode),
+            usedFallback,
+            reason,
+            detectedLangCode: detectionResult.detectedLangCode,
+            threshold: detectionResult.threshold
         };
+    }
+
+    /**
+     * Update configuration (e.g., when user changes settings)
+     * @param {object} newConfig - New configuration values
+     */
+    updateConfig(newConfig) {
+        if (newConfig.confidenceThreshold !== undefined) {
+            this.config.confidenceThreshold = Math.max(0, Math.min(1, newConfig.confidenceThreshold));
+            this.logger.info(`LanguageDetector: confidenceThreshold updated to ${this.config.confidenceThreshold}`);
+        }
+        
+        if (newConfig.fallbackLanguage !== undefined && typeof newConfig.fallbackLanguage === 'string') {
+            this.config.fallbackLanguage = newConfig.fallbackLanguage;
+            this.logger.info(`LanguageDetector: fallbackLanguage updated to ${this.config.fallbackLanguage}`);
+        }
+        
+        if (newConfig.minTextLength !== undefined) {
+            this.config.minTextLength = Math.max(1, newConfig.minTextLength);
+            this.logger.info(`LanguageDetector: minTextLength updated to ${this.config.minTextLength}`);
+        }
+
+        // Clear cache when config changes to ensure fresh detections
+        this.clearCache();
+    }
+
+    /**
+     * Get current configuration
+     * @returns {object} Current config
+     */
+    getConfig() {
+        return { ...this.config };
     }
 
     /**
