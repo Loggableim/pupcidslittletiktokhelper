@@ -278,9 +278,24 @@ logger.info('🔌 Plugin Loader initialized');
 // PluginLoader an AlertManager übergeben (um doppelte Sounds zu vermeiden)
 alerts.setPluginLoader(pluginLoader);
 
-// Update-Manager initialisieren
-const updateManager = new UpdateManager(logger);
-logger.info('🔄 Update Manager initialized');
+// Update-Manager initialisieren (mit Fehlerbehandlung)
+let updateManager;
+try {
+    updateManager = new UpdateManager(logger);
+    logger.info('🔄 Update Manager initialized');
+} catch (error) {
+    logger.warn(`⚠️  Update Manager konnte nicht initialisiert werden: ${error.message}`);
+    logger.info('   Update-Funktionen sind nicht verfügbar, aber der Server läuft normal weiter.');
+    // Erstelle einen Dummy-Manager für API-Kompatibilität
+    updateManager = {
+        currentVersion: '1.0.3',
+        isGitRepo: false,
+        checkForUpdates: async () => ({ success: false, error: 'Update Manager nicht verfügbar' }),
+        performUpdate: async () => ({ success: false, error: 'Update Manager nicht verfügbar' }),
+        startAutoCheck: () => {},
+        stopAutoCheck: () => {}
+    };
+}
 
 // Auto-Start Manager initialisieren
 const autoStartManager = getAutoStartManager();
@@ -2040,7 +2055,14 @@ const PORT = process.env.PORT || 3000;
     }
 
         // Auto-Update-Check starten (alle 24 Stunden)
-        updateManager.startAutoCheck(24);
+        // Nur wenn Update-Manager verfügbar ist
+        try {
+            if (updateManager && typeof updateManager.startAutoCheck === 'function') {
+                updateManager.startAutoCheck(24);
+            }
+        } catch (error) {
+            logger.warn(`⚠️  Auto-Update-Check konnte nicht gestartet werden: ${error.message}`);
+        }
 
         // ========== ERROR HANDLING MIDDLEWARE ==========
         // IMPORTANT: Error handlers must be registered AFTER plugin routes are loaded
