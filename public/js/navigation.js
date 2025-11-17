@@ -42,6 +42,30 @@
 
         // Load plugin visibility
         await initializePluginVisibility();
+        
+        // Listen for plugin changes via socket (if socket is available)
+        setupPluginChangeListener();
+    }
+
+    // Setup socket listener for plugin changes
+    function setupPluginChangeListener() {
+        // Wait for socket to be available (dashboard.js creates it)
+        const checkSocket = setInterval(() => {
+            if (typeof socket !== 'undefined' && socket) {
+                clearInterval(checkSocket);
+                
+                socket.on('plugins:changed', (data) => {
+                    console.log('🔌 [Navigation] Plugin state changed:', data);
+                    // Refresh plugin visibility without full page reload
+                    initializePluginVisibility();
+                });
+                
+                console.log('✅ [Navigation] Plugin change listener registered');
+            }
+        }, 100);
+        
+        // Stop checking after 10 seconds
+        setTimeout(() => clearInterval(checkSocket), 10000);
     }
 
     // ========== SIDEBAR MANAGEMENT ==========

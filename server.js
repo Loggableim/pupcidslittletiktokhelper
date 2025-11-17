@@ -289,7 +289,7 @@ setupSwagger(app);
 logger.info('📚 Swagger API Documentation available at /api-docs');
 
 // ========== PLUGIN ROUTES ==========
-setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger);
+setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger, io);
 
 // ========== DEBUG ROUTES ==========
 setupDebugRoutes(app, debugLogger, logger);
