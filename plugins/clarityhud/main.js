@@ -73,6 +73,23 @@ class ClarityHUDPlugin {
       res.sendFile(libPath);
     });
 
+    // Serve overlay JavaScript files
+    this.api.registerRoute('GET', '/plugins/clarityhud/overlays/chat.js', (req, res) => {
+      const jsPath = path.join(__dirname, 'overlays', 'chat.js');
+      res.sendFile(jsPath);
+    });
+
+    this.api.registerRoute('GET', '/plugins/clarityhud/overlays/full.js', (req, res) => {
+      const jsPath = path.join(__dirname, 'overlays', 'full.js');
+      res.sendFile(jsPath);
+    });
+
+    // Serve UI JavaScript files
+    this.api.registerRoute('GET', '/plugins/clarityhud/ui/main.js', (req, res) => {
+      const jsPath = path.join(__dirname, 'ui', 'main.js');
+      res.sendFile(jsPath);
+    });
+
     // API routes handled by backend
     this.backend.registerRoutes();
 
