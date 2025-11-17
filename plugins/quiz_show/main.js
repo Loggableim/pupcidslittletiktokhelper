@@ -26,7 +26,9 @@ class QuizShowPlugin {
             gameMode: 'classic', // classic, fastestFinger, elimination, marathon
             marathonLength: 15,
             ttsEnabled: false,
-            ttsVoice: 'default'
+            ttsVoice: 'default',
+            autoMode: false, // Auto advance to next question
+            autoModeDelay: 5 // Seconds to wait before auto-advancing
         };
 
         // Current game state
@@ -108,6 +110,7 @@ class QuizShowPlugin {
                     correct INTEGER NOT NULL,
                     category TEXT DEFAULT 'Allgemein',
                     difficulty INTEGER DEFAULT 2,
+                    info TEXT DEFAULT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
 
@@ -192,7 +195,7 @@ class QuizShowPlugin {
             if (savedQuestions && Array.isArray(savedQuestions) && savedQuestions.length > 0) {
                 this.api.log('Migrating old questions to SQLite...', 'info');
                 
-                const insert = this.db.prepare('INSERT INTO questions (question, answers, correct, category, difficulty) VALUES (?, ?, ?, ?, ?)');
+                const insert = this.db.prepare('INSERT INTO questions (question, answers, correct, category, difficulty, info) VALUES (?, ?, ?, ?, ?, ?)');
                 const insertMany = this.db.transaction((questions) => {
                     for (const q of questions) {
                         insert.run(
@@ -200,7 +203,8 @@ class QuizShowPlugin {
                             JSON.stringify(q.answers),
                             q.correct,
                             q.category || 'Allgemein',
-                            q.difficulty || 2
+                            q.difficulty || 2,
+                            q.info || null
                         );
                     }
                 });
@@ -296,7 +300,8 @@ class QuizShowPlugin {
                     answers: JSON.parse(q.answers),
                     correct: q.correct,
                     category: q.category,
-                    difficulty: q.difficulty
+                    difficulty: q.difficulty,
+                    info: q.info
                 }));
 
                 // Get active season leaderboard
@@ -347,15 +352,15 @@ class QuizShowPlugin {
         // Add question
         this.api.registerRoute('post', '/api/quiz-show/questions', async (req, res) => {
             try {
-                const { question, answers, correct, category, difficulty } = req.body;
+                const { question, answers, correct, category, difficulty, info } = req.body;
 
                 if (!question || !answers || answers.length !== 4 || correct === undefined) {
                     return res.status(400).json({ success: false, error: 'Invalid question format' });
                 }
 
                 const stmt = this.db.prepare(`
-                    INSERT INTO questions (question, answers, correct, category, difficulty) 
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO questions (question, answers, correct, category, difficulty, info) 
+                    VALUES (?, ?, ?, ?, ?, ?)
                 `);
                 
                 const result = stmt.run(
@@ -363,7 +368,8 @@ class QuizShowPlugin {
                     JSON.stringify(answers),
                     parseInt(correct),
                     category || 'Allgemein',
-                    difficulty || 2
+                    difficulty || 2,
+                    info || null
                 );
 
                 // Add category if it doesn't exist
@@ -377,7 +383,8 @@ class QuizShowPlugin {
                     answers,
                     correct: parseInt(correct),
                     category: category || 'Allgemein',
-                    difficulty: difficulty || 2
+                    difficulty: difficulty || 2,
+                    info: info || null
                 };
 
                 // Broadcast update
@@ -387,7 +394,8 @@ class QuizShowPlugin {
                     answers: JSON.parse(q.answers),
                     correct: q.correct,
                     category: q.category,
-                    difficulty: q.difficulty
+                    difficulty: q.difficulty,
+                    info: q.info
                 }));
                 this.api.emit('quiz-show:questions-updated', allQuestions);
 
@@ -401,11 +409,11 @@ class QuizShowPlugin {
         this.api.registerRoute('put', '/api/quiz-show/questions/:id', async (req, res) => {
             try {
                 const questionId = parseInt(req.params.id);
-                const { question, answers, correct, category, difficulty } = req.body;
+                const { question, answers, correct, category, difficulty, info } = req.body;
 
                 const stmt = this.db.prepare(`
                     UPDATE questions 
-                    SET question = ?, answers = ?, correct = ?, category = ?, difficulty = ?
+                    SET question = ?, answers = ?, correct = ?, category = ?, difficulty = ?, info = ?
                     WHERE id = ?
                 `);
                 
@@ -415,6 +423,7 @@ class QuizShowPlugin {
                     parseInt(correct),
                     category || 'Allgemein',
                     difficulty || 2,
+                    info || null,
                     questionId
                 );
 
@@ -433,7 +442,8 @@ class QuizShowPlugin {
                     answers,
                     correct: parseInt(correct),
                     category: category || 'Allgemein',
-                    difficulty: difficulty || 2
+                    difficulty: difficulty || 2,
+                    info: info || null
                 };
 
                 // Broadcast update
@@ -443,7 +453,8 @@ class QuizShowPlugin {
                     answers: JSON.parse(q.answers),
                     correct: q.correct,
                     category: q.category,
-                    difficulty: q.difficulty
+                    difficulty: q.difficulty,
+                    info: q.info
                 }));
                 this.api.emit('quiz-show:questions-updated', allQuestions);
 
@@ -471,7 +482,8 @@ class QuizShowPlugin {
                     answers: JSON.parse(q.answers),
                     correct: q.correct,
                     category: q.category,
-                    difficulty: q.difficulty
+                    difficulty: q.difficulty,
+                    info: q.info
                 }));
                 this.api.emit('quiz-show:questions-updated', allQuestions);
 
@@ -484,7 +496,18 @@ class QuizShowPlugin {
         // Upload questions (JSON)
         this.api.registerRoute('post', '/api/quiz-show/questions/upload', async (req, res) => {
             try {
-                const uploadedQuestions = req.body;
+                let uploadedQuestions = req.body;
+
+                // Handle new format with categories array
+                if (uploadedQuestions && uploadedQuestions.categories && uploadedQuestions.questions) {
+                    // Import categories first
+                    if (Array.isArray(uploadedQuestions.categories)) {
+                        for (const cat of uploadedQuestions.categories) {
+                            this.db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)').run(cat);
+                        }
+                    }
+                    uploadedQuestions = uploadedQuestions.questions;
+                }
 
                 if (!Array.isArray(uploadedQuestions)) {
                     return res.status(400).json({ success: false, error: 'Invalid format: expected array' });
@@ -492,8 +515,8 @@ class QuizShowPlugin {
 
                 // Validate and insert questions
                 const insert = this.db.prepare(`
-                    INSERT INTO questions (question, answers, correct, category, difficulty) 
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO questions (question, answers, correct, category, difficulty, info) 
+                    VALUES (?, ?, ?, ?, ?, ?)
                 `);
 
                 const insertMany = this.db.transaction((questions) => {
@@ -505,7 +528,8 @@ class QuizShowPlugin {
                                 JSON.stringify(q.answers),
                                 parseInt(q.correct),
                                 q.category || 'Allgemein',
-                                q.difficulty || 2
+                                q.difficulty || 2,
+                                q.info || null
                             );
                             
                             // Add category if provided
@@ -528,7 +552,8 @@ class QuizShowPlugin {
                     answers: JSON.parse(q.answers),
                     correct: q.correct,
                     category: q.category,
-                    difficulty: q.difficulty
+                    difficulty: q.difficulty,
+                    info: q.info
                 }));
                 this.api.emit('quiz-show:questions-updated', allQuestions);
 
@@ -546,13 +571,19 @@ class QuizShowPlugin {
         this.api.registerRoute('get', '/api/quiz-show/questions/export', (req, res) => {
             try {
                 const questions = this.db.prepare('SELECT * FROM questions').all();
-                const exported = questions.map(q => ({
-                    question: q.question,
-                    answers: JSON.parse(q.answers),
-                    correct: q.correct,
-                    category: q.category,
-                    difficulty: q.difficulty
-                }));
+                const categories = this.db.prepare('SELECT name FROM categories ORDER BY name').all();
+                
+                const exported = {
+                    categories: categories.map(c => c.name),
+                    questions: questions.map(q => ({
+                        question: q.question,
+                        answers: JSON.parse(q.answers),
+                        correct: q.correct,
+                        category: q.category,
+                        difficulty: q.difficulty,
+                        info: q.info
+                    }))
+                };
                 res.json(exported);
             } catch (error) {
                 res.status(500).json({ success: false, error: error.message });
@@ -1095,16 +1126,32 @@ class QuizShowPlugin {
         // Play round end sound
         this.playSound('round_end');
 
+        // Get the correct answer letter
+        const correctAnswerLetter = String.fromCharCode(65 + this.gameState.currentQuestion.correct); // A, B, C, D
+
         // Broadcast results
         this.api.emit('quiz-show:round-ended', {
             question: this.gameState.currentQuestion,
             correctAnswer: this.gameState.currentQuestion.correct,
+            correctAnswerLetter: correctAnswerLetter,
+            correctAnswerText: this.gameState.currentQuestion.answers[this.gameState.currentQuestion.correct],
+            info: this.gameState.currentQuestion.info,
             results,
             stats: this.stats,
             eliminatedUsers: Array.from(this.gameState.eliminatedUsers)
         });
 
         this.api.log(`Round ended. Correct answers: ${results.correctUsers.length}/${this.gameState.answers.size}`, 'info');
+
+        // Auto mode - automatically start next round after delay
+        if (this.config.autoMode) {
+            const delay = (this.config.autoModeDelay || 5) * 1000;
+            setTimeout(() => {
+                this.startRound().catch(err => {
+                    this.api.log('Error auto-starting next round: ' + err.message, 'error');
+                });
+            }, delay);
+        }
     }
 
     calculateResults() {

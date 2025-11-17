@@ -1091,6 +1091,16 @@ body {
     text-shadow: var(--shadow-sm);
 }
 
+.correct-info {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.95);
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    line-height: 1.5;
+}
+
 /* ============================================
    TIME UP FLASH
    ============================================ */

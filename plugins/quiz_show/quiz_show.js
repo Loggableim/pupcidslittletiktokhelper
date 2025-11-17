@@ -171,6 +171,7 @@
         const correct = parseInt(document.getElementById('correctAnswer').value);
         const category = document.getElementById('questionCategory').value.trim() || 'Allgemein';
         const difficulty = parseInt(document.getElementById('questionDifficulty').value);
+        const info = document.getElementById('questionInfo').value.trim() || null;
 
         if (!question || answers.some(a => !a)) {
             alert('Bitte alle Felder ausfüllen');
@@ -181,7 +182,7 @@
             const response = await fetch('/api/quiz-show/questions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question, answers, correct, category, difficulty })
+                body: JSON.stringify({ question, answers, correct, category, difficulty, info })
             });
 
             const data = await response.json();
@@ -212,6 +213,7 @@
         const correct = parseInt(document.getElementById('correctAnswer').value);
         const category = document.getElementById('questionCategory').value.trim() || 'Allgemein';
         const difficulty = parseInt(document.getElementById('questionDifficulty').value);
+        const info = document.getElementById('questionInfo').value.trim() || null;
 
         if (!question || answers.some(a => !a)) {
             alert('Bitte alle Felder ausfüllen');
@@ -222,7 +224,7 @@
             const response = await fetch(`/api/quiz-show/questions/${editingQuestionId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question, answers, correct, category, difficulty })
+                body: JSON.stringify({ question, answers, correct, category, difficulty, info })
             });
 
             const data = await response.json();
@@ -255,6 +257,7 @@
         document.getElementById('correctAnswer').value = question.correct;
         document.getElementById('questionCategory').value = question.category || 'Allgemein';
         document.getElementById('questionDifficulty').value = question.difficulty || 2;
+        document.getElementById('questionInfo').value = question.info || '';
 
         document.getElementById('addQuestionBtn').classList.add('hidden');
         document.getElementById('updateQuestionBtn').classList.remove('hidden');
@@ -303,6 +306,7 @@
         document.getElementById('correctAnswer').value = '0';
         document.getElementById('questionCategory').value = 'Allgemein';
         document.getElementById('questionDifficulty').value = '2';
+        document.getElementById('questionInfo').value = '';
     }
 
     async function uploadQuestions() {
@@ -375,7 +379,9 @@
             ttsVoice: document.getElementById('ttsVoice').value,
             marathonLength: parseInt(document.getElementById('marathonLength').value),
             gameMode: document.getElementById('gameModeSelect').value,
-            categoryFilter: document.getElementById('categoryFilter').value
+            categoryFilter: document.getElementById('categoryFilter').value,
+            autoMode: document.getElementById('autoMode').checked,
+            autoModeDelay: parseInt(document.getElementById('autoModeDelay').value)
         };
 
         try {
@@ -591,6 +597,8 @@
         document.getElementById('marathonLength').value = config.marathonLength || 15;
         document.getElementById('gameModeSelect').value = config.gameMode || 'classic';
         document.getElementById('categoryFilter').value = config.categoryFilter || 'Alle';
+        document.getElementById('autoMode').checked = config.autoMode || false;
+        document.getElementById('autoModeDelay').value = config.autoModeDelay || 5;
     }
 
     function updateQuestionsList() {
