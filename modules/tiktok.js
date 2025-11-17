@@ -13,6 +13,10 @@ const EventEmitter = require('events');
  * - Event handling (chat, gifts, likes, etc.)
  * - Retry logic and error handling
  * - Optional Euler Stream fallbacks
+ * 
+ * STREAM TIME FIX: This module now properly extracts and persists the actual
+ * TikTok stream start time from roomInfo and event metadata, preventing the
+ * timer from showing software start time instead of real stream duration.
  */
 class TikTokConnector extends EventEmitter {
     constructor(io, db) {
@@ -44,6 +48,8 @@ class TikTokConnector extends EventEmitter {
         // Stream duration tracking
         this.streamStartTime = null;
         this.durationInterval = null;
+        this._earliestEventTime = null; // Track earliest event to estimate stream start
+        this._persistedStreamStart = null; // Persisted value across reconnects
         
         // Connection attempt tracking for diagnostics
         this.connectionAttempts = [];
@@ -138,7 +144,14 @@ class TikTokConnector extends EventEmitter {
             this.isConnected = true;
 
             // Extract stream start time from room info
-            this.streamStartTime = this._extractStreamStartTime(state.roomInfo);
+            // If we're reconnecting and have a persisted start time, use that instead
+            if (this._persistedStreamStart && this.currentUsername === username) {
+                this.streamStartTime = this._persistedStreamStart;
+                console.log(`♻️  Restored persisted stream start time: ${new Date(this.streamStartTime).toISOString()}`);
+            } else {
+                this.streamStartTime = this._extractStreamStartTime(state.roomInfo);
+                this._persistedStreamStart = this.streamStartTime; // Save for potential reconnects
+            }
 
             // Start duration tracking interval
             if (this.durationInterval) {
@@ -219,25 +232,83 @@ class TikTokConnector extends EventEmitter {
      */
     _extractStreamStartTime(roomInfo) {
         if (!roomInfo) {
+            console.log(`⚠️  No roomInfo available, using current time as fallback`);
             return Date.now();
         }
 
+        // Log full roomInfo structure for debugging (only keys to avoid sensitive data)
+        console.log(`🔍 [DEBUG] roomInfo keys available:`, Object.keys(roomInfo).join(', '));
+
         // Try multiple field names (TikTok API may use different names)
-        const timeFields = ['create_time', 'createTime', 'start_time', 'startTime'];
+        // Priority order: most specific to least specific
+        const timeFields = [
+            'start_time',           // TikTok standard field for stream start
+            'startTime',            // Camel case variant
+            'create_time',          // Room creation time (may differ from stream start)
+            'createTime',           // Camel case variant
+            'finish_time',          // Fallback - if stream ended, this might help
+            'finishTime',           // Camel case variant
+            'liveStartTime',        // Possible alternate field
+            'live_start_time',      // Snake case variant
+            'streamStartTime',      // Another possible field
+            'stream_start_time'     // Snake case variant
+        ];
         
         for (const field of timeFields) {
-            if (roomInfo[field]) {
+            const value = roomInfo[field];
+            if (value !== undefined && value !== null && value !== 0 && value !== '0') {
                 // Handle both seconds and milliseconds timestamps
-                const timestamp = roomInfo[field] > 4000000000 
-                    ? roomInfo[field] 
-                    : roomInfo[field] * 1000;
-                console.log(`📅 Stream start time from ${field}: ${new Date(timestamp).toISOString()}`);
-                return timestamp;
+                // Also handle string timestamps
+                let timestamp = typeof value === 'string' ? parseInt(value, 10) : value;
+                
+                // Convert to milliseconds if in seconds (timestamps before year 2100)
+                if (timestamp < 4000000000) {
+                    timestamp = timestamp * 1000;
+                }
+                
+                // Validate timestamp is reasonable (not in future, not before 2020)
+                const now = Date.now();
+                const minTime = new Date('2020-01-01').getTime();
+                
+                if (timestamp > minTime && timestamp <= now) {
+                    console.log(`📅 ✅ Stream start time extracted from roomInfo.${field}: ${new Date(timestamp).toISOString()}`);
+                    return timestamp;
+                }
             }
         }
 
-        // Fallback to current time
-        console.log(`⚠️  Stream start time not available, using current time`);
+        // Try nested fields that might contain timing information
+        if (roomInfo.stream_url && roomInfo.stream_url.live_core_sdk_data) {
+            const sdkData = roomInfo.stream_url.live_core_sdk_data;
+            if (sdkData.pull_data && sdkData.pull_data.stream_data) {
+                const streamData = JSON.parse(sdkData.pull_data.stream_data);
+                if (streamData.data && streamData.data.origin && streamData.data.origin.main) {
+                    const mainStream = streamData.data.origin.main;
+                    if (mainStream.sdk_params) {
+                        const params = JSON.parse(mainStream.sdk_params);
+                        if (params.vbitrate) {
+                            console.log(`🔍 Found stream data, but no explicit start time`);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if there's an owner field with stats that might indicate start time
+        if (roomInfo.owner && roomInfo.owner.stats) {
+            console.log(`🔍 [DEBUG] Owner stats available:`, Object.keys(roomInfo.owner.stats).join(', '));
+        }
+
+        // Fallback: Try to get earliest message createTime if available
+        // This would be set by the first event we receive
+        if (this._earliestEventTime) {
+            console.log(`📅 ⚠️  Using earliest event time as fallback: ${new Date(this._earliestEventTime).toISOString()}`);
+            return this._earliestEventTime;
+        }
+
+        // Final fallback to current time
+        console.log(`⚠️  Stream start time not found in roomInfo. Using current time as fallback.`);
+        console.log(`💡 This may happen if: (1) Stream started before connection, (2) TikTok API changed fields, (3) Limited room data`);
         return Date.now();
     }
 
@@ -492,16 +563,29 @@ class TikTokConnector extends EventEmitter {
             this.connection = null;
         }
         this.isConnected = false;
+        
+        // Don't reset currentUsername immediately - we might reconnect to same stream
+        const previousUsername = this.currentUsername;
         this.currentUsername = null;
         this.retryCount = 0; // Reset retry counter
         this.lastErrorType = null; // Reset last error type
 
-        // Clear duration tracking
+        // Clear duration tracking interval but preserve stream start time
+        // This allows reconnection to same stream without losing start time
         if (this.durationInterval) {
             clearInterval(this.durationInterval);
             this.durationInterval = null;
         }
-        this.streamStartTime = null;
+        
+        // Only clear stream start time if we're changing streams
+        // Keep _persistedStreamStart for potential reconnects
+        if (previousUsername) {
+            console.log(`🔄 Disconnected but preserving stream start time for potential reconnection to @${previousUsername}`);
+        } else {
+            this.streamStartTime = null;
+            this._persistedStreamStart = null;
+            this._earliestEventTime = null;
+        }
 
         // Clear event deduplication cache on disconnect
         this.processedEvents.clear();
@@ -574,6 +658,37 @@ class TikTokConnector extends EventEmitter {
     registerEventListeners() {
         if (!this.connection) return;
 
+        // Helper function to track earliest event time
+        const trackEarliestEventTime = (data) => {
+            // Try to extract createTime from event data
+            if (data && data.createTime) {
+                let timestamp = typeof data.createTime === 'string' ? parseInt(data.createTime, 10) : data.createTime;
+                
+                // Convert to milliseconds if needed
+                if (timestamp < 4000000000) {
+                    timestamp = timestamp * 1000;
+                }
+                
+                // Update earliest time if this is earlier and reasonable
+                const now = Date.now();
+                const minTime = new Date('2020-01-01').getTime();
+                
+                if (timestamp > minTime && timestamp <= now) {
+                    if (!this._earliestEventTime || timestamp < this._earliestEventTime) {
+                        this._earliestEventTime = timestamp;
+                        console.log(`🕐 Updated earliest event time: ${new Date(timestamp).toISOString()}`);
+                        
+                        // If we don't have a stream start time yet, use earliest event
+                        if (!this.streamStartTime) {
+                            this.streamStartTime = this._earliestEventTime;
+                            this._persistedStreamStart = this.streamStartTime;
+                            console.log(`📅 Set stream start time from earliest event`);
+                        }
+                    }
+                }
+            }
+        };
+
         // Verbindungsstatus
         this.connection.on('connected', (state) => {
             console.log('🟢 WebSocket connected');
@@ -630,6 +745,9 @@ class TikTokConnector extends EventEmitter {
 
         // ========== CHAT ==========
         this.connection.on('chat', (data) => {
+            // Track earliest event time
+            trackEarliestEventTime(data);
+            
             const userData = this.extractUserData(data);
 
             // DEBUG: Log raw event structure to understand teamMemberLevel
@@ -677,6 +795,9 @@ class TikTokConnector extends EventEmitter {
 
         // ========== GIFT ==========
         this.connection.on('gift', (data) => {
+            // Track earliest event time
+            trackEarliestEventTime(data);
+            
             // Extrahiere Gift-Daten
             const giftData = this.extractGiftData(data);
 
@@ -743,6 +864,7 @@ class TikTokConnector extends EventEmitter {
 
         // ========== FOLLOW ==========
         this.connection.on('follow', (data) => {
+            trackEarliestEventTime(data);
             this.stats.followers++;
 
             const userData = this.extractUserData(data);
@@ -760,6 +882,7 @@ class TikTokConnector extends EventEmitter {
 
         // ========== SHARE ==========
         this.connection.on('share', (data) => {
+            trackEarliestEventTime(data);
             this.stats.shares++;
 
             const userData = this.extractUserData(data);
@@ -777,6 +900,8 @@ class TikTokConnector extends EventEmitter {
 
         // ========== LIKE ==========
         this.connection.on('like', (data) => {
+            trackEarliestEventTime(data);
+            
             // Robuste Extraktion von totalLikes aus verschiedenen Properties
             let totalLikes = null;
             const possibleTotalProps = [
@@ -826,6 +951,7 @@ class TikTokConnector extends EventEmitter {
 
         // ========== VIEWER COUNT ==========
         this.connection.on('roomUser', (data) => {
+            trackEarliestEventTime(data);
             this.stats.viewers = data.viewerCount || 0;
             this.broadcastStats();
             
@@ -838,6 +964,8 @@ class TikTokConnector extends EventEmitter {
 
         // ========== SUBSCRIBE ==========
         this.connection.on('subscribe', (data) => {
+            trackEarliestEventTime(data);
+            
             const userData = this.extractUserData(data);
             const eventData = {
                 username: userData.username,
