@@ -381,7 +381,15 @@
             gameMode: document.getElementById('gameModeSelect').value,
             categoryFilter: document.getElementById('categoryFilter').value,
             autoMode: document.getElementById('autoMode').checked,
-            autoModeDelay: parseInt(document.getElementById('autoModeDelay').value)
+            autoModeDelay: parseInt(document.getElementById('autoModeDelay').value),
+            // Voter Icons Settings
+            voterIconsEnabled: document.getElementById('voterIconsEnabled').checked,
+            voterIconSize: document.getElementById('voterIconSize').value,
+            voterIconMaxVisible: parseInt(document.getElementById('voterIconMaxVisible').value),
+            voterIconCompactMode: document.getElementById('voterIconCompactMode').checked,
+            voterIconAnimation: document.getElementById('voterIconAnimation').value,
+            voterIconPosition: document.getElementById('voterIconPosition').value,
+            voterIconShowOnScoreboard: document.getElementById('voterIconShowOnScoreboard').checked
         };
 
         try {
@@ -599,6 +607,15 @@
         document.getElementById('categoryFilter').value = config.categoryFilter || 'Alle';
         document.getElementById('autoMode').checked = config.autoMode || false;
         document.getElementById('autoModeDelay').value = config.autoModeDelay || 5;
+        
+        // Voter Icons Settings
+        document.getElementById('voterIconsEnabled').checked = config.voterIconsEnabled !== false;
+        document.getElementById('voterIconSize').value = config.voterIconSize || 'medium';
+        document.getElementById('voterIconMaxVisible').value = config.voterIconMaxVisible || 10;
+        document.getElementById('voterIconCompactMode').checked = config.voterIconCompactMode !== false;
+        document.getElementById('voterIconAnimation').value = config.voterIconAnimation || 'fade';
+        document.getElementById('voterIconPosition').value = config.voterIconPosition || 'above';
+        document.getElementById('voterIconShowOnScoreboard').checked = config.voterIconShowOnScoreboard || false;
     }
 
     function updateQuestionsList() {

@@ -1233,6 +1233,171 @@ body {
     pointer-events: none !important;
 }
 
+/* ============================================
+   VOTER ICONS SYSTEM
+   ============================================ */
+
+.voter-icons-container {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    min-height: 40px;
+    transition: all 0.3s ease;
+}
+
+.voter-icons-container.has-voters {
+    opacity: 1;
+}
+
+.voter-icons-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    max-width: 300px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.voter-icons-wrapper.compact-mode {
+    gap: 2px;
+}
+
+.voter-icons-wrapper.position-above {
+    /* Default positioning */
+}
+
+.voter-icons-wrapper.position-beside {
+    position: absolute;
+    right: -250px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.voter-icons-wrapper.position-embedded {
+    position: relative;
+    margin-top: 8px;
+}
+
+.voter-icon {
+    --icon-size: 32px;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--icon-size) * 0.4);
+    font-weight: 600;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.voter-icon:hover {
+    transform: scale(1.15);
+    border-color: rgba(255, 255, 255, 0.6);
+    z-index: 5;
+}
+
+.voter-icon.no-image {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+}
+
+.voter-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.voter-icon.overflow-indicator {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    font-size: calc(var(--icon-size) * 0.35);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Compact mode sizing */
+.voter-icons-wrapper.compact-mode .voter-icon {
+    --icon-size: 24px;
+}
+
+/* Animations */
+.voter-icons-wrapper.animate-fade .voter-icon {
+    animation: voterIconFadeIn 0.4s ease forwards;
+    opacity: 0;
+}
+
+.voter-icons-wrapper.animate-slide .voter-icon {
+    animation: voterIconSlideIn 0.4s ease forwards;
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+@keyframes voterIconFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes voterIconSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Responsive sizing */
+.voter-icons-wrapper[style*="--icon-size: 24px"] .voter-icon {
+    font-size: 10px;
+}
+
+.voter-icons-wrapper[style*="--icon-size: 32px"] .voter-icon {
+    font-size: 13px;
+}
+
+.voter-icons-wrapper[style*="--icon-size: 40px"] .voter-icon {
+    font-size: 16px;
+}
+
+/* Integration with answer cards */
+.answer-card {
+    position: relative;
+}
+
+.answer-card .voter-icons-container {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.answer-card.has-voters .voter-icons-container {
+    opacity: 1;
+}
+
+/* Ensure voter icons don't interfere with answer selection */
+.voter-icons-container * {
+    pointer-events: none;
+}
+
 /* Print / OBS Optimization */
 @media print {
     .background-effects {

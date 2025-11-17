@@ -17,6 +17,10 @@ const STATE = {
   layoutEngine: null,
   animationRegistry: null,
   animationRenderer: null,
+  accessibilityManager: null,
+  emojiParser: null,
+  badgeRenderer: null,
+  messageParser: null,
   socket: null,
   container: null,
   isInitialized: false
@@ -42,6 +46,18 @@ async function init() {
   // Initialize animation system
   STATE.animationRegistry = new AnimationRegistry();
   STATE.animationRenderer = new AnimationRenderer(STATE.animationRegistry);
+
+  // Initialize accessibility manager
+  STATE.accessibilityManager = new AccessibilityManager(document.body);
+
+  // Initialize emoji parser
+  STATE.emojiParser = new EmojiParser();
+
+  // Initialize badge renderer
+  STATE.badgeRenderer = new BadgeRenderer(STATE.settings);
+
+  // Initialize message parser
+  STATE.messageParser = new MessageParser();
 
   // Load settings
   await loadSettings();
@@ -166,6 +182,16 @@ function applySettings() {
   // Apply keep-on-top setting (Note: this requires parent window support)
   if (typeof s.keepOnTop !== 'undefined' && window.parent && window.parent.setAlwaysOnTop) {
     window.parent.setAlwaysOnTop(s.keepOnTop);
+  }
+
+  // Apply accessibility settings
+  if (STATE.accessibilityManager) {
+    STATE.accessibilityManager.applySettings(s);
+  }
+
+  // Update badge renderer settings
+  if (STATE.badgeRenderer) {
+    STATE.badgeRenderer.updateSettings(s);
   }
 
   console.log('Settings applied:', s);
@@ -474,9 +500,30 @@ function createEventElement(event, layoutMode) {
 
   // Content varies by event type
   if (event.type === 'chat') {
+    // Parse message using message parser
+    const formattedMessage = STATE.messageParser.createFormattedMessage(event.data.raw || event.data);
+    
+    // Extract badges
+    const badges = STATE.badgeRenderer ? STATE.badgeRenderer.extractBadges(event.data.raw || event.data) : { teamLevel: 0 };
+
+    // Create badge container
+    if (STATE.badgeRenderer) {
+      const badgeContainer = document.createElement('span');
+      badgeContainer.className = 'event-badges';
+      STATE.badgeRenderer.renderToHTML(badges, badgeContainer);
+      element.appendChild(badgeContainer);
+    }
+
     const username = document.createElement('span');
     username.className = 'event-username';
-    username.textContent = event.data.user?.nickname || event.data.username || 'Anonymous';
+    username.textContent = formattedMessage.user?.nickname || event.data.user?.nickname || event.data.username || 'Anonymous';
+    
+    // Apply username color based on team level if enabled
+    if (STATE.settings.usernameColorByTeamLevel && badges.teamLevel > 0 && STATE.badgeRenderer) {
+      const color = STATE.badgeRenderer.getUsernameColor(badges.teamLevel);
+      username.style.color = color;
+    }
+    
     element.appendChild(username);
 
     if (layoutMode === 'singleStream') {
@@ -488,7 +535,19 @@ function createEventElement(event, layoutMode) {
 
     const message = document.createElement('span');
     message.className = 'event-message';
-    message.textContent = event.data.message || '';
+    
+    // Parse and render emojis
+    if (STATE.emojiParser) {
+      const emojiSegments = STATE.emojiParser.parse(
+        formattedMessage.text || event.data.message || '',
+        formattedMessage.emotes || [],
+        STATE.settings.emojiRenderMode || 'image'
+      );
+      STATE.emojiParser.renderToHTML(emojiSegments, message);
+    } else {
+      message.textContent = formattedMessage.text || event.data.message || '';
+    }
+    
     element.appendChild(message);
   } else if (event.type === 'gift') {
     const username = document.createElement('span');

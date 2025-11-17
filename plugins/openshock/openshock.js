@@ -282,8 +282,9 @@ function renderDeviceList() {
             <p class="text-muted text-center">No devices found. Configure API key first.</p>
         `;
         
-        // Also update test shock dropdown
+        // Also update test shock dropdown and mapping device dropdown
         updateTestShockDeviceList();
+        updateMappingDeviceList();
         return;
     }
 
@@ -352,8 +353,9 @@ function renderDeviceList() {
 
     container.innerHTML = html;
     
-    // Also update test shock dropdown
+    // Also update test shock dropdown and mapping device dropdown
     updateTestShockDeviceList();
+    updateMappingDeviceList();
 }
 
 function renderCommandLog(commands) {
@@ -553,6 +555,9 @@ function openMappingModal(mappingId = null) {
     } else {
         delete modal.dataset.editingId;
     }
+
+    // Populate device dropdown with current devices
+    updateMappingDeviceList();
 
     // Populate form - handle both frontend (trigger) and backend (eventType/conditions) format
     const nameInput = document.getElementById('mappingName');
@@ -2272,6 +2277,7 @@ window.openShock = {
     testConnection,
     refreshDevices,
     updateTestShockDeviceList,
+    updateMappingDeviceList,
     executeTestShock,
     clearQueue,
     testDevice,
