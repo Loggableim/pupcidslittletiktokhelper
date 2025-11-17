@@ -1,6 +1,16 @@
 const axios = require('axios');
 
 /**
+ * @deprecated This module is deprecated as of the connection system refactoring.
+ * Room ID resolution is now handled directly by the official tiktok-live-connector library.
+ * 
+ * The library provides built-in Room ID resolution via:
+ * - HTML scraping (default)
+ * - Euler Stream API (via connectWithUniqueId option)
+ * - Multiple fallback strategies
+ * 
+ * This module is kept for backward compatibility only.
+ * 
  * Enhanced Room ID Resolver with Multiple Fallback Methods
  * 
  * This module provides robust Room ID resolution with:

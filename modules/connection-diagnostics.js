@@ -2,6 +2,13 @@ const axios = require('axios');
 const { WebSocket } = require('ws');
 
 /**
+ * @deprecated This module has been simplified and integrated into TikTokConnector.
+ * The connection diagnostics are now available via:
+ * - tiktok.runDiagnostics()
+ * - tiktok.getConnectionHealth()
+ * 
+ * This module is kept for backward compatibility only.
+ * 
  * Connection Diagnostics Module
  * Validates Euler API key sources, tests TikTok API reachability,
  * and tests Euler WebSocket connectivity for debugging connection issues.
