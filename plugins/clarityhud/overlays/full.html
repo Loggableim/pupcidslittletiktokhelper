@@ -27,9 +27,10 @@
       --border-radius: 8px;
       --spacing: 16px;
       --font-size: 18px;
-      --line-height: 1.5;
+      --line-height: 1.2;
       --outline-width: 2px;
       --outline-color: rgba(0, 0, 0, 0.8);
+      --hud-opacity: 1;
     }
 
     body {
@@ -57,6 +58,7 @@
       height: 100%;
       padding: var(--spacing);
       overflow: hidden;
+      opacity: var(--hud-opacity);
     }
 
     /* Single Stream Layout */
@@ -78,14 +80,15 @@
     }
 
     .layout-singleStream .event-item {
-      padding: 12px 16px;
-      margin: 6px 0;
+      padding: 8px 12px;
+      margin: 4px 0;
       background: var(--bg-color);
       border-radius: var(--border-radius);
       display: flex;
       align-items: center;
-      gap: 12px;
-      min-height: 60px;
+      gap: 8px;
+      min-height: auto;
+      line-height: var(--line-height);
     }
 
     /* Structured Layout */
@@ -147,11 +150,12 @@
     }
 
     .layout-structured .event-item {
-      padding: 8px 12px;
-      margin: 4px 0;
+      padding: 6px 10px;
+      margin: 3px 0;
       border-left: 3px solid currentColor;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 4px;
+      line-height: var(--line-height);
     }
 
     /* Adaptive Layout */
@@ -215,16 +219,18 @@
     }
 
     .layout-adaptive .event-item {
-      padding: 6px 10px;
-      margin: 3px 0;
+      padding: 4px 8px;
+      margin: 2px 0;
       border-left: 3px solid currentColor;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 4px;
+      line-height: var(--line-height);
     }
 
     /* Event Item Styling */
     .event-item {
       opacity: 0;
+      line-height: var(--line-height);
       text-shadow: var(--outline-width) var(--outline-width) 0 var(--outline-color),
                    calc(-1 * var(--outline-width)) var(--outline-width) 0 var(--outline-color),
                    var(--outline-width) calc(-1 * var(--outline-width)) 0 var(--outline-color),
@@ -232,34 +238,39 @@
     }
 
     .event-icon {
-      font-size: 1.5em;
+      font-size: 1.3em;
       flex-shrink: 0;
-      width: 1.5em;
+      width: 1.3em;
       text-align: center;
       filter: drop-shadow(0 0 4px currentColor);
+      line-height: 1;
     }
 
     .event-username {
       font-weight: 600;
       flex-shrink: 0;
+      line-height: var(--line-height);
     }
 
     .event-type {
       opacity: 0.8;
-      font-size: 0.9em;
-      margin-left: 8px;
+      font-size: 0.85em;
+      margin-left: 6px;
+      line-height: var(--line-height);
     }
 
     .event-message {
       flex: 1;
       word-wrap: break-word;
       overflow-wrap: break-word;
+      line-height: var(--line-height);
     }
 
     .event-gift-info {
-      font-size: 0.85em;
+      font-size: 0.8em;
       opacity: 0.9;
-      margin-left: 8px;
+      margin-left: 6px;
+      line-height: var(--line-height);
     }
 
     /* Event Type Colors */

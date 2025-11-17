@@ -38,7 +38,9 @@ class ClarityHUDBackend {
       colorblindSafeMode: false,
       reduceMotion: false,
       dyslexiaFont: false,
-      accessibilityPreset: 'default'
+      accessibilityPreset: 'default',
+      opacity: 1,
+      keepOnTop: false
     };
 
     // Default settings for Full HUD (includes all chat settings plus activity settings)
@@ -55,7 +57,10 @@ class ClarityHUDBackend {
       feedDirection: 'newestTop',
       animationIn: 'fadeSlideIn',
       animationOut: 'fadeSlideOut',
-      animationSpeed: 'medium'
+      animationSpeed: 'medium',
+      lineHeight: 1.2,
+      opacity: 1,
+      keepOnTop: false
     };
 
     // Current settings

@@ -221,6 +221,27 @@ function renderTabContent(dock, tabId) {
             </div>
           </div>
         </div>
+        <div class="settings-group">
+          <h3>Window Settings</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Transparency</label>
+              <div class="range-group">
+                <div class="range-value">
+                  <label>Opacity</label>
+                  <span id="opacity-value">${typeof s.opacity !== 'undefined' ? Math.round(s.opacity * 100) : 100}%</span>
+                </div>
+                <input type="range" id="opacity" min="0" max="100" value="${typeof s.opacity !== 'undefined' ? Math.round(s.opacity * 100) : 100}" data-range-target="opacity" data-range-suffix="%">
+              </div>
+              <span class="help-text">0% = fully transparent, 100% = fully opaque</span>
+            </div>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="keepOnTop" ${s.keepOnTop ? 'checked' : ''}>
+            <label for="keepOnTop">Keep overlay window always on top</label>
+          </div>
+          <span class="help-text" style="margin-left: 32px; display: block; margin-top: -10px;">Overlay will stay in front of all other windows, including fullscreen apps</span>
+        </div>
       `;
 
     case 'events':
@@ -583,6 +604,10 @@ async function saveSettings() {
     colorblindSafeMode: getFieldValue('colorblindSafeMode', 'checkbox'),
     reduceMotion: getFieldValue('reduceMotion', 'checkbox'),
     dyslexiaFont: getFieldValue('dyslexiaFont', 'checkbox'),
+
+    // Window settings
+    opacity: parseFloat(getFieldValue('opacity')) / 100, // Convert percentage to 0-1
+    keepOnTop: getFieldValue('keepOnTop', 'checkbox')
   };
 
   // Add full-specific settings

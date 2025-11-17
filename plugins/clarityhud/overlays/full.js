@@ -98,8 +98,13 @@ function getDefaultSettings() {
 
     // Styling
     fontSize: 18,
+    lineHeight: 1.2,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     textColor: '#ffffff',
+
+    // Transparency and window settings
+    opacity: 1,
+    keepOnTop: false,
 
     // Animations
     animationIn: 'fade',
@@ -146,6 +151,21 @@ function applySettings() {
   }
   if (s.textColor) {
     root.style.setProperty('--text-color', s.textColor);
+  }
+
+  // Apply line height
+  if (s.lineHeight) {
+    root.style.setProperty('--line-height', s.lineHeight);
+  }
+
+  // Apply transparency (opacity)
+  if (typeof s.opacity !== 'undefined') {
+    root.style.setProperty('--hud-opacity', s.opacity);
+  }
+
+  // Apply keep-on-top setting (Note: this requires parent window support)
+  if (typeof s.keepOnTop !== 'undefined' && window.parent && window.parent.setAlwaysOnTop) {
+    window.parent.setAlwaysOnTop(s.keepOnTop);
   }
 
   console.log('Settings applied:', s);
