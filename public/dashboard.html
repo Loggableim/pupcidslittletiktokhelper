@@ -495,12 +495,29 @@
                         <div class="view-header">
                             <h2 class="view-title">
                                 <i data-lucide="git-branch"></i>
-                                Automation Flows
+                                IFTTT Automation Flows
                             </h2>
-                            <button id="add-flow-btn" class="btn btn-primary">
-                                <i data-lucide="plus"></i>
-                                Create Flow
-                            </button>
+                            <div style="display: flex; gap: 12px;">
+                                <a href="/ifttt-flow-editor.html" target="_blank" class="btn btn-primary">
+                                    <i data-lucide="edit"></i>
+                                    Visual Flow Editor
+                                </a>
+                                <button id="add-flow-btn" class="btn btn-ghost">
+                                    <i data-lucide="plus"></i>
+                                    Quick Create
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <i data-lucide="zap" style="color: #3b82f6; width: 24px; height: 24px;"></i>
+                                <div>
+                                    <strong style="color: #60a5fa;">New: Visual IFTTT Flow Editor</strong>
+                                    <p style="margin: 4px 0 0 0; font-size: 14px; color: #cbd5e1;">
+                                        Create powerful automation flows with drag-and-drop interface. Supports triggers, conditions, actions, and real-time monitoring.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                         <div id="flows-list" class="flows-container"></div>
                     </section>
