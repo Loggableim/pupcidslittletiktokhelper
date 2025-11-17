@@ -303,6 +303,22 @@ function populateConfig(config) {
             speechifyKeyInput.value = '';
         }
     }
+
+    // Load ElevenLabs API key
+    const elevenlabsKeyInput = document.getElementById('elevenlabsApiKey');
+    if (elevenlabsKeyInput) {
+        if (config.elevenlabsApiKey) {
+            if (config.elevenlabsApiKey === '***REDACTED***') {
+                elevenlabsKeyInput.placeholder = 'API key configured (hidden for security)';
+                elevenlabsKeyInput.value = '';
+            } else {
+                elevenlabsKeyInput.value = config.elevenlabsApiKey;
+            }
+        } else {
+            elevenlabsKeyInput.placeholder = 'Enter API key...';
+            elevenlabsKeyInput.value = '';
+        }
+    }
 }
 
 async function saveConfig() {
@@ -335,6 +351,12 @@ async function saveConfig() {
         const speechifyApiKey = document.getElementById('speechifyApiKey')?.value?.trim();
         if (speechifyApiKey && speechifyApiKey !== '***REDACTED***') {
             config.speechifyApiKey = speechifyApiKey;
+        }
+
+        // Get ElevenLabs API key
+        const elevenlabsApiKey = document.getElementById('elevenlabsApiKey')?.value?.trim();
+        if (elevenlabsApiKey && elevenlabsApiKey !== '***REDACTED***') {
+            config.elevenlabsApiKey = elevenlabsApiKey;
         }
 
         // Save to server
@@ -1252,6 +1274,18 @@ function setupEventListeners() {
             speechifyKeyInput.type = type;
             toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye');
             toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // Toggle ElevenLabs API key visibility
+    const toggleElevenlabsKey = document.getElementById('toggle-elevenlabs-key');
+    const elevenlabsKeyInput = document.getElementById('elevenlabsApiKey');
+    if (toggleElevenlabsKey && elevenlabsKeyInput) {
+        toggleElevenlabsKey.addEventListener('click', () => {
+            const type = elevenlabsKeyInput.type === 'password' ? 'text' : 'password';
+            elevenlabsKeyInput.type = type;
+            toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye');
+            toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye-slash');
         });
     }
 

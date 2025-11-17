@@ -18,6 +18,8 @@
   "features": [
     "TikTok TTS Engine (Free)",
     "Google Cloud TTS Engine (Optional)",
+    "Speechify TTS Engine (Optional)",
+    "ElevenLabs TTS Engine (Optional)",
     "Team-level Permission System",
     "Manual Voice Assignment Whitelist",
     "Language Detection & Routing",
