@@ -118,6 +118,33 @@ class Launcher {
     }
 
     /**
+     * Prüft ob kritische Dependencies installiert sind
+     */
+    verifyCriticalDependencies() {
+        const criticalDeps = [
+            'dotenv',
+            'express',
+            'socket.io',
+            'better-sqlite3',
+            'winston'
+        ];
+
+        const missingDeps = [];
+        
+        for (const dep of criticalDeps) {
+            const depPath = path.join(this.projectRoot, 'node_modules', dep);
+            if (!fs.existsSync(depPath)) {
+                missingDeps.push(dep);
+            }
+        }
+
+        return {
+            valid: missingDeps.length === 0,
+            missing: missingDeps
+        };
+    }
+
+    /**
      * Prüft und installiert Dependencies
      */
     async checkDependencies() {
@@ -133,24 +160,39 @@ class Launcher {
 
             this.log.newLine();
             this.log.success('Dependencies erfolgreich installiert!');
+            return;
+        }
+
+        // Prüfe ob kritische Dependencies vorhanden sind
+        const verification = this.verifyCriticalDependencies();
+        if (!verification.valid) {
+            this.log.warn(`Fehlende Dependencies erkannt: ${verification.missing.join(', ')}`);
+            this.log.warn('Reinstalliere Dependencies...');
+            this.log.newLine();
+
+            await this.installDependencies();
+
+            this.log.newLine();
+            this.log.success('Dependencies erfolgreich installiert!');
+            return;
+        }
+
+        // Prüfe ob package-lock.json neuer ist als node_modules
+        const nodeModulesStat = fs.statSync(nodeModulesPath);
+        const packageLockStat = fs.existsSync(packageLockPath)
+            ? fs.statSync(packageLockPath)
+            : null;
+
+        if (packageLockStat && packageLockStat.mtimeMs > nodeModulesStat.mtimeMs) {
+            this.log.warn('package-lock.json wurde aktualisiert. Reinstalliere Dependencies...');
+            this.log.newLine();
+
+            await this.installDependencies();
+
+            this.log.newLine();
+            this.log.success('Dependencies aktualisiert!');
         } else {
-            // Prüfe ob package-lock.json neuer ist als node_modules
-            const nodeModulesStat = fs.statSync(nodeModulesPath);
-            const packageLockStat = fs.existsSync(packageLockPath)
-                ? fs.statSync(packageLockPath)
-                : null;
-
-            if (packageLockStat && packageLockStat.mtimeMs > nodeModulesStat.mtimeMs) {
-                this.log.warn('package-lock.json wurde aktualisiert. Reinstalliere Dependencies...');
-                this.log.newLine();
-
-                await this.installDependencies();
-
-                this.log.newLine();
-                this.log.success('Dependencies aktualisiert!');
-            } else {
-                this.log.success('Dependencies bereits installiert');
-            }
+            this.log.success('Dependencies bereits installiert');
         }
     }
 
@@ -168,10 +210,17 @@ class Launcher {
             // Spinner starten (nur bei TTY)
             const spinner = this.log.spinner('Installiere Dependencies...');
 
+            // Umgebungsvariablen setzen, um Puppeteer-Downloads zu überspringen
+            // Dies verhindert Netzwerkfehler bei der Installation
+            const env = Object.assign({}, process.env, {
+                PUPPETEER_SKIP_DOWNLOAD: 'true'
+            });
+
             execSync(command, {
                 cwd: this.projectRoot,
                 stdio: ['pipe', 'pipe', 'pipe'],
-                encoding: 'utf8'
+                encoding: 'utf8',
+                env: env
             });
 
             spinner.stop();
