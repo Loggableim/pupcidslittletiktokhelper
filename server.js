@@ -15,8 +15,7 @@ let browserOpened = false;
 const Database = require('./modules/database');
 const TikTokConnector = require('./modules/tiktok');
 const AlertManager = require('./modules/alerts');
-const FlowEngine = require('./modules/flows');
-const { IFTTTEngine } = require('./modules/ifttt'); // New IFTTT Engine
+const { IFTTTEngine } = require('./modules/ifttt'); // IFTTT Engine (replaces old FlowEngine)
 const { GoalManager } = require('./modules/goals');
 const UserProfileManager = require('./modules/user-profiles');
 const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integration
@@ -259,10 +258,9 @@ initState.setDatabaseReady();
 // ========== MODULE INITIALISIEREN ==========
 const tiktok = new TikTokConnector(io, db, logger);
 const alerts = new AlertManager(io, db, logger);
-const flows = new FlowEngine(db, alerts, logger);
 const goals = new GoalManager(db, io, logger);
 
-// Initialize IFTTT Engine with services
+// Initialize IFTTT Engine with services (replaces old FlowEngine)
 const axios = require('axios');
 const iftttServices = {
     io,
@@ -274,7 +272,7 @@ const iftttServices = {
     safeDir: path.join(__dirname, 'user_data', 'flow_logs')
 };
 const iftttEngine = new IFTTTEngine(db, logger, iftttServices);
-logger.info('⚡ IFTTT Engine initialized');
+logger.info('⚡ IFTTT Engine initialized (replaces FlowEngine)');
 
 // Session Extractor for TikTok authentication
 const sessionExtractor = new SessionExtractor(db);
@@ -1100,7 +1098,7 @@ app.post('/api/flows/:id/test', apiLimiter, async (req, res) => {
     const testData = req.body;
 
     try {
-        await flows.testFlow(req.params.id, testData);
+        await iftttEngine.executeFlowById(req.params.id, testData);
         logger.info(`🧪 Tested flow: ${req.params.id}`);
         res.json({ success: true });
     } catch (error) {
@@ -2000,9 +1998,6 @@ tiktok.on('gift', async (data) => {
     // Leaderboard: Update user stats
     await leaderboard.trackGift(data.username, data.giftName, data.coins);
 
-    // Flows verarbeiten (legacy)
-    await flows.processEvent('gift', data);
-    
     // IFTTT Engine verarbeiten
     await iftttEngine.processEvent('tiktok:gift', data);
 });
@@ -2020,7 +2015,6 @@ tiktok.on('follow', async (data) => {
     // Leaderboard: Track follow
     await leaderboard.trackFollow(data.username);
 
-    await flows.processEvent('follow', data);
     await iftttEngine.processEvent('tiktok:follow', data);
 });
 
@@ -2040,7 +2034,6 @@ tiktok.on('subscribe', async (data) => {
     // Leaderboard: Track subscription
     await leaderboard.trackSubscription(data.username);
 
-    await flows.processEvent('subscribe', data);
     await iftttEngine.processEvent('tiktok:subscribe', data);
 });
 
@@ -2051,7 +2044,6 @@ tiktok.on('share', async (data) => {
     // Leaderboard: Track share
     await leaderboard.trackShare(data.username);
 
-    await flows.processEvent('share', data);
     await iftttEngine.processEvent('tiktok:share', data);
 });
 
@@ -2060,8 +2052,7 @@ tiktok.on('chat', async (data) => {
     // Leaderboard: Track chat message
     await leaderboard.trackChat(data.username);
 
-    // Flows verarbeiten
-    await flows.processEvent('chat', data);
+    // IFTTT Engine verarbeiten
     await iftttEngine.processEvent('tiktok:chat', data);
 });
 
@@ -2087,10 +2078,7 @@ tiktok.on('like', async (data) => {
     // Leaderboard: Track likes
     await leaderboard.trackLike(data.username, data.likeCount || 1);
 
-    // Flows verarbeiten
-    // Likes normalerweise nicht als Alert (zu viele)
-    // Aber Flows könnten darauf reagieren
-    await flows.processEvent('like', data);
+    // IFTTT Engine verarbeiten
     await iftttEngine.processEvent('tiktok:like', data);
 });
 
@@ -2127,38 +2115,20 @@ const PORT = process.env.PORT || 3000;
         if (loadedCount > 0) {
             logger.info(`✅ ${loadedCount} plugin(s) loaded successfully`);
 
-            // Plugin-Injektionen in Flows
-            const vdoninjaPlugin = pluginLoader.getPluginInstance('vdoninja');
-            if (vdoninjaPlugin && vdoninjaPlugin.getManager) {
-                flows.vdoninjaManager = vdoninjaPlugin.getManager();
-                logger.info('✅ VDO.Ninja Manager injected into Flows');
-            }
-
-            // OSC-Bridge Plugin Injektion
-            const oscBridgePlugin = pluginLoader.getPluginInstance('osc-bridge');
-            if (oscBridgePlugin && oscBridgePlugin.getOSCBridge) {
-                flows.oscBridge = oscBridgePlugin.getOSCBridge();
-                logger.info('✅ OSC-Bridge injected into Flows');
-            }
-
-            // TTS Plugin Injektion
-            const ttsPlugin = pluginLoader.getPluginInstance('tts');
-            if (ttsPlugin) {
-                flows.ttsEngine = ttsPlugin;
-                logger.info('✅ TTS injected into Flows');
-            }
-
             // IFTTT Engine: Plugin-Injektionen
+            const vdoninjaPlugin = pluginLoader.getPluginInstance('vdoninja');
             if (vdoninjaPlugin && vdoninjaPlugin.getManager) {
                 iftttServices.vdoninja = vdoninjaPlugin.getManager();
                 logger.info('✅ VDO.Ninja Manager injected into IFTTT Engine');
             }
 
+            const oscBridgePlugin = pluginLoader.getPluginInstance('osc-bridge');
             if (oscBridgePlugin && oscBridgePlugin.getOSCBridge) {
                 iftttServices.osc = oscBridgePlugin.getOSCBridge();
                 logger.info('✅ OSC-Bridge injected into IFTTT Engine');
             }
 
+            const ttsPlugin = pluginLoader.getPluginInstance('tts');
             if (ttsPlugin) {
                 iftttServices.tts = ttsPlugin;
                 logger.info('✅ TTS injected into IFTTT Engine');
@@ -2184,8 +2154,7 @@ const PORT = process.env.PORT || 3000;
             // Setup timer-based triggers
             iftttEngine.setupTimerTriggers();
             logger.info('⏰ IFTTT timer triggers initialized');
-        }
-
+            
             initState.setPluginInjectionsComplete();
         } else {
             logger.info('ℹ️  No plugins found in /plugins directory');
@@ -2370,4 +2339,4 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, tiktok, alerts, flows, goals, leaderboard, subscriptionTiers };
+module.exports = { app, server, io, db, tiktok, alerts, iftttEngine, goals, leaderboard, subscriptionTiers };
