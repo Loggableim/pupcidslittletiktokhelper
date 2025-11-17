@@ -205,8 +205,14 @@ class Launcher {
             }
         } catch (error) {
             // Update-Manager nicht verfügbar oder Fehler
-            this.log.warn('Update-Check übersprungen (Update-Manager nicht verfügbar)');
-            this.log.debug(`Grund: ${error.message}`);
+            // Dies ist nicht kritisch - der Server kann trotzdem starten
+            if (error.code === 'MODULE_NOT_FOUND') {
+                this.log.warn('Update-Manager nicht verfügbar (fehlende Dependencies)');
+                this.log.info('Bitte stelle sicher, dass alle Dependencies installiert sind: npm install');
+            } else {
+                this.log.warn('Update-Check übersprungen (temporärer Fehler)');
+            }
+            this.log.debug(`Details: ${error.message}`);
         }
     }
 

@@ -7,7 +7,14 @@
  * - Rollback bei Fehlern
  */
 
-const axios = require('axios');
+// Defensive imports - catch missing dependencies early
+let axios;
+try {
+    axios = require('axios');
+} catch (error) {
+    throw new Error('Update-Manager benötigt axios. Bitte führe "npm install" aus.');
+}
+
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -368,7 +375,12 @@ class UpdateManager {
             // 3. Entpacke ZIP
             this.logger?.info('Entpacke Update-Archiv...');
 
-            const zl = require('zip-lib');
+            let zl;
+            try {
+                zl = require('zip-lib');
+            } catch (error) {
+                throw new Error('zip-lib ist nicht installiert. Bitte führe "npm install" aus.');
+            }
 
             if (!fs.existsSync(tempDir)) {
                 fs.mkdirSync(tempDir, { recursive: true });
