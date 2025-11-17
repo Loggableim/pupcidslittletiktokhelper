@@ -405,6 +405,70 @@
                     </div>
                 </div>
 
+                <!-- Voter Icons Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>👥 Voter Icons (Antwortvisualisierung)</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="voterIconsEnabled" checked>
+                                <span>Voter Icons anzeigen</span>
+                            </label>
+                            <div class="help-text small">Zeigt Profilbilder der Zuschauer über den Antworten an, für die sie gestimmt haben</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Icon-Größe:</label>
+                            <select id="voterIconSize" class="form-control">
+                                <option value="small">Klein (24px)</option>
+                                <option value="medium" selected>Mittel (32px)</option>
+                                <option value="large">Groß (40px)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Maximale Icons pro Antwort:</label>
+                            <input type="number" id="voterIconMaxVisible" class="form-control" min="3" max="50" value="10">
+                            <div class="help-text small">Überschüssige Voter werden als "+X weitere" angezeigt</div>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="voterIconCompactMode" checked>
+                                <span>Kompaktmodus bei vielen Votes</span>
+                            </label>
+                            <div class="help-text small">Verkleinert Icons automatisch bei mehr als 5 Teilnehmern</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Animationsstil:</label>
+                            <select id="voterIconAnimation" class="form-control">
+                                <option value="fade" selected>Einblenden (Fade)</option>
+                                <option value="slide">Einsliden (Slide)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Positionierung:</label>
+                            <select id="voterIconPosition" class="form-control">
+                                <option value="above" selected>Über der Antwort</option>
+                                <option value="beside">Neben der Antwort</option>
+                                <option value="embedded">Eingebettet</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="voterIconShowOnScoreboard">
+                                <span>Avatare im Scoreboard anzeigen</span>
+                            </label>
+                            <div class="help-text small">Zeigt kleine Avatare neben der Punktzahl bei korrekten Antworten</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Save Button -->
                 <div class="panel full-width">
                     <div class="panel-body">
