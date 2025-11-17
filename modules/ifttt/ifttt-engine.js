@@ -54,6 +54,7 @@ class IFTTTEngine {
             // Check if flows are globally enabled
             const flowsEnabled = this.db.getSetting('flows_enabled');
             if (flowsEnabled === 'false') {
+                this.logger?.debug(`⏭️ Flows globally disabled, skipping ${eventType}`);
                 return;
             }
 
@@ -74,10 +75,22 @@ class IFTTTEngine {
             });
 
             if (matchingFlows.length === 0) {
+                this.logger?.debug(`No flows registered for event: ${eventType}`);
                 return;
             }
 
-            this.logger?.debug(`📡 Processing ${eventType} event, ${matchingFlows.length} flows found`);
+            this.logger?.info(`📡 Processing ${eventType} event, ${matchingFlows.length} matching flow(s)`);
+
+            // Emit debug event to frontend
+            if (this.services.io) {
+                this.services.io.emit('ifttt:debug', {
+                    type: 'event_received',
+                    eventType,
+                    eventData,
+                    matchingFlows: matchingFlows.length,
+                    timestamp: Date.now()
+                });
+            }
 
             // Execute matching flows in parallel (with depth limit)
             const executions = matchingFlows.map(flow => 
@@ -88,6 +101,16 @@ class IFTTTEngine {
 
         } catch (error) {
             this.logger?.error('❌ Event processing error:', error);
+            
+            // Emit error to frontend
+            if (this.services.io) {
+                this.services.io.emit('ifttt:debug', {
+                    type: 'error',
+                    error: error.message,
+                    eventType,
+                    timestamp: Date.now()
+                });
+            }
         }
     }
 
@@ -108,6 +131,18 @@ class IFTTTEngine {
             this.executionStack.push(flow.id);
 
             this.logger?.info(`⚡ Executing flow: "${flow.name}" (ID: ${flow.id})`);
+            
+            // Emit flow start debug event
+            if (this.services.io) {
+                this.services.io.emit('ifttt:debug', {
+                    type: 'flow_started',
+                    executionId,
+                    flowId: flow.id,
+                    flowName: flow.name,
+                    eventData,
+                    timestamp: startTime
+                });
+            }
 
             // Create execution context
             const context = this.variables.createContext(eventData, {
@@ -125,8 +160,33 @@ class IFTTTEngine {
 
             if (!conditionsMet) {
                 this.logger?.debug(`⏭️ Flow "${flow.name}" conditions not met, skipping`);
+                
+                // Emit condition not met event
+                if (this.services.io) {
+                    this.services.io.emit('ifttt:debug', {
+                        type: 'flow_skipped',
+                        executionId,
+                        flowId: flow.id,
+                        flowName: flow.name,
+                        reason: 'conditions_not_met',
+                        condition: flow.trigger_condition,
+                        timestamp: Date.now()
+                    });
+                }
+                
                 this.executionStack.pop();
                 return;
+            }
+
+            // Emit conditions met event
+            if (this.services.io) {
+                this.services.io.emit('ifttt:debug', {
+                    type: 'conditions_met',
+                    executionId,
+                    flowId: flow.id,
+                    flowName: flow.name,
+                    timestamp: Date.now()
+                });
             }
 
             // Execute actions
@@ -138,8 +198,37 @@ class IFTTTEngine {
                     break;
                 }
 
+                // Emit action start event
+                if (this.services.io) {
+                    this.services.io.emit('ifttt:debug', {
+                        type: 'action_started',
+                        executionId,
+                        flowId: flow.id,
+                        flowName: flow.name,
+                        actionType: actionDef.type,
+                        timestamp: Date.now()
+                    });
+                }
+
+                const actionStartTime = Date.now();
                 const result = await this.executeAction(actionDef, context);
+                const actionTime = Date.now() - actionStartTime;
                 actionResults.push(result);
+
+                // Emit action completed event
+                if (this.services.io) {
+                    this.services.io.emit('ifttt:debug', {
+                        type: result.success ? 'action_completed' : 'action_failed',
+                        executionId,
+                        flowId: flow.id,
+                        flowName: flow.name,
+                        actionType: actionDef.type,
+                        success: result.success,
+                        error: result.error,
+                        executionTime: actionTime,
+                        timestamp: Date.now()
+                    });
+                }
 
                 if (!result.success) {
                     this.logger?.warn(`⚠️ Action ${actionDef.type} failed:`, result.error);
@@ -148,7 +237,7 @@ class IFTTTEngine {
 
             // Record execution
             const executionTime = Date.now() - startTime;
-            this.recordExecution({
+            const executionRecord = {
                 executionId,
                 flowId: flow.id,
                 flowName: flow.name,
@@ -156,15 +245,32 @@ class IFTTTEngine {
                 executionTime,
                 actionResults,
                 timestamp: startTime
-            });
+            };
+            
+            this.recordExecution(executionRecord);
 
             this.logger?.info(`✅ Flow "${flow.name}" completed in ${executionTime}ms`);
+            
+            // Emit flow completed event
+            if (this.services.io) {
+                this.services.io.emit('ifttt:debug', {
+                    type: 'flow_completed',
+                    executionId,
+                    flowId: flow.id,
+                    flowName: flow.name,
+                    success: executionRecord.success,
+                    executionTime,
+                    actionsExecuted: actionResults.length,
+                    timestamp: Date.now()
+                });
+            }
 
             this.executionStack.pop();
 
         } catch (error) {
             this.logger?.error(`❌ Flow "${flow.name}" execution error:`, error);
-            this.recordExecution({
+            
+            const executionRecord = {
                 executionId,
                 flowId: flow.id,
                 flowName: flow.name,
@@ -172,7 +278,22 @@ class IFTTTEngine {
                 error: error.message,
                 timestamp: startTime,
                 executionTime: Date.now() - startTime
-            });
+            };
+            
+            this.recordExecution(executionRecord);
+            
+            // Emit error event
+            if (this.services.io) {
+                this.services.io.emit('ifttt:debug', {
+                    type: 'flow_error',
+                    executionId,
+                    flowId: flow.id,
+                    flowName: flow.name,
+                    error: error.message,
+                    timestamp: Date.now()
+                });
+            }
+            
             this.executionStack.pop();
         }
     }

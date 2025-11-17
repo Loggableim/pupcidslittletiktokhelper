@@ -306,6 +306,10 @@
             addLogEntry(execution);
         });
 
+        socket.on('ifttt:debug', (debug) => {
+            addDebugEntry(debug);
+        });
+
         socket.on('notification', (notification) => {
             showNotification(notification.message, notification.type);
         });
@@ -778,6 +782,80 @@
         const entry = document.createElement('div');
         entry.className = `log-entry log-${status}`;
         entry.textContent = `${icon} ${timestamp} - ${execution.flowName} (${execution.executionTime}ms)`;
+        
+        elements.executionLog.insertBefore(entry, elements.executionLog.firstChild);
+        
+        // Keep only last 20 entries
+        while (elements.executionLog.children.length > 20) {
+            elements.executionLog.removeChild(elements.executionLog.lastChild);
+        }
+    }
+    
+    function addDebugEntry(debug) {
+        const timestamp = new Date(debug.timestamp).toLocaleTimeString();
+        let icon = '📡';
+        let message = '';
+        let status = 'info';
+        
+        switch (debug.type) {
+            case 'event_received':
+                icon = '📨';
+                message = `Event: ${debug.eventType} (${debug.matchingFlows} flow(s))`;
+                status = 'info';
+                break;
+            case 'flow_started':
+                icon = '▶️';
+                message = `Flow started: ${debug.flowName}`;
+                status = 'info';
+                break;
+            case 'flow_skipped':
+                icon = '⏭️';
+                message = `Flow skipped: ${debug.flowName} (${debug.reason})`;
+                status = 'info';
+                break;
+            case 'conditions_met':
+                icon = '✓';
+                message = `Conditions met: ${debug.flowName}`;
+                status = 'success';
+                break;
+            case 'action_started':
+                icon = '🔧';
+                message = `Action: ${debug.actionType} in ${debug.flowName}`;
+                status = 'info';
+                break;
+            case 'action_completed':
+                icon = '✅';
+                message = `Action completed: ${debug.actionType} (${debug.executionTime}ms)`;
+                status = 'success';
+                break;
+            case 'action_failed':
+                icon = '❌';
+                message = `Action failed: ${debug.actionType} - ${debug.error}`;
+                status = 'error';
+                break;
+            case 'flow_completed':
+                icon = '🏁';
+                message = `Flow completed: ${debug.flowName} (${debug.executionTime}ms, ${debug.actionsExecuted} action(s))`;
+                status = 'success';
+                break;
+            case 'flow_error':
+                icon = '💥';
+                message = `Flow error: ${debug.flowName} - ${debug.error}`;
+                status = 'error';
+                break;
+            case 'error':
+                icon = '❌';
+                message = `Error: ${debug.error}`;
+                status = 'error';
+                break;
+            default:
+                message = `${debug.type}: ${JSON.stringify(debug)}`;
+        }
+        
+        const entry = document.createElement('div');
+        entry.className = `log-entry log-${status}`;
+        entry.textContent = `${icon} ${timestamp} - ${message}`;
+        entry.title = JSON.stringify(debug, null, 2); // Show full data on hover
         
         elements.executionLog.insertBefore(entry, elements.executionLog.firstChild);
         
