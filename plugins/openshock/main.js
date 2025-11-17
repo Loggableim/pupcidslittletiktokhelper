@@ -1355,7 +1355,7 @@ class OpenShockPlugin {
 
         // In Queue einfügen
         this.queueManager.addItem({
-            id: `cmd-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `cmd-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
             type: 'command',
             deviceId,
             deviceName: device.name,
@@ -1408,7 +1408,7 @@ class OpenShockPlugin {
      * Pattern ausführen (alle Steps in Queue)
      */
     async _executePattern(pattern, device, context) {
-        const executionId = `pattern-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const executionId = `pattern-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
         // Execution tracken
         this.activePatternExecutions.set(executionId, {
