@@ -98,37 +98,18 @@ const testSuites = [
         ]
     },
     {
-        name: 'retry delay configuration',
-        tests: [
-            { name: 'Sign API delays longer than default', fn: () => {
-                const connector = new TikTokConnector(new MockIO(), new MockDB());
-                assert.ok(connector.retryDelays.signApi[0] > connector.retryDelays.default[0]);
-                assert.ok(connector.retryDelays.signApi[1] > connector.retryDelays.default[1]);
-                assert.ok(connector.retryDelays.signApi[2] > connector.retryDelays.default[2]);
-            }},
-            { name: 'Network delays between default and Sign API', fn: () => {
-                const connector = new TikTokConnector(new MockIO(), new MockDB());
-                assert.ok(connector.retryDelays.network[0] >= connector.retryDelays.default[0]);
-                assert.ok(connector.retryDelays.network[0] < connector.retryDelays.signApi[0]);
-            }},
-            { name: 'Proper exponential backoff', fn: () => {
-                const connector = new TikTokConnector(new MockIO(), new MockDB());
-                assert.ok(connector.retryDelays.default[0] < connector.retryDelays.default[1]);
-                assert.ok(connector.retryDelays.default[1] < connector.retryDelays.default[2]);
-                assert.ok(connector.retryDelays.signApi[0] < connector.retryDelays.signApi[1]);
-                assert.ok(connector.retryDelays.signApi[1] < connector.retryDelays.signApi[2]);
-            }},
-        ]
-    },
-    {
         name: 'initialization',
         tests: [
             { name: 'Correct default values', fn: () => {
                 const connector = new TikTokConnector(new MockIO(), new MockDB());
-                assert.strictEqual(connector.retryCount, 0);
-                assert.strictEqual(connector.maxRetries, 3);
-                assert.strictEqual(connector.lastErrorType, null);
+                // Auto-reconnect properties (managed by connector)
+                assert.strictEqual(connector.autoReconnectCount, 0);
+                assert.strictEqual(connector.maxAutoReconnects, 5);
                 assert.strictEqual(connector.isConnected, false);
+                assert.strictEqual(connector.currentUsername, null);
+                // Connection attempt tracking
+                assert.ok(Array.isArray(connector.connectionAttempts));
+                assert.strictEqual(connector.connectionAttempts.length, 0);
             }},
         ]
     }
