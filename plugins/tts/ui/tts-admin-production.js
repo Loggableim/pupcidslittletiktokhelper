@@ -272,6 +272,12 @@ function populateConfig(config) {
     setValue('enabledForChat', config.enabledForChat !== false);
     setValue('autoLanguageDetection', config.autoLanguageDetection !== false);
 
+    // Language detection settings
+    setValue('fallbackLanguage', config.fallbackLanguage || 'de');
+    setValue('languageConfidenceThreshold', config.languageConfidenceThreshold || 0.90);
+    setText('confidenceThresholdValue', Math.round((config.languageConfidenceThreshold || 0.90) * 100));
+    setValue('languageMinTextLength', config.languageMinTextLength || 10);
+
     // Handle API key - show placeholder if hidden
     const apiKeyInput = document.getElementById('googleApiKey');
     if (apiKeyInput) {
@@ -338,7 +344,11 @@ async function saveConfig() {
             duckOtherAudio: document.getElementById('duckOtherAudio').checked,
             duckVolume: parseInt(document.getElementById('duckVolume').value, 10) / 100,
             enabledForChat: document.getElementById('enabledForChat').checked,
-            autoLanguageDetection: document.getElementById('autoLanguageDetection').checked
+            autoLanguageDetection: document.getElementById('autoLanguageDetection').checked,
+            // Language detection settings
+            fallbackLanguage: document.getElementById('fallbackLanguage').value,
+            languageConfidenceThreshold: parseFloat(document.getElementById('languageConfidenceThreshold').value),
+            languageMinTextLength: parseInt(document.getElementById('languageMinTextLength').value, 10)
         };
 
         // Add API key if provided
@@ -1149,6 +1159,15 @@ function setupEventListeners() {
         duckVolumeInput.addEventListener('input', (e) => {
             const valueEl = document.getElementById('duckVolumeValue');
             if (valueEl) valueEl.textContent = e.target.value;
+        });
+    }
+
+    // Confidence threshold slider
+    const confidenceThresholdInput = document.getElementById('languageConfidenceThreshold');
+    if (confidenceThresholdInput) {
+        confidenceThresholdInput.addEventListener('input', (e) => {
+            const valueEl = document.getElementById('confidenceThresholdValue');
+            if (valueEl) valueEl.textContent = Math.round(parseFloat(e.target.value) * 100);
         });
     }
 
