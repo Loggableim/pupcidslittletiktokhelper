@@ -48,6 +48,7 @@
         let socket;
         let emojis = []; // Track emoji bodies and DOM elements
         let particlePool = []; // Pool of reusable particle elements
+        let userEmojiMap = {}; // User-specific emoji mappings
         let windForce = 0;
         let perfHudVisible = false;
         let resolutionIndicatorVisible = false;
@@ -332,7 +333,26 @@
         }
 
         // Spawn emoji with enhanced effects
-        function spawnEmoji(emoji, x, y, size) {
+        function spawnEmoji(emoji, x, y, size, username = null, color = null) {
+            // Check for user-specific emoji (try multiple username formats)
+            if (username) {
+                // Try exact match first
+                if (userEmojiMap[username]) {
+                    emoji = userEmojiMap[username];
+                    console.log(`👤 [USER MAPPING] Found emoji for ${username}: ${emoji}`);
+                } else {
+                    // Try case-insensitive match
+                    const lowerUsername = username.toLowerCase();
+                    const mappedUser = Object.keys(userEmojiMap).find(key => 
+                        key.toLowerCase() === lowerUsername
+                    );
+                    if (mappedUser) {
+                        emoji = userEmojiMap[mappedUser];
+                        console.log(`👤 [USER MAPPING] Found emoji for ${username} (case-insensitive): ${emoji}`);
+                    }
+                }
+            }
+
             // Normalize x position (0-1 to px)
             if (x >= 0 && x <= 1) {
                 x = x * canvasWidth;
@@ -459,16 +479,20 @@
             const emoji = data.emoji || getRandomEmoji();
             const x = data.x !== undefined ? data.x : Math.random();
             const y = data.y !== undefined ? data.y : 0;
+            const username = data.username || null;
+            const color = data.color || null;
+
+            console.log(`🌧️ [OBS HUD SPAWN] count=${count}, emoji=${emoji}, username=${username}, color=${color}`);
 
             for (let i = 0; i < count; i++) {
                 const size = config.emoji_min_size_px + Math.random() * (config.emoji_max_size_px - config.emoji_min_size_px);
                 const offsetX = x + (Math.random() - 0.5) * 0.2;
                 const offsetY = y - i * 5;
 
-                spawnEmoji(emoji, offsetX, offsetY, size);
+                spawnEmoji(emoji, offsetX, offsetY, size, username, color);
             }
 
-            console.log(`🌧️ Spawned ${count}x ${emoji} at (${x.toFixed(2)}, ${y})`);
+            console.log(`🌧️ Spawned ${count}x ${emoji} at (${x.toFixed(2)}, ${y})${username ? ' for ' + username : ''}`);
         }
 
         // Get random emoji from config
@@ -534,6 +558,23 @@
                 }
             } catch (error) {
                 console.error('❌ Failed to load config:', error);
+            }
+        }
+
+        // Load user emoji mappings
+        async function loadUserEmojiMappings() {
+            try {
+                const response = await fetch('/api/emoji-rain/user-mappings');
+                const data = await response.json();
+
+                if (data.success && data.mappings) {
+                    userEmojiMap = data.mappings;
+                    console.log('✅ [OBS HUD] User emoji mappings loaded:', userEmojiMap);
+                    console.log('👤 [USER MAPPINGS] Total mappings:', Object.keys(userEmojiMap).length);
+                    console.log('👤 [USER MAPPINGS] Users:', Object.keys(userEmojiMap).join(', '));
+                }
+            } catch (error) {
+                console.error('❌ Failed to load user emoji mappings:', error);
             }
         }
 
@@ -605,6 +646,15 @@
                 config.enabled = data.enabled;
                 console.log('🔄 Emoji rain ' + (data.enabled ? 'enabled' : 'disabled'));
             });
+
+            socket.on('emoji-rain:user-mappings-update', (data) => {
+                if (data.mappings) {
+                    userEmojiMap = data.mappings;
+                    console.log('🔄 [OBS HUD] User emoji mappings updated', userEmojiMap);
+                    console.log('👤 [USER MAPPINGS UPDATE] Total mappings:', Object.keys(userEmojiMap).length);
+                    console.log('👤 [USER MAPPINGS UPDATE] Users:', Object.keys(userEmojiMap).join(', '));
+                }
+            });
         }
 
         // Initialize everything
@@ -612,6 +662,7 @@
             console.log('🌧️ Initializing OBS HUD Emoji Rain Overlay...');
 
             await loadConfig();
+            await loadUserEmojiMappings();
             initPhysics();
             initSocket();
 

@@ -343,7 +343,8 @@ class EmojiRainPlugin {
                     x: parseFloat(x) !== undefined ? parseFloat(x) : Math.random(),
                     y: parseFloat(y) !== undefined ? parseFloat(y) : 0,
                     username: username || null,
-                    burst: burst || false
+                    burst: burst || false,
+                    color: null // Will be set by user mapping or color mode
                 };
 
                 // Apply intensity multiplier if provided
@@ -477,12 +478,15 @@ class EmojiRainPlugin {
             const isBurst = isSuperFan && config.superfan_burst_enabled;
 
             // Emit to overlay
+            // Fix: Use uniqueId (TikTok's username field) instead of username
+            const username = data.uniqueId || data.username || 'Unknown';
+            
             this.api.emit('emoji-rain:spawn', {
                 count: count,
                 emoji: emoji,
                 x: x,
                 y: y,
-                username: data.username || 'Unknown',
+                username: username,
                 reason: reason,
                 burst: isBurst
             });

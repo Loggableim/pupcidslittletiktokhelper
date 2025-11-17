@@ -310,7 +310,13 @@ function calculateWindForce() {
 /**
  * Apply color filter based on theme
  */
-function applyColorTheme(element) {
+function applyColorTheme(element, emoji = null) {
+    // Check for user-specific color first
+    if (emoji && emoji.userColor) {
+        element.style.filter = `hue-rotate(${emoji.userColor}deg)`;
+        return;
+    }
+
     if (config.rainbow_enabled) {
         // Rainbow takes precedence
         const hue = rainbowHueOffset % 360;
@@ -455,10 +461,10 @@ function updateLoop(currentTime) {
                 // - Rainbow mode needs to update every frame for smooth animation
                 // - Other color modes only update periodically to save performance
                 if (config.rainbow_enabled) {
-                    applyColorTheme(emoji.element);
+                    applyColorTheme(emoji.element, emoji);
                     emoji.lastColorUpdate = currentTime;
                 } else if (currentTime - emoji.lastColorUpdate > 100) {
-                    applyColorTheme(emoji.element);
+                    applyColorTheme(emoji.element, emoji);
                     emoji.lastColorUpdate = currentTime;
                 }
             }
@@ -537,10 +543,24 @@ function checkAndOptimizeFPS() {
 /**
  * Spawn emoji
  */
-function spawnEmoji(emoji, x, y, size, username = null) {
-    // Check for user-specific emoji
-    if (username && userEmojiMap[username]) {
-        emoji = userEmojiMap[username];
+function spawnEmoji(emoji, x, y, size, username = null, color = null) {
+    // Check for user-specific emoji (try multiple username formats)
+    if (username) {
+        // Try exact match first
+        if (userEmojiMap[username]) {
+            emoji = userEmojiMap[username];
+            console.log(`👤 [USER MAPPING] Found emoji for ${username}: ${emoji}`);
+        } else {
+            // Try case-insensitive match
+            const lowerUsername = username.toLowerCase();
+            const mappedUser = Object.keys(userEmojiMap).find(key => 
+                key.toLowerCase() === lowerUsername
+            );
+            if (mappedUser) {
+                emoji = userEmojiMap[mappedUser];
+                console.log(`👤 [USER MAPPING] Found emoji for ${username} (case-insensitive): ${emoji}`);
+            }
+        }
     }
 
     // Normalize x position (0-1 to px)
@@ -554,8 +574,10 @@ function spawnEmoji(emoji, x, y, size, username = null) {
         friction: config.physics_friction,
         restitution: config.bounce_height,
         density: 0.01,
-        frictionAir: 0
+        frictionAir: config.physics_air
     });
+
+    console.log(`⚙️ [SPAWN] Created body with friction=${config.physics_friction}, restitution=${config.bounce_height}, frictionAir=${config.physics_air}`);
 
     // Add initial velocity
     Body.setVelocity(body, {
@@ -593,7 +615,7 @@ function spawnEmoji(emoji, x, y, size, username = null) {
     applyPixelEffect(element);
     
     // Apply initial color theme before adding to DOM to prevent flash
-    applyColorTheme(element);
+    applyColorTheme(element, emojiObj);
 
     // Now add to DOM - element already has correct position
     document.getElementById('canvas-container').appendChild(element);
@@ -610,6 +632,7 @@ function spawnEmoji(emoji, x, y, size, username = null) {
         removed: false,
         hasBouncedEffect: false,
         username: username,
+        userColor: color, // Store user-specific color if provided
         lastColorUpdate: performance.now() // Track when color was last updated
     };
 
@@ -686,6 +709,9 @@ function handleSpawnEvent(data) {
     const y = data.y !== undefined ? data.y : 0;
     const username = data.username || null;
     const isBurst = data.burst || false;
+    const color = data.color || null;
+
+    console.log(`🌧️ [SPAWN EVENT] count=${count}, emoji=${emoji}, username=${username}, burst=${isBurst}, color=${color}`);
 
     // Apply burst multiplier
     const actualCount = isBurst ? Math.floor(count * config.superfan_burst_intensity) : count;
@@ -695,10 +721,10 @@ function handleSpawnEvent(data) {
         const offsetX = x + (Math.random() - 0.5) * 0.2;
         const offsetY = y - i * 5;
 
-        spawnEmoji(emoji, offsetX, offsetY, size, username);
+        spawnEmoji(emoji, offsetX, offsetY, size, username, color);
     }
 
-    console.log(`🌧️ Spawned ${actualCount}x ${emoji} at (${x.toFixed(2)}, ${y})${isBurst ? ' [BURST]' : ''}`);
+    console.log(`🌧️ Spawned ${actualCount}x ${emoji} at (${x.toFixed(2)}, ${y})${isBurst ? ' [BURST]' : ''}${username ? ' for ' + username : ''}`);
 }
 
 /**
@@ -743,17 +769,35 @@ async function loadConfig() {
             // Update physics
             if (engine) {
                 engine.gravity.y = config.physics_gravity_y;
+                console.log(`⚙️ [PHYSICS] Applied gravity: ${config.physics_gravity_y}`);
                 
                 // Update boundaries if floor setting changed
                 if (config.floor_enabled) {
                     if (!engine.world.bodies.includes(ground)) {
                         World.add(engine.world, ground);
+                        console.log('⚙️ [PHYSICS] Floor enabled on load');
                     }
                 } else {
                     if (engine.world.bodies.includes(ground)) {
                         World.remove(engine.world, ground);
+                        console.log('⚙️ [PHYSICS] Floor disabled on load');
                     }
                 }
+                
+                // Update restitution (bounce)
+                if (ground) {
+                    ground.restitution = config.bounce_height;
+                    ground.friction = config.physics_friction;
+                }
+                if (leftWall) {
+                    leftWall.restitution = config.bounce_height;
+                    leftWall.friction = config.physics_friction;
+                }
+                if (rightWall) {
+                    rightWall.restitution = config.bounce_height;
+                    rightWall.friction = config.physics_friction;
+                }
+                console.log(`⚙️ [PHYSICS] Applied bounce height: ${config.bounce_height}, friction: ${config.physics_friction}`);
             }
         }
     } catch (error) {
@@ -771,7 +815,9 @@ async function loadUserEmojiMappings() {
 
         if (data.success && data.mappings) {
             userEmojiMap = data.mappings;
-            console.log('✅ User emoji mappings loaded', userEmojiMap);
+            console.log('✅ User emoji mappings loaded:', userEmojiMap);
+            console.log('👤 [USER MAPPINGS] Total mappings:', Object.keys(userEmojiMap).length);
+            console.log('👤 [USER MAPPINGS] Users:', Object.keys(userEmojiMap).join(', '));
         }
     } catch (error) {
         console.error('❌ Failed to load user emoji mappings:', error);
@@ -794,11 +840,53 @@ function initSocket() {
 
     socket.on('emoji-rain:config-update', (data) => {
         if (data.config) {
+            console.log('🔄 [CONFIG UPDATE] Received new config:', data.config);
+            
+            // Store old values for comparison
+            const oldGravity = config.physics_gravity_y;
+            const oldFloorEnabled = config.floor_enabled;
+            const oldBounceHeight = config.bounce_height;
+            
+            // Update config
             Object.assign(config, data.config);
             console.log('🔄 Config updated', config);
 
             if (engine) {
-                engine.gravity.y = config.physics_gravity_y;
+                // Update gravity if changed
+                if (config.physics_gravity_y !== oldGravity) {
+                    engine.gravity.y = config.physics_gravity_y;
+                    console.log(`⚙️ [PHYSICS] Updated gravity: ${config.physics_gravity_y}`);
+                }
+                
+                // Update floor if changed
+                if (config.floor_enabled !== oldFloorEnabled) {
+                    if (config.floor_enabled) {
+                        if (!engine.world.bodies.includes(ground)) {
+                            World.add(engine.world, ground);
+                            console.log('⚙️ [PHYSICS] Floor enabled');
+                        }
+                    } else {
+                        if (engine.world.bodies.includes(ground)) {
+                            World.remove(engine.world, ground);
+                            console.log('⚙️ [PHYSICS] Floor disabled');
+                        }
+                    }
+                }
+                
+                // Update bounce/restitution if changed
+                if (config.bounce_height !== oldBounceHeight) {
+                    // Update ground restitution
+                    if (ground) {
+                        ground.restitution = config.bounce_height;
+                    }
+                    if (leftWall) {
+                        leftWall.restitution = config.bounce_height;
+                    }
+                    if (rightWall) {
+                        rightWall.restitution = config.bounce_height;
+                    }
+                    console.log(`⚙️ [PHYSICS] Updated bounce height: ${config.bounce_height}`);
+                }
             }
         }
     });
@@ -812,6 +900,8 @@ function initSocket() {
         if (data.mappings) {
             userEmojiMap = data.mappings;
             console.log('🔄 User emoji mappings updated', userEmojiMap);
+            console.log('👤 [USER MAPPINGS UPDATE] Total mappings:', Object.keys(userEmojiMap).length);
+            console.log('👤 [USER MAPPINGS UPDATE] Users:', Object.keys(userEmojiMap).join(', '));
         }
     });
 }
