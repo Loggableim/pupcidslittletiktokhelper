@@ -1,9 +1,16 @@
 const { TikTokLiveConnection } = require('tiktok-live-connector');
 const EventEmitter = require('events');
-const ConnectionDiagnostics = require('./connection-diagnostics');
-const RoomIdResolver = require('./room-id-resolver');
-const HttpClientEnhancer = require('./http-client-enhancer');
 
+/**
+ * TikTok Live Connector - Refactored to use Official API
+ * 
+ * This module has been completely refactored to use ONLY the official
+ * TikTok-Live-Connector API from https://github.com/zerodytrash/TikTok-Live-Connector
+ * 
+ * All custom HTML scraping, Room ID resolution, and Euler Stream workarounds
+ * have been removed. The library handles all of this internally with better
+ * reliability and maintainability.
+ */
 class TikTokConnector extends EventEmitter {
     constructor(io, db) {
         super();
@@ -12,20 +19,13 @@ class TikTokConnector extends EventEmitter {
         this.connection = null;
         this.isConnected = false;
         this.currentUsername = null;
-        this.retryCount = 0;
-        this.maxRetries = 3;
-        this.retryDelays = {
-            default: [2000, 5000, 10000],           // Standard: 2s, 5s, 10s
-            signApi: [5000, 15000, 30000],          // Sign API errors: 5s, 15s, 30s (longer delays)
-            network: [3000, 8000, 15000]            // Network errors: 3s, 8s, 15s
-        };
-        this.lastErrorType = null;
 
-        // Auto-Reconnect-Limiter
+        // Auto-Reconnect configuration
         this.autoReconnectCount = 0;
-        this.maxAutoReconnects = 5; // Max 5 automatische Reconnects
+        this.maxAutoReconnects = 5;
         this.autoReconnectResetTimeout = null;
 
+        // Stats tracking
         this.stats = {
             viewers: 0,
             likes: 0,
@@ -39,290 +39,296 @@ class TikTokConnector extends EventEmitter {
         this.streamStartTime = null;
         this.durationInterval = null;
         
-        // Connection diagnostics
-        this.diagnostics = new ConnectionDiagnostics(db);
-        
-        // Enhanced Room ID resolution with multiple fallback methods
-        this.roomIdResolver = new RoomIdResolver(db, this.diagnostics);
-        
-        // HTTP client enhancements for better timeout handling
-        this.httpEnhancer = new HttpClientEnhancer();
+        // Connection attempt tracking for diagnostics
+        this.connectionAttempts = [];
+        this.maxAttempts = 10;
     }
 
-    // Decrypt backup Euler API key (fallback when no user key is configured)
-    // Encrypted keys provided by repository owner for backup use
-    _getBackupEulerKey() {
-        try {
-            // Encrypted Euler API key (XOR + Base64)
-            const encrypted = 'FQAcBhs7YyAgWjk7LUAlCCYbPx9oAH1mch06NCJdKkcfXCUjOQF3LCRdPiEZHH1kZ0wqMT0aJx5oRCcvPRYyVyIINjQzHnd2Ylh7JyBC';
-            const key = 'pupcid-tiktok-helper-2024';
-            
-            const text = Buffer.from(encrypted, 'base64').toString();
-            let result = '';
-            for (let i = 0; i < text.length; i++) {
-                result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
-            return result;
-        } catch (error) {
-            console.warn('⚠️ Failed to decrypt backup Euler key:', error.message);
-            return null;
-        }
-    }
-
-    // Decrypt backup webhook secret (for future use if needed)
-    _getBackupWebhookSecret() {
-        try {
-            // Encrypted webhook secret (XOR + Base64)
-            const encrypted = 'RkxCV14HT0UPWUwNCk5cUwlDVEdLBAUCV0ZBRVNeARVGUQoXDV9LXlRbQV0QH1BWBwFCQxNWDwZPEAwJFlgKFQ==';
-            const key = 'pupcid-tiktok-helper-2024';
-            
-            const text = Buffer.from(encrypted, 'base64').toString();
-            let result = '';
-            for (let i = 0; i < text.length; i++) {
-                result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-            }
-            return result;
-        } catch (error) {
-            console.warn('⚠️ Failed to decrypt backup webhook secret:', error.message);
-            return null;
-        }
-    }
-
+    /**
+     * Connect to TikTok Live stream using official TikTok-Live-Connector API
+     * @param {string} username - TikTok username (without @)
+     * @param {object} options - Connection options
+     */
     async connect(username, options = {}) {
         if (this.isConnected) {
             await this.disconnect();
         }
 
-        // Reset retry counter bei neuem Verbindungsversuch
-        if (!options.isRetry) {
-            this.retryCount = 0;
-        }
-
         try {
             this.currentUsername = username;
 
-            // Erweiterte Verbindungsoptionen
-            // FIX: Read settings from database (preferred) or fallback to environment variables
-            // Priority: 1. Database setting, 2. Environment variable, 3. Backup key (encrypted)
-            let eulerApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.TIKTOK_SIGN_API_KEY;
-            const enableEulerFallbacks = this.db.getSetting('tiktok_enable_euler_fallbacks') === 'true' || process.env.TIKTOK_ENABLE_EULER_FALLBACKS === 'true';
-            const connectWithUniqueId = this.db.getSetting('tiktok_connect_with_unique_id') === 'true' || process.env.TIKTOK_CONNECT_WITH_UNIQUE_ID === 'true';
-            
-            // If no API key is configured, use encrypted backup key as fallback
-            const usingBackupKey = !eulerApiKey;
-            if (usingBackupKey) {
-                eulerApiKey = this._getBackupEulerKey();
-                if (eulerApiKey) {
-                    console.log('🔑 Verwende Backup Euler API Key (keine eigene Konfiguration gefunden)');
-                }
-            }
-            
-            // FIX: Set process.env.SIGN_API_KEY for the tiktok-live-connector library
-            // The library's SignConfig reads from process.env.SIGN_API_KEY (not TIKTOK_SIGN_API_KEY)
-            // This ensures the Euler Stream SDK is properly configured
-            if (eulerApiKey) {
-                process.env.SIGN_API_KEY = eulerApiKey;
-                if (!usingBackupKey) {
-                    console.log('🔑 Euler API Key konfiguriert (aus Datenbank oder Umgebungsvariable)');
-                }
-            } else {
-                // Clear the env var if no key is configured to avoid using stale keys
-                delete process.env.SIGN_API_KEY;
-                console.log('ℹ️  Kein Euler API Key konfiguriert - verwende Standard-Verbindung ohne Euler Stream Fallbacks');
-            }
-            
-            // ENHANCEMENT: Configure HTTP client with increased timeouts to prevent premature failures
-            // Read timeout from database or use default of 20 seconds (increased from 10s)
+            // Read configuration from database or environment variables
+            const signApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.SIGN_API_KEY;
             const httpTimeout = parseInt(this.db.getSetting('tiktok_http_timeout')) || 20000;
-            this.httpEnhancer.enhance({ 
-                timeout: httpTimeout,
-                verbose: true 
-            });
-            
+            const enableEulerFallbacks = this.db.getSetting('tiktok_enable_euler_fallbacks') !== 'false'; // Default: true
+            const connectWithUniqueId = this.db.getSetting('tiktok_connect_with_unique_id') === 'true'; // Default: false
+            const sessionId = this.db.getSetting('tiktok_session_id') || options.sessionId;
+
+            // Configure Sign API key globally for the library
+            if (signApiKey) {
+                process.env.SIGN_API_KEY = signApiKey;
+                console.log('🔑 Euler API Key configured');
+            }
+
+            // Configure connection options using official API
             const connectionOptions = {
+                // Process initial data to get room info and gifts
                 processInitialData: true,
+                
+                // Enable extended gift information (images, prices, etc.)
                 enableExtendedGiftInfo: true,
+                
+                // Enable WebSocket upgrade for better performance
                 enableWebsocketUpgrade: true,
+                
+                // Polling interval for events (1 second)
                 requestPollingIntervalMs: 1000,
-                // FIX: Disable Euler Stream fallbacks when no API key is configured
-                // Euler fallbacks require a valid API key from https://www.eulerstream.com
-                // When disabled, the library will use TikTok's native WebSocket connection
-                disableEulerFallbacks: !eulerApiKey || !enableEulerFallbacks,
-                // FIX: Enable connectWithUniqueId to bypass captchas on low-quality IPs
-                // This allows the library to fetch room ID via unique username instead of scraping
+                
+                // Use connectWithUniqueId to bypass Room ID resolution issues
+                // This delegates Room ID resolution to Euler Stream API
                 connectWithUniqueId: connectWithUniqueId,
-                // Session-Keys Support (falls vorhanden)
-                ...(options.sessionId && { sessionId: options.sessionId })
-                // NOTE: We don't pass signApiKey here - it's set via process.env.SIGN_API_KEY above
-                // The library's SignConfig will pick it up automatically
+                
+                // Control Euler Stream fallback usage
+                // When true, disables Euler Stream fallbacks (use only HTML scraping)
+                // When false, uses Euler Stream as fallback when HTML scraping fails
+                disableEulerFallbacks: !enableEulerFallbacks,
+                
+                // Web client options (HTTP requests for HTML/API)
+                webClientOptions: {
+                    timeout: httpTimeout,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    }
+                },
+                
+                // Session ID for authenticated connection (optional)
+                ...(sessionId && { sessionId })
             };
 
-            console.log(`🔄 Verbinde mit TikTok LIVE: @${username}${this.retryCount > 0 ? ` (Versuch ${this.retryCount + 1}/${this.maxRetries + 1})` : ''}...`);
+            console.log(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
+            console.log(`⚙️  Connection Mode: ${connectWithUniqueId ? 'UniqueId (Euler)' : 'HTML Scraping'}, Euler Fallbacks: ${!enableEulerFallbacks ? 'Disabled' : 'Enabled'}`);
 
+            // Create connection using official API
             this.connection = new TikTokLiveConnection(username, connectionOptions);
 
-            // Event-Listener registrieren
+            // Register event listeners
             this.registerEventListeners();
 
-            // Verbindung herstellen mit Timeout
-            // FIX: Configurable timeout (default 60s, increased from 45s for slow connections)
+            // Connect with timeout
             const connectionTimeout = parseInt(this.db.getSetting('tiktok_connection_timeout')) || 60000;
-            const timeoutSeconds = Math.floor(connectionTimeout / 1000);
-            
             const state = await Promise.race([
                 this.connection.connect(),
                 new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error(`Verbindungs-Timeout nach ${timeoutSeconds} Sekunden`)), connectionTimeout)
+                    setTimeout(() => reject(new Error(`Connection timeout after ${connectionTimeout/1000}s`)), connectionTimeout)
                 )
             ]);
 
             this.isConnected = true;
-            this.retryCount = 0; // Reset bei erfolgreicher Verbindung
 
-            // Start stream duration tracking
-            // FIX: Enhanced fallback chain for stream start time extraction
-            // Try multiple field names and handle both seconds and milliseconds timestamps
-            this.streamStartTime = null;
-            
-            if (state.roomInfo) {
-                // Try create_time (most common, Unix timestamp in seconds)
-                if (state.roomInfo.create_time) {
-                    this.streamStartTime = state.roomInfo.create_time * 1000;
-                    console.log(`📅 Stream start time from create_time: ${new Date(this.streamStartTime).toISOString()}`);
-                }
-                // Try createTime (alternative field)
-                else if (state.roomInfo.createTime) {
-                    // Check if already in milliseconds (> year 2100 in seconds)
-                    this.streamStartTime = state.roomInfo.createTime > 4000000000 
-                        ? state.roomInfo.createTime 
-                        : state.roomInfo.createTime * 1000;
-                    console.log(`📅 Stream start time from createTime: ${new Date(this.streamStartTime).toISOString()}`);
-                }
-                // Try start_time (another alternative)
-                else if (state.roomInfo.start_time) {
-                    this.streamStartTime = state.roomInfo.start_time * 1000;
-                    console.log(`📅 Stream start time from start_time: ${new Date(this.streamStartTime).toISOString()}`);
-                }
-                // Try startTime (camelCase variant)
-                else if (state.roomInfo.startTime) {
-                    this.streamStartTime = state.roomInfo.startTime > 4000000000 
-                        ? state.roomInfo.startTime 
-                        : state.roomInfo.startTime * 1000;
-                    console.log(`📅 Stream start time from startTime: ${new Date(this.streamStartTime).toISOString()}`);
-                }
-            }
-            
-            // Final fallback: use current time
-            if (!this.streamStartTime) {
-                this.streamStartTime = Date.now();
-                console.log(`⚠️ Stream start time nicht verfügbar, verwende aktuelle Zeit: ${new Date(this.streamStartTime).toISOString()}`);
-            }
+            // Extract stream start time from room info
+            this.streamStartTime = this._extractStreamStartTime(state.roomInfo);
 
-            // Start interval to broadcast duration every second
+            // Start duration tracking interval
             if (this.durationInterval) {
                 clearInterval(this.durationInterval);
             }
             this.durationInterval = setInterval(() => {
                 this.broadcastStats();
-            }, 1000); // Update every second
+            }, 1000);
 
-            // Reset Auto-Reconnect-Counter nach 5 Minuten stabiler Verbindung
+            // Reset auto-reconnect counter after 5 minutes of stable connection
             if (this.autoReconnectResetTimeout) {
                 clearTimeout(this.autoReconnectResetTimeout);
             }
             this.autoReconnectResetTimeout = setTimeout(() => {
                 this.autoReconnectCount = 0;
-                console.log('✅ Auto-reconnect counter reset after stable connection');
-            }, 5 * 60 * 1000); // 5 Minuten
+                console.log('✅ Auto-reconnect counter reset');
+            }, 5 * 60 * 1000);
 
+            // Broadcast success
             this.broadcastStatus('connected', {
                 username,
                 roomId: state.roomId,
                 roomInfo: state.roomInfo
             });
 
-            // Speichere letzten verbundenen Username für automatisches Gift-Katalog-Update beim Neustart
+            // Save last connected username
             this.db.setSetting('last_connected_username', username);
 
-            console.log(`✅ Connected to TikTok LIVE: @${username}`);
+            console.log(`✅ Connected to TikTok LIVE: @${username} (Room ID: ${state.roomId})`);
             
-            // Log successful connection attempt
-            this.diagnostics.logConnectionAttempt(username, true, null, null);
+            // Log success
+            this._logConnectionAttempt(username, true, null, null);
 
-            // Gift-Katalog automatisch aktualisieren (ohne preferConnected, da bereits verbunden)
+            // Auto-update gift catalog after connection
             setTimeout(() => {
                 this.updateGiftCatalog({ preferConnected: false }).catch(err => {
-                    console.warn('⚠️ Automatisches Gift-Katalog-Update fehlgeschlagen:', err.message);
+                    console.warn('⚠️  Gift catalog update failed:', err.message);
                 });
             }, 2000);
 
         } catch (error) {
             this.isConnected = false;
 
-            // Detaillierte Fehleranalyse
-            const errorInfo = this.analyzeConnectionError(error);
-            this.lastErrorType = errorInfo.type;
+            // Analyze and format error
+            const errorInfo = this._analyzeError(error);
 
-            console.error(`❌ TikTok Verbindungsfehler (${errorInfo.type}):`, errorInfo.message);
+            console.error(`❌ Connection error:`, errorInfo.message);
             
-            // Log failed connection attempt
-            this.diagnostics.logConnectionAttempt(username, false, errorInfo.type, errorInfo.message);
-            
-            // Zeige Vorschlag an, wenn vorhanden
             if (errorInfo.suggestion) {
-                console.log(`💡 Tipp: ${errorInfo.suggestion}`);
+                console.log(`💡 Suggestion:`, errorInfo.suggestion);
             }
 
-            // Retry-Logik bei bestimmten Fehlern
-            if (errorInfo.retryable && this.retryCount < this.maxRetries) {
-                // Wähle passende Verzögerung basierend auf Fehlertyp
-                let delayArray = this.retryDelays.default;
-                
-                if (errorInfo.type.includes('SIGN_API')) {
-                    delayArray = this.retryDelays.signApi;
-                } else if (errorInfo.type === 'NETWORK_ERROR') {
-                    delayArray = this.retryDelays.network;
-                }
-                
-                const delay = delayArray[Math.min(this.retryCount, delayArray.length - 1)];
-                this.retryCount++;
+            // Log failure
+            this._logConnectionAttempt(username, false, errorInfo.type, errorInfo.message);
 
-                console.log(`⏳ Wiederhole Verbindung in ${delay / 1000} Sekunden... (Versuch ${this.retryCount}/${this.maxRetries})`);
-
-                this.broadcastStatus('retrying', {
-                    attempt: this.retryCount,
-                    maxRetries: this.maxRetries,
-                    delay: delay,
-                    error: errorInfo.message,
-                    errorType: errorInfo.type
-                });
-
-                // Warte und versuche erneut
-                await new Promise(resolve => setTimeout(resolve, delay));
-                return this.connect(username, { ...options, isRetry: true });
-            }
-
-            // Broadcast detaillierter Fehler
+            // Broadcast error
             this.broadcastStatus('error', {
                 error: errorInfo.message,
                 type: errorInfo.type,
-                suggestion: errorInfo.suggestion,
-                retryable: errorInfo.retryable
+                suggestion: errorInfo.suggestion
             });
 
-            throw new Error(errorInfo.message);
+            throw error;
         }
     }
 
+    /**
+     * Extract stream start time from room info
+     * @private
+     */
+    _extractStreamStartTime(roomInfo) {
+        if (!roomInfo) {
+            return Date.now();
+        }
+
+        // Try multiple field names (TikTok API may use different names)
+        const timeFields = ['create_time', 'createTime', 'start_time', 'startTime'];
+        
+        for (const field of timeFields) {
+            if (roomInfo[field]) {
+                // Handle both seconds and milliseconds timestamps
+                const timestamp = roomInfo[field] > 4000000000 
+                    ? roomInfo[field] 
+                    : roomInfo[field] * 1000;
+                console.log(`📅 Stream start time from ${field}: ${new Date(timestamp).toISOString()}`);
+                return timestamp;
+            }
+        }
+
+        // Fallback to current time
+        console.log(`⚠️  Stream start time not available, using current time`);
+        return Date.now();
+    }
+
+    /**
+     * Analyze connection error and provide user-friendly message
+     * @private
+     */
+    _analyzeError(error) {
+        const errorMessage = error.message || error.toString();
+
+        // User not live or room not found
+        if (errorMessage.includes('LIVE_NOT_FOUND') || 
+            errorMessage.includes('not live') ||
+            errorMessage.includes('room id') ||
+            errorMessage.includes('Room ID')) {
+            return {
+                type: 'NOT_LIVE',
+                message: 'User is not currently live or username is incorrect',
+                suggestion: 'Verify the username is correct and the user is streaming on TikTok'
+            };
+        }
+
+        // Network/timeout errors
+        if (errorMessage.includes('timeout') || 
+            errorMessage.includes('TIMEOUT') ||
+            errorMessage.includes('ECONNABORTED') ||
+            errorMessage.includes('ETIMEDOUT')) {
+            return {
+                type: 'TIMEOUT',
+                message: 'Connection timeout - TikTok servers did not respond in time',
+                suggestion: 'Check your internet connection. If the problem persists, TikTok servers may be slow or unavailable'
+            };
+        }
+
+        // Blocking/Captcha
+        if (errorMessage.includes('blocked') || 
+            errorMessage.includes('captcha') ||
+            errorMessage.includes('SIGI_STATE')) {
+            return {
+                type: 'BLOCKED',
+                message: 'Connection blocked by TikTok (possible bot detection or geo-restriction)',
+                suggestion: 'Try enabling "Connect with Unique ID" in settings, use a VPN, or wait before retrying'
+            };
+        }
+
+        // Sign API / Euler errors
+        if (errorMessage.includes('Sign') || 
+            errorMessage.includes('Euler') ||
+            errorMessage.includes('401') ||
+            errorMessage.includes('403')) {
+            return {
+                type: 'SIGN_API_ERROR',
+                message: 'Sign API error - API key may be invalid or expired',
+                suggestion: 'Check your Euler Stream API key at https://www.eulerstream.com or disable Euler fallbacks'
+            };
+        }
+
+        // Network connection errors
+        if (errorMessage.includes('ECONNREFUSED') || 
+            errorMessage.includes('ENOTFOUND') ||
+            errorMessage.includes('network')) {
+            return {
+                type: 'NETWORK_ERROR',
+                message: 'Network error - cannot reach TikTok servers',
+                suggestion: 'Check your internet connection and firewall settings'
+            };
+        }
+
+        // Generic error
+        return {
+            type: 'UNKNOWN_ERROR',
+            message: errorMessage,
+            suggestion: 'Check the console logs for more details. If the problem persists, report this error'
+        };
+    }
+
+    /**
+     * Log connection attempt for diagnostics
+     * @private
+     */
+    _logConnectionAttempt(username, success, errorType, errorMessage) {
+        const attempt = {
+            timestamp: new Date().toISOString(),
+            username,
+            success,
+            errorType,
+            errorMessage
+        };
+
+        this.connectionAttempts.unshift(attempt);
+        
+        // Keep only last N attempts
+        if (this.connectionAttempts.length > this.maxAttempts) {
+            this.connectionAttempts = this.connectionAttempts.slice(0, this.maxAttempts);
+        }
+    }
+
+    /**
+     * Analyze old-style connection error (backward compatibility)
+     * @deprecated Use _analyzeError instead
+     * @private
+     */
     analyzeConnectionError(error) {
         const errorMessage = error.message || '';
         const errorString = error.toString();
 
-        // FIX: ECONNABORTED - Axios timeout error (most common with slow connections)
-        if (errorMessage.includes('ECONNABORTED') || error.code === 'ECONNABORTED') {
+        // Timeout errors
+        if (errorMessage.includes('ECONNABORTED') || error.code === 'ECONNABORTED' || errorMessage.includes('timeout')) {
             return {
                 type: 'HTTP_TIMEOUT',
-                message: 'HTTP-Anfrage abgebrochen (ECONNABORTED). Die Verbindung zu TikTok wurde wegen Timeout beendet.',
+                message: 'HTTP request timeout. Connection to TikTok took too long.',
                 suggestion: 'Dies passiert bei langsamen Verbindungen oder wenn TikTok langsam antwortet. Die Timeouts wurden automatisch erhöht. Falls das Problem weiterhin besteht: 1) Prüfe deine Internetverbindung, 2) Versuche es zu einer anderen Zeit, 3) Verwende einen VPN.',
                 retryable: true
             };
@@ -968,27 +974,60 @@ class TikTokConnector extends EventEmitter {
         return this.db.getGiftCatalog();
     }
     
-    // Connection diagnostics methods
+    /**
+     * Run diagnostics on the connection
+     */
     async runDiagnostics(username) {
-        return await this.diagnostics.runFullDiagnostics(username || this.currentUsername || 'tiktok');
+        const testUsername = username || this.currentUsername || 'tiktok';
+        
+        return {
+            timestamp: new Date().toISOString(),
+            connection: {
+                isConnected: this.isConnected,
+                currentUsername: this.currentUsername,
+                autoReconnectCount: this.autoReconnectCount,
+                maxAutoReconnects: this.maxAutoReconnects
+            },
+            configuration: {
+                httpTimeout: parseInt(this.db.getSetting('tiktok_http_timeout')) || 20000,
+                connectionTimeout: parseInt(this.db.getSetting('tiktok_connection_timeout')) || 60000,
+                enableEulerFallbacks: this.db.getSetting('tiktok_enable_euler_fallbacks') !== 'false',
+                connectWithUniqueId: this.db.getSetting('tiktok_connect_with_unique_id') === 'true',
+                signApiConfigured: !!process.env.SIGN_API_KEY
+            },
+            recentAttempts: this.connectionAttempts.slice(0, 5),
+            stats: this.stats
+        };
     }
     
+    /**
+     * Get connection health status
+     */
     async getConnectionHealth() {
-        return await this.diagnostics.getConnectionHealth();
-    }
-    
-    // Room ID resolver methods - expose cache management
-    clearRoomIdCache(username = null) {
-        this.roomIdResolver.clearCache(username);
-    }
-    
-    getRoomIdCacheStats() {
-        return this.roomIdResolver.getCacheStats();
-    }
-    
-    // Expose HTTP client configuration
-    getHttpClientConfig() {
-        return this.httpEnhancer.getConfiguration();
+        const recentFailures = this.connectionAttempts.filter(a => !a.success).length;
+        
+        let status = 'healthy';
+        let message = 'Connection ready';
+        
+        if (!this.isConnected && this.currentUsername) {
+            status = 'disconnected';
+            message = 'Not connected';
+        } else if (recentFailures >= 3) {
+            status = 'degraded';
+            message = `${recentFailures} recent failures`;
+        } else if (recentFailures >= 5) {
+            status = 'critical';
+            message = 'Repeated connection errors';
+        }
+        
+        return {
+            status,
+            message,
+            isConnected: this.isConnected,
+            currentUsername: this.currentUsername,
+            recentAttempts: this.connectionAttempts.slice(0, 5),
+            autoReconnectCount: this.autoReconnectCount
+        };
     }
 }
 
