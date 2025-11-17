@@ -175,6 +175,9 @@ class QuizShowPlugin {
                     .run('#3b82f6', '#8b5cf6');
             }
 
+            // Migrate schema if needed
+            await this.migrateSchema();
+
             // Migrate old data if exists
             await this.migrateOldData();
 
@@ -183,6 +186,22 @@ class QuizShowPlugin {
         } catch (error) {
             this.api.log('Error initializing database: ' + error.message, 'error');
             throw error;
+        }
+    }
+
+    async migrateSchema() {
+        try {
+            // Check if info column exists in questions table
+            const columns = this.db.pragma('table_info(questions)');
+            const hasInfoColumn = columns.some(col => col.name === 'info');
+            
+            if (!hasInfoColumn) {
+                this.api.log('Adding info column to questions table...', 'info');
+                this.db.exec('ALTER TABLE questions ADD COLUMN info TEXT DEFAULT NULL');
+                this.api.log('Schema migration completed', 'info');
+            }
+        } catch (error) {
+            this.api.log('Error during schema migration: ' + error.message, 'warn');
         }
     }
 
