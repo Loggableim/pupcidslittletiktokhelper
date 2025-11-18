@@ -118,7 +118,9 @@ function playSound(url, vol, label) {
     // Create audio element and add to DOM
     const a = document.createElement('audio');
     a.src = url;
-    a.crossOrigin = 'anonymous'; // CORS support
+    // DO NOT set crossOrigin - it prevents playback from many sources including MyInstants
+    // Only set it if we explicitly need it for audio analysis (e.g., Web Audio API)
+    // a.crossOrigin = 'anonymous'; // REMOVED: Causes CORS issues with MyInstants
 
     // Fix volume bug: use nullish coalescing instead of logical OR
     const volumeValue = typeof vol === 'number' ? vol : 1;
@@ -139,15 +141,28 @@ function playSound(url, vol, label) {
     a.play().then(() => {
       console.log('✅ [Soundboard] Audio playing:', label);
     }).catch(e => {
+      console.error('❌ [Soundboard] Playback error:', {
+        name: e.name,
+        message: e.message,
+        url: url,
+        label: label
+      });
+      
       if (e.name === 'NotAllowedError') {
         pushLog('⚠️ Autoplay blockiert. Bitte einmal klicken.');
         showToast('⚠️ Browser blockiert Autoplay. Bitte einmal klicken!');
+        // Show unlock button if available
+        if (window.audioUnlockManager && !window.audioUnlocked) {
+          window.audioUnlockManager.showUnlockButton();
+        }
       } else if (e.name === 'NotSupportedError') {
         pushLog('❌ Audio-Format nicht unterstützt: ' + url);
         showToast('❌ Audio-Format nicht unterstützt');
+      } else if (e.name === 'AbortError') {
+        pushLog('⚠️ Audio-Wiedergabe abgebrochen');
       } else {
         pushLog('❌ Audio Error: ' + e.message);
-        console.error('❌ [Soundboard] Playback error:', e);
+        console.error('❌ [Soundboard] Playback error details:', e);
       }
       a.remove(); // Clean up on error
     });
@@ -165,9 +180,34 @@ function playSound(url, vol, label) {
         url: a.src,
         readyState: a.readyState,
         networkState: a.networkState,
-        error: a.error
+        error: a.error,
+        errorCode: a.error?.code,
+        errorMessage: a.error?.message
       });
-      pushLog('❌ Audio-Ladefehler: ' + (a.error?.message || 'Unbekannter Fehler'));
+      
+      // Provide more specific error messages
+      let errorMsg = 'Unbekannter Fehler';
+      if (a.error) {
+        switch (a.error.code) {
+          case 1: // MEDIA_ERR_ABORTED
+            errorMsg = 'Wiedergabe abgebrochen';
+            break;
+          case 2: // MEDIA_ERR_NETWORK
+            errorMsg = 'Netzwerkfehler beim Laden';
+            break;
+          case 3: // MEDIA_ERR_DECODE
+            errorMsg = 'Audio-Dekodierungsfehler';
+            break;
+          case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+            errorMsg = 'Audio-Format nicht unterstützt oder URL ungültig';
+            break;
+          default:
+            errorMsg = a.error.message || 'Unbekannter Fehler';
+        }
+      }
+      
+      pushLog(`❌ Audio-Ladefehler: ${errorMsg}`);
+      console.log(`🔍 [Soundboard Debug] URL: ${url}, Label: ${label}`);
       activeAudio = activeAudio.filter(aud => aud !== a);
       a.remove(); // Clean up
       processQueue();
@@ -192,7 +232,9 @@ async function processQueue() {
   // Create audio element and add to DOM
   const a = document.createElement('audio');
   a.src = item.url;
-  a.crossOrigin = 'anonymous'; // CORS support
+  // DO NOT set crossOrigin - it prevents playback from many sources including MyInstants
+  // Only set it if we explicitly need it for audio analysis (e.g., Web Audio API)
+  // a.crossOrigin = 'anonymous'; // REMOVED: Causes CORS issues with MyInstants
 
   // Fix volume bug
   const volumeValue = typeof item.vol === 'number' ? item.vol : 1;
@@ -220,9 +262,34 @@ async function processQueue() {
       url: a.src,
       readyState: a.readyState,
       networkState: a.networkState,
-      error: a.error
+      error: a.error,
+      errorCode: a.error?.code,
+      errorMessage: a.error?.message
     });
-    pushLog('❌ Audio-Ladefehler (Queue): ' + (a.error?.message || 'Unbekannter Fehler'));
+    
+    // Provide more specific error messages
+    let errorMsg = 'Unbekannter Fehler';
+    if (a.error) {
+      switch (a.error.code) {
+        case 1: // MEDIA_ERR_ABORTED
+          errorMsg = 'Wiedergabe abgebrochen';
+          break;
+        case 2: // MEDIA_ERR_NETWORK
+          errorMsg = 'Netzwerkfehler beim Laden';
+          break;
+        case 3: // MEDIA_ERR_DECODE
+          errorMsg = 'Audio-Dekodierungsfehler';
+          break;
+        case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+          errorMsg = 'Audio-Format nicht unterstützt oder URL ungültig';
+          break;
+        default:
+          errorMsg = a.error.message || 'Unbekannter Fehler';
+      }
+    }
+    
+    pushLog(`❌ Audio-Ladefehler (Queue): ${errorMsg}`);
+    console.log(`🔍 [Soundboard Queue Debug] URL: ${item.url}`);
     isProcessingQueue = false;
     a.remove(); // Clean up
     processQueue();
@@ -232,14 +299,26 @@ async function processQueue() {
     await a.play();
     console.log('✅ [Soundboard Queue] Audio playing:', item.url);
   } catch (e) {
+    console.error('❌ [Soundboard Queue] Playback error:', {
+      name: e.name,
+      message: e.message,
+      url: item.url
+    });
+    
     if (e.name === 'NotAllowedError') {
       pushLog('⚠️ Autoplay blockiert (Queue). Bitte einmal klicken.');
       showToast('⚠️ Browser blockiert Autoplay. Bitte einmal klicken!');
+      // Show unlock button if available
+      if (window.audioUnlockManager && !window.audioUnlocked) {
+        window.audioUnlockManager.showUnlockButton();
+      }
     } else if (e.name === 'NotSupportedError') {
       pushLog('❌ Audio-Format nicht unterstützt (Queue): ' + item.url);
+    } else if (e.name === 'AbortError') {
+      pushLog('⚠️ Audio-Wiedergabe abgebrochen (Queue)');
     } else {
       pushLog('❌ Audio Error (Queue): ' + e.message);
-      console.error('❌ [Soundboard Queue] Playback error:', e);
+      console.error('❌ [Soundboard Queue] Playback error details:', e);
     }
     isProcessingQueue = false;
     a.remove(); // Clean up
