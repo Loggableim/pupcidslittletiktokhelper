@@ -1210,6 +1210,17 @@ async function testConnection() {
             
             // Update API status display
             updateApiStatus(true, result.deviceCount || 0);
+            
+            // Auto-refresh devices after successful connection
+            try {
+                await loadDevices();
+                renderDeviceList();
+                renderPatternList();
+                showNotification(`Devices refreshed - loaded ${devices.length} device(s)`, 'success');
+            } catch (loadError) {
+                console.error('[OpenShock] Could not load devices after connection test:', loadError);
+                showNotification('Connection successful but could not load devices', 'warning');
+            }
         } else {
             throw new Error(result.error || 'Connection failed');
         }
