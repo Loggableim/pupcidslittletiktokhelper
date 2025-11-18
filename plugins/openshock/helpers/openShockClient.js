@@ -363,7 +363,8 @@ class OpenShockClient {
             deviceId,
             type,
             intensity: Math.round(intensity),
-            duration: Math.round(duration)
+            duration: Math.round(duration),
+            payload: command
         });
 
         const priority = options.priority || 2;
@@ -388,7 +389,9 @@ class OpenShockClient {
                 intensity,
                 duration,
                 error: error.message,
-                response: error.response?.data
+                statusCode: error.statusCode,
+                responseData: error.response?.data,
+                fullError: error.response || error
             });
             throw error;
         }
@@ -685,11 +688,16 @@ class OpenShockClient {
 
         if (error.response) {
             // HTTP error response
-            normalizedError.message = `HTTP ${error.response.status}: ${
-                error.response.data?.message || error.response.statusText || 'Unknown error'
-            }`;
+            const responseMessage = error.response.data?.message || 
+                                   error.response.data?.error ||
+                                   error.response.data?.Message ||
+                                   error.response.statusText || 
+                                   'Unknown error';
+            
+            normalizedError.message = `HTTP ${error.response.status}: ${responseMessage}`;
             normalizedError.statusCode = error.response.status;
             normalizedError.response = error.response.data;
+            normalizedError.fullResponse = error.response; // Keep full response for debugging
         } else if (error.request) {
             // Request made but no response
             normalizedError.message = 'No response from server (timeout or network error)';

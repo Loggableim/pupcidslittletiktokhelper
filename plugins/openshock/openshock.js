@@ -303,14 +303,20 @@ function renderDeviceList() {
             </thead>
             <tbody>
                 ${devices.map(device => `
-                    <tr>
+                    <tr ${device.isPaused ? 'class="device-paused"' : ''}>
                         <td><strong>${escapeHtml(device.name)}</strong></td>
                         <td><code>${escapeHtml(device.id)}</code></td>
                         <td><span class="badge badge-info">${escapeHtml(device.type || 'Unknown')}</span></td>
                         <td>
-                            <span class="badge ${device.online ? 'badge-success' : 'badge-secondary'}">
-                                ${device.online ? 'Online' : 'Offline'}
-                            </span>
+                            ${device.isPaused ? `
+                                <span class="badge badge-warning" title="Shocker is paused">
+                                    ⏸️ Paused
+                                </span>
+                            ` : `
+                                <span class="badge ${device.online ? 'badge-success' : 'badge-secondary'}">
+                                    ${device.online ? 'Online' : 'Offline'}
+                                </span>
+                            `}
                         </td>
                         <td>
                             ${device.battery !== undefined ? `
@@ -330,17 +336,20 @@ function renderDeviceList() {
                             <div class="btn-group">
                                 <button data-device-id="${escapeHtml(device.id)}" data-test-type="vibrate"
                                         class="btn btn-sm btn-secondary test-device-btn"
-                                        title="Test Vibrate">
+                                        title="Test Vibrate"
+                                        ${device.isPaused ? 'disabled' : ''}>
                                     🔊
                                 </button>
                                 <button data-device-id="${escapeHtml(device.id)}" data-test-type="shock"
                                         class="btn btn-sm btn-warning test-device-btn"
-                                        title="Test Shock">
+                                        title="Test Shock"
+                                        ${device.isPaused ? 'disabled' : ''}>
                                     ⚡
                                 </button>
                                 <button data-device-id="${escapeHtml(device.id)}" data-test-type="sound"
                                         class="btn btn-sm btn-info test-device-btn"
-                                        title="Test Sound">
+                                        title="Test Sound"
+                                        ${device.isPaused ? 'disabled' : ''}>
                                     🔔
                                 </button>
                             </div>

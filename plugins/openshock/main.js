@@ -550,6 +550,14 @@ class OpenShockPlugin {
                     });
                 }
 
+                // Check if shocker is paused
+                if (device.isPaused) {
+                    return res.status(403).json({
+                        success: false,
+                        error: 'Shocker is paused and cannot receive commands. Please unpause it in the OpenShock app first.'
+                    });
+                }
+
                 // Safety-Check
                 const safetyCheck = this.safetyManager.validateCommand({
                     deviceId,
@@ -605,9 +613,27 @@ class OpenShockPlugin {
 
             } catch (error) {
                 this.api.log(`Failed to send test command: ${error.message}`, 'error');
+                
+                // Log additional debug info
+                if (error.response) {
+                    this.api.log(`OpenShock API Error Details: ${JSON.stringify(error.response)}`, 'error');
+                }
+                
+                // Provide helpful error message based on status code
+                let userMessage = error.message;
+                if (error.statusCode === 500) {
+                    userMessage = 'OpenShock API server error. This could mean:\n' +
+                                 '1. The API server is temporarily down\n' +
+                                 '2. Your API key doesn\'t have permission to control this shocker\n' +
+                                 '3. The shocker is offline or unavailable\n\n' +
+                                 'Please check your OpenShock account and try again.';
+                } else if (error.statusCode === 401 || error.statusCode === 403) {
+                    userMessage = 'Authentication or permission error. Please check your API key has permission to control this shocker.';
+                }
+                
                 res.status(500).json({
                     success: false,
-                    error: error.message
+                    error: userMessage
                 });
             }
         });
