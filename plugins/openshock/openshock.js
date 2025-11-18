@@ -195,7 +195,17 @@ async function loadConfig() {
 async function loadDevices() {
     try {
         const response = await fetch('/api/openshock/devices');
-        if (!response.ok) throw new Error('Failed to load devices');
+        if (!response.ok) {
+            // Try to get error message from response
+            let errorMessage = 'Failed to load devices';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                // Response was not JSON, use default message
+            }
+            throw new Error(errorMessage);
+        }
         const data = await response.json();
         devices = data.devices || [];
         console.log('[OpenShock] Devices loaded:', devices);
@@ -303,14 +313,20 @@ function renderDeviceList() {
             </thead>
             <tbody>
                 ${devices.map(device => `
-                    <tr>
+                    <tr ${device.isPaused ? 'class="device-paused"' : ''}>
                         <td><strong>${escapeHtml(device.name)}</strong></td>
                         <td><code>${escapeHtml(device.id)}</code></td>
                         <td><span class="badge badge-info">${escapeHtml(device.type || 'Unknown')}</span></td>
                         <td>
-                            <span class="badge ${device.online ? 'badge-success' : 'badge-secondary'}">
-                                ${device.online ? 'Online' : 'Offline'}
-                            </span>
+                            ${device.isPaused ? `
+                                <span class="badge badge-warning" title="Shocker is paused">
+                                    ⏸️ Paused
+                                </span>
+                            ` : `
+                                <span class="badge ${device.online ? 'badge-success' : 'badge-secondary'}">
+                                    ${device.online ? 'Online' : 'Offline'}
+                                </span>
+                            `}
                         </td>
                         <td>
                             ${device.battery !== undefined ? `
@@ -330,17 +346,20 @@ function renderDeviceList() {
                             <div class="btn-group">
                                 <button data-device-id="${escapeHtml(device.id)}" data-test-type="vibrate"
                                         class="btn btn-sm btn-secondary test-device-btn"
-                                        title="Test Vibrate">
+                                        title="Test Vibrate"
+                                        ${device.isPaused ? 'disabled' : ''}>
                                     🔊
                                 </button>
                                 <button data-device-id="${escapeHtml(device.id)}" data-test-type="shock"
                                         class="btn btn-sm btn-warning test-device-btn"
-                                        title="Test Shock">
+                                        title="Test Shock"
+                                        ${device.isPaused ? 'disabled' : ''}>
                                     ⚡
                                 </button>
                                 <button data-device-id="${escapeHtml(device.id)}" data-test-type="sound"
                                         class="btn btn-sm btn-info test-device-btn"
-                                        title="Test Sound">
+                                        title="Test Sound"
+                                        ${device.isPaused ? 'disabled' : ''}>
                                     🔔
                                 </button>
                             </div>
@@ -1169,7 +1188,17 @@ async function saveApiSettings() {
             body: JSON.stringify({ apiKey, baseUrl })
         });
 
-        if (!response.ok) throw new Error('Failed to save API settings');
+        if (!response.ok) {
+            // Try to get error message from response
+            let errorMessage = 'Failed to save API settings';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                // Response was not JSON, use default message
+            }
+            throw new Error(errorMessage);
+        }
 
         await loadConfig();
         showNotification('API settings saved successfully', 'success');
@@ -1180,9 +1209,16 @@ async function saveApiSettings() {
             renderDeviceList();
             renderPatternList();
             updateApiStatus(devices.length > 0, devices.length);
+            
+            if (devices.length > 0) {
+                showNotification(`✅ ${devices.length} device(s) loaded successfully`, 'success');
+            } else {
+                showNotification('⚠️ API connected but no devices found', 'warning');
+            }
         } catch (loadError) {
             console.error('[OpenShock] Could not load devices after saving settings:', loadError);
             updateApiStatus(false, 0);
+            showNotification(`❌ Failed to load devices: ${loadError.message || 'Unknown error'}`, 'error');
         }
     } catch (error) {
         console.error('[OpenShock] Error saving API settings:', error);
@@ -1210,6 +1246,17 @@ async function testConnection() {
             
             // Update API status display
             updateApiStatus(true, result.deviceCount || 0);
+            
+            // Auto-refresh devices after successful connection
+            try {
+                await loadDevices();
+                renderDeviceList();
+                renderPatternList();
+                showNotification(`Devices refreshed - loaded ${devices.length} device(s)`, 'success');
+            } catch (loadError) {
+                console.error('[OpenShock] Could not load devices after connection test:', loadError);
+                showNotification('Connection successful but could not load devices', 'warning');
+            }
         } else {
             throw new Error(result.error || 'Connection failed');
         }
@@ -1267,6 +1314,13 @@ function updateTestShockDeviceList() {
         const option = document.createElement('option');
         option.value = device.id;
         option.textContent = device.name || device.id;
+        
+        // Disable paused devices and add indicator
+        if (device.isPaused) {
+            option.disabled = true;
+            option.textContent += ' (Paused)';
+        }
+        
         testShockDevice.appendChild(option);
     });
     
@@ -1289,6 +1343,13 @@ function updateMappingDeviceList(selectedDeviceId = '') {
         const option = document.createElement('option');
         option.value = device.id;
         option.textContent = device.name || device.id;
+        
+        // Disable paused devices and add indicator
+        if (device.isPaused) {
+            option.disabled = true;
+            option.textContent += ' (Paused)';
+        }
+        
         if (device.id === selectedDeviceId) {
             option.selected = true;
         }

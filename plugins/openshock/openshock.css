@@ -422,6 +422,24 @@ input[type="range"]::-moz-range-thumb {
     background: rgba(59, 130, 246, 0.05);
 }
 
+.table tr.device-paused {
+    opacity: 0.6;
+    background: rgba(251, 191, 36, 0.05);
+}
+
+.table tr.device-paused:hover {
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.table code {
+    background: #374151;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: #93c5fd;
+}
+
 /* Device Cards */
 .device-card {
     background: #374151;
@@ -577,10 +595,82 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .pattern-step {
+    background: #374151;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pattern-step-number {
+    background: #60a5fa;
+    color: #111827;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.pattern-step-content {
+    flex: 1;
+    display: flex;
+    gap: 16px;
+    margin: 0 12px;
+    flex-wrap: wrap;
+}
+
+.pattern-step-type {
+    font-weight: 600;
+    color: #60a5fa;
+}
+
+/* Timeline visualization */
+.timeline {
+    position: relative;
+    height: 100%;
+    width: 100%;
+}
+
+.timeline-bar {
     position: absolute;
     height: 100%;
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
-    border-right: 1px solid #1f2937;
+    border-radius: 4px;
+    transition: opacity 0.2s;
+}
+
+.timeline-bar:hover {
+    opacity: 0.8;
+}
+
+.timeline-shock {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.timeline-vibrate {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.timeline-sound {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.timeline-pause {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+.timeline-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: #9ca3af;
 }
 
 /* Log Entries */
