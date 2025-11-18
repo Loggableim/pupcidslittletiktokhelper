@@ -400,17 +400,52 @@ function updateAssignment(id, key, value) {
   hasUnsavedChanges = true;
 }
 
-function clearGift(id) {
+async function clearGift(id) {
+  // Clear UI
   document.getElementById(`mp3_${id}`).value = '';
   document.getElementById(`vol_${id}`).value = 1;
+  document.getElementById(`anim_url_${id}`).value = '';
+  document.getElementById(`anim_type_${id}`).value = 'none';
+  
+  // Delete from database via API
+  try {
+    await apiCall(`/api/soundboard/gifts/${id}`, 'DELETE');
+    console.log(`✅ Gift sound deleted from database: ${id}`);
+  } catch (error) {
+    console.error(`❌ Error deleting gift sound from database:`, error);
+    showToast(`⚠️ Fehler beim Löschen aus der Datenbank: ${error.message}`);
+  }
+  
+  // Update local state
   updateAssignment(id, 'mp3_url', '');
   updateAssignment(id, 'volume', 1.0);
+  updateAssignment(id, 'animation_url', '');
+  updateAssignment(id, 'animation_type', 'none');
+  
+  showToast(`🗑️ Gift-Sound gelöscht: ${id}`);
+  hasUnsavedChanges = false; // Already saved to database
 }
 
 function previewGift(id) {
-  const url = document.getElementById(`mp3_${id}`).value.trim();
-  const vol = document.getElementById(`vol_${id}`).value;
-  if (url) playSound(url, vol, `Gift #${id} Preview`);
+  const urlInput = document.getElementById(`mp3_${id}`);
+  const volInput = document.getElementById(`vol_${id}`);
+  
+  if (!urlInput || !volInput) {
+    console.error(`❌ Gift elements not found for ID: ${id}`);
+    showToast(`⚠️ Gift-Elemente nicht gefunden`);
+    return;
+  }
+  
+  const url = urlInput.value.trim();
+  const vol = volInput.value;
+  
+  if (url) {
+    console.log(`🎵 Previewing gift sound: Gift #${id}, URL: ${url}, Volume: ${vol}`);
+    playSound(url, vol, `Gift #${id} Preview`);
+  } else {
+    console.warn(`⚠️ No URL set for gift #${id}`);
+    showToast(`⚠️ Kein Sound-URL für Gift #${id} gesetzt`);
+  }
 }
 
 function previewSound(urlId, volId, label) {
@@ -1150,7 +1185,7 @@ document.getElementById('btnBulkAssign').onclick = () => {
   switchTab('search');
 };
 
-document.getElementById('btnBulkClear').onclick = () => {
+document.getElementById('btnBulkClear').onclick = async () => {
   const selectedIds = getSelectedGiftIds();
   if (selectedIds.length === 0) {
     return showToast('⚠️ Keine Gifts ausgewählt');
@@ -1160,18 +1195,38 @@ document.getElementById('btnBulkClear').onclick = () => {
     return;
   }
 
-  selectedIds.forEach(id => {
-    document.getElementById(`mp3_${id}`).value = '';
-    document.getElementById(`vol_${id}`).value = 1;
+  // Delete all selected gifts from database
+  for (const id of selectedIds) {
+    try {
+      await apiCall(`/api/soundboard/gifts/${id}`, 'DELETE');
+    } catch (error) {
+      console.error(`❌ Error deleting gift sound ${id} from database:`, error);
+    }
+    
+    // Clear UI
+    const mp3Input = document.getElementById(`mp3_${id}`);
+    const volInput = document.getElementById(`vol_${id}`);
+    const animUrlInput = document.getElementById(`anim_url_${id}`);
+    const animTypeInput = document.getElementById(`anim_type_${id}`);
+    
+    if (mp3Input) mp3Input.value = '';
+    if (volInput) volInput.value = 1;
+    if (animUrlInput) animUrlInput.value = '';
+    if (animTypeInput) animTypeInput.value = 'none';
+    
+    // Update local state
     updateAssignment(id, 'mp3_url', '');
     updateAssignment(id, 'volume', 1.0);
-  });
+    updateAssignment(id, 'animation_url', '');
+    updateAssignment(id, 'animation_type', 'none');
+  }
 
   // Deselect all
   document.querySelectorAll('.gift-checkbox').forEach(cb => cb.checked = false);
   updateBulkSelection();
 
   showToast(`🗑️ ${selectedIds.length} Zuweisungen gelöscht`);
+  hasUnsavedChanges = false; // Already saved to database
 };
 
 // ========== Drag & Drop ==========
@@ -1416,7 +1471,7 @@ apiCall('/api/status').then(data => {
 });
 
 // ========== Event Delegation for data-action buttons ==========
-document.addEventListener('click', function(event) {
+document.addEventListener('click', async function(event) {
   const button = event.target.closest('[data-action]');
   if (!button) return;
   
@@ -1442,7 +1497,7 @@ document.addEventListener('click', function(event) {
       previewGift(parseInt(button.dataset.giftId));
       break;
     case 'clear-gift':
-      clearGift(parseInt(button.dataset.giftId));
+      await clearGift(parseInt(button.dataset.giftId));
       break;
     case 'play-sound':
       playSound(button.dataset.url, 1.0, button.dataset.title);
