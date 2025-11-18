@@ -46,6 +46,16 @@
             transform: scale(0.95);
         }
 
+        .soundButton.playing {
+            background-color: #4CAF50;
+            border-color: #45a049;
+        }
+
+        .soundButton.error {
+            background-color: #f44336;
+            border-color: #da190b;
+        }
+
         #stopButton {
             margin-top: 20px;
             padding: 10px 20px;
@@ -60,25 +70,391 @@
         #stopButton:hover {
             background-color: #c9302c;
         }
+
+        #controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        #controls label {
+            margin-right: 10px;
+        }
+
+        #controls select {
+            background-color: #2a2a2a;
+            color: #ffffff;
+            border: 1px solid #444;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        #logContainer {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 800px;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            padding: 3px 0;
+        }
+
+        .log-info {
+            color: #4CAF50;
+        }
+
+        .log-warn {
+            color: #FFC107;
+        }
+
+        .log-error {
+            color: #f44336;
+        }
+
+        .log-debug {
+            color: #2196F3;
+        }
     </style>
 </head>
 
 <body>
     <h1>Soundboard</h1>
+    
+    <div id="controls">
+        <label for="audioMethod">Audio-Methode:</label>
+        <select id="audioMethod">
+            <option value="html5">HTML5 Audio (Standard)</option>
+            <option value="webaudio">Web Audio API</option>
+            <option value="audiocontext">AudioContext + Buffer</option>
+        </select>
+        <button onclick="unlockAudio()" style="margin-left: 10px; padding: 5px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Audio freischalten</button>
+        <button onclick="clearLog()" style="margin-left: 10px; padding: 5px 15px; background-color: #FF9800; color: white; border: none; border-radius: 4px; cursor: pointer;">Log leeren</button>
+    </div>
+
     <div class="soundboard" id="soundboard">
         <!-- Buttons will be dynamically inserted here -->
     </div>
     <button id="stopButton" onclick="stopAllSounds()">Stop All Sounds</button>
 
+    <div id="logContainer">
+        <div class="log-entry log-info">🎵 Soundboard initialisiert - Bereit für Audio-Wiedergabe</div>
+    </div>
+
     <script>
+        // ========== Logging System ==========
+        const logContainer = document.getElementById('logContainer');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('de-DE');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            
+            let icon = '📝';
+            if (type === 'error') icon = '❌';
+            else if (type === 'warn') icon = '⚠️';
+            else if (type === 'info') icon = '✅';
+            else if (type === 'debug') icon = '🔍';
+            
+            entry.textContent = `[${timestamp}] ${icon} ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Also log to console
+            console[type === 'error' ? 'error' : type === 'warn' ? 'warn' : 'log'](`[Soundboard] ${message}`);
+        }
+
+        function clearLog() {
+            logContainer.innerHTML = '<div class="log-entry log-info">🧹 Log geleert</div>';
+        }
+
+        // ========== Audio System ==========
         const sounds = [
-            { name: "Sound 1", file: "../assets/audio/sound1.mp3" },
-            { name: "Sound 2", file: "../assets/audio/sound2.mp3" },
-            // Add more sounds here
+            { name: "Sound 1 (440Hz)", file: "/assets/audio/sound1.wav" },
+            { name: "Sound 2 (523Hz)", file: "/assets/audio/sound2.wav" },
         ];
 
         let activeAudios = [];
+        let audioContext = null;
+        let audioBuffers = {};
+        let audioUnlocked = false;
 
+        // Initialize Web Audio API
+        function initWebAudio() {
+            try {
+                if (!audioContext) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioContext = new AudioContext();
+                    log(`Web Audio API initialisiert - Status: ${audioContext.state}`, 'info');
+                    
+                    // Resume context if suspended
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume().then(() => {
+                            log('AudioContext wurde aktiviert', 'info');
+                        });
+                    }
+                }
+                return audioContext;
+            } catch (error) {
+                log(`Fehler beim Initialisieren von Web Audio API: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Unlock audio (for browser autoplay policies)
+        async function unlockAudio() {
+            log('Versuche Audio freizuschalten...', 'debug');
+            
+            try {
+                // Try HTML5 Audio
+                const testAudio = new Audio();
+                testAudio.volume = 0;
+                await testAudio.play().catch(e => log(`HTML5 Audio test failed: ${e.message}`, 'warn'));
+                
+                // Try Web Audio API
+                const ctx = initWebAudio();
+                if (ctx) {
+                    await ctx.resume();
+                    // Create and play a silent buffer
+                    const buffer = ctx.createBuffer(1, 1, 22050);
+                    const source = ctx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(ctx.destination);
+                    source.start(0);
+                }
+                
+                audioUnlocked = true;
+                log('✅ Audio erfolgreich freigeschaltet!', 'info');
+            } catch (error) {
+                log(`Fehler beim Freischalten: ${error.message}`, 'error');
+            }
+        }
+
+        // Preload audio buffer for Web Audio API
+        async function preloadAudioBuffer(url) {
+            if (audioBuffers[url]) {
+                return audioBuffers[url];
+            }
+
+            try {
+                log(`Lade Audio-Buffer: ${url}`, 'debug');
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                const ctx = initWebAudio();
+                if (!ctx) {
+                    throw new Error('Web Audio API nicht verfügbar');
+                }
+                const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+                audioBuffers[url] = audioBuffer;
+                log(`✅ Audio-Buffer geladen: ${url}`, 'debug');
+                return audioBuffer;
+            } catch (error) {
+                log(`❌ Fehler beim Laden des Audio-Buffers ${url}: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Play sound using HTML5 Audio API
+        async function playWithHTML5Audio(soundFile, buttonElement) {
+            try {
+                log(`🎵 Starte HTML5 Audio: ${soundFile}`, 'debug');
+                
+                const audio = new Audio(soundFile);
+                audio.volume = 1.0;
+                
+                // Add extensive event listeners for debugging
+                audio.addEventListener('loadstart', () => log(`Lade Audio: ${soundFile}`, 'debug'));
+                audio.addEventListener('loadedmetadata', () => log(`Metadaten geladen - Dauer: ${audio.duration}s`, 'debug'));
+                audio.addEventListener('canplay', () => log(`Audio bereit zur Wiedergabe`, 'debug'));
+                audio.addEventListener('playing', () => {
+                    log(`▶️ Wiedergabe gestartet: ${soundFile}`, 'info');
+                    buttonElement.classList.add('playing');
+                });
+                audio.addEventListener('pause', () => log(`⏸️ Wiedergabe pausiert`, 'debug'));
+                audio.addEventListener('ended', () => {
+                    log(`⏹️ Wiedergabe beendet: ${soundFile}`, 'debug');
+                    buttonElement.classList.remove('playing');
+                    const index = activeAudios.indexOf(audio);
+                    if (index > -1) {
+                        activeAudios.splice(index, 1);
+                    }
+                });
+                audio.addEventListener('error', (e) => {
+                    const errorMsg = audio.error ? `Code ${audio.error.code}: ${getMediaErrorMessage(audio.error.code)}` : 'Unbekannter Fehler';
+                    log(`❌ Audio-Fehler: ${errorMsg}`, 'error');
+                    buttonElement.classList.add('error');
+                    setTimeout(() => buttonElement.classList.remove('error'), 2000);
+                });
+
+                await audio.play();
+                activeAudios.push(audio);
+                
+            } catch (error) {
+                log(`❌ HTML5 Audio Fehler: ${error.name} - ${error.message}`, 'error');
+                buttonElement.classList.add('error');
+                setTimeout(() => buttonElement.classList.remove('error'), 2000);
+                throw error;
+            }
+        }
+
+        // Play sound using Web Audio API (simple)
+        async function playWithWebAudio(soundFile, buttonElement) {
+            try {
+                log(`🎵 Starte Web Audio API (Simple): ${soundFile}`, 'debug');
+                
+                const ctx = initWebAudio();
+                if (!ctx) {
+                    throw new Error('Web Audio API nicht verfügbar');
+                }
+
+                const response = await fetch(soundFile);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+                const source = ctx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(ctx.destination);
+                
+                source.onended = () => {
+                    log(`⏹️ Web Audio beendet: ${soundFile}`, 'debug');
+                    buttonElement.classList.remove('playing');
+                };
+
+                source.start(0);
+                buttonElement.classList.add('playing');
+                log(`▶️ Web Audio Wiedergabe gestartet: ${soundFile}`, 'info');
+                
+                activeAudios.push({ stop: () => source.stop(), source });
+                
+            } catch (error) {
+                log(`❌ Web Audio Fehler: ${error.name} - ${error.message}`, 'error');
+                buttonElement.classList.add('error');
+                setTimeout(() => buttonElement.classList.remove('error'), 2000);
+                throw error;
+            }
+        }
+
+        // Play sound using Web Audio API with preloaded buffer
+        async function playWithAudioContext(soundFile, buttonElement) {
+            try {
+                log(`🎵 Starte AudioContext + Buffer: ${soundFile}`, 'debug');
+                
+                const ctx = initWebAudio();
+                if (!ctx) {
+                    throw new Error('Web Audio API nicht verfügbar');
+                }
+
+                const audioBuffer = await preloadAudioBuffer(soundFile);
+                
+                const source = ctx.createBufferSource();
+                source.buffer = audioBuffer;
+                
+                // Add gain node for volume control
+                const gainNode = ctx.createGain();
+                gainNode.gain.value = 1.0;
+                
+                source.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                source.onended = () => {
+                    log(`⏹️ AudioContext Wiedergabe beendet: ${soundFile}`, 'debug');
+                    buttonElement.classList.remove('playing');
+                };
+
+                source.start(0);
+                buttonElement.classList.add('playing');
+                log(`▶️ AudioContext Wiedergabe gestartet: ${soundFile}`, 'info');
+                
+                activeAudios.push({ stop: () => source.stop(), source });
+                
+            } catch (error) {
+                log(`❌ AudioContext Fehler: ${error.name} - ${error.message}`, 'error');
+                buttonElement.classList.add('error');
+                setTimeout(() => buttonElement.classList.remove('error'), 2000);
+                throw error;
+            }
+        }
+
+        // Get media error message
+        function getMediaErrorMessage(code) {
+            const errors = {
+                1: 'MEDIA_ERR_ABORTED - Wiedergabe abgebrochen',
+                2: 'MEDIA_ERR_NETWORK - Netzwerkfehler beim Laden',
+                3: 'MEDIA_ERR_DECODE - Dekodierungsfehler',
+                4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - Format nicht unterstützt'
+            };
+            return errors[code] || `Unbekannter Fehler (Code ${code})`;
+        }
+
+        // Main play function with method selection
+        async function playSound(soundFile, buttonElement) {
+            const method = document.getElementById('audioMethod').value;
+            
+            log(`🎮 Wiedergabe-Versuch mit Methode: ${method}`, 'info');
+            log(`📁 Datei: ${soundFile}`, 'debug');
+            
+            try {
+                // First try selected method
+                if (method === 'html5') {
+                    await playWithHTML5Audio(soundFile, buttonElement);
+                } else if (method === 'webaudio') {
+                    await playWithWebAudio(soundFile, buttonElement);
+                } else if (method === 'audiocontext') {
+                    await playWithAudioContext(soundFile, buttonElement);
+                }
+            } catch (error) {
+                // Fallback to other methods
+                log(`⚠️ Primäre Methode fehlgeschlagen, versuche Fallback...`, 'warn');
+                
+                try {
+                    if (method !== 'html5') {
+                        log(`🔄 Fallback zu HTML5 Audio...`, 'debug');
+                        await playWithHTML5Audio(soundFile, buttonElement);
+                    } else if (method !== 'webaudio') {
+                        log(`🔄 Fallback zu Web Audio API...`, 'debug');
+                        await playWithWebAudio(soundFile, buttonElement);
+                    }
+                } catch (fallbackError) {
+                    log(`💥 Alle Wiedergabe-Methoden fehlgeschlagen!`, 'error');
+                    log(`Hinweis: Versuche den "Audio freischalten" Button zu klicken`, 'warn');
+                }
+            }
+        }
+
+        function stopAllSounds() {
+            log(`⏹️ Stoppe alle Sounds (${activeAudios.length} aktiv)`, 'info');
+            
+            activeAudios.forEach(audio => {
+                try {
+                    if (audio.pause) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    } else if (audio.stop) {
+                        audio.stop();
+                    }
+                } catch (error) {
+                    log(`Fehler beim Stoppen: ${error.message}`, 'warn');
+                }
+            });
+            activeAudios = [];
+            
+            // Remove playing classes
+            document.querySelectorAll('.soundButton.playing').forEach(btn => {
+                btn.classList.remove('playing');
+            });
+        }
+
+        // ========== UI Initialization ==========
         const soundboard = document.getElementById("soundboard");
 
         sounds.forEach(sound => {
@@ -86,32 +462,31 @@
             button.className = "soundButton";
             button.textContent = sound.name;
             button.dataset.sound = sound.file;
-            // KORREKTUR: Übergibt den Dateipfad (String) an die Funktion
-            button.onclick = () => playSound(sound.file);
+            button.onclick = () => playSound(sound.file, button);
             soundboard.appendChild(button);
         });
 
-        function playSound(soundFile) {
-            // "soundFile" ist jetzt ein String, z.B. "../assets/audio/sound1.mp3"
-            const audio = new Audio(soundFile);
-            audio.play();
-            activeAudios.push(audio);
-            // Optional: Audio aus der Liste entfernen, wenn es fertig ist
-            audio.addEventListener('ended', () => {
-                const index = activeAudios.indexOf(audio);
-                if (index > -1) {
-                    activeAudios.splice(index, 1);
-                }
-            });
-        }
+        // Log browser and audio capabilities
+        log(`🌐 Browser: ${navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Firefox') ? 'Firefox' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Other'}`, 'debug');
+        log(`🔊 Audio API verfügbar: ${typeof Audio !== 'undefined' ? 'Ja' : 'Nein'}`, 'debug');
+        log(`🎛️ Web Audio API verfügbar: ${(window.AudioContext || window.webkitAudioContext) ? 'Ja' : 'Nein'}`, 'debug');
+        
+        // Auto-unlock on first user interaction
+        document.addEventListener('click', function autoUnlock() {
+            if (!audioUnlocked) {
+                unlockAudio();
+                document.removeEventListener('click', autoUnlock);
+            }
+        }, { once: true });
 
-        function stopAllSounds() {
-            activeAudios.forEach(audio => {
-                audio.pause();
-                audio.currentTime = 0;
+        // Preload buffers for faster playback
+        log(`📦 Starte Preloading von ${sounds.length} Sounds...`, 'debug');
+        sounds.forEach(sound => {
+            // Preload for AudioContext method
+            preloadAudioBuffer(sound.file).catch(e => {
+                log(`Preload fehlgeschlagen für ${sound.name}: ${e.message}`, 'warn');
             });
-            activeAudios = [];
-        }
+        });
     </script>
 </body>
 
