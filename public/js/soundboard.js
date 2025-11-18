@@ -95,21 +95,143 @@ function showToast(message) {
 // ========== Audio Playback ==========
 let audioQueue = [];
 let activeAudio = [];
+let audioContext = null;
+let audioUnlocked = false;
+
+// Initialize Web Audio API for fallback
+function initWebAudio() {
+  try {
+    if (!audioContext) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioContext();
+      pushLog(`🎛️ Web Audio API initialisiert - Status: ${audioContext.state}`);
+      console.log('✅ [Soundboard] Web Audio API initialized:', audioContext.state);
+      
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+          pushLog('✅ AudioContext aktiviert');
+          console.log('✅ [Soundboard] AudioContext resumed');
+        });
+      }
+    }
+    return audioContext;
+  } catch (error) {
+    console.error('❌ [Soundboard] Web Audio API initialization failed:', error);
+    pushLog(`❌ Web Audio API Fehler: ${error.message}`);
+    return null;
+  }
+}
+
+// Unlock audio for browser autoplay policies
+function unlockAudio() {
+  if (audioUnlocked) return;
+  
+  pushLog('🔓 Versuche Audio freizuschalten...');
+  console.log('🔓 [Soundboard] Attempting to unlock audio...');
+  
+  try {
+    // Try HTML5 Audio
+    const testAudio = new Audio();
+    testAudio.volume = 0;
+    testAudio.play().then(() => {
+      pushLog('✅ HTML5 Audio freigeschaltet');
+      console.log('✅ [Soundboard] HTML5 Audio unlocked');
+    }).catch(e => {
+      console.warn('⚠️ [Soundboard] HTML5 Audio unlock failed:', e.message);
+    });
+    
+    // Try Web Audio API
+    const ctx = initWebAudio();
+    if (ctx) {
+      ctx.resume().then(() => {
+        // Create silent buffer
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+        pushLog('✅ Web Audio API freigeschaltet');
+        console.log('✅ [Soundboard] Web Audio API unlocked');
+      });
+    }
+    
+    audioUnlocked = true;
+    pushLog('✅ Audio-Unlock erfolgreich');
+    showToast('✅ Audio freigeschaltet');
+  } catch (error) {
+    console.error('❌ [Soundboard] Audio unlock error:', error);
+    pushLog(`❌ Audio-Unlock Fehler: ${error.message}`);
+  }
+}
+
+// Play sound using Web Audio API (fallback method)
+async function playWithWebAudio(url, vol, label) {
+  pushLog(`🎵 Versuche Web Audio API für: ${label}`);
+  console.log('🎵 [Soundboard] Trying Web Audio API for:', url);
+  
+  try {
+    const ctx = initWebAudio();
+    if (!ctx) {
+      throw new Error('Web Audio API nicht verfügbar');
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    pushLog(`📥 Audio-Daten laden... (${url})`);
+    const arrayBuffer = await response.arrayBuffer();
+    
+    pushLog(`🔧 Dekodiere Audio...`);
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+    
+    // Add gain node for volume control
+    const gainNode = ctx.createGain();
+    const volumeValue = typeof vol === 'number' ? vol : 1;
+    gainNode.gain.value = Math.max(0, Math.min(1, volumeValue));
+    
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    source.onended = () => {
+      pushLog(`⏹️ Web Audio beendet: ${label}`);
+      console.log('⏹️ [Soundboard] Web Audio ended:', label);
+    };
+
+    source.start(0);
+    pushLog(`▶️ Web Audio Wiedergabe: ${label}`);
+    console.log('✅ [Soundboard] Web Audio playing:', label);
+    showToast(`▶️ ${label} (Web Audio)`);
+    
+    return { stop: () => source.stop(), source };
+  } catch (error) {
+    console.error('❌ [Soundboard] Web Audio error:', error);
+    pushLog(`❌ Web Audio Fehler: ${error.message}`);
+    throw error;
+  }
+}
 
 function playSound(url, vol, label) {
-  pushLog(`🎵 PLAY ▶ ${label || ''} | ${url}`);
+  pushLog(`🎮 PLAY Versuch ▶ ${label || 'Unbenannt'} | ${url}`);
+  console.log('🎮 [Soundboard] Play attempt:', { url, vol, label });
+  
   const mode = document.getElementById('play_mode')?.value || 'overlap';
   const maxLen = Number(document.getElementById('queue_length')?.value || 10);
 
   if (mode === 'sequential') {
-    audioQueue.push({ url, vol: Number(vol) });
+    audioQueue.push({ url, vol: Number(vol), label });
     while (audioQueue.length > maxLen) audioQueue.shift();
     processQueue();
   } else {
     // Overlap mode
     const duplicateActive = activeAudio.some(a => a.src === url && !a.paused);
     if (duplicateActive) {
-      audioQueue.push({ url, vol: Number(vol) });
+      pushLog(`⚠️ Sound bereits aktiv, in Queue: ${label}`);
+      audioQueue.push({ url, vol: Number(vol), label });
       while (audioQueue.length > maxLen) audioQueue.shift();
       processQueue();
       return;
@@ -125,11 +247,15 @@ function playSound(url, vol, label) {
     // Fix volume bug: use nullish coalescing instead of logical OR
     const volumeValue = typeof vol === 'number' ? vol : 1;
     a.volume = Math.max(0, Math.min(1, volumeValue)); // Clamp between 0 and 1
+    
+    pushLog(`🔊 Lautstärke gesetzt: ${(volumeValue * 100).toFixed(0)}%`);
+    console.log('🔊 [Soundboard] Volume set:', volumeValue);
 
     // Add to DOM pool for reliable playback
     let pool = document.getElementById('soundboard-audio-pool');
     if (!pool) {
       console.warn('⚠️ [Soundboard] Audio pool not found, creating it...');
+      pushLog('⚠️ Audio-Pool erstellt');
       pool = document.createElement('div');
       pool.id = 'soundboard-audio-pool';
       pool.style.display = 'none';
@@ -137,10 +263,37 @@ function playSound(url, vol, label) {
     }
     pool.appendChild(a);
 
-    // Enhanced error handling
+    // Add detailed event listeners for debugging
+    a.addEventListener('loadstart', () => {
+      pushLog(`📡 Lade Audio: ${label}`);
+      console.log('📡 [Soundboard] Loading started:', url);
+    });
+    
+    a.addEventListener('loadedmetadata', () => {
+      pushLog(`📋 Metadaten geladen - Dauer: ${a.duration.toFixed(2)}s`);
+      console.log('📋 [Soundboard] Metadata loaded - Duration:', a.duration);
+    });
+    
+    a.addEventListener('canplay', () => {
+      pushLog(`✅ Audio bereit zur Wiedergabe`);
+      console.log('✅ [Soundboard] Can play');
+    });
+    
+    a.addEventListener('playing', () => {
+      pushLog(`▶️ Wiedergabe gestartet: ${label}`);
+      console.log('▶️ [Soundboard] Playing:', label);
+    });
+    
+    a.addEventListener('pause', () => {
+      pushLog(`⏸️ Pause: ${label}`);
+      console.log('⏸️ [Soundboard] Paused:', label);
+    });
+
+    // Enhanced error handling with fallback
     a.play().then(() => {
-      console.log('✅ [Soundboard] Audio playing:', label);
-    }).catch(e => {
+      console.log('✅ [Soundboard] Audio play() resolved:', label);
+      showToast(`▶️ ${label}`);
+    }).catch(async (e) => {
       console.error('❌ [Soundboard] Playback error:', {
         name: e.name,
         message: e.message,
@@ -149,19 +302,33 @@ function playSound(url, vol, label) {
       });
       
       if (e.name === 'NotAllowedError') {
-        pushLog('⚠️ Autoplay blockiert. Bitte einmal klicken.');
-        showToast('⚠️ Browser blockiert Autoplay. Bitte einmal klicken!');
-        // Show unlock button if available
-        if (window.audioUnlockManager && !window.audioUnlocked) {
-          window.audioUnlockManager.showUnlockButton();
-        }
+        pushLog('⚠️ Autoplay blockiert. Versuche Unlock...');
+        showToast('⚠️ Autoplay blockiert - Versuche Freischaltung');
+        unlockAudio();
+        // Try again after unlock
+        setTimeout(() => {
+          console.log('🔄 [Soundboard] Retrying after unlock...');
+          a.play().catch(retryError => {
+            console.error('❌ [Soundboard] Retry failed:', retryError);
+            pushLog(`❌ Retry fehlgeschlagen: ${retryError.message}`);
+          });
+        }, 500);
       } else if (e.name === 'NotSupportedError') {
-        pushLog('❌ Audio-Format nicht unterstützt: ' + url);
-        showToast('❌ Audio-Format nicht unterstützt');
+        pushLog('❌ Format nicht unterstützt, versuche Web Audio API...');
+        showToast('⚠️ Fallback zu Web Audio API');
+        
+        // Fallback to Web Audio API
+        try {
+          const webAudioPlayer = await playWithWebAudio(url, vol, label);
+          activeAudio.push(webAudioPlayer);
+        } catch (webAudioError) {
+          pushLog(`❌ Alle Methoden fehlgeschlagen: ${webAudioError.message}`);
+          showToast('❌ Audio-Wiedergabe fehlgeschlagen');
+        }
       } else if (e.name === 'AbortError') {
         pushLog('⚠️ Audio-Wiedergabe abgebrochen');
       } else {
-        pushLog('❌ Audio Error: ' + e.message);
+        pushLog(`❌ Play Error: ${e.name} - ${e.message}`);
         console.error('❌ [Soundboard] Playback error details:', e);
       }
       a.remove(); // Clean up on error
@@ -170,6 +337,8 @@ function playSound(url, vol, label) {
     activeAudio.push(a);
 
     a.onended = () => {
+      pushLog(`⏹️ Beendet: ${label}`);
+      console.log('⏹️ [Soundboard] Ended:', label);
       activeAudio = activeAudio.filter(aud => aud !== a);
       a.remove(); // Remove from DOM
       processQueue();
@@ -206,8 +375,13 @@ function playSound(url, vol, label) {
         }
       }
       
-      pushLog(`❌ Audio-Ladefehler: ${errorMsg}`);
-      console.log(`🔍 [Soundboard Debug] URL: ${url}, Label: ${label}`);
+      pushLog(`❌ Audio-Ladefehler (Code ${a.error?.code}): ${errorMsg}`);
+      pushLog(`🔍 Debug - URL: ${url}`);
+      pushLog(`🔍 Debug - ReadyState: ${a.readyState}, NetworkState: ${a.networkState}`);
+      console.log(`🔍 [Soundboard Debug] URL: ${url}, Label: ${label}, ReadyState: ${a.readyState}, NetworkState: ${a.networkState}`);
+      
+      showToast(`❌ Audio-Fehler: ${errorMsg}`);
+      
       activeAudio = activeAudio.filter(aud => aud !== a);
       a.remove(); // Clean up
       processQueue();
@@ -223,11 +397,21 @@ function playSound(url, vol, label) {
   }
 }
 
+// Auto-unlock audio on first user interaction
+document.addEventListener('click', function autoUnlockOnce() {
+  if (!audioUnlocked) {
+    unlockAudio();
+  }
+}, { once: true });
+
 let isProcessingQueue = false;
 async function processQueue() {
   if (isProcessingQueue || audioQueue.length === 0) return;
   isProcessingQueue = true;
   const item = audioQueue.shift();
+  
+  pushLog(`🎬 Queue: Spiele ${item.label || 'Unbenannt'} (${audioQueue.length} verbleibend)`);
+  console.log('🎬 [Soundboard Queue] Processing:', item);
 
   // Create audio element and add to DOM
   const a = document.createElement('audio');
@@ -244,14 +428,26 @@ async function processQueue() {
   let pool = document.getElementById('soundboard-audio-pool');
   if (!pool) {
     console.warn('⚠️ [Soundboard Queue] Audio pool not found, creating it...');
+    pushLog('⚠️ Queue: Audio-Pool erstellt');
     pool = document.createElement('div');
     pool.id = 'soundboard-audio-pool';
     pool.style.display = 'none';
     document.body.appendChild(pool);
   }
   pool.appendChild(a);
+  
+  // Add event listeners for queue playback
+  a.addEventListener('loadstart', () => {
+    pushLog(`📡 Queue: Lade ${item.label}`);
+  });
+  
+  a.addEventListener('canplay', () => {
+    pushLog(`✅ Queue: ${item.label} bereit`);
+  });
 
   a.onended = () => {
+    pushLog(`⏹️ Queue: ${item.label} beendet`);
+    console.log('⏹️ [Soundboard Queue] Ended:', item.label);
     isProcessingQueue = false;
     a.remove(); // Clean up
     processQueue();
@@ -288,8 +484,10 @@ async function processQueue() {
       }
     }
     
-    pushLog(`❌ Audio-Ladefehler (Queue): ${errorMsg}`);
-    console.log(`🔍 [Soundboard Queue Debug] URL: ${item.url}`);
+    pushLog(`❌ Queue Fehler (Code ${a.error?.code}): ${errorMsg}`);
+    pushLog(`🔍 Queue Debug - URL: ${item.url}`);
+    console.log(`🔍 [Soundboard Queue Debug] URL: ${item.url}, Label: ${item.label}`);
+    showToast(`❌ Queue Error: ${errorMsg}`);
     isProcessingQueue = false;
     a.remove(); // Clean up
     processQueue();
@@ -297,27 +495,26 @@ async function processQueue() {
 
   try {
     await a.play();
-    console.log('✅ [Soundboard Queue] Audio playing:', item.url);
+    pushLog(`▶️ Queue: ${item.label} wird abgespielt`);
+    console.log('✅ [Soundboard Queue] Audio playing:', item.label);
   } catch (e) {
     console.error('❌ [Soundboard Queue] Playback error:', {
       name: e.name,
       message: e.message,
-      url: item.url
+      url: item.url,
+      label: item.label
     });
     
     if (e.name === 'NotAllowedError') {
-      pushLog('⚠️ Autoplay blockiert (Queue). Bitte einmal klicken.');
-      showToast('⚠️ Browser blockiert Autoplay. Bitte einmal klicken!');
-      // Show unlock button if available
-      if (window.audioUnlockManager && !window.audioUnlocked) {
-        window.audioUnlockManager.showUnlockButton();
-      }
+      pushLog('⚠️ Queue: Autoplay blockiert');
+      showToast('⚠️ Autoplay blockiert (Queue)');
     } else if (e.name === 'NotSupportedError') {
-      pushLog('❌ Audio-Format nicht unterstützt (Queue): ' + item.url);
+      pushLog('❌ Queue: Format nicht unterstützt');
+      showToast('❌ Format nicht unterstützt (Queue)');
     } else if (e.name === 'AbortError') {
-      pushLog('⚠️ Audio-Wiedergabe abgebrochen (Queue)');
+      pushLog('⚠️ Queue: Wiedergabe abgebrochen');
     } else {
-      pushLog('❌ Audio Error (Queue): ' + e.message);
+      pushLog(`❌ Queue Play Error: ${e.message}`);
       console.error('❌ [Soundboard Queue] Playback error details:', e);
     }
     isProcessingQueue = false;
@@ -1497,6 +1694,17 @@ async function loadSettings() {
 }
 
 // ========== Initialize ==========
+// Log browser capabilities and initialization
+pushLog('🎵 TikTok LIVE Soundboard initialisiert');
+pushLog(`🌐 Browser: ${navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Firefox') ? 'Firefox' : navigator.userAgent.includes('Safari') ? 'Safari' : 'Other'}`);
+pushLog(`🔊 HTML5 Audio: ${typeof Audio !== 'undefined' ? 'Verfügbar' : 'Nicht verfügbar'}`);
+pushLog(`🎛️ Web Audio API: ${(window.AudioContext || window.webkitAudioContext) ? 'Verfügbar' : 'Nicht verfügbar'}`);
+
+console.log('🎵 [Soundboard] Initializing...');
+console.log('🌐 [Soundboard] Browser:', navigator.userAgent);
+console.log('🔊 [Soundboard] HTML5 Audio available:', typeof Audio !== 'undefined');
+console.log('🎛️ [Soundboard] Web Audio API available:', !!(window.AudioContext || window.webkitAudioContext));
+
 loadSettings();
 loadCatalog();
 startAutoSave(); // Enable auto-save every 30 seconds
