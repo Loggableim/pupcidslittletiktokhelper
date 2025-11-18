@@ -1471,9 +1471,6 @@ document.addEventListener('click', function(event) {
       break;
   }
 });
-      break;
-  }
-});
 
 // Event delegation for change events
 document.addEventListener('change', function(event) {
