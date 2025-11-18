@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soundboard</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .soundboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .soundButton {
+            padding: 20px;
+            font-size: 16px;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            text-align: center;
+        }
+
+        .soundButton:hover {
+            background-color: #2a2a2a;
+        }
+
+        .soundButton:active {
+            background-color: #3a3a3a;
+            transform: scale(0.95);
+        }
+
+        #stopButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #stopButton:hover {
+            background-color: #c9302c;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Soundboard</h1>
+    <div class="soundboard" id="soundboard">
+        <!-- Buttons will be dynamically inserted here -->
+    </div>
+    <button id="stopButton" onclick="stopAllSounds()">Stop All Sounds</button>
+
+    <script>
+        const sounds = [
+            { name: "Sound 1", file: "../assets/audio/sound1.mp3" },
+            { name: "Sound 2", file: "../assets/audio/sound2.mp3" },
+            // Add more sounds here
+        ];
+
+        let activeAudios = [];
+
+        const soundboard = document.getElementById("soundboard");
+
+        sounds.forEach(sound => {
+            const button = document.createElement("button");
+            button.className = "soundButton";
+            button.textContent = sound.name;
+            button.dataset.sound = sound.file;
+            // KORREKTUR: Übergibt den Dateipfad (String) an die Funktion
+            button.onclick = () => playSound(sound.file);
+            soundboard.appendChild(button);
+        });
+
+        function playSound(soundFile) {
+            // "soundFile" ist jetzt ein String, z.B. "../assets/audio/sound1.mp3"
+            const audio = new Audio(soundFile);
+            audio.play();
+            activeAudios.push(audio);
+            // Optional: Audio aus der Liste entfernen, wenn es fertig ist
+            audio.addEventListener('ended', () => {
+                const index = activeAudios.indexOf(audio);
+                if (index > -1) {
+                    activeAudios.splice(index, 1);
+                }
+            });
+        }
+
+        function stopAllSounds() {
+            activeAudios.forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+            activeAudios = [];
+        }
+    </script>
+</body>
+
+</html>
