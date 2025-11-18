@@ -1287,6 +1287,13 @@ function updateTestShockDeviceList() {
         const option = document.createElement('option');
         option.value = device.id;
         option.textContent = device.name || device.id;
+        
+        // Disable paused devices and add indicator
+        if (device.isPaused) {
+            option.disabled = true;
+            option.textContent += ' (Paused)';
+        }
+        
         testShockDevice.appendChild(option);
     });
     
@@ -1309,6 +1316,13 @@ function updateMappingDeviceList(selectedDeviceId = '') {
         const option = document.createElement('option');
         option.value = device.id;
         option.textContent = device.name || device.id;
+        
+        // Disable paused devices and add indicator
+        if (device.isPaused) {
+            option.disabled = true;
+            option.textContent += ' (Paused)';
+        }
+        
         if (device.id === selectedDeviceId) {
             option.selected = true;
         }
