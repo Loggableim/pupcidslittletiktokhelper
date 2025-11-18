@@ -1079,45 +1079,6 @@ document.getElementById('btnLoadTrending').onclick = async () => {
   }
 };
 
-// ========== MyInstants API Functions ==========
-
-document.getElementById('btnSearch').onclick = async () => {
-  const query = document.getElementById('searchQuery').value.trim();
-  if (!query) return showToast('Bitte Suchbegriff eingeben');
-
-  const resultsEl = document.getElementById('searchResults');
-  resultsEl.innerHTML = '<div class="text-sm text-slate-400">🔍 Suche...</div>';
-
-  const result = await apiCall('/api/myinstants/search?query=' + encodeURIComponent(query));
-
-  if (result.success) {
-    renderSoundResults(result.results, resultsEl);
-    if (result.results.length > 0) {
-      showToast(`${result.results.length} Sounds gefunden`);
-    }
-  } else {
-    resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
-  }
-};
-
-// Enter key für Suche
-document.getElementById('searchQuery').onkeypress = (e) => {
-  if (e.key === 'Enter') document.getElementById('btnSearch').click();
-};
-
-document.getElementById('btnLoadTrending').onclick = async () => {
-  const resultsEl = document.getElementById('trendingResults');
-  resultsEl.innerHTML = '<div class="text-sm text-slate-400">🔥 Lade Trending Sounds...</div>';
-
-  const result = await apiCall('/api/myinstants/trending?limit=30');
-
-  if (result.success) {
-    renderSoundResults(result.results, resultsEl);
-  } else {
-    resultsEl.innerHTML = `<div class="text-sm text-rose-400">❌ Fehler: ${result.error || 'Unbekannt'}</div>`;
-  }
-};
-
 document.getElementById('btnLoadRandom').onclick = async () => {
   const resultsEl = document.getElementById('randomResults');
   showLoadingSkeleton(resultsEl, 8);
