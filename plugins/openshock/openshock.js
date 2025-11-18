@@ -455,50 +455,86 @@ function renderMappingList() {
 }
 
 function renderPatternList() {
-    const container = document.getElementById('customPatternsList');
-    if (!container) return;
+    const presetContainer = document.getElementById('presetPatternsList');
+    const customContainer = document.getElementById('customPatternsList');
+    
+    if (!presetContainer || !customContainer) return;
 
-    if (patterns.length === 0) {
-        container.innerHTML = `<p class="text-muted text-center">No custom patterns created yet.</p>`;
-        return;
+    // Separate preset and custom patterns
+    const presetPatterns = patterns.filter(p => p.preset === true);
+    const customPatterns = patterns.filter(p => p.preset !== true);
+
+    // Render preset patterns
+    if (presetPatterns.length === 0) {
+        presetContainer.innerHTML = `<p class="text-muted text-center">No preset patterns available.</p>`;
+    } else {
+        const presetHtml = presetPatterns.map(pattern => `
+            <div class="pattern-card">
+                <div class="pattern-header">
+                    <h3 class="pattern-name">${escapeHtml(pattern.name)}</h3>
+                </div>
+                <div class="pattern-body">
+                    ${pattern.description ? `<p class="pattern-description">${escapeHtml(pattern.description)}</p>` : ''}
+                    <div class="pattern-info">
+                        <span>📊 ${pattern.steps?.length || 0} steps</span>
+                        <span>⏱️ ${formatDuration(calculatePatternDuration(pattern.steps || []))}</span>
+                    </div>
+                </div>
+                <div class="pattern-footer">
+                    <select id="pattern-device-${escapeHtml(pattern.id)}" data-pattern-id="${escapeHtml(pattern.id)}" class="form-select form-select-sm pattern-device-select">
+                        <option value="">Select device...</option>
+                        ${devices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('')}
+                    </select>
+                    <button data-pattern-id="${escapeHtml(pattern.id)}"
+                            class="btn btn-sm btn-primary execute-pattern-btn">
+                        ▶️ Test
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        presetContainer.innerHTML = presetHtml;
     }
 
-    const html = patterns.map(pattern => `
-        <div class="pattern-card">
-            <div class="pattern-header">
-                <h3 class="pattern-name">${escapeHtml(pattern.name)}</h3>
-                <div class="btn-group">
+    // Render custom patterns
+    if (customPatterns.length === 0) {
+        customContainer.innerHTML = `<p class="text-muted text-center">No custom patterns created yet.</p>`;
+    } else {
+        const customHtml = customPatterns.map(pattern => `
+            <div class="pattern-card">
+                <div class="pattern-header">
+                    <h3 class="pattern-name">${escapeHtml(pattern.name)}</h3>
+                    <div class="btn-group">
+                        <button data-pattern-id="${escapeHtml(pattern.id)}"
+                                class="btn btn-sm btn-secondary edit-pattern-btn">
+                            ✏️
+                        </button>
+                        <button data-pattern-id="${escapeHtml(pattern.id)}"
+                                class="btn btn-sm btn-danger delete-pattern-btn">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+                <div class="pattern-body">
+                    ${pattern.description ? `<p class="pattern-description">${escapeHtml(pattern.description)}</p>` : ''}
+                    <div class="pattern-info">
+                        <span>📊 ${pattern.steps?.length || 0} steps</span>
+                        <span>⏱️ ${formatDuration(calculatePatternDuration(pattern.steps || []))}</span>
+                    </div>
+                </div>
+                <div class="pattern-footer">
+                    <select id="pattern-device-${escapeHtml(pattern.id)}" data-pattern-id="${escapeHtml(pattern.id)}" class="form-select form-select-sm pattern-device-select">
+                        <option value="">Select device...</option>
+                        ${devices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('')}
+                    </select>
                     <button data-pattern-id="${escapeHtml(pattern.id)}"
-                            class="btn btn-sm btn-secondary edit-pattern-btn">
-                        ✏️
-                    </button>
-                    <button data-pattern-id="${escapeHtml(pattern.id)}"
-                            class="btn btn-sm btn-danger delete-pattern-btn">
-                        🗑️
+                            class="btn btn-sm btn-primary execute-pattern-btn">
+                        ▶️ Execute
                     </button>
                 </div>
             </div>
-            <div class="pattern-body">
-                ${pattern.description ? `<p class="pattern-description">${escapeHtml(pattern.description)}</p>` : ''}
-                <div class="pattern-info">
-                    <span>📊 ${pattern.steps?.length || 0} steps</span>
-                    <span>⏱️ ${formatDuration(calculatePatternDuration(pattern.steps || []))}</span>
-                </div>
-            </div>
-            <div class="pattern-footer">
-                <select id="pattern-device-${escapeHtml(pattern.id)}" data-pattern-id="${escapeHtml(pattern.id)}" class="form-select form-select-sm pattern-device-select">
-                    <option value="">Select device...</option>
-                    ${devices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('')}
-                </select>
-                <button data-pattern-id="${escapeHtml(pattern.id)}"
-                        class="btn btn-sm btn-primary execute-pattern-btn">
-                    ▶️ Execute
-                </button>
-            </div>
-        </div>
-    `).join('');
-
-    container.innerHTML = html;
+        `).join('');
+        customContainer.innerHTML = customHtml;
+    }
 }
 
 function renderQueueStatus() {
