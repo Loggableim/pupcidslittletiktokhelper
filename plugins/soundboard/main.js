@@ -280,7 +280,7 @@ class SoundboardManager extends EventEmitter {
      */
     async searchMyInstants(query, page = 1, limit = 20) {
         try {
-            // Use the official MyInstants API
+            // Try the official MyInstants API first
             const response = await axios.get('https://myinstants-api.vercel.app/search', {
                 params: {
                     q: query,
@@ -293,7 +293,7 @@ class SoundboardManager extends EventEmitter {
                 }
             });
 
-            if (response.data && response.data.data) {
+            if (response.data && response.data.data && Array.isArray(response.data.data)) {
                 return response.data.data.map(instant => ({
                     id: instant.id || null,
                     name: instant.title || instant.name || 'Unknown',
@@ -304,10 +304,78 @@ class SoundboardManager extends EventEmitter {
                 }));
             }
 
-            return []; // Return empty array if no results
+            // If API returns empty or invalid data, try fallback
+            console.log('MyInstants API returned no data, trying fallback scraping...');
+            return await this.searchMyInstantsFallback(query, page, limit);
         } catch (error) {
-            console.error('MyInstants search error:', error.message);
-            return [];
+            console.error('MyInstants API error:', error.message);
+            console.log('Attempting fallback scraping method...');
+            
+            // Fallback to direct website scraping
+            try {
+                return await this.searchMyInstantsFallback(query, page, limit);
+            } catch (fallbackError) {
+                console.error('Fallback scraping also failed:', fallbackError.message);
+                return [];
+            }
+        }
+    }
+
+    /**
+     * Fallback method: Direct scraping of MyInstants website
+     */
+    async searchMyInstantsFallback(query, page = 1, limit = 20) {
+        try {
+            const searchUrl = `https://www.myinstants.com/en/search/?name=${encodeURIComponent(query)}`;
+            const response = await axios.get(searchUrl, {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            });
+
+            const $ = cheerio.load(response.data);
+            const results = [];
+
+            // Parse instant buttons from the page
+            $('.instant').each((i, elem) => {
+                if (results.length >= limit) return false; // Stop when limit reached
+
+                const $elem = $(elem);
+                const $button = $elem.find('.small-button, button[onclick*="play"]').first();
+                
+                // Extract sound URL from onclick attribute
+                const onclickAttr = $button.attr('onclick') || '';
+                const soundMatch = onclickAttr.match(/play\('([^']+)'/);
+                
+                if (soundMatch && soundMatch[1]) {
+                    let soundUrl = soundMatch[1];
+                    
+                    // Convert relative URLs to absolute
+                    if (!soundUrl.startsWith('http')) {
+                        soundUrl = `https://www.myinstants.com${soundUrl}`;
+                    }
+
+                    const name = $elem.find('.instant-link, a').first().text().trim() || 
+                                $elem.find('.small-text').first().text().trim() || 
+                                'Unknown Sound';
+                    
+                    results.push({
+                        id: null,
+                        name: name,
+                        url: soundUrl,
+                        description: '',
+                        tags: [],
+                        color: null
+                    });
+                }
+            });
+
+            console.log(`Fallback scraping found ${results.length} results for "${query}"`);
+            return results;
+        } catch (error) {
+            console.error('Fallback scraping error:', error.message);
+            throw error;
         }
     }
 
@@ -326,7 +394,18 @@ class SoundboardManager extends EventEmitter {
             const $ = cheerio.load(response.data);
 
             // Try different methods to find the MP3 URL
-            // Method 1: From play button
+            // Method 1: From onclick attribute (most common)
+            const playButtons = $('button[onclick*="play"]');
+            for (let i = 0; i < playButtons.length; i++) {
+                const onclickAttr = $(playButtons[i]).attr('onclick') || '';
+                const soundMatch = onclickAttr.match(/play\('([^']+)'/);
+                if (soundMatch && soundMatch[1]) {
+                    let soundPath = soundMatch[1];
+                    return soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`;
+                }
+            }
+
+            // Method 2: From onmousedown attribute (legacy)
             const playButton = $('.small-button, .instant-play').first();
             let soundPath = playButton.attr('onmousedown')?.match(/play\('([^']+)'/)?.[1];
 
@@ -334,19 +413,25 @@ class SoundboardManager extends EventEmitter {
                 return soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`;
             }
 
-            // Method 2: From data attributes
+            // Method 3: From data attributes
             soundPath = playButton.attr('data-sound') || playButton.attr('data-url');
             if (soundPath) {
                 return soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`;
             }
 
-            // Method 3: Find any .mp3 link in the page
+            // Method 4: Find any .mp3 link in the page
             const mp3Match = response.data.match(/https?:\/\/[^\s"'<>]+?\.mp3[^\s"'<>]*/i);
             if (mp3Match) {
                 return mp3Match[0];
             }
 
-            throw new Error('Could not find MP3 URL');
+            // Method 5: Look in media directory paths
+            const mediaMatch = response.data.match(/\/media\/sounds\/[^\s"'<>]+\.mp3/i);
+            if (mediaMatch) {
+                return `https://www.myinstants.com${mediaMatch[0]}`;
+            }
+
+            throw new Error('Could not find MP3 URL in page');
         } catch (error) {
             console.error('MyInstants resolve error:', error.message);
             throw error;
@@ -366,7 +451,7 @@ class SoundboardManager extends EventEmitter {
                 }
             });
 
-            if (response.data && response.data.data) {
+            if (response.data && response.data.data && Array.isArray(response.data.data)) {
                 return response.data.data.map(instant => ({
                     id: instant.id || null,
                     name: instant.title || instant.name || 'Unknown',
@@ -377,10 +462,70 @@ class SoundboardManager extends EventEmitter {
                 }));
             }
 
-            return [];
+            // Fallback to scraping trending page
+            console.log('MyInstants trending API returned no data, trying fallback...');
+            return await this.getTrendingSoundsFallback(limit);
         } catch (error) {
-            console.error('MyInstants trending error:', error.message);
-            return [];
+            console.error('MyInstants trending API error:', error.message);
+            
+            // Fallback to direct website scraping
+            try {
+                return await this.getTrendingSoundsFallback(limit);
+            } catch (fallbackError) {
+                console.error('Fallback trending scraping failed:', fallbackError.message);
+                return [];
+            }
+        }
+    }
+
+    /**
+     * Fallback method for trending sounds
+     */
+    async getTrendingSoundsFallback(limit = 20) {
+        try {
+            const response = await axios.get('https://www.myinstants.com/en/index/us/', {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+
+            const $ = cheerio.load(response.data);
+            const results = [];
+
+            $('.instant').each((i, elem) => {
+                if (results.length >= limit) return false;
+
+                const $elem = $(elem);
+                const $button = $elem.find('.small-button, button[onclick*="play"]').first();
+                
+                const onclickAttr = $button.attr('onclick') || '';
+                const soundMatch = onclickAttr.match(/play\('([^']+)'/);
+                
+                if (soundMatch && soundMatch[1]) {
+                    let soundUrl = soundMatch[1];
+                    if (!soundUrl.startsWith('http')) {
+                        soundUrl = `https://www.myinstants.com${soundUrl}`;
+                    }
+
+                    const name = $elem.find('.instant-link, a').first().text().trim() || 'Unknown Sound';
+                    
+                    results.push({
+                        id: null,
+                        name: name,
+                        url: soundUrl,
+                        description: '',
+                        tags: [],
+                        color: null
+                    });
+                }
+            });
+
+            console.log(`Fallback trending scraping found ${results.length} results`);
+            return results;
+        } catch (error) {
+            console.error('Fallback trending scraping error:', error.message);
+            throw error;
         }
     }
 
@@ -397,7 +542,7 @@ class SoundboardManager extends EventEmitter {
                 }
             });
 
-            if (response.data && response.data.data) {
+            if (response.data && response.data.data && Array.isArray(response.data.data)) {
                 return response.data.data.map(instant => ({
                     id: instant.id || null,
                     name: instant.title || instant.name || 'Unknown',
@@ -408,10 +553,74 @@ class SoundboardManager extends EventEmitter {
                 }));
             }
 
-            return [];
+            // Fallback to scraping random page
+            console.log('MyInstants random API returned no data, trying fallback...');
+            return await this.getRandomSoundsFallback(limit);
         } catch (error) {
-            console.error('MyInstants random error:', error.message);
-            return [];
+            console.error('MyInstants random API error:', error.message);
+            
+            // Fallback to direct website scraping
+            try {
+                return await this.getRandomSoundsFallback(limit);
+            } catch (fallbackError) {
+                console.error('Fallback random scraping failed:', fallbackError.message);
+                return [];
+            }
+        }
+    }
+
+    /**
+     * Fallback method for random sounds
+     */
+    async getRandomSoundsFallback(limit = 20) {
+        try {
+            // MyInstants doesn't have a dedicated random page, so we'll fetch from trending
+            // and shuffle the results to simulate randomness
+            const response = await axios.get('https://www.myinstants.com/en/index/us/', {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+
+            const $ = cheerio.load(response.data);
+            const allSounds = [];
+
+            $('.instant').each((i, elem) => {
+                const $elem = $(elem);
+                const $button = $elem.find('.small-button, button[onclick*="play"]').first();
+                
+                const onclickAttr = $button.attr('onclick') || '';
+                const soundMatch = onclickAttr.match(/play\('([^']+)'/);
+                
+                if (soundMatch && soundMatch[1]) {
+                    let soundUrl = soundMatch[1];
+                    if (!soundUrl.startsWith('http')) {
+                        soundUrl = `https://www.myinstants.com${soundUrl}`;
+                    }
+
+                    const name = $elem.find('.instant-link, a').first().text().trim() || 'Unknown Sound';
+                    
+                    allSounds.push({
+                        id: null,
+                        name: name,
+                        url: soundUrl,
+                        description: '',
+                        tags: [],
+                        color: null
+                    });
+                }
+            });
+
+            // Shuffle and take limited results
+            const shuffled = allSounds.sort(() => Math.random() - 0.5);
+            const results = shuffled.slice(0, limit);
+
+            console.log(`Fallback random scraping found ${results.length} results`);
+            return results;
+        } catch (error) {
+            console.error('Fallback random scraping error:', error.message);
+            throw error;
         }
     }
 
