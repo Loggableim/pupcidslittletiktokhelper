@@ -345,22 +345,53 @@ class OpenShockClient {
         // Check device cooldown
         await this._checkDeviceCooldown(deviceId);
 
+        // Build the control request according to OpenShock API v2 specification
+        // The API expects a "shocks" array with control objects
         const command = {
             shocks: [{
-                id: deviceId,
-                type,
-                intensity: Math.round(intensity),
-                duration: Math.round(duration)
-            }]
+                id: deviceId,           // Shocker ID (UUID from /1/shockers/own endpoint)
+                type,                   // Control type: "Shock", "Vibrate", or "Sound"
+                intensity: Math.round(intensity),  // 1-100
+                duration: Math.round(duration),    // milliseconds
+                exclusive: true         // Exclusive control (recommended)
+            }],
+            customName: 'TikTokHelper'  // Optional: identifies the source of the command
         };
 
+        this.logger.info('Sending OpenShock control command:', {
+            endpoint: '/2/shockers/control',
+            deviceId,
+            type,
+            intensity: Math.round(intensity),
+            duration: Math.round(duration)
+        });
+
         const priority = options.priority || 2;
-        const result = await this._executeRequest('POST', '/2/shockers/control', command, priority);
-
-        // Update device cooldown
-        this._updateDeviceCooldown(deviceId);
-
-        return result;
+        
+        try {
+            const result = await this._executeRequest('POST', '/2/shockers/control', command, priority);
+            
+            this.logger.info('Control command sent successfully:', {
+                deviceId,
+                type,
+                response: result
+            });
+            
+            // Update device cooldown
+            this._updateDeviceCooldown(deviceId);
+            
+            return result;
+        } catch (error) {
+            this.logger.error('Failed to send control command:', {
+                deviceId,
+                type,
+                intensity,
+                duration,
+                error: error.message,
+                response: error.response?.data
+            });
+            throw error;
+        }
     }
 
     /**
@@ -386,17 +417,37 @@ class OpenShockClient {
                 id: cmd.deviceId,
                 type: cmd.type,
                 intensity: Math.round(cmd.intensity),
-                duration: Math.round(cmd.duration)
+                duration: Math.round(cmd.duration),
+                exclusive: true
             };
         });
 
+        const payload = {
+            shocks,
+            customName: 'TikTokHelper'
+        };
+
+        this.logger.info(`Sending batch control command with ${shocks.length} commands`);
+
         const priority = options.priority || 2;
-        const result = await this._executeRequest('POST', '/2/shockers/control', { shocks }, priority);
-
-        // Update cooldowns for all devices
-        commands.forEach(cmd => this._updateDeviceCooldown(cmd.deviceId));
-
-        return result;
+        
+        try {
+            const result = await this._executeRequest('POST', '/2/shockers/control', payload, priority);
+            
+            this.logger.info('Batch control command sent successfully');
+            
+            // Update cooldowns for all devices
+            commands.forEach(cmd => this._updateDeviceCooldown(cmd.deviceId));
+            
+            return result;
+        } catch (error) {
+            this.logger.error('Failed to send batch control command:', {
+                commandCount: shocks.length,
+                error: error.message,
+                response: error.response?.data
+            });
+            throw error;
+        }
     }
 
     /**
