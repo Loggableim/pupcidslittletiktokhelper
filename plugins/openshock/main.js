@@ -448,12 +448,12 @@ class OpenShockPlugin {
                 await this.saveData();
 
                 // Update helpers
-                if (this.config.apiKey && this.openShockClient) {
+                if (this.config.apiKey) {
                     // Re-create OpenShockClient with new config using the logger adapter
                     const logger = this._createLoggerAdapter();
                     this.openShockClient = new OpenShockClient(
                         this.config.apiKey,
-                        this.config.baseUrl,
+                        this.config.baseUrl || 'https://api.openshock.app',
                         logger
                     );
                     
@@ -461,6 +461,8 @@ class OpenShockPlugin {
                     if (this.queueManager) {
                         this.queueManager.openShockClient = this.openShockClient;
                     }
+                    
+                    this.api.log('OpenShock client re-initialized with new API key', 'info');
                 }
 
                 if (this.safetyManager) {

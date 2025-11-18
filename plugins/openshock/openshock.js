@@ -195,7 +195,17 @@ async function loadConfig() {
 async function loadDevices() {
     try {
         const response = await fetch('/api/openshock/devices');
-        if (!response.ok) throw new Error('Failed to load devices');
+        if (!response.ok) {
+            // Try to get error message from response
+            let errorMessage = 'Failed to load devices';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                // Response was not JSON, use default message
+            }
+            throw new Error(errorMessage);
+        }
         const data = await response.json();
         devices = data.devices || [];
         console.log('[OpenShock] Devices loaded:', devices);
@@ -1178,7 +1188,17 @@ async function saveApiSettings() {
             body: JSON.stringify({ apiKey, baseUrl })
         });
 
-        if (!response.ok) throw new Error('Failed to save API settings');
+        if (!response.ok) {
+            // Try to get error message from response
+            let errorMessage = 'Failed to save API settings';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                // Response was not JSON, use default message
+            }
+            throw new Error(errorMessage);
+        }
 
         await loadConfig();
         showNotification('API settings saved successfully', 'success');
@@ -1189,9 +1209,16 @@ async function saveApiSettings() {
             renderDeviceList();
             renderPatternList();
             updateApiStatus(devices.length > 0, devices.length);
+            
+            if (devices.length > 0) {
+                showNotification(`✅ ${devices.length} device(s) loaded successfully`, 'success');
+            } else {
+                showNotification('⚠️ API connected but no devices found', 'warning');
+            }
         } catch (loadError) {
             console.error('[OpenShock] Could not load devices after saving settings:', loadError);
             updateApiStatus(false, 0);
+            showNotification(`❌ Failed to load devices: ${loadError.message || 'Unknown error'}`, 'error');
         }
     } catch (error) {
         console.error('[OpenShock] Error saving API settings:', error);
