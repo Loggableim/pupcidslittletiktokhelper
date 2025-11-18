@@ -185,6 +185,57 @@ class OpenShockClient {
     }
 
     /**
+     * Updates the API configuration (API key and/or base URL)
+     * Recreates the axios instance with new credentials
+     *
+     * @param {Object} config - Configuration object
+     * @param {string} [config.apiKey] - New API key
+     * @param {string} [config.baseUrl] - New base URL
+     */
+    updateConfig(config = {}) {
+        let updated = false;
+
+        if (config.apiKey !== undefined) {
+            if (!config.apiKey || typeof config.apiKey !== 'string' || config.apiKey.trim() === '') {
+                this.logger.warn('OpenShockClient: API key cleared. Plugin will run in configuration mode only.');
+                this.apiKey = '';
+                this.isConfigured = false;
+            } else {
+                this.apiKey = config.apiKey;
+                this.isConfigured = true;
+            }
+            updated = true;
+        }
+
+        if (config.baseUrl !== undefined) {
+            this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
+            updated = true;
+        }
+
+        // Recreate axios instance with updated configuration
+        if (updated) {
+            this.axiosInstance = axios.create({
+                baseURL: this.baseUrl,
+                timeout: this.defaultTimeout,
+                headers: {
+                    'Open-Shock-Token': this.apiKey,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'User-Agent': 'OpenShockClient/1.0'
+                }
+            });
+
+            // Re-setup interceptors
+            this._setupInterceptors();
+
+            this.logger.info('OpenShockClient configuration updated', {
+                baseUrl: this.baseUrl,
+                isConfigured: this.isConfigured
+            });
+        }
+    }
+
+    /**
      * Gets list of all owned devices/shockers
      *
      * @returns {Promise<Array>} Array of device objects
@@ -698,10 +749,38 @@ class OpenShockClient {
             normalizedError.statusCode = error.response.status;
             normalizedError.response = error.response.data;
             normalizedError.fullResponse = error.response; // Keep full response for debugging
+            
+            // Add helpful messages for common errors
+            if (error.response.status === 401 || error.response.status === 403) {
+                normalizedError.message += '\n\nPossible causes:\n' +
+                    '  • Invalid or expired API key\n' +
+                    '  • API key lacks required permissions\n' +
+                    '  • Please regenerate your API key at https://openshock.app/dashboard/tokens';
+            } else if (error.response.status === 429) {
+                normalizedError.message += '\n\nRate limit exceeded. Please wait before making more requests.';
+            }
         } else if (error.request) {
             // Request made but no response
-            normalizedError.message = 'No response from server (timeout or network error)';
+            const errorCode = error.code || '';
+            if (errorCode === 'ENOTFOUND' || errorCode === 'EAI_AGAIN') {
+                normalizedError.message = 'Cannot reach OpenShock API server (DNS resolution failed)\n\n' +
+                    'Possible causes:\n' +
+                    '  • No internet connection\n' +
+                    '  • OpenShock API server is down\n' +
+                    '  • DNS issues or firewall blocking the connection\n' +
+                    '  • Check https://status.openshock.app/ for service status';
+            } else if (errorCode === 'ETIMEDOUT' || errorCode === 'ESOCKETTIMEDOUT') {
+                normalizedError.message = 'Connection to OpenShock API timed out\n\n' +
+                    'Possible causes:\n' +
+                    '  • Slow internet connection\n' +
+                    '  • OpenShock API server is experiencing delays\n' +
+                    '  • Firewall blocking the connection';
+            } else {
+                normalizedError.message = `No response from server: ${errorCode || 'timeout or network error'}\n\n` +
+                    'Check your internet connection and try again.';
+            }
             normalizedError.statusCode = 0;
+            normalizedError.errorCode = errorCode;
         } else {
             // Something else happened
             normalizedError.message = error.message || 'Unknown error';

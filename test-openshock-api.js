@@ -5,8 +5,22 @@
 
 const axios = require('axios');
 
-const API_KEY = '6PP4UFqvQg1sWEyWKTD30dvbBMLfwtaW5sPwfopq8HKBSNIQYxdabBV0fANe623m';
-const BASE_URL = 'https://api.openshock.app';
+// IMPORTANT: Do not hardcode API keys in source code!
+// Set your API key as an environment variable:
+// export OPENSHOCK_API_KEY="your-api-key-here"
+// Or pass it as a command line argument:
+// node test-openshock-api.js YOUR_API_KEY
+const API_KEY = process.env.OPENSHOCK_API_KEY || process.argv[2] || '';
+const BASE_URL = process.env.OPENSHOCK_BASE_URL || 'https://api.openshock.app';
+
+if (!API_KEY || API_KEY.trim() === '') {
+    console.error('❌ Error: No API key provided!');
+    console.error('\nPlease provide your OpenShock API key in one of two ways:');
+    console.error('  1. Environment variable: export OPENSHOCK_API_KEY="your-api-key-here"');
+    console.error('  2. Command line argument: node test-openshock-api.js YOUR_API_KEY');
+    console.error('\nYou can get your API key from: https://openshock.app/dashboard/tokens');
+    process.exit(1);
+}
 
 const client = axios.create({
     baseURL: BASE_URL,
