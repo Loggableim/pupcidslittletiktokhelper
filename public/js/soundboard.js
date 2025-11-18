@@ -410,8 +410,13 @@ function renderGiftList() {
   list.forEach(g => {
     const mp3Input = document.getElementById(`mp3_${g.id}`);
     const volInput = document.getElementById(`vol_${g.id}`);
+    const animUrlInput = document.getElementById(`anim_url_${g.id}`);
+    const checkbox = document.querySelector(`.gift-checkbox[data-gift-id="${g.id}"]`);
+    
     if (mp3Input) mp3Input.oninput = (e) => updateAssignment(g.id, 'mp3_url', e.target.value.trim());
     if (volInput) volInput.oninput = (e) => updateAssignment(g.id, 'volume', Number(e.target.value));
+    if (animUrlInput) animUrlInput.oninput = (e) => updateAssignment(g.id, 'animation_url', e.target.value.trim());
+    if (checkbox) checkbox.onchange = () => updateBulkSelection();
   });
 }
 
@@ -425,7 +430,7 @@ function giftRowTemplate(g) {
 
   return `<div class="${rowClass}" data-gift-id="${g.id}">
     <div class="flex items-center gap-3">
-      <input type="checkbox" class="gift-checkbox w-4 h-4 rounded cursor-pointer" data-gift-id="${g.id}" onchange="updateBulkSelection()" />
+      <input type="checkbox" class="gift-checkbox w-4 h-4 rounded cursor-pointer" data-gift-id="${g.id}" />
       ${g.image_url
         ? `<img src="${g.image_url}" alt="${safeName}" class="w-12 h-12 rounded-lg object-cover bg-black/30" onerror="this.outerHTML='<div class=\\'w-12 h-12 rounded-lg bg-slate-700 flex items-center justify-center text-xl\\'>🎁</div>'"/>`
         : `<div class="w-12 h-12 rounded-lg bg-slate-700 flex items-center justify-center text-xl">🎁</div>`
@@ -458,7 +463,7 @@ function giftRowTemplate(g) {
       </select>
       <input id="anim_url_${g.id}" value="${animUrl}" placeholder="Animation-URL (optional)"
              class="flex-1 rounded-lg bg-slate-800 border border-slate-700 px-2 py-1 text-sm"
-             oninput="updateAssignment(${g.id}, 'animation_url', this.value.trim())" />
+             data-gift-id="${g.id}" />
     </div>
   </div>`;
 }
