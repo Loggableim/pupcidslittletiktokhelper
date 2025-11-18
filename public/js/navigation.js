@@ -246,6 +246,7 @@
             { icon: 'zap', label: 'HybridShock', view: 'hybridshock', plugin: 'hybridshock' },
             { icon: 'zap', label: 'OpenShock', view: 'openshock', plugin: 'openshock' },
             { icon: 'help-circle', label: 'Quiz Show', view: 'quiz-show', plugin: 'quiz-show' },
+            { icon: 'award', label: 'Viewer XP', view: 'viewer-xp', plugin: 'viewer-xp' },
             { icon: 'cpu', label: 'Resources', view: 'resource-monitor', plugin: 'resource-monitor' },
             { icon: 'plug', label: 'Plugins', view: 'plugins' },
             { icon: 'settings', label: 'Settings', view: 'settings' }
