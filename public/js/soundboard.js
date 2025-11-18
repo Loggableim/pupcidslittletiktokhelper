@@ -1,17 +1,41 @@
 // ========== WebSocket & State ==========
-const socket = io();
+const socket = io({
+  // Reconnection settings for better reliability
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 20000,
+  transports: ['websocket', 'polling']
+});
 
 // Socket.IO Connection Logging
 socket.on('connect', () => {
   console.log('✅ [Soundboard] Socket.IO connected');
+  setStatus(true);
+  pushLog('✅ WebSocket verbunden');
 });
 
 socket.on('disconnect', () => {
   console.warn('⚠️ [Soundboard] Socket.IO disconnected');
+  pushLog('⚠️ WebSocket getrennt');
 });
 
 socket.on('connect_error', (error) => {
   console.error('❌ [Soundboard] Socket.IO connection error:', error);
+  pushLog(`❌ WebSocket Fehler: ${error.message || 'Verbindung fehlgeschlagen'}`);
+  // Don't show toast for every connection error as reconnection will try again
+});
+
+socket.on('reconnect_attempt', (attemptNumber) => {
+  console.log(`🔄 [Soundboard] Reconnection attempt ${attemptNumber}`);
+  pushLog(`🔄 Verbindungsversuch ${attemptNumber}...`);
+});
+
+socket.on('reconnect_failed', () => {
+  console.error('❌ [Soundboard] All reconnection attempts failed');
+  pushLog('❌ Alle Verbindungsversuche fehlgeschlagen');
+  showToast('❌ WebSocket-Verbindung fehlgeschlagen. Soundboard-Events funktionieren möglicherweise nicht.');
 });
 
 let catalog = [];
