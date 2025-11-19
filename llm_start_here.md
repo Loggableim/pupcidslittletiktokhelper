@@ -71,6 +71,7 @@ plugins/<plugin-id>/
 - **`vdoninja/`**: VDO.Ninja Manager als Plugin
 - **`gift-milestone/`**: Gift-Milestone-Tracker mit Animationen
 - **`topboard/`**: Top Gifters, Streaks, Donors im Overlay
+- **`weather-control/`**: Professional Weather Effects System (Rain, Snow, Storm, Fog, Thunder, Sunbeam, Glitch Clouds)
 
 **Plugin-API (`PluginAPI` class in `plugin-loader.js`):**
 
@@ -227,6 +228,148 @@ plugins/<plugin-id>/
 
 ---
 
+## 🌦️ Plugin: Weather Control (`plugins/weather-control/`)
+
+**Zweck:** Professionelles Weather-Effects-System für TikTok Live Overlays mit modernen GPU-beschleunigten Animationen.
+
+**Dateien:**
+- `plugin.json`: Metadata
+- `main.js`: Backend-Logik, API-Endpoints, Permissions, Rate-Limiting
+- `ui.html`: Admin-Panel (Configuration, Effect Testing)
+- `overlay.html`: OBS Overlay mit Canvas 2D Rendering
+- `README.md`: Umfassende Dokumentation
+
+**Konfiguration:** Plugin-Settings im Dashboard (stored in database unter `weather_config`)
+
+**Features:**
+- 7 Weather Effects: Rain, Snow, Storm, Fog, Thunder, Sunbeam, Glitch Clouds
+- GPU-accelerated Canvas 2D rendering (60 FPS)
+- Permission-based Access Control (Followers, Superfans, Subscribers, Team Members, Top Gifters)
+- Rate Limiting (configurable, default 10 req/min)
+- WebSocket real-time event streaming
+- Flow action support for automation
+- Gift-based automatic triggers
+- Input validation & sanitization
+- Configurable intensity, duration, particle count
+- Debug mode with FPS/particle counter
+
+**Weather Effects:**
+- **Rain** 🌧️: Realistic falling rain particles (200 particles @ 0.5 intensity)
+- **Snow** ❄️: Gentle snowfall with wobble physics (150 particles)
+- **Storm** ⛈️: Heavy rain + wind + camera shake (300 particles)
+- **Fog** 🌫️: Layered noise fog with gradual fade (30 large particles)
+- **Thunder** ⚡: Random lightning flashes with screen brightening
+- **Sunbeam** ☀️: Warm animated light rays (5 beams)
+- **Glitch Clouds** ☁️: Digital glitch with RGB noise lines
+
+**API-Endpoints:**
+- `POST /api/weather/trigger`: Trigger weather effect
+- `GET /api/weather/config`: Get configuration
+- `POST /api/weather/config`: Update configuration
+- `GET /api/weather/effects`: List supported effects
+- `POST /api/weather/reset-key`: Reset API key
+- `GET /weather-control/ui`: Configuration panel
+- `GET /weather-control/overlay`: OBS overlay
+
+**Example POST /api/weather/trigger:**
+```json
+{
+  "action": "rain",
+  "intensity": 0.5,
+  "duration": 10000,
+  "username": "viewer123",
+  "meta": {
+    "triggeredBy": "gift"
+  }
+}
+```
+
+**Socket.io Events (emittiert):**
+- `weather:trigger`: Weather effect triggered
+  ```json
+  {
+    "type": "weather",
+    "action": "rain",
+    "intensity": 0.5,
+    "duration": 10000,
+    "username": "viewer123",
+    "meta": {},
+    "timestamp": 1234567890
+  }
+  ```
+- `weather:permission-denied`: User permission denied
+
+**Flow-Actions:**
+- `weather.trigger`: Trigger weather effect from IFTTT flow
+
+**Beispiel-Flows:**
+```json
+{
+  "trigger_type": "gift",
+  "trigger_condition": {
+    "operator": ">=",
+    "field": "coins",
+    "value": 5000
+  },
+  "actions": [
+    {
+      "type": "weather.trigger",
+      "action": "storm",
+      "intensity": 0.8,
+      "duration": 10000
+    }
+  ]
+}
+```
+
+```json
+{
+  "trigger_type": "follow",
+  "actions": [
+    {
+      "type": "weather.trigger",
+      "action": "snow",
+      "intensity": 0.6,
+      "duration": 8000
+    }
+  ]
+}
+```
+
+**Gift Triggers (automatic):**
+- 5000+ coins → Storm
+- 1000-4999 coins → Thunder
+- 500-999 coins → Rain
+- 100-499 coins → Snow
+
+**Permission System:**
+```json
+{
+  "permissions": {
+    "enabled": true,
+    "allowAll": false,
+    "allowedGroups": {
+      "followers": true,
+      "superfans": true,
+      "subscribers": true,
+      "teamMembers": true,
+      "minTeamLevel": 1
+    },
+    "topGifterThreshold": 10,
+    "minPoints": 0
+  }
+}
+```
+
+**OBS Setup:**
+1. Add Browser Source to OBS
+2. URL: `http://localhost:3000/weather-control/overlay`
+3. Width: 1920, Height: 1080
+4. Check "Shutdown source when not visible"
+5. Debug mode: Add `?debug=true` to URL
+
+---
+
 ## 📡 Socket.io Events
 
 ### Core Events
@@ -254,6 +397,10 @@ plugins/<plugin-id>/
 - **Multi-Cam:**
   - `multicam_state`: Status-Update
   - `multicam_switch`: Szenen-Wechsel
+
+- **Weather Control:**
+  - `weather:trigger`: Weather effect triggered (overlay receives this)
+  - `weather:permission-denied`: User permission denied
 
 ---
 
