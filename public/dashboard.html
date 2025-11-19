@@ -116,6 +116,14 @@
                     <i data-lucide="cpu"></i>
                     <span class="sidebar-item-text">Resources</span>
                 </a>
+                <a href="#" class="sidebar-item" data-view="weather-control" data-plugin="weather-control">
+                    <i data-lucide="cloud-rain"></i>
+                    <span class="sidebar-item-text">Weather Control</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="new-soundboard" data-plugin="new-soundboard">
+                    <i data-lucide="music-4"></i>
+                    <span class="sidebar-item-text">New Soundboard</span>
+                </a>
                 <a href="#" class="sidebar-item" data-view="plugins">
                     <i data-lucide="plug"></i>
                     <span class="sidebar-item-text">Plugin Manager</span>
@@ -962,6 +970,44 @@
                         </div>
                         <div class="iframe-container">
                             <iframe src="/resource-monitor/ui" title="Resource Monitor"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: Weather Control -->
+                <div id="view-weather-control" class="content-view" data-plugin="weather-control">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="cloud-rain"></i>
+                                Weather Control System
+                            </h2>
+                            <a href="/weather-control/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/weather-control/ui" title="Weather Control"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: New Soundboard -->
+                <div id="view-new-soundboard" class="content-view" data-plugin="new-soundboard">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="music-4"></i>
+                                New Soundboard
+                            </h2>
+                            <a href="/new-soundboard/dashboard" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/new-soundboard/dashboard" title="New Soundboard"></iframe>
                         </div>
                     </section>
                 </div>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Soundboard</title>
+  <style>
+    .new-soundboard-iframe-container {
+      width: 100%;
+      height: calc(100vh - 100px);
+      border: none;
+      overflow: hidden;
+    }
+    
+    .new-soundboard-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    
+    .new-soundboard-external-link {
+      display: inline-block;
+      margin: 20px 0;
+      padding: 12px 24px;
+      background: #16c79a;
+      color: #1a1a2e;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    
+    .new-soundboard-external-link:hover {
+      background: #13a87e;
+    }
+  </style>
+</head>
+<body>
+  <div class="new-soundboard-iframe-container">
+    <a href="/new-soundboard/dashboard" target="_blank" class="new-soundboard-external-link">
+      🎵 Vollständiges Dashboard in neuem Tab öffnen
+    </a>
+    <iframe 
+      class="new-soundboard-iframe" 
+      src="/new-soundboard/dashboard"
+      title="New Soundboard Dashboard"
+      sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+    ></iframe>
+  </div>
+</body>
+</html>
