@@ -595,7 +595,7 @@
                                 Soundboard Configuration
                             </h2>
                             <div class="view-header-actions">
-                                <a href="/soundboard/" target="_blank" class="btn btn-primary" title="Soundboard in separatem Tab öffnen für besseres Debugging">
+                                <a href="/soundboard/ui" target="_blank" class="btn btn-primary" title="Soundboard in separatem Tab öffnen für besseres Debugging">
                                     <i data-lucide="external-link"></i>
                                     Open in New Tab
                                 </a>
@@ -791,11 +791,17 @@
                         </div>
                         
                         <!-- Audio Testing & Permissions -->
-                        <div class="settings-card" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #3b82f6;">
-                            <h3 class="card-title" style="color: #60a5fa;">
-                                <i data-lucide="volume-2"></i>
-                                Audio System Test & Permissions
-                            </h3>
+                        <div id="audio-test-card" class="settings-card" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #3b82f6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 class="card-title" style="color: #60a5fa; margin: 0;">
+                                    <i data-lucide="volume-2"></i>
+                                    Audio System Test & Permissions
+                                </h3>
+                                <button id="minimize-audio-test-btn" class="btn btn-sm btn-ghost" style="padding: 4px 8px;" title="Minimize">
+                                    <i data-lucide="minimize-2" style="width: 16px; height: 16px;"></i>
+                                </button>
+                            </div>
+                            <div id="audio-test-content">
                             <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
                                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                                     <i data-lucide="info" style="color: #3b82f6; width: 20px; height: 20px;"></i>
