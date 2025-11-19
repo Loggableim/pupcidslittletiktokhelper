@@ -1841,3 +1841,191 @@ if (giftListContainer) {
     }
   });
 }
+
+// ========== Audio Debug Logging System ==========
+function addAudioLog(message, type = 'info') {
+  const log = document.getElementById('audio-debug-log');
+  if (!log) return;
+  
+  const verboseLogging = document.getElementById('verbose-logging')?.checked;
+  
+  // Skip verbose messages if verbose logging is disabled
+  if (type === 'verbose' && !verboseLogging) return;
+  
+  const timestamp = new Date().toLocaleTimeString();
+  const icons = {
+    info: '📘',
+    success: '✅',
+    error: '❌',
+    warn: '⚠️',
+    verbose: '🔍',
+    play: '▶️',
+    load: '📡',
+    cache: '💾'
+  };
+  
+  const colors = {
+    info: '#60a5fa',
+    success: '#10b981',
+    error: '#ef4444',
+    warn: '#f59e0b',
+    verbose: '#94a3b8',
+    play: '#8b5cf6',
+    load: '#06b6d4',
+    cache: '#a78bfa'
+  };
+  
+  const icon = icons[type] || '•';
+  const color = colors[type] || '#cbd5e1';
+  
+  const logEntry = document.createElement('div');
+  logEntry.style.color = color;
+  logEntry.style.marginBottom = '4px';
+  logEntry.innerHTML = `<span style="color: #64748b;">[${timestamp}]</span> ${icon} ${message}`;
+  
+  log.appendChild(logEntry);
+  log.scrollTop = log.scrollHeight;
+  
+  // Limit log entries to 100
+  while (log.children.length > 100) {
+    log.removeChild(log.firstChild);
+  }
+}
+
+// Override pushLog to also add to audio debug log
+const originalPushLog = window.pushLog || function() {};
+window.pushLog = function(message) {
+  originalPushLog(message);
+  
+  // Determine type from message content
+  let type = 'info';
+  if (message.includes('✅') || message.includes('bereit')) type = 'success';
+  else if (message.includes('❌') || message.includes('Fehler')) type = 'error';
+  else if (message.includes('⚠️') || message.includes('blockiert')) type = 'warn';
+  else if (message.includes('▶️') || message.includes('Wiedergabe')) type = 'play';
+  else if (message.includes('📡') || message.includes('Lade')) type = 'load';
+  else if (message.includes('🔄') || message.includes('proxy')) type = 'cache';
+  else if (message.includes('📋') || message.includes('📡')) type = 'verbose';
+  
+  addAudioLog(message, type);
+};
+
+// ========== Audio Status Updates ==========
+function updateAudioStatus() {
+  // Audio Context Status
+  const ctx = getAudioContext();
+  const ctxStatus = document.getElementById('audio-context-status');
+  if (ctxStatus) {
+    if (ctx) {
+      ctxStatus.innerHTML = `<span style="color: #10b981;">${ctx.state}</span>`;
+    } else {
+      ctxStatus.innerHTML = `<span style="color: #ef4444;">Not Available</span>`;
+    }
+  }
+  
+  // Autoplay Status
+  const autoplayStatus = document.getElementById('autoplay-status');
+  if (autoplayStatus) {
+    if (isAudioUnlocked()) {
+      autoplayStatus.innerHTML = `<span style="color: #10b981;">Enabled</span>`;
+    } else {
+      autoplayStatus.innerHTML = `<span style="color: #f59e0b;">Locked</span>`;
+    }
+  }
+  
+  // Active Sounds Count
+  const activeCount = document.getElementById('active-sounds-count');
+  if (activeCount) {
+    activeCount.textContent = activeAudio.length;
+    activeCount.style.color = activeAudio.length > 0 ? '#10b981' : '#94a3b8';
+  }
+}
+
+// Update status every second
+setInterval(updateAudioStatus, 1000);
+updateAudioStatus();
+
+// ========== Audio Test Buttons ==========
+document.getElementById('enable-audio-btn')?.addEventListener('click', async () => {
+  addAudioLog('🔓 Enabling audio permissions...', 'info');
+  
+  try {
+    unlockAudio();
+    
+    // Also try to create and start AudioContext
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      await ctx.resume();
+      addAudioLog('✅ AudioContext resumed successfully', 'success');
+    }
+    
+    // Show test player
+    const player = document.getElementById('audio-test-player');
+    if (player) {
+      player.style.display = 'block';
+      addAudioLog('📻 Test audio player shown. Use controls to test playback.', 'info');
+    }
+    
+    addAudioLog('✅ Audio permissions enabled', 'success');
+    showToast('✅ Audio Permissions Enabled');
+  } catch (error) {
+    addAudioLog(`❌ Failed to enable audio: ${error.message}`, 'error');
+    showToast('❌ Failed to enable audio permissions');
+  }
+});
+
+document.getElementById('test-audio-btn')?.addEventListener('click', () => {
+  addAudioLog('🧪 Testing audio playback...', 'info');
+  
+  const testUrl = 'https://www.myinstants.com/media/sounds/wow.mp3';
+  addAudioLog(`📡 Test URL: ${testUrl}`, 'verbose');
+  
+  playSound(testUrl, 1.0, 'Audio Test');
+});
+
+document.getElementById('clear-audio-log-btn')?.addEventListener('click', () => {
+  const log = document.getElementById('audio-debug-log');
+  if (log) {
+    log.innerHTML = '<div style="color: #60a5fa;">🎵 Audio log cleared.</div>';
+  }
+});
+
+// Listen to test audio element events
+const testAudio = document.getElementById('test-audio-element');
+if (testAudio) {
+  testAudio.addEventListener('loadstart', () => {
+    addAudioLog('📡 Test audio: Loading started', 'load');
+  });
+  
+  testAudio.addEventListener('loadeddata', () => {
+    addAudioLog('✅ Test audio: Data loaded', 'success');
+  });
+  
+  testAudio.addEventListener('canplay', () => {
+    addAudioLog('✅ Test audio: Can play', 'success');
+  });
+  
+  testAudio.addEventListener('playing', () => {
+    addAudioLog('▶️ Test audio: Playing', 'play');
+  });
+  
+  testAudio.addEventListener('pause', () => {
+    addAudioLog('⏸️ Test audio: Paused', 'info');
+  });
+  
+  testAudio.addEventListener('ended', () => {
+    addAudioLog('⏹️ Test audio: Ended', 'info');
+  });
+  
+  testAudio.addEventListener('error', (e) => {
+    addAudioLog(`❌ Test audio error: ${testAudio.error?.message || 'Unknown error'}`, 'error');
+  });
+}
+
+// Log initial audio capabilities
+addAudioLog('🎵 Audio System Initialized', 'success');
+addAudioLog(`🌐 Browser: ${navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Firefox') ? 'Firefox' : 'Safari'}`, 'info');
+addAudioLog(`📱 Platform: ${navigator.platform}`, 'verbose');
+addAudioLog(`🔊 HTML5 Audio: ${typeof Audio !== 'undefined' ? 'Available' : 'Not available'}`, 'info');
+addAudioLog(`🎛️ Web Audio API: ${(window.AudioContext || window.webkitAudioContext) ? 'Available' : 'Not available'}`, 'info');
+
