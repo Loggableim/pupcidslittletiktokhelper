@@ -27,6 +27,35 @@
                 </button>
             </div>
 
+        <!-- Tabs -->
+        <div class="mb-6">
+            <div class="border-b border-gray-700 flex gap-2">
+                <button class="tab-btn active" data-tab="events">📋 Events</button>
+                <button class="tab-btn" data-tab="tts" data-plugin="tts">🎤 TTS v2.0</button>
+                <button class="tab-btn" data-tab="flows">⚡ Flows</button>
+                <button class="tab-btn" data-tab="soundboard" data-plugin="soundboard">🔊 Soundboard</button>
+                <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
+                <button class="tab-btn" data-tab="multiGuest" data-plugin="vdoninja">👥 Multi-Guest</button>
+                <!-- Emoji Rain Tab -->
+                <button class="tab-btn" data-tab="emojiRain" data-plugin="emoji-rain">🌧️ Emoji Rain</button>
+                <!-- Gift Milestone Tab -->
+                <button class="tab-btn" data-tab="giftMilestone" data-plugin="gift-milestone">🎁 Gift Milestone</button>
+                <!-- Multi-Cam Switcher Tab -->
+                <button class="tab-btn" data-tab="multicam" data-plugin="multicam">🎥 Multi-Cam</button>
+                <!-- OSC-Bridge Tab -->
+                <button class="tab-btn" data-tab="oscBridge" data-plugin="osc-bridge">🎮 OSC-Bridge</button>
+                <!-- HybridShock Integration Tab -->
+                <button class="tab-btn" data-tab="hybridshock" data-plugin="hybridshock">⚡ HybridShock</button>
+                <!-- Live Goals Tab -->
+                <button class="tab-btn" data-tab="liveGoals" data-plugin="goals">🎯 Live Goals</button>
+                <!-- Quiz Show Tab -->
+                <button class="tab-btn" data-tab="quizShow" data-plugin="quiz-show">🎲 Quiz Show</button>
+                <!-- Resource Monitor Tab -->
+                <button class="tab-btn" data-tab="resourceMonitor" data-plugin="resource-monitor">🖥️ Resources</button>
+                <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
+                <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+            </div>
+        </div>
             <nav class="sidebar-nav">
                 <!-- Dashboard -->
                 <a href="#" class="sidebar-item active" data-view="dashboard">
@@ -971,6 +1000,44 @@
                     </section>
                 </div>
 
+        <!-- Tab: Quiz Show -->
+        <div id="tab-quizShow" class="tab-content" data-plugin="quiz-show">
+            <!-- Quiz Show Header -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">🎲 Quiz Show - Wer wird Millionär Style</h2>
+                    <a href="/quiz-show/ui" target="_blank"
+                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                        🔗 Open in New Tab
+                    </a>
+                </div>
+                <div class="text-sm text-gray-400 mb-4">
+                    Interactive quiz show with TikTok chat integration, jokers, and leaderboard
+                </div>
+                <div class="flex gap-4 text-sm">
+                    <div class="bg-gray-700 px-3 py-2 rounded">
+                        <span class="text-gray-400">Overlay URL:</span>
+                        <a href="/quiz-show/overlay" target="_blank" class="text-blue-400 hover:text-blue-300 ml-2">
+                            /quiz-show/overlay
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quiz Show UI Iframe -->
+            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
+                <iframe
+                    src="/quiz-show/ui"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="Quiz Show Configuration">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Tab: Settings -->
+        <div id="tab-settings" class="tab-content">
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl mb-6 font-semibold">⚙️ General Settings</h2>
                 <!-- View: Weather Control -->
                 <div id="view-weather-control" class="content-view" data-plugin="weather-control">
                     <section class="view-section">

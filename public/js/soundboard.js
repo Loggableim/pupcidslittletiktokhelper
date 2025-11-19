@@ -1050,6 +1050,23 @@ function renderSoundResults(items, targetElement, showPagination = false) {
   }
 
   const resultsHTML = items.map(item => {
+    // Properly escape for HTML attributes (both single and double quotes)
+    const escapeHtml = (str) => String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    const mp3 = escapeHtml(item.url || '');
+    const title = escapeHtml(item.name || 'Unbenannt');
+    const description = escapeHtml(item.description || '');
+    const itemTags = (item.tags || []).slice(0, 4);
+    const isFavorite = favorites.some(f => f.url === item.url);
+
+    // Generate clickable tag pills
+    const tagPills = itemTags.map(tag => {
+      const safeTag = escapeHtml(tag);
     const mp3 = String(item.url || '').replace(/'/g, "&#39;");
     const title = String(item.name || 'Unbenannt').replace(/'/g, "&#39;");
     const description = String(item.description || '').replace(/'/g, "&#39;");
@@ -1074,6 +1091,9 @@ function renderSoundResults(items, targetElement, showPagination = false) {
           <button class="rounded-lg ${isFavorite ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-slate-600 hover:bg-slate-500'} px-2 py-1 text-sm"
                   data-action="${isFavorite ? 'remove-favorite' : 'add-favorite'}"
                   data-url="${mp3}"
+                  data-name="${title}"
+                  data-description="${description}"
+                  data-tags="${escapeHtml(JSON.stringify(itemTags))}"
                   data-name="${title.replace(/"/g, '&quot;')}"
                   data-description="${(description || '').replace(/"/g, '&quot;')}"
                   data-tags="${JSON.stringify(itemTags).replace(/"/g, '&quot;')}"
