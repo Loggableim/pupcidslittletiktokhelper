@@ -277,9 +277,12 @@ class SoundboardManager extends EventEmitter {
     /**
      * Search MyInstants for sounds using the official API
      * API: https://github.com/abdipr/myinstants-api
+     * Enhanced to support multiple API response formats and better MP3 URL extraction
      */
     async searchMyInstants(query, page = 1, limit = 20) {
         try {
+            console.log(`[MyInstants] Searching for: "${query}" (page ${page}, limit ${limit})`);
+            
             // Try the official MyInstants API first
             const response = await axios.get('https://myinstants-api.vercel.app/search', {
                 params: {
@@ -294,28 +297,48 @@ class SoundboardManager extends EventEmitter {
             });
 
             if (response.data && response.data.data && Array.isArray(response.data.data)) {
-                return response.data.data.map(instant => ({
-                    id: instant.id || null,
-                    name: instant.title || instant.name || 'Unknown',
-                    url: instant.mp3 || instant.sound,
-                    description: instant.description || '',
-                    tags: instant.tags || [],
-                    color: instant.color || null
-                }));
+                console.log(`[MyInstants] API returned ${response.data.data.length} results`);
+                
+                const results = response.data.data.map(instant => {
+                    // Extract MP3 URL from various possible fields
+                    let mp3Url = instant.mp3 || instant.sound || instant.url || instant.mp3_url || instant.audio;
+                    
+                    // If the URL is relative, make it absolute
+                    if (mp3Url && !mp3Url.startsWith('http')) {
+                        mp3Url = `https://www.myinstants.com${mp3Url}`;
+                    }
+                    
+                    // Log the extracted URL for debugging
+                    if (!mp3Url) {
+                        console.warn(`[MyInstants] No valid URL found for sound:`, instant);
+                    }
+                    
+                    return {
+                        id: instant.id || null,
+                        name: instant.title || instant.name || instant.label || 'Unknown',
+                        url: mp3Url,
+                        description: instant.description || instant.desc || '',
+                        tags: instant.tags || instant.categories || [],
+                        color: instant.color || null
+                    };
+                }).filter(sound => sound.url); // Filter out sounds without valid URLs
+                
+                console.log(`[MyInstants] Returning ${results.length} valid results with URLs`);
+                return results;
             }
 
             // If API returns empty or invalid data, try fallback
-            console.log('MyInstants API returned no data, trying fallback scraping...');
+            console.log('[MyInstants] API returned no data, trying fallback scraping...');
             return await this.searchMyInstantsFallback(query, page, limit);
         } catch (error) {
-            console.error('MyInstants API error:', error.message);
-            console.log('Attempting fallback scraping method...');
+            console.error('[MyInstants] API error:', error.message);
+            console.log('[MyInstants] Attempting fallback scraping method...');
             
             // Fallback to direct website scraping
             try {
                 return await this.searchMyInstantsFallback(query, page, limit);
             } catch (fallbackError) {
-                console.error('Fallback scraping also failed:', fallbackError.message);
+                console.error('[MyInstants] Fallback scraping also failed:', fallbackError.message);
                 return [];
             }
         }
@@ -326,6 +349,8 @@ class SoundboardManager extends EventEmitter {
      */
     async searchMyInstantsFallback(query, page = 1, limit = 20) {
         try {
+            console.log(`[MyInstants Fallback] Scraping website for: "${query}"`);
+            
             const searchUrl = `https://www.myinstants.com/en/search/?name=${encodeURIComponent(query)}`;
             const response = await axios.get(searchUrl, {
                 timeout: 10000,
@@ -371,10 +396,10 @@ class SoundboardManager extends EventEmitter {
                 }
             });
 
-            console.log(`Fallback scraping found ${results.length} results for "${query}"`);
+            console.log(`[MyInstants Fallback] Scraped ${results.length} sounds for "${query}"`);
             return results;
         } catch (error) {
-            console.error('Fallback scraping error:', error.message);
+            console.error('[MyInstants Fallback] Scraping error:', error.message);
             throw error;
         }
     }
@@ -440,6 +465,7 @@ class SoundboardManager extends EventEmitter {
 
     /**
      * Get trending sounds from MyInstants
+     * Enhanced to support multiple API response formats and better MP3 URL extraction
      */
     async getTrendingSounds(limit = 20) {
         try {
@@ -452,14 +478,24 @@ class SoundboardManager extends EventEmitter {
             });
 
             if (response.data && response.data.data && Array.isArray(response.data.data)) {
-                return response.data.data.map(instant => ({
-                    id: instant.id || null,
-                    name: instant.title || instant.name || 'Unknown',
-                    url: instant.mp3 || instant.sound,
-                    description: instant.description || '',
-                    tags: instant.tags || [],
-                    color: instant.color || null
-                }));
+                return response.data.data.map(instant => {
+                    // Extract MP3 URL from various possible fields
+                    let mp3Url = instant.mp3 || instant.sound || instant.url || instant.mp3_url || instant.audio;
+                    
+                    // If the URL is relative, make it absolute
+                    if (mp3Url && !mp3Url.startsWith('http')) {
+                        mp3Url = `https://www.myinstants.com${mp3Url}`;
+                    }
+                    
+                    return {
+                        id: instant.id || null,
+                        name: instant.title || instant.name || instant.label || 'Unknown',
+                        url: mp3Url,
+                        description: instant.description || instant.desc || '',
+                        tags: instant.tags || instant.categories || [],
+                        color: instant.color || null
+                    };
+                }).filter(sound => sound.url); // Filter out sounds without valid URLs
             }
 
             // Fallback to scraping trending page
@@ -531,6 +567,7 @@ class SoundboardManager extends EventEmitter {
 
     /**
      * Get random sounds from MyInstants
+     * Enhanced to support multiple API response formats and better MP3 URL extraction
      */
     async getRandomSounds(limit = 20) {
         try {
@@ -543,14 +580,24 @@ class SoundboardManager extends EventEmitter {
             });
 
             if (response.data && response.data.data && Array.isArray(response.data.data)) {
-                return response.data.data.map(instant => ({
-                    id: instant.id || null,
-                    name: instant.title || instant.name || 'Unknown',
-                    url: instant.mp3 || instant.sound,
-                    description: instant.description || '',
-                    tags: instant.tags || [],
-                    color: instant.color || null
-                }));
+                return response.data.data.map(instant => {
+                    // Extract MP3 URL from various possible fields
+                    let mp3Url = instant.mp3 || instant.sound || instant.url || instant.mp3_url || instant.audio;
+                    
+                    // If the URL is relative, make it absolute
+                    if (mp3Url && !mp3Url.startsWith('http')) {
+                        mp3Url = `https://www.myinstants.com${mp3Url}`;
+                    }
+                    
+                    return {
+                        id: instant.id || null,
+                        name: instant.title || instant.name || instant.label || 'Unknown',
+                        url: mp3Url,
+                        description: instant.description || instant.desc || '',
+                        tags: instant.tags || instant.categories || [],
+                        color: instant.color || null
+                    };
+                }).filter(sound => sound.url); // Filter out sounds without valid URLs
             }
 
             // Fallback to scraping random page
