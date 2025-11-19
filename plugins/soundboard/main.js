@@ -412,6 +412,12 @@ class SoundboardPlugin {
     }
 
     registerRoutes() {
+        // Serve plugin UI (configuration page)
+        this.api.registerRoute('get', '/soundboard/ui', (req, res) => {
+            const uiPath = path.join(__dirname, 'ui', 'index.html');
+            res.sendFile(uiPath);
+        });
+
         // Get all gift sounds
         this.api.registerRoute('get', '/api/soundboard/gifts', (req, res) => {
             try {
