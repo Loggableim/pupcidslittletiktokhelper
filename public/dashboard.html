@@ -1118,16 +1118,20 @@
                                 <i data-lucide="package"></i>
                                 Plugin Manager
                             </h2>
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-6">
-                            <div class="text-center py-12">
-                                <i data-lucide="package" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #60a5fa;"></i>
-                                <h3 class="text-xl mb-4">Plugin Manager</h3>
-                                <p class="text-gray-400 mb-6">Manage your installed plugins and discover new ones.</p>
-                                <div id="plugin-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-                                    <!-- Plugin list will be populated by plugin-manager.js -->
-                                </div>
+                            <div style="display: flex; gap: 12px;">
+                                <button id="upload-plugin-btn" class="btn btn-primary">
+                                    <i data-lucide="upload"></i>
+                                    Upload Plugin (ZIP)
+                                </button>
+                                <button id="reload-plugins-btn" class="btn btn-ghost">
+                                    <i data-lucide="refresh-cw"></i>
+                                    Reload All
+                                </button>
                             </div>
+                        </div>
+                        <input type="file" id="plugin-file-input" accept=".zip" style="display: none;">
+                        <div id="plugins-container" class="space-y-4">
+                            <!-- Plugin list will be populated by plugin-manager.js -->
                         </div>
                     </section>
                 </div>
