@@ -47,6 +47,118 @@
             background: rgba(59, 130, 246, 0.2);
             transform: translateX(-2px);
         }
+        
+        /* Soundboard specific styles */
+        .myinstants-search {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 8px;
+        }
+        
+        .myinstants-search h4 {
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .search-box input {
+            flex: 1;
+        }
+        
+        .myinstants-results {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .myinstants-result-item {
+            background: rgba(71, 85, 105, 0.3);
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            transition: all 0.2s;
+        }
+        
+        .myinstants-result-item:hover {
+            background: rgba(71, 85, 105, 0.4);
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+        
+        .myinstants-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .myinstants-result-name {
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 4px;
+        }
+        
+        .myinstants-result-url {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .myinstants-result-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .add-gift-sound {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 8px;
+        }
+        
+        .add-gift-sound h4 {
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .gift-catalog {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 8px;
+        }
+        
+        .gift-catalog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .gift-catalog-header h4 {
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -186,9 +298,12 @@
 
             <!-- MyInstants Search -->
             <div class="myinstants-search">
-                <h4>Search MyInstants</h4>
+                <h4>
+                    <i data-lucide="search"></i>
+                    Search MyInstants
+                </h4>
                 <div class="search-box">
-                    <input type="text" id="myinstants-search-input" placeholder="Search sounds..." class="form-input">
+                    <input type="text" id="myinstants-search-input" placeholder="Search for sound effects..." class="form-input">
                     <button id="myinstants-search-btn" class="btn btn-primary">
                         <i data-lucide="search"></i>
                         Search
@@ -199,7 +314,10 @@
 
             <!-- Add Gift Sound -->
             <div class="add-gift-sound">
-                <h4>Add/Edit Gift Sound</h4>
+                <h4>
+                    <i data-lucide="plus-circle"></i>
+                    Add/Edit Gift Sound
+                </h4>
                 <div class="form-grid">
                     <input type="number" id="new-gift-id" placeholder="Gift ID" readonly class="form-input">
                     <input type="text" id="new-gift-label" placeholder="Label" readonly class="form-input">
@@ -257,15 +375,18 @@
                 <i data-lucide="volume-2"></i>
                 Audio System Test & Permissions
             </h3>
-            <button id="minimize-audio-test-btn" class="btn btn-sm btn-ghost" style="padding: 4px 8px;" title="Minimize">
-                <i data-lucide="minimize-2" style="width: 16px; height: 16px;"></i>
+            <button id="minimize-audio-test-btn" class="btn btn-sm btn-ghost" style="padding: 4px 8px;" title="Collapse section" aria-label="Toggle audio test section">
+                <i data-lucide="chevron-up" style="width: 16px; height: 16px;"></i>
             </button>
         </div>
         <div id="audio-test-content">
             <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <i data-lucide="info" style="color: #3b82f6; width: 20px; height: 20px;"></i>
-                    <span style="font-size: 0.9rem;">Browsers require user interaction before playing audio. Click the button below to enable audio permissions.</span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i data-lucide="info" style="color: #3b82f6; width: 20px; height: 20px; flex-shrink: 0;"></i>
+                    <span style="font-size: 0.9rem; line-height: 1.5;">
+                        <strong>Important:</strong> Browsers require user interaction before playing audio. 
+                        Click "Enable Audio Permissions" below before testing sounds.
+                    </span>
                 </div>
             </div>
             
@@ -285,8 +406,8 @@
             </div>
             
             <!-- Audio Player for Testing -->
-            <div id="audio-test-player" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                <div style="margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8;">Test Audio:</div>
+            <div id="audio-test-player" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px;">
+                <div style="margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8; font-weight: 600;">Test Audio:</div>
                 <audio id="test-audio-element" controls style="width: 100%; max-width: 500px;">
                     <source src="https://www.myinstants.com/media/sounds/wow.mp3" type="audio/mpeg">
                     Your browser does not support the audio element.
@@ -295,28 +416,34 @@
             
             <!-- Audio Status -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
                     <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Audio Context:</div>
-                    <div id="audio-context-status" style="font-weight: 600;">Checking...</div>
+                    <div id="audio-context-status" style="font-weight: 600; font-size: 0.95rem;">Checking...</div>
                 </div>
-                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
                     <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Autoplay:</div>
-                    <div id="autoplay-status" style="font-weight: 600;">Checking...</div>
+                    <div id="autoplay-status" style="font-weight: 600; font-size: 0.95rem;">Checking...</div>
                 </div>
-                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
                     <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Active Sounds:</div>
-                    <div id="active-sounds-count" style="font-weight: 600;">0</div>
+                    <div id="active-sounds-count" style="font-weight: 600; font-size: 0.95rem; color: #60a5fa;">0</div>
                 </div>
             </div>
             
             <!-- Debug Log -->
             <div style="margin-top: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 0.9rem; font-weight: 600;">Audio Debug Log:</span>
-                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
-                        <input type="checkbox" id="verbose-logging" checked>
-                        <span>Verbose Logging</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #e2e8f0;">Audio Debug Log</span>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                        <input type="checkbox" id="verbose-logging" checked style="cursor: pointer;">
+                        <span style="color: #cbd5e1;">Show Verbose Logs</span>
                     </label>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px; margin-bottom: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.8rem; color: #94a3b8;">
+                        <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
+                        Critical events (play, error) are always logged. Verbose mode shows additional diagnostic information.
+                    </div>
                 </div>
                 <div id="audio-debug-log" style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
                     <div style="color: #60a5fa;">🎵 Audio system ready. Waiting for events...</div>
