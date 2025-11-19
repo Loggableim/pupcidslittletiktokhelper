@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CRITICAL: TikTok Connection Issue** - Fixed connection failure caused by invalid `enableWebsocketUpgrade` option
+  - Removed non-existent `enableWebsocketUpgrade` option from TikTokLiveConnection configuration
+  - This option does not exist in tiktok-live-connector v2.1.0 and was preventing connections
+  - Fixed in 2 locations: main connection (line 100) and gift catalog update (line 1323)
+  - Updated test-connection.js to use only valid library options
+  - Connection now works correctly with valid options: `processInitialData`, `enableExtendedGiftInfo`, `requestPollingIntervalMs`, `connectWithUniqueId`, `disableEulerFallbacks`
+  - Files modified: `modules/tiktok.js`, `test-connection.js`
+  - Documentation: See `FIX_CONNECTION_ISSUE.md` for details
+
 ### Added
 - **Weather Control Plugin** (`plugins/weather-control/`) - Professional weather effects system
   - 7 Modern Weather Effects: Rain, Snow, Storm, Fog, Thunder, Sunbeam, Glitch Clouds
