@@ -121,8 +121,39 @@
             border-color: #10b981;
         }
 
+        .flow-node.trigger .connection-point.input {
+            display: none;
+        }
+
         .flow-node.condition {
             border-color: #f59e0b;
+            position: relative;
+        }
+
+        .flow-node.condition .output-true::before {
+            content: 'TRUE';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            font-weight: 600;
+            color: #10b981;
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+
+        .flow-node.condition .output-false::before {
+            content: 'FALSE';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            font-weight: 600;
+            color: #ef4444;
+            text-transform: uppercase;
+            pointer-events: none;
         }
 
         .flow-node.action {
@@ -162,6 +193,8 @@
             border: 2px solid #64748b;
             border-radius: 50%;
             cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
         }
 
         .connection-point.input {
@@ -176,10 +209,50 @@
             transform: translateY(-50%);
         }
 
-        .connection-point:hover {
+        .connection-point:hover,
+        .connection-point.hovered {
             background: #3b82f6;
             border-color: #3b82f6;
-            transform: translateY(-50%) scale(1.3);
+            transform: translateY(-50%) scale(1.4);
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+        }
+
+        .connection-point.connecting {
+            background: #10b981;
+            border-color: #10b981;
+            animation: pulse 1s infinite;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+        }
+
+        .connection-point.valid-target {
+            background: #10b981;
+            border-color: #10b981;
+            transform: translateY(-50%) scale(1.5);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+        }
+
+        .connection-point.invalid-target {
+            background: #ef4444;
+            border-color: #ef4444;
+            transform: translateY(-50%) scale(1.5);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: translateY(-50%) scale(1.4);
+            }
+            50% {
+                transform: translateY(-50%) scale(1.6);
+            }
+        }
+
+        .connection-line {
+            transition: all 0.2s ease;
+        }
+
+        .connection-line:hover {
+            filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.8));
         }
 
         .toolbar {

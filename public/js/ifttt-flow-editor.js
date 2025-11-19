@@ -26,7 +26,12 @@
         isDraggingCanvas: false,
         isDraggingNode: false,
         draggedNode: null,
-        dragOffset: { x: 0, y: 0 }
+        dragOffset: { x: 0, y: 0 },
+        // Connection state
+        isConnecting: false,
+        connectionStart: null,
+        connectionPreview: null,
+        hoveredPort: null
     };
 
     // Socket.io connection
@@ -350,13 +355,18 @@
 
     // Create node on canvas
     function createNode(type, componentId, name, x, y) {
+        // Snap to grid (20px grid)
+        const gridSize = 20;
+        const snappedX = Math.round(x / gridSize) * gridSize;
+        const snappedY = Math.round(y / gridSize) * gridSize;
+        
         const node = {
             id: `node_${Date.now()}`,
             type,
             componentId,
             name,
-            x,
-            y,
+            x: snappedX,
+            y: snappedY,
             config: {}
         };
         
@@ -374,8 +384,28 @@
         
         const icon = getNodeIcon(node);
         
+        // Build ports based on node type
+        let ports = '';
+        if (node.type === 'trigger') {
+            // Triggers only have output
+            ports = '<div class="connection-point output" data-port-type="output" data-node-id="' + node.id + '"></div>';
+        } else if (node.type === 'condition') {
+            // Conditions have input and multiple outputs (TRUE/FALSE)
+            ports = `
+                <div class="connection-point input" data-port-type="input" data-node-id="${node.id}"></div>
+                <div class="connection-point output output-true" data-port-type="output" data-port-label="true" data-node-id="${node.id}" style="top: 30%; right: -6px;"></div>
+                <div class="connection-point output output-false" data-port-type="output" data-port-label="false" data-node-id="${node.id}" style="top: 70%; right: -6px;"></div>
+            `;
+        } else {
+            // Actions have input and optional output for chaining
+            ports = `
+                <div class="connection-point input" data-port-type="input" data-node-id="${node.id}"></div>
+                <div class="connection-point output" data-port-type="output" data-node-id="${node.id}"></div>
+            `;
+        }
+        
         nodeEl.innerHTML = `
-            <div class="connection-point input"></div>
+            ${ports}
             <div class="node-header">
                 <div class="node-icon">${icon}</div>
                 <div class="node-title">${node.name}</div>
@@ -383,11 +413,30 @@
             <div class="node-content">
                 <span class="badge badge-${node.type}">${node.type}</span>
             </div>
-            <div class="connection-point output"></div>
         `;
         
-        nodeEl.addEventListener('click', () => selectNode(node));
-        nodeEl.addEventListener('mousedown', (e) => startNodeDrag(e, node));
+        nodeEl.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('connection-point')) {
+                selectNode(node);
+            }
+        });
+        nodeEl.addEventListener('mousedown', (e) => {
+            if (!e.target.classList.contains('connection-point')) {
+                startNodeDrag(e, node);
+            }
+        });
+        
+        // Setup port event listeners
+        const ports_elements = nodeEl.querySelectorAll('.connection-point');
+        ports_elements.forEach(port => {
+            port.addEventListener('mousedown', (e) => handlePortMouseDown(e, node, port));
+            port.addEventListener('mouseenter', (e) => handlePortHover(e, port, true));
+            port.addEventListener('mouseleave', (e) => handlePortHover(e, port, false));
+            port.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handlePortClick(e, node, port);
+            });
+        });
         
         elements.flowCanvas.appendChild(nodeEl);
     }
@@ -537,6 +586,11 @@
     window.deleteNode = function(nodeId) {
         if (!confirm('Delete this node?')) return;
         
+        // Remove connections involving this node
+        state.currentFlow.connections = state.currentFlow.connections.filter(
+            conn => conn.fromNode !== nodeId && conn.toNode !== nodeId
+        );
+        
         // Remove from state
         state.currentFlow.nodes = state.currentFlow.nodes.filter(n => n.id !== nodeId);
         
@@ -546,10 +600,238 @@
             nodeEl.remove();
         }
         
+        // Redraw connections
+        drawConnections();
+        
         // Clear properties
         elements.nodeProperties.style.display = 'none';
         state.selectedNode = null;
     };
+
+    // Port interaction handlers
+    function handlePortMouseDown(e, node, port) {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        const portType = port.dataset.portType;
+        
+        // Only start connections from output ports
+        if (portType === 'output') {
+            state.isConnecting = true;
+            state.connectionStart = {
+                node: node,
+                port: port,
+                portLabel: port.dataset.portLabel || 'default'
+            };
+            
+            // Add visual feedback
+            port.classList.add('connecting');
+        }
+    }
+
+    function handlePortHover(e, port, isEntering) {
+        if (isEntering) {
+            state.hoveredPort = port;
+            port.classList.add('hovered');
+            
+            // Show if this is a valid connection target
+            if (state.isConnecting && state.connectionStart) {
+                const portType = port.dataset.portType;
+                const startNodeId = state.connectionStart.node.id;
+                const targetNodeId = port.dataset.nodeId;
+                
+                if (isValidConnection(startNodeId, targetNodeId, portType)) {
+                    port.classList.add('valid-target');
+                } else {
+                    port.classList.add('invalid-target');
+                }
+            }
+        } else {
+            state.hoveredPort = null;
+            port.classList.remove('hovered', 'valid-target', 'invalid-target');
+        }
+    }
+
+    function handlePortClick(e, node, port) {
+        e.stopPropagation();
+        
+        const portType = port.dataset.portType;
+        
+        if (state.isConnecting && state.connectionStart) {
+            // Complete the connection
+            if (portType === 'input') {
+                const fromNode = state.connectionStart.node.id;
+                const toNode = node.id;
+                const portLabel = state.connectionStart.portLabel;
+                
+                if (isValidConnection(fromNode, toNode, portType)) {
+                    createConnection(fromNode, toNode, portLabel);
+                } else {
+                    showNotification('Invalid connection: Cannot connect these nodes', 'error');
+                }
+            }
+            
+            // Clean up
+            if (state.connectionStart.port) {
+                state.connectionStart.port.classList.remove('connecting');
+            }
+            state.isConnecting = false;
+            state.connectionStart = null;
+            removeConnectionPreview();
+        }
+    }
+
+    // Validate connections
+    function isValidConnection(fromNodeId, toNodeId, targetPortType) {
+        // Can't connect to self
+        if (fromNodeId === toNodeId) return false;
+        
+        // Must be connecting to an input port
+        if (targetPortType !== 'input') return false;
+        
+        const fromNode = state.currentFlow.nodes.find(n => n.id === fromNodeId);
+        const toNode = state.currentFlow.nodes.find(n => n.id === toNodeId);
+        
+        if (!fromNode || !toNode) return false;
+        
+        // Triggers can connect to conditions or actions
+        if (fromNode.type === 'trigger') {
+            return toNode.type === 'condition' || toNode.type === 'action';
+        }
+        
+        // Conditions can connect to actions
+        if (fromNode.type === 'condition') {
+            return toNode.type === 'action';
+        }
+        
+        // Actions can chain to other actions
+        if (fromNode.type === 'action') {
+            return toNode.type === 'action';
+        }
+        
+        return false;
+    }
+
+    // Create connection
+    function createConnection(fromNodeId, toNodeId, portLabel = 'default') {
+        // Check if connection already exists
+        const exists = state.currentFlow.connections.find(
+            conn => conn.fromNode === fromNodeId && 
+                   conn.toNode === toNodeId && 
+                   conn.fromPort === portLabel
+        );
+        
+        if (exists) {
+            showNotification('Connection already exists', 'error');
+            return;
+        }
+        
+        const connection = {
+            id: `conn_${Date.now()}`,
+            fromNode: fromNodeId,
+            toNode: toNodeId,
+            fromPort: portLabel
+        };
+        
+        state.currentFlow.connections.push(connection);
+        drawConnections();
+        console.log('Created connection:', connection);
+    }
+
+    // Remove connection preview
+    function removeConnectionPreview() {
+        if (state.connectionPreview) {
+            state.connectionPreview.remove();
+            state.connectionPreview = null;
+        }
+    }
+
+    // Draw all connections
+    function drawConnections() {
+        const svg = elements.connectionsSvg;
+        svg.innerHTML = '';
+        
+        state.currentFlow.connections.forEach(conn => {
+            drawConnection(conn);
+        });
+    }
+
+    // Draw single connection
+    function drawConnection(connection) {
+        const fromNode = document.getElementById(connection.fromNode);
+        const toNode = document.getElementById(connection.toNode);
+        
+        if (!fromNode || !toNode) return;
+        
+        // Find the specific output port
+        let fromPort;
+        if (connection.fromPort === 'true' || connection.fromPort === 'false') {
+            fromPort = fromNode.querySelector(`.output-${connection.fromPort}`);
+        } else {
+            fromPort = fromNode.querySelector('.connection-point.output');
+        }
+        
+        const toPort = toNode.querySelector('.connection-point.input');
+        
+        if (!fromPort || !toPort) return;
+        
+        const fromRect = fromPort.getBoundingClientRect();
+        const toRect = toPort.getBoundingClientRect();
+        const canvasRect = elements.flowCanvas.getBoundingClientRect();
+        
+        const x1 = (fromRect.left + fromRect.width / 2 - canvasRect.left) / state.zoom;
+        const y1 = (fromRect.top + fromRect.height / 2 - canvasRect.top + 60) / state.zoom;
+        const x2 = (toRect.left + toRect.width / 2 - canvasRect.left) / state.zoom;
+        const y2 = (toRect.top + toRect.height / 2 - canvasRect.top + 60) / state.zoom;
+        
+        // Create curved path
+        const dx = x2 - x1;
+        const curve = Math.abs(dx) * 0.5;
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const pathData = `M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`;
+        
+        path.setAttribute('d', pathData);
+        path.setAttribute('stroke', getConnectionColor(connection.fromPort));
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('class', 'connection-line');
+        path.setAttribute('data-connection-id', connection.id);
+        
+        // Add click handler for deletion
+        path.style.cursor = 'pointer';
+        path.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('Delete this connection?')) {
+                deleteConnection(connection.id);
+            }
+        });
+        
+        // Hover effect
+        path.addEventListener('mouseenter', () => {
+            path.setAttribute('stroke-width', '3');
+            path.style.filter = 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.8))';
+        });
+        path.addEventListener('mouseleave', () => {
+            path.setAttribute('stroke-width', '2');
+            path.style.filter = 'none';
+        });
+        
+        elements.connectionsSvg.appendChild(path);
+    }
+
+    function getConnectionColor(portLabel) {
+        if (portLabel === 'true') return '#10b981'; // green
+        if (portLabel === 'false') return '#ef4444'; // red
+        return '#3b82f6'; // blue
+    }
+
+    function deleteConnection(connectionId) {
+        state.currentFlow.connections = state.currentFlow.connections.filter(
+            conn => conn.id !== connectionId
+        );
+        drawConnections();
+    }
 
     // Node dragging
     function startNodeDrag(e, node) {
@@ -590,10 +872,54 @@
                 nodeEl.style.left = `${state.draggedNode.x}px`;
                 nodeEl.style.top = `${state.draggedNode.y}px`;
             }
+            
+            // Redraw connections while dragging
+            drawConnections();
+        }
+        
+        // Handle connection preview
+        if (state.isConnecting && state.connectionStart) {
+            removeConnectionPreview();
+            
+            const fromPort = state.connectionStart.port;
+            const fromRect = fromPort.getBoundingClientRect();
+            const canvasRect = elements.flowCanvas.getBoundingClientRect();
+            
+            const x1 = (fromRect.left + fromRect.width / 2 - canvasRect.left) / state.zoom;
+            const y1 = (fromRect.top + fromRect.height / 2 - canvasRect.top + 60) / state.zoom;
+            const x2 = (e.clientX - canvasRect.left) / state.zoom;
+            const y2 = (e.clientY - canvasRect.top + 60) / state.zoom;
+            
+            const dx = x2 - x1;
+            const curve = Math.abs(dx) * 0.5;
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const pathData = `M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`;
+            
+            path.setAttribute('d', pathData);
+            path.setAttribute('stroke', '#64748b');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('stroke-dasharray', '5,5');
+            path.setAttribute('fill', 'none');
+            path.style.pointerEvents = 'none';
+            
+            elements.connectionsSvg.appendChild(path);
+            state.connectionPreview = path;
         }
     }
 
     function handleCanvasMouseUp(e) {
+        // Handle connection completion
+        if (state.isConnecting && state.connectionStart) {
+            // If we didn't click on a valid port, cancel the connection
+            if (state.connectionStart.port) {
+                state.connectionStart.port.classList.remove('connecting');
+            }
+            state.isConnecting = false;
+            state.connectionStart = null;
+            removeConnectionPreview();
+        }
+        
         state.isDraggingCanvas = false;
         state.isDraggingNode = false;
         state.draggedNode = null;
@@ -746,6 +1072,7 @@
         
         elements.flowCanvas.querySelectorAll('.flow-node').forEach(node => node.remove());
         elements.nodeProperties.style.display = 'none';
+        drawConnections();
     }
 
     // Notifications
