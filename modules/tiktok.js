@@ -1,4 +1,4 @@
-const { WebcastEventEmitter, createWebSocketUrl, ClientCloseCode } = require('@eulerstream/euler-websocket-sdk');
+const { WebcastEventEmitter, createWebSocketUrl, ClientCloseCode, deserializeWebSocketMessage, SchemaVersion } = require('@eulerstream/euler-websocket-sdk');
 const EventEmitter = require('events');
 const WebSocket = require('ws');
 
@@ -78,39 +78,55 @@ class TikTokConnector extends EventEmitter {
         try {
             this.currentUsername = username;
 
-            // Read Eulerstream API key from configuration
+            // Read Eulerstream WebSocket authentication key from configuration
             // Priority: Database setting > Environment variables
+            // NOTE: This can be either the Webhook Secret OR the euler_ API key
+            // Try Webhook Secret first if euler_ key doesn't work
             const apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
             
             if (!apiKey) {
-                const errorMsg = 'Eulerstream API key is required. Please configure it in one of the following ways:\n' +
-                    '1. Dashboard Settings: Set "tiktok_euler_api_key" in the settings\n' +
+                const errorMsg = 'Eulerstream authentication key is required for WebSocket connections.\n' +
+                    'Please configure it in one of the following ways:\n' +
+                    '1. Dashboard Settings: Set "tiktok_euler_api_key" to your key\n' +
                     '2. Environment Variable: Set EULER_API_KEY=your_key\n' +
-                    '3. Environment Variable: Set SIGN_API_KEY=your_key\n' +
-                    'Get your API key from: https://www.eulerstream.com';
+                    '3. Environment Variable: Set SIGN_API_KEY=your_key\n\n' +
+                    'Where to find your key:\n' +
+                    '- Go to https://www.eulerstream.com → Dashboard → Account Details\n' +
+                    '- Try "Webhook Secret" first (64-character hexadecimal string)\n' +
+                    '- If that doesn\'t work, try the REST API key (starts with "euler_")';
                 this.logger.error('❌ ' + errorMsg);
                 throw new Error(errorMsg);
             }
             
-            // Validate API key format (basic check)
+            // Validate key format
             if (typeof apiKey !== 'string' || apiKey.trim().length < 32) {
-                const errorMsg = 'Invalid Eulerstream API key format. The key should be a long alphanumeric string (64+ characters).';
+                const errorMsg = 'Invalid key format. The key should be at least 32 characters long.';
                 this.logger.error('❌ ' + errorMsg);
                 throw new Error(errorMsg);
             }
 
             this.logger.info(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
             this.logger.info(`⚙️  Connection Mode: Eulerstream WebSocket API`);
-            this.logger.info(`🔑 Eulerstream API Key configured (${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)})`);
-
+            this.logger.info(`🔑 Authentication Key configured (${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)})`);
+            
+            // Log key type for debugging
+            if (apiKey.startsWith('euler_')) {
+                this.logger.info(`   Key Type: REST API Key (starts with "euler_")`);
+                this.logger.warn(`   ⚠️  If connection fails: Try using Webhook Secret instead!`);
+            } else if (/^[a-fA-F0-9]{64}$/.test(apiKey)) {
+                this.logger.info(`   Key Type: Webhook Secret (64-char hexadecimal)`);
+            } else {
+                this.logger.warn(`   Key Type: Unknown format - connection may fail`);
+            }
             // Create WebSocket URL using Eulerstream SDK
-            // Configure features for optimal connection reliability
+            // Note: useEnterpriseApi requires Enterprise plan upgrade
+            // Community plan users should NOT enable this feature
             const wsUrl = createWebSocketUrl({
                 uniqueId: username,
-                apiKey: apiKey,
-                features: {
-                    useEnterpriseApi: true  // Use Enterprise API infrastructure (recommended for better reliability)
-                }
+                apiKey: apiKey
+                // features: {
+                //     useEnterpriseApi: true  // Only for Enterprise plan subscribers
+                // }
             });
 
             this.logger.info(`🔧 Connecting to Eulerstream WebSocket...`);
@@ -225,6 +241,30 @@ class TikTokConnector extends EventEmitter {
     }
 
     /**
+     * Map EulerStream event types to internal event names
+     * EulerStream uses names like "WebcastChatMessage", we need "chat"
+     * @private
+     */
+    _mapEulerStreamEventType(eulerType) {
+        const mapping = {
+            'WebcastChatMessage': 'chat',
+            'WebcastGiftMessage': 'gift',
+            'WebcastSocialMessage': 'social',
+            'WebcastLikeMessage': 'like',
+            'WebcastMemberMessage': 'member',
+            'WebcastRoomUserSeqMessage': 'roomUser',
+            'WebcastSubscribeMessage': 'subscribe',
+            'WebcastShareMessage': 'share',
+            'WebcastQuestionNewMessage': 'question',
+            'WebcastLinkMicBattle': 'linkMicBattle',
+            'WebcastLinkMicArmies': 'linkMicArmies',
+            'WebcastEmoteChatMessage': 'emote'
+        };
+        
+        return mapping[eulerType] || null;
+    }
+
+    /**
      * Setup WebSocket event handlers
      * @private
      */
@@ -315,6 +355,76 @@ class TikTokConnector extends EventEmitter {
                 module: 'eulerstream-websocket',
                 timestamp: new Date().toISOString()
             });
+        });
+
+        // Handle incoming WebSocket messages
+        this.ws.on('message', (data) => {
+            try {
+                // Log that we received a message (using info level for visibility)
+                this.logger.info(`📨 Received WebSocket message: ${typeof data}, length: ${data ? data.length : 0}`);
+                
+                // First, try to parse as JSON (EulerStream default format)
+                let parsedData;
+                
+                if (typeof data === 'string') {
+                    // Text message - parse as JSON
+                    this.logger.info('Parsing as text/JSON...');
+                    parsedData = JSON.parse(data);
+                } else {
+                    // Binary message - try JSON first, then protobuf
+                    const textData = data.toString('utf-8');
+                    try {
+                        this.logger.info('Trying JSON parse on binary data...');
+                        parsedData = JSON.parse(textData);
+                    } catch (jsonError) {
+                        // If JSON parsing fails, try protobuf deserialization
+                        this.logger.info('JSON failed, trying protobuf...');
+                        const frame = deserializeWebSocketMessage(
+                            new Uint8Array(data),
+                            SchemaVersion.V2
+                        );
+                        parsedData = frame;
+                    }
+                }
+
+                this.logger.info(`Parsed data keys: ${JSON.stringify(Object.keys(parsedData || {}))}`);
+
+                // Process messages
+                if (parsedData && parsedData.messages && Array.isArray(parsedData.messages)) {
+                    this.logger.info(`🎉 Processing ${parsedData.messages.length} messages from WebSocket`);
+                    for (const message of parsedData.messages) {
+                        if (message.type && message.data) {
+                            // Map EulerStream event types to our internal event names
+                            // EulerStream uses names like "WebcastChatMessage", we need "chat"
+                            const eventType = this._mapEulerStreamEventType(message.type);
+                            
+                            if (eventType) {
+                                this.logger.info(`✅ Emitting event: ${eventType} (from ${message.type})`);
+                                // Emit the parsed event to our event emitter
+                                this.eventEmitter.emit(eventType, message.data);
+                            } else {
+                                this.logger.warn(`⚠️ Unknown event type: ${message.type} - skipping`);
+                            }
+                        } else {
+                            this.logger.warn(`Message missing type or data: ${JSON.stringify(message).substring(0, 100)}`);
+                        }
+                    }
+                } else {
+                    this.logger.warn(`⚠️ Parsed data does not contain messages array. Keys: ${JSON.stringify(Object.keys(parsedData || {}))}`);
+                    this.logger.warn(`Data preview: ${JSON.stringify(parsedData).substring(0, 200)}`);
+                }
+            } catch (error) {
+                // Log comprehensive error information in a single message
+                const errorDetails = {
+                    message: error.message || 'Unknown error',
+                    name: error.name || 'Error',
+                    stack: error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : 'No stack trace',
+                    dataLength: data ? data.length : 0,
+                    dataType: typeof data,
+                    dataPreview: data ? (typeof data === 'string' ? data.substring(0, 100) : Buffer.from(data).toString('utf-8', 0, 100)) : 'No data'
+                };
+                this.logger.error(`WebSocket message processing failed: ${JSON.stringify(errorDetails)}`);
+            }
         });
 
         // Setup Eulerstream event handlers

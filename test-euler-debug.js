@@ -6,7 +6,8 @@
 const { WebcastEventEmitter, createWebSocketUrl, ClientCloseCode } = require('@eulerstream/euler-websocket-sdk');
 const WebSocket = require('ws');
 
-const API_KEY = '69247cb1f28bac46e315f650c64507e828acb4f61718b2bf5526c5fbbdebb7a8';
+// USE YOUR API KEY (starts with "euler_"), NOT the webhook secret!
+const API_KEY = process.env.EULER_API_KEY || 'euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2';
 const USERNAME = 'xxmegsxx'; // Live user
 
 console.log('='.repeat(60));
@@ -20,10 +21,11 @@ console.log('');
 console.log('Test 1: Generate WebSocket URL');
 const wsUrl = createWebSocketUrl({
     uniqueId: USERNAME,
-    apiKey: API_KEY,
-    features: {
-        useEnterpriseApi: true  // Use Enterprise API infrastructure (recommended)
-    }
+    apiKey: API_KEY
+    // Note: useEnterpriseApi requires Enterprise plan
+    // features: {
+    //     useEnterpriseApi: true
+    // }
 });
 console.log(`Generated URL: ${wsUrl}`);
 console.log('');
