@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Control Overlay - TikTok Stream Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #weather-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Debug overlay */
+        #debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+            z-index: 10000;
+            max-width: 300px;
+        }
+
+        #debug-info.active {
+            display: block;
+        }
+
+        /* Lightning flash overlay */
+        #lightning-flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        /* Sound control (hidden) */
+        audio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="weather-container">
+        <canvas id="weather-canvas"></canvas>
+    </div>
+    <div id="lightning-flash"></div>
+    <div id="debug-info"></div>
+
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <!-- Weather Engine -->
+    <script>
+        /**
+         * Weather Control Engine
+         * 
+         * Modern GPU-accelerated weather effects using Canvas 2D
+         * Supports: rain, snow, storm, fog, thunder, sunbeam, glitchclouds
+         */
+
+        // Configuration
+        const config = {
+            debug: new URLSearchParams(window.location.search).get('debug') === 'true',
+            soundEnabled: true,
+            soundVolume: 0.3,
+            maxParticles: 500,
+            fpsCap: 60
+        };
+
+        // Canvas setup
+        const canvas = document.getElementById('weather-canvas');
+        const ctx = canvas.getContext('2d', { alpha: true });
+        const debugInfo = document.getElementById('debug-info');
+        const lightningFlash = document.getElementById('lightning-flash');
+
+        // Responsive canvas sizing
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // State
+        let activeEffects = [];
+        let particles = [];
+        let animationId = null;
+        let lastFrameTime = 0;
+        let fps = 0;
+        let socket = null;
+
+        // Particle class
+        class Particle {
+            constructor(type, config) {
+                this.type = type;
+                this.reset(config);
+            }
+
+            reset(config = {}) {
+                this.x = Math.random() * canvas.width;
+                this.y = config.startFromTop ? -10 : Math.random() * canvas.height;
+                this.z = Math.random(); // Depth for parallax
+                
+                switch (this.type) {
+                    case 'rain':
+                        this.speedY = 10 + Math.random() * 10;
+                        this.speedX = Math.random() * 2 - 1;
+                        this.length = 10 + Math.random() * 20;
+                        this.width = 1 + Math.random();
+                        this.alpha = 0.3 + Math.random() * 0.4;
+                        break;
+                    
+                    case 'snow':
+                        this.speedY = 1 + Math.random() * 2;
+                        this.speedX = Math.random() * 2 - 1;
+                        this.size = 2 + Math.random() * 4;
+                        this.alpha = 0.4 + Math.random() * 0.6;
+                        this.wobble = Math.random() * Math.PI * 2;
+                        this.wobbleSpeed = 0.02 + Math.random() * 0.03;
+                        break;
+                    
+                    case 'storm':
+                        this.speedY = 15 + Math.random() * 15;
+                        this.speedX = 5 + Math.random() * 10;
+                        this.length = 15 + Math.random() * 30;
+                        this.width = 1.5 + Math.random();
+                        this.alpha = 0.4 + Math.random() * 0.5;
+                        break;
+                    
+                    case 'fog':
+                        this.speedY = 0.2 + Math.random() * 0.3;
+                        this.speedX = 0.5 + Math.random() - 0.5;
+                        this.size = 50 + Math.random() * 150;
+                        this.alpha = 0.1 + Math.random() * 0.2;
+                        this.life = 0;
+                        this.maxLife = 200 + Math.random() * 300;
+                        break;
+                }
+            }
+
+            update(deltaTime, intensity = 1.0) {
+                const speed = deltaTime / 16.67; // Normalize to 60fps
+                
+                switch (this.type) {
+                    case 'rain':
+                        this.y += this.speedY * speed * intensity;
+                        this.x += this.speedX * speed;
+                        if (this.y > canvas.height) this.reset({ startFromTop: true });
+                        if (this.x < 0 || this.x > canvas.width) this.x = Math.random() * canvas.width;
+                        break;
+                    
+                    case 'snow':
+                        this.y += this.speedY * speed * intensity;
+                        this.wobble += this.wobbleSpeed * speed;
+                        this.x += Math.sin(this.wobble) * 0.5 * speed + this.speedX * speed;
+                        if (this.y > canvas.height) this.reset({ startFromTop: true });
+                        if (this.x < -10) this.x = canvas.width + 10;
+                        if (this.x > canvas.width + 10) this.x = -10;
+                        break;
+                    
+                    case 'storm':
+                        this.y += this.speedY * speed * intensity;
+                        this.x += this.speedX * speed * intensity;
+                        if (this.y > canvas.height) this.reset({ startFromTop: true });
+                        if (this.x > canvas.width + 50) this.x = -50;
+                        break;
+                    
+                    case 'fog':
+                        this.y += this.speedY * speed;
+                        this.x += this.speedX * speed;
+                        this.life += speed;
+                        this.alpha = Math.sin((this.life / this.maxLife) * Math.PI) * 0.2;
+                        if (this.life > this.maxLife) this.reset();
+                        break;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                
+                switch (this.type) {
+                    case 'rain':
+                    case 'storm':
+                        ctx.strokeStyle = this.type === 'storm' ? '#6ba3d6' : '#a0c4e8';
+                        ctx.lineWidth = this.width;
+                        ctx.beginPath();
+                        ctx.moveTo(this.x, this.y);
+                        ctx.lineTo(this.x - this.speedX * 2, this.y - this.length);
+                        ctx.stroke();
+                        break;
+                    
+                    case 'snow':
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Add sparkle
+                        if (Math.random() > 0.95) {
+                            ctx.fillStyle = '#ffffaa';
+                            ctx.globalAlpha = 0.8;
+                            ctx.beginPath();
+                            ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        break;
+                    
+                    case 'fog':
+                        const gradient = ctx.createRadialGradient(
+                            this.x, this.y, 0,
+                            this.x, this.y, this.size
+                        );
+                        gradient.addColorStop(0, `rgba(200, 200, 220, ${this.alpha})`);
+                        gradient.addColorStop(0.5, `rgba(180, 180, 200, ${this.alpha * 0.5})`);
+                        gradient.addColorStop(1, 'rgba(180, 180, 200, 0)');
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(
+                            this.x - this.size / 2,
+                            this.y - this.size / 2,
+                            this.size,
+                            this.size
+                        );
+                        break;
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // Effect handlers
+        const effects = {
+            rain: {
+                start(intensity = 0.5, duration = 10000) {
+                    const particleCount = Math.floor(200 * intensity);
+                    for (let i = 0; i < particleCount; i++) {
+                        particles.push(new Particle('rain'));
+                    }
+                    
+                    activeEffects.push({
+                        type: 'rain',
+                        intensity,
+                        startTime: Date.now(),
+                        duration
+                    });
+
+                    log('🌧️ Rain effect started');
+                },
+                stop() {
+                    particles = particles.filter(p => p.type !== 'rain');
+                    activeEffects = activeEffects.filter(e => e.type !== 'rain');
+                    log('🌧️ Rain effect stopped');
+                }
+            },
+
+            snow: {
+                start(intensity = 0.5, duration = 10000) {
+                    const particleCount = Math.floor(150 * intensity);
+                    for (let i = 0; i < particleCount; i++) {
+                        particles.push(new Particle('snow'));
+                    }
+                    
+                    activeEffects.push({
+                        type: 'snow',
+                        intensity,
+                        startTime: Date.now(),
+                        duration
+                    });
+
+                    log('❄️ Snow effect started');
+                },
+                stop() {
+                    particles = particles.filter(p => p.type !== 'snow');
+                    activeEffects = activeEffects.filter(e => e.type !== 'snow');
+                    log('❄️ Snow effect stopped');
+                }
+            },
+
+            storm: {
+                start(intensity = 0.7, duration = 8000) {
+                    const particleCount = Math.floor(300 * intensity);
+                    for (let i = 0; i < particleCount; i++) {
+                        particles.push(new Particle('storm'));
+                    }
+                    
+                    activeEffects.push({
+                        type: 'storm',
+                        intensity,
+                        startTime: Date.now(),
+                        duration,
+                        nextShake: Date.now() + Math.random() * 2000
+                    });
+
+                    log('⛈️ Storm effect started');
+                },
+                stop() {
+                    particles = particles.filter(p => p.type !== 'storm');
+                    activeEffects = activeEffects.filter(e => e.type !== 'storm');
+                    log('⛈️ Storm effect stopped');
+                }
+            },
+
+            fog: {
+                start(intensity = 0.4, duration = 15000) {
+                    const particleCount = Math.floor(30 * intensity);
+                    for (let i = 0; i < particleCount; i++) {
+                        particles.push(new Particle('fog'));
+                    }
+                    
+                    activeEffects.push({
+                        type: 'fog',
+                        intensity,
+                        startTime: Date.now(),
+                        duration
+                    });
+
+                    log('🌫️ Fog effect started');
+                },
+                stop() {
+                    particles = particles.filter(p => p.type !== 'fog');
+                    activeEffects = activeEffects.filter(e => e.type !== 'fog');
+                    log('🌫️ Fog effect stopped');
+                }
+            },
+
+            thunder: {
+                start(intensity = 0.8, duration = 5000) {
+                    activeEffects.push({
+                        type: 'thunder',
+                        intensity,
+                        startTime: Date.now(),
+                        duration,
+                        nextFlash: Date.now() + Math.random() * 1000
+                    });
+
+                    log('⚡ Thunder effect started');
+                },
+                stop() {
+                    activeEffects = activeEffects.filter(e => e.type !== 'thunder');
+                    log('⚡ Thunder effect stopped');
+                }
+            },
+
+            sunbeam: {
+                start(intensity = 0.6, duration = 12000) {
+                    activeEffects.push({
+                        type: 'sunbeam',
+                        intensity,
+                        startTime: Date.now(),
+                        duration,
+                        beams: Array.from({ length: 5 }, (_, i) => ({
+                            x: Math.random() * canvas.width,
+                            angle: Math.random() * Math.PI / 4 - Math.PI / 8,
+                            width: 50 + Math.random() * 100,
+                            speed: 0.5 + Math.random() * 0.5
+                        }))
+                    });
+
+                    log('☀️ Sunbeam effect started');
+                },
+                stop() {
+                    activeEffects = activeEffects.filter(e => e.type !== 'sunbeam');
+                    log('☀️ Sunbeam effect stopped');
+                }
+            },
+
+            glitchclouds: {
+                start(intensity = 0.7, duration = 8000) {
+                    activeEffects.push({
+                        type: 'glitchclouds',
+                        intensity,
+                        startTime: Date.now(),
+                        duration,
+                        glitchLines: []
+                    });
+
+                    log('☁️ Glitch Clouds effect started');
+                },
+                stop() {
+                    activeEffects = activeEffects.filter(e => e.type !== 'glitchclouds');
+                    log('☁️ Glitch Clouds effect stopped');
+                }
+            }
+        };
+
+        // Render loop
+        function render(timestamp) {
+            const deltaTime = timestamp - lastFrameTime;
+            lastFrameTime = timestamp;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate FPS
+            fps = Math.round(1000 / deltaTime);
+
+            // Update and draw particles
+            particles.forEach(particle => {
+                const effect = activeEffects.find(e => e.type === particle.type);
+                const intensity = effect ? effect.intensity : 1.0;
+                particle.update(deltaTime, intensity);
+                particle.draw();
+            });
+
+            // Handle special effects
+            activeEffects.forEach(effect => {
+                const elapsed = Date.now() - effect.startTime;
+                
+                // Auto-stop after duration
+                if (elapsed > effect.duration) {
+                    if (effects[effect.type]) {
+                        effects[effect.type].stop();
+                    }
+                    return;
+                }
+
+                // Thunder effect
+                if (effect.type === 'thunder' && Date.now() >= effect.nextFlash) {
+                    triggerLightning(effect.intensity);
+                    effect.nextFlash = Date.now() + 500 + Math.random() * 2000;
+                }
+
+                // Sunbeam effect
+                if (effect.type === 'sunbeam') {
+                    drawSunbeams(effect);
+                }
+
+                // Glitch clouds effect
+                if (effect.type === 'glitchclouds') {
+                    drawGlitchClouds(effect);
+                }
+
+                // Storm camera shake
+                if (effect.type === 'storm' && Date.now() >= effect.nextShake) {
+                    shakeCamera(effect.intensity);
+                    effect.nextShake = Date.now() + 1000 + Math.random() * 2000;
+                }
+            });
+
+            // Debug info
+            if (config.debug) {
+                updateDebugInfo();
+            }
+
+            // Continue animation
+            animationId = requestAnimationFrame(render);
+        }
+
+        // Lightning flash effect
+        function triggerLightning(intensity) {
+            lightningFlash.style.opacity = 0.3 + intensity * 0.5;
+            setTimeout(() => {
+                lightningFlash.style.opacity = 0;
+            }, 50 + Math.random() * 100);
+
+            // Sometimes double flash
+            if (Math.random() > 0.5) {
+                setTimeout(() => {
+                    lightningFlash.style.opacity = 0.2 + intensity * 0.3;
+                    setTimeout(() => {
+                        lightningFlash.style.opacity = 0;
+                    }, 30);
+                }, 150);
+            }
+        }
+
+        // Camera shake effect
+        function shakeCamera(intensity) {
+            const shakeAmount = 5 * intensity;
+            const originalTransform = canvas.style.transform;
+            
+            const shake = () => {
+                const x = (Math.random() - 0.5) * shakeAmount;
+                const y = (Math.random() - 0.5) * shakeAmount;
+                canvas.style.transform = `translate(${x}px, ${y}px)`;
+            };
+
+            let shakeCount = 0;
+            const shakeInterval = setInterval(() => {
+                shake();
+                shakeCount++;
+                if (shakeCount > 5) {
+                    clearInterval(shakeInterval);
+                    canvas.style.transform = originalTransform;
+                }
+            }, 30);
+        }
+
+        // Draw sunbeams
+        function drawSunbeams(effect) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            
+            effect.beams.forEach(beam => {
+                beam.x += beam.speed;
+                if (beam.x > canvas.width + 100) {
+                    beam.x = -100;
+                }
+
+                const gradient = ctx.createLinearGradient(
+                    beam.x, 0,
+                    beam.x + beam.width, canvas.height
+                );
+                gradient.addColorStop(0, `rgba(255, 220, 100, ${0.1 * effect.intensity})`);
+                gradient.addColorStop(0.5, `rgba(255, 200, 80, ${0.15 * effect.intensity})`);
+                gradient.addColorStop(1, `rgba(255, 180, 60, ${0.05 * effect.intensity})`);
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(beam.x, 0, beam.width, canvas.height);
+            });
+            
+            ctx.restore();
+        }
+
+        // Draw glitch clouds
+        function drawGlitchClouds(effect) {
+            ctx.save();
+            
+            // Generate random glitch lines
+            if (Math.random() > 0.9) {
+                effect.glitchLines = Array.from({ length: 3 + Math.floor(Math.random() * 5) }, () => ({
+                    y: Math.random() * canvas.height,
+                    height: 2 + Math.random() * 10,
+                    color: ['#ff00ff', '#00ffff', '#ffff00'][Math.floor(Math.random() * 3)],
+                    offset: Math.random() * 20 - 10,
+                    life: 2
+                }));
+            }
+
+            // Draw and update glitch lines
+            effect.glitchLines = effect.glitchLines.filter(line => {
+                if (line.life <= 0) return false;
+                
+                ctx.fillStyle = line.color;
+                ctx.globalAlpha = 0.3 * effect.intensity * (line.life / 2);
+                ctx.fillRect(line.offset, line.y, canvas.width, line.height);
+                
+                line.life--;
+                return true;
+            });
+
+            // Draw cloudy noise
+            if (Math.random() > 0.7) {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    if (Math.random() > 0.99) {
+                        const noise = Math.random() * 100;
+                        data[i] = noise;     // R
+                        data[i + 1] = noise; // G
+                        data[i + 2] = noise; // B
+                        data[i + 3] = 30 * effect.intensity; // A
+                    }
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            ctx.restore();
+        }
+
+        // Debug info display
+        function updateDebugInfo() {
+            debugInfo.classList.add('active');
+            debugInfo.innerHTML = `
+                <strong>Weather Control Debug</strong><br>
+                FPS: ${fps}<br>
+                Particles: ${particles.length}<br>
+                Active Effects: ${activeEffects.length}<br>
+                ${activeEffects.map(e => `- ${e.type} (${Math.round(e.intensity * 100)}%)`).join('<br>')}
+            `;
+        }
+
+        // Logging
+        function log(message) {
+            if (config.debug) {
+                console.log(`[Weather Control] ${message}`);
+            }
+        }
+
+        // Socket.IO connection
+        function initSocket() {
+            socket = io({
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 10
+            });
+
+            socket.on('connect', () => {
+                log('✅ Connected to server');
+            });
+
+            socket.on('disconnect', () => {
+                log('❌ Disconnected from server');
+            });
+
+            socket.on('weather:trigger', (data) => {
+                log(`🌦️ Received weather event: ${data.action}`);
+                handleWeatherEvent(data);
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`❌ Connection error: ${error.message}`);
+            });
+        }
+
+        // Handle weather events from WebSocket
+        function handleWeatherEvent(data) {
+            const { action, intensity, duration } = data;
+            
+            if (effects[action]) {
+                effects[action].start(intensity, duration);
+            } else {
+                log(`⚠️ Unknown weather effect: ${action}`);
+            }
+        }
+
+        // Initialize
+        function init() {
+            log('🌦️ Weather Control Overlay initializing...');
+            
+            // Start render loop
+            lastFrameTime = performance.now();
+            animationId = requestAnimationFrame(render);
+            
+            // Connect to WebSocket
+            initSocket();
+            
+            log('✅ Weather Control Overlay initialized');
+        }
+
+        // Start on load
+        window.addEventListener('load', init);
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+    </script>
+</body>
+</html>
