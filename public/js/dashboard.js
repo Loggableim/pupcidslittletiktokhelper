@@ -1080,6 +1080,13 @@ async function saveSoundboardSettings() {
     }
 }
 
+// Helper function to escape HTML and prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 async function loadGiftSounds() {
     try {
         const response = await fetch('/api/soundboard/gifts');
@@ -1102,26 +1109,38 @@ async function loadGiftSounds() {
             row.className = 'border-b border-gray-700';
 
             const animationInfo = gift.animationUrl && gift.animationType !== 'none'
-                ? `<span class="text-green-400">${gift.animationType}</span>`
+                ? `<span class="text-green-400">${escapeHtml(gift.animationType)}</span>`
                 : '<span class="text-gray-500">none</span>';
+
+            // Create test button
+            const testBtn = document.createElement('button');
+            testBtn.className = 'bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700 mr-1';
+            testBtn.dataset.action = 'test-sound';
+            testBtn.dataset.url = gift.mp3Url;
+            testBtn.dataset.volume = gift.volume;
+            testBtn.textContent = '🔊 Test';
+            
+            // Create delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'bg-red-600 px-2 py-1 rounded text-xs hover:bg-red-700';
+            deleteBtn.dataset.action = 'delete-gift';
+            deleteBtn.dataset.giftId = gift.giftId;
+            deleteBtn.textContent = '🗑️ Delete';
 
             row.innerHTML = `
                 <td class="py-2 pr-4">${gift.giftId}</td>
-                <td class="py-2 pr-4 font-semibold">${gift.label}</td>
-                <td class="py-2 pr-4 text-sm truncate max-w-xs">${gift.mp3Url}</td>
+                <td class="py-2 pr-4 font-semibold">${escapeHtml(gift.label)}</td>
+                <td class="py-2 pr-4 text-sm truncate max-w-xs">${escapeHtml(gift.mp3Url)}</td>
                 <td class="py-2 pr-4">${gift.volume}</td>
                 <td class="py-2 pr-4">${animationInfo}</td>
-                <td class="py-2">
-                    <button onclick="testGiftSound('${gift.mp3Url}', ${gift.volume})"
-                            class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700 mr-1">
-                        🔊 Test
-                    </button>
-                    <button onclick="deleteGiftSound(${gift.giftId})"
-                            class="bg-red-600 px-2 py-1 rounded text-xs hover:bg-red-700">
-                        🗑️ Delete
-                    </button>
-                </td>
+                <td class="py-2"></td>
             `;
+            
+            // Append buttons to the last cell
+            const actionsCell = row.querySelector('td:last-child');
+            actionsCell.appendChild(testBtn);
+            actionsCell.appendChild(deleteBtn);
+            
             tbody.appendChild(row);
         });
 
@@ -1279,22 +1298,35 @@ async function searchMyInstants() {
         data.results.forEach(sound => {
             const div = document.createElement('div');
             div.className = 'bg-gray-600 p-2 rounded flex items-center justify-between';
+            
+            // Create play button
+            const playBtn = document.createElement('button');
+            playBtn.className = 'bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700';
+            playBtn.dataset.action = 'test-sound';
+            playBtn.dataset.url = sound.url;
+            playBtn.textContent = '🔊';
+            
+            // Create use button
+            const useBtn = document.createElement('button');
+            useBtn.className = 'bg-green-600 px-2 py-1 rounded text-xs hover:bg-green-700';
+            useBtn.dataset.action = 'use-sound';
+            useBtn.dataset.name = sound.name;
+            useBtn.dataset.url = sound.url;
+            useBtn.textContent = 'Use';
+            
             div.innerHTML = `
                 <div class="flex-1">
-                    <div class="font-semibold text-sm">${sound.name}</div>
-                    <div class="text-xs text-gray-400 truncate">${sound.url}</div>
+                    <div class="font-semibold text-sm">${escapeHtml(sound.name)}</div>
+                    <div class="text-xs text-gray-400 truncate">${escapeHtml(sound.url)}</div>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="testGiftSound('${sound.url}', 1.0)"
-                            class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700">
-                        🔊
-                    </button>
-                    <button onclick="useMyInstantsSound('${sound.name}', '${sound.url}')"
-                            class="bg-green-600 px-2 py-1 rounded text-xs hover:bg-green-700">
-                        Use
-                    </button>
-                </div>
+                <div class="flex gap-2"></div>
             `;
+            
+            // Append buttons to the actions div
+            const actionsDiv = div.querySelector('.flex.gap-2');
+            actionsDiv.appendChild(playBtn);
+            actionsDiv.appendChild(useBtn);
+            
             resultsDiv.appendChild(div);
         });
 
@@ -2299,6 +2331,25 @@ document.addEventListener('click', function(event) {
     if (testSoundBtn) {
         const soundType = testSoundBtn.dataset.testSound;
         testEventSound(soundType);
+        return;
+    }
+    
+    // Handle MyInstants and gift sound action buttons
+    const actionBtn = event.target.closest('[data-action]');
+    if (actionBtn) {
+        const action = actionBtn.dataset.action;
+        if (action === 'test-sound') {
+            const url = actionBtn.dataset.url;
+            const volume = parseFloat(actionBtn.dataset.volume) || 1.0;
+            testGiftSound(url, volume);
+        } else if (action === 'use-sound') {
+            const name = actionBtn.dataset.name;
+            const url = actionBtn.dataset.url;
+            useMyInstantsSound(name, url);
+        } else if (action === 'delete-gift') {
+            const giftId = parseInt(actionBtn.dataset.giftId);
+            deleteGiftSound(giftId);
+        }
         return;
     }
 });
