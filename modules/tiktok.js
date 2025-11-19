@@ -104,9 +104,13 @@ class TikTokConnector extends EventEmitter {
             this.logger.info(`🔑 Eulerstream API Key configured (${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)})`);
 
             // Create WebSocket URL using Eulerstream SDK
+            // Configure features for optimal connection reliability
             const wsUrl = createWebSocketUrl({
                 uniqueId: username,
-                apiKey: apiKey
+                apiKey: apiKey,
+                features: {
+                    useEnterpriseApi: true  // Use Enterprise API infrastructure (recommended for better reliability)
+                }
             });
 
             this.logger.info(`🔧 Connecting to Eulerstream WebSocket...`);

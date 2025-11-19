@@ -48,6 +48,21 @@ For backward compatibility, the legacy environment variable name is also support
 SIGN_API_KEY=your_eulerstream_api_key_here
 ```
 
+## Connection Configuration
+
+### Enterprise API Infrastructure (Recommended)
+
+This application now uses the **Enterprise API infrastructure** by default, which is recommended by Eulerstream for better reliability and live stream detection. This feature:
+
+- **Improves live stream detection accuracy**: Better detection of when streamers go live
+- **Enhanced reliability**: More stable WebSocket connections
+- **Better API key handling**: Proper validation for both standard and enterprise API keys
+
+**Technical Details:**
+The application automatically enables the `useEnterpriseApi` feature flag when connecting to Eulerstream. This ensures optimal compatibility with both standard API keys and enterprise/account API keys.
+
+**No configuration needed**: This is enabled automatically in the connection settings.
+
 ## Common Issues and Troubleshooting
 
 ### Error: 4401 - INVALID_AUTH
@@ -96,10 +111,18 @@ Eulerstream WebSocket disconnected: 4404 - NOT_LIVE
 
 **Causes:**
 - The TikTok user is not currently streaming
+- API configuration issue preventing proper live stream detection (less common)
 
 **Solutions:**
 1. **Verify Stream Status:** Check if the user is actually live on TikTok
 2. **Wait and Retry:** Wait for the user to start streaming, then reconnect
+3. **Check API Configuration:** If you're certain the user is live:
+   - Ensure you're using the latest version of the application (includes Enterprise API fix)
+   - Verify your API key is valid and has proper permissions
+   - Try regenerating your API key from the Eulerstream dashboard
+   - Contact Eulerstream support if the issue persists
+
+**Note:** As of the latest update, the application uses the Enterprise API infrastructure which significantly improves live stream detection accuracy. If you continue to get NOT_LIVE errors for streams that are actually live, ensure you're running the latest version.
 
 ### Error: No API Key Configured
 
