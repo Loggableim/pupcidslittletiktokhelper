@@ -253,7 +253,7 @@ pupcidslittletiktokhelper/
 ├── public/                       # Frontend (HTML/CSS/JS)
 │   ├── dashboard.html           # Haupt-Dashboard (Bootstrap 5)
 │   ├── overlay.html             # OBS Browser Source Overlay
-│   ├── soundboard.html          # Soundboard UI
+│   ├── soundboard/            # Plugin-based soundboard UI
 │   ├── hud-config.html          # HUD-Konfigurator
 │   ├── leaderboard-overlay.html # Leaderboard Overlay
 │   ├── minigames-overlay.html   # Minigames Overlay
