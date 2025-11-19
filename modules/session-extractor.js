@@ -26,7 +26,11 @@ class SessionExtractor {
      */
     async extractSessionId(options = {}) {
         if (this.isExtracting) {
-            throw new Error('Session extraction already in progress');
+            return {
+                success: false,
+                inProgress: true,
+                message: 'Session extraction already in progress. Please wait for the current extraction to complete.'
+            };
         }
 
         this.isExtracting = true;
@@ -185,6 +189,11 @@ class SessionExtractor {
         });
 
         if (result.success) {
+            return result;
+        }
+
+        // If extraction is already in progress, return the status
+        if (result.inProgress) {
             return result;
         }
 
