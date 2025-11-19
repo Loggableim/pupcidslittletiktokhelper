@@ -78,31 +78,46 @@ class TikTokConnector extends EventEmitter {
         try {
             this.currentUsername = username;
 
-            // Read Eulerstream API key from configuration
+            // Read Eulerstream WebSocket authentication key from configuration
             // Priority: Database setting > Environment variables
+            // NOTE: This can be either the Webhook Secret OR the euler_ API key
+            // Try Webhook Secret first if euler_ key doesn't work
             const apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
             
             if (!apiKey) {
-                const errorMsg = 'Eulerstream API key is required. Please configure it in one of the following ways:\n' +
-                    '1. Dashboard Settings: Set "tiktok_euler_api_key" in the settings\n' +
+                const errorMsg = 'Eulerstream authentication key is required for WebSocket connections.\n' +
+                    'Please configure it in one of the following ways:\n' +
+                    '1. Dashboard Settings: Set "tiktok_euler_api_key" to your key\n' +
                     '2. Environment Variable: Set EULER_API_KEY=your_key\n' +
-                    '3. Environment Variable: Set SIGN_API_KEY=your_key\n' +
-                    'Get your API key from: https://www.eulerstream.com';
+                    '3. Environment Variable: Set SIGN_API_KEY=your_key\n\n' +
+                    'Where to find your key:\n' +
+                    '- Go to https://www.eulerstream.com → Dashboard → Account Details\n' +
+                    '- Try "Webhook Secret" first (64-character hexadecimal string)\n' +
+                    '- If that doesn\'t work, try the REST API key (starts with "euler_")';
                 this.logger.error('❌ ' + errorMsg);
                 throw new Error(errorMsg);
             }
             
-            // Validate API key format (basic check)
+            // Validate key format
             if (typeof apiKey !== 'string' || apiKey.trim().length < 32) {
-                const errorMsg = 'Invalid Eulerstream API key format. The key should be a long alphanumeric string (64+ characters).';
+                const errorMsg = 'Invalid key format. The key should be at least 32 characters long.';
                 this.logger.error('❌ ' + errorMsg);
                 throw new Error(errorMsg);
             }
 
             this.logger.info(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
             this.logger.info(`⚙️  Connection Mode: Eulerstream WebSocket API`);
-            this.logger.info(`🔑 Eulerstream API Key configured (${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)})`);
-
+            this.logger.info(`🔑 Authentication Key configured (${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)})`);
+            
+            // Log key type for debugging
+            if (apiKey.startsWith('euler_')) {
+                this.logger.info(`   Key Type: REST API Key (starts with "euler_")`);
+                this.logger.warn(`   ⚠️  If connection fails: Try using Webhook Secret instead!`);
+            } else if (/^[a-fA-F0-9]{64}$/.test(apiKey)) {
+                this.logger.info(`   Key Type: Webhook Secret (64-char hexadecimal)`);
+            } else {
+                this.logger.warn(`   Key Type: Unknown format - connection may fail`);
+            }
             // Create WebSocket URL using Eulerstream SDK
             // Configure features for optimal connection reliability
             const wsUrl = createWebSocketUrl({

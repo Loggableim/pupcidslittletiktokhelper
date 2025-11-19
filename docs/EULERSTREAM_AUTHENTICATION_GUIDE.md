@@ -1,48 +1,74 @@
 # EulerStream Authentication Guide
 
-This guide explains the different authentication methods and keys used with EulerStream services.
+This guide explains the different authentication methods and keys used with EulerStream Sign Server API.
 
 ## Understanding Different Key Types
 
-EulerStream provides multiple services, each with its own authentication method. **It's important to understand which key to use for which purpose.**
+EulerStream Sign Server provides different keys for different purposes. **For WebSocket connections, you need the WEBHOOK SECRET, not the euler_ API key!**
 
-### 1. API Key (for WebSocket Connections) ✅ **THIS IS WHAT YOU NEED**
+### 1. Webhook Secret (for WebSocket Connections) ✅ **THIS IS WHAT YOU NEED**
 
-**Purpose:** Authenticate backend WebSocket connections to receive live TikTok stream data
+**Purpose:** Authenticate WebSocket connections to receive live TikTok stream data
 
 **Where to get it:**
 1. Visit https://www.eulerstream.com
 2. Log in to your account
-3. Go to your Dashboard → API Keys section
-4. Generate an API Key
+3. Go to Dashboard → **Account Details**
+4. Find **"Webhook Secret"** under Basic Details
+5. Your account identifier will also be shown (e.g., "2380")
+6. Check your plan (e.g., "Community plan")
 
 **IMPORTANT - Key Format:**
-- **CORRECT API Key format:** `euler_` followed by alphanumeric characters
-  - Example: `euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2`
-- **WRONG - Webhook Secret format:** Pure hexadecimal string (64 characters)
+- **CORRECT for WebSocket:** Pure hexadecimal string (64 characters)
   - Example: `69247cb1f28bac46e315f650c64507e828acb4f61718b2bf5526c5fbbdebb7a8`
-  - ⚠️ **This is for HTTP webhooks ONLY, NOT for WebSocket connections!**
+  - ✅ **This is the WEBHOOK SECRET - use THIS for WebSocket connections!**
+- **WRONG for WebSocket:** `euler_` prefixed key
+  - Example: `euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2`
+  - ❌ **This is the REST API key - NOT for WebSocket connections!**
 
 **How to use it:**
-- **Environment Variable:** `EULER_API_KEY=euler_your_api_key_here` in `.env` file
-- **Dashboard Setting:** Set `tiktok_euler_api_key` in the application settings
-- **Legacy Variable:** `SIGN_API_KEY=euler_your_api_key_here` (for backward compatibility)
+- **Environment Variable:** `EULER_API_KEY=your_webhook_secret_here` in `.env` file
+- **Dashboard Setting:** Set `tiktok_euler_api_key` to your webhook secret value
+- **Legacy Variable:** `SIGN_API_KEY=your_webhook_secret_here` (for backward compatibility)
+
+**Example:**
+```bash
+# In .env file
+EULER_API_KEY=69247cb1f28bac46e315f650c64507e828acb4f61718b2bf5526c5fbbdebb7a8
+```
 
 **What it does:**
 - Authenticates your WebSocket connection to `wss://ws.eulerstream.com`
 - Allows you to receive real-time stream events (chat, gifts, likes, etc.)
 - Used in the backend only (never expose in frontend code)
+- Also used for validating incoming HTTP webhooks (same secret)
 
 **Example:**
 ```javascript
 const wsUrl = createWebSocketUrl({
     uniqueId: 'tiktok_username',
-    apiKey: 'your_api_key_here',
+    apiKey: '69247cb1f28bac46e315f650c64507e828acb4f61718b2bf5526c5fbbdebb7a8', // Webhook Secret
     features: {
         useEnterpriseApi: true
     }
 });
 ```
+
+### 2. REST API Key (NOT for WebSockets) ❌ **DO NOT USE THIS**
+
+**Purpose:** Authenticate REST API calls to EulerStream Sign Server (NOT WebSockets!)
+
+**Where to get it:**
+- Found in your EulerStream Dashboard → API Keys section
+- Format: `euler_` prefix followed by base64-encoded data
+- Example: `euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2`
+
+**When to use:**
+- ❌ **NOT for WebSocket connections**
+- ✅ Only for REST API endpoints (if you're making direct API calls)
+- ✅ For creating JWTs via the REST API
+
+**CRITICAL:** Do NOT use this key for WebSocket connections! It will NOT work!
 
 ### 2. JWT Key (for Frontend WebSocket Connections)
 
