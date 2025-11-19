@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added logging to show if Euler API key is configured vs using free tier
   - Improved error messages for Euler Stream timeouts with clearer solutions
   - **Note:** Euler Stream fallbacks remain ENABLED by default (they are mandatory for library function)
+  - **INTEGRATED:** Hardcoded Euler API key as Base64-encoded fallback for guaranteed connectivity
   - Files modified: `modules/tiktok.js`
   - See `FIX_CONNECTION_ISSUE.md` for detailed technical documentation
 - **CRITICAL: TikTok Connection Invalid Option** - Fixed connection failure caused by invalid configuration option
