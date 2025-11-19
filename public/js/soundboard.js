@@ -95,72 +95,53 @@ function showToast(message) {
 // ========== Audio Playback ==========
 let audioQueue = [];
 let activeAudio = [];
-let audioContext = null;
-let audioUnlocked = false;
 
-// Initialize Web Audio API for fallback
-function initWebAudio() {
-  try {
-    if (!audioContext) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      audioContext = new AudioContext();
-      pushLog(`🎛️ Web Audio API initialisiert - Status: ${audioContext.state}`);
-      console.log('✅ [Soundboard] Web Audio API initialized:', audioContext.state);
-      
-      if (audioContext.state === 'suspended') {
-        audioContext.resume().then(() => {
-          pushLog('✅ AudioContext aktiviert');
-          console.log('✅ [Soundboard] AudioContext resumed');
-        });
-      }
-    }
-    return audioContext;
-  } catch (error) {
-    console.error('❌ [Soundboard] Web Audio API initialization failed:', error);
-    pushLog(`❌ Web Audio API Fehler: ${error.message}`);
-    return null;
+// Use the global AudioUnlockManager from audio-unlock.js
+// Get AudioContext from the manager to avoid duplicate contexts
+function getAudioContext() {
+  if (window.audioUnlockManager) {
+    return window.audioUnlockManager.getAudioContext();
   }
+  return null;
 }
 
-// Unlock audio for browser autoplay policies
+// Check if audio is unlocked using the global manager
+function isAudioUnlocked() {
+  // First check the global unlock manager
+  if (window.audioUnlockManager && window.audioUnlockManager.isUnlocked()) {
+    return true;
+  }
+  // Fallback to global flag
+  return window.audioUnlocked || false;
+}
+
+// Trigger audio unlock using the global manager
 function unlockAudio() {
-  if (audioUnlocked) return;
+  if (isAudioUnlocked()) {
+    console.log('✅ [Soundboard] Audio already unlocked');
+    return;
+  }
   
   pushLog('🔓 Versuche Audio freizuschalten...');
-  console.log('🔓 [Soundboard] Attempting to unlock audio...');
+  console.log('🔓 [Soundboard] Requesting audio unlock via AudioUnlockManager...');
   
-  try {
-    // Try HTML5 Audio
-    const testAudio = new Audio();
-    testAudio.volume = 0;
-    testAudio.play().then(() => {
-      pushLog('✅ HTML5 Audio freigeschaltet');
-      console.log('✅ [Soundboard] HTML5 Audio unlocked');
-    }).catch(e => {
-      console.warn('⚠️ [Soundboard] HTML5 Audio unlock failed:', e.message);
+  // Use the global unlock manager
+  if (window.audioUnlockManager) {
+    window.audioUnlockManager.unlock().then(() => {
+      pushLog('✅ Audio-Unlock erfolgreich');
+      showToast('✅ Audio freigeschaltet');
+      console.log('✅ [Soundboard] Audio unlocked successfully');
+    }).catch(error => {
+      console.warn('⚠️ [Soundboard] Audio unlock failed:', error);
+      pushLog(`⚠️ Audio-Unlock Fehler: ${error.message}`);
+      // Show the manual unlock button
+      if (window.audioUnlockManager) {
+        window.audioUnlockManager.showUnlockButton();
+      }
     });
-    
-    // Try Web Audio API
-    const ctx = initWebAudio();
-    if (ctx) {
-      ctx.resume().then(() => {
-        // Create silent buffer
-        const buffer = ctx.createBuffer(1, 1, 22050);
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.start(0);
-        pushLog('✅ Web Audio API freigeschaltet');
-        console.log('✅ [Soundboard] Web Audio API unlocked');
-      });
-    }
-    
-    audioUnlocked = true;
-    pushLog('✅ Audio-Unlock erfolgreich');
-    showToast('✅ Audio freigeschaltet');
-  } catch (error) {
-    console.error('❌ [Soundboard] Audio unlock error:', error);
-    pushLog(`❌ Audio-Unlock Fehler: ${error.message}`);
+  } else {
+    console.error('❌ [Soundboard] AudioUnlockManager not available');
+    pushLog('❌ AudioUnlockManager nicht verfügbar');
   }
 }
 
@@ -170,7 +151,7 @@ async function playWithWebAudio(url, vol, label) {
   console.log('🎵 [Soundboard] Trying Web Audio API for:', url);
   
   try {
-    const ctx = initWebAudio();
+    const ctx = getAudioContext();
     if (!ctx) {
       throw new Error('Web Audio API nicht verfügbar');
     }
@@ -218,6 +199,14 @@ async function playWithWebAudio(url, vol, label) {
 function playSound(url, vol, label) {
   pushLog(`🎮 PLAY Versuch ▶ ${label || 'Unbenannt'} | ${url}`);
   console.log('🎮 [Soundboard] Play attempt:', { url, vol, label });
+  
+  // Check if audio is unlocked before attempting playback
+  if (!isAudioUnlocked()) {
+    console.warn('⚠️ [Soundboard] Audio not yet unlocked, triggering unlock...');
+    pushLog('⚠️ Audio noch nicht freigeschaltet');
+    unlockAudio();
+    // Don't return - continue with playback attempt which will trigger unlock
+  }
   
   const mode = document.getElementById('play_mode')?.value || 'overlap';
   const maxLen = Number(document.getElementById('queue_length')?.value || 10);
@@ -397,12 +386,13 @@ function playSound(url, vol, label) {
   }
 }
 
-// Auto-unlock audio on first user interaction
-document.addEventListener('click', function autoUnlockOnce() {
-  if (!audioUnlocked) {
-    unlockAudio();
-  }
-}, { once: true });
+// Audio unlock is now handled by the global AudioUnlockManager in audio-unlock.js
+// Listen for the audio-unlocked event to sync state
+window.addEventListener('audio-unlocked', (event) => {
+  console.log('✅ [Soundboard] Received audio-unlocked event');
+  pushLog('✅ Audio global freigeschaltet');
+  showToast('✅ Audio bereit');
+});
 
 let isProcessingQueue = false;
 async function processQueue() {
