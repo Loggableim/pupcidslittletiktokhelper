@@ -1,10 +1,12 @@
 const EventEmitter = require('events');
-const axios = require('axios');
-const cheerio = require('cheerio');
 const path = require('path');
+const fs = require('fs');
 const SoundboardFetcher = require('./fetcher');
 const SoundboardWebSocketTransport = require('./transport-ws');
 const SoundboardApiRoutes = require('./api-routes');
+const MyInstantsAPI = require('./myinstants-api');
+const AudioCacheManager = require('./audio-cache');
+const CacheCleanupJob = require('./cache-cleanup');
 
 /**
  * Soundboard Manager Class
@@ -279,403 +281,6 @@ class SoundboardManager extends EventEmitter {
     }
 
     /**
-     * Search MyInstants for sounds using the official API
-     * API: https://github.com/abdipr/myinstants-api
-     * Enhanced to support multiple API response formats and better MP3 URL extraction
-     */
-    async searchMyInstants(query, page = 1, limit = 20) {
-        try {
-            console.log(`[MyInstants] Searching for: "${query}" (page ${page}, limit ${limit})`);
-            
-            // Try the official MyInstants API first
-            const response = await axios.get('https://myinstants-api.vercel.app/search', {
-                params: {
-                    q: query,
-                    page: page,
-                    limit: limit
-                },
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'TikTok-Soundboard/1.0'
-                }
-            });
-
-            if (response.data && response.data.data && Array.isArray(response.data.data)) {
-                console.log(`[MyInstants] API returned ${response.data.data.length} results`);
-                
-                const results = response.data.data.map(instant => {
-                    // Extract MP3 URL from various possible fields
-                    let mp3Url = instant.mp3 || instant.sound || instant.url || instant.mp3_url || instant.audio;
-                    
-                    // If the URL is relative, make it absolute
-                    if (mp3Url && !mp3Url.startsWith('http')) {
-                        mp3Url = `https://www.myinstants.com${mp3Url}`;
-                    }
-                    
-                    // Log the extracted URL for debugging
-                    if (!mp3Url) {
-                        console.warn(`[MyInstants] No valid URL found for sound:`, instant);
-                    }
-                    
-                    return {
-                        id: instant.id || null,
-                        name: instant.title || instant.name || instant.label || 'Unknown',
-                        url: mp3Url,
-                        description: instant.description || instant.desc || '',
-                        tags: instant.tags || instant.categories || [],
-                        color: instant.color || null
-                    };
-                }).filter(sound => sound.url); // Filter out sounds without valid URLs
-                
-                console.log(`[MyInstants] Returning ${results.length} valid results with URLs`);
-                return results;
-            }
-
-            // If API returns empty or invalid data, try fallback
-            console.log('[MyInstants] API returned no data, trying fallback scraping...');
-            return await this.searchMyInstantsFallback(query, page, limit);
-        } catch (error) {
-            console.error('[MyInstants] API error:', error.message);
-            console.log('[MyInstants] Attempting fallback scraping method...');
-            
-            // Fallback to direct website scraping
-            try {
-                return await this.searchMyInstantsFallback(query, page, limit);
-            } catch (fallbackError) {
-                console.error('[MyInstants] Fallback scraping also failed:', fallbackError.message);
-                return [];
-            }
-        }
-    }
-
-    /**
-     * Fallback method: Direct scraping of MyInstants website
-     */
-    async searchMyInstantsFallback(query, page = 1, limit = 20) {
-        try {
-            console.log(`[MyInstants Fallback] Scraping website for: "${query}"`);
-            
-            const searchUrl = `https://www.myinstants.com/en/search/?name=${encodeURIComponent(query)}`;
-            const response = await axios.get(searchUrl, {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-            });
-
-            const $ = cheerio.load(response.data);
-            const results = [];
-
-            // Parse instant buttons from the page
-            $('.instant').each((i, elem) => {
-                if (results.length >= limit) return false; // Stop when limit reached
-
-                const $elem = $(elem);
-                const $button = $elem.find('.small-button, button[onclick*="play"]').first();
-                
-                // Extract sound URL from onclick attribute
-                const onclickAttr = $button.attr('onclick') || '';
-                const soundMatch = onclickAttr.match(/play\('([^']+)'/);
-                
-                if (soundMatch && soundMatch[1]) {
-                    let soundUrl = soundMatch[1];
-                    
-                    // Convert relative URLs to absolute
-                    if (!soundUrl.startsWith('http')) {
-                        soundUrl = `https://www.myinstants.com${soundUrl}`;
-                    }
-
-                    const name = $elem.find('.instant-link, a').first().text().trim() || 
-                                $elem.find('.small-text').first().text().trim() || 
-                                'Unknown Sound';
-                    
-                    results.push({
-                        id: null,
-                        name: name,
-                        url: soundUrl,
-                        description: '',
-                        tags: [],
-                        color: null
-                    });
-                }
-            });
-
-            console.log(`[MyInstants Fallback] Scraped ${results.length} sounds for "${query}"`);
-            return results;
-        } catch (error) {
-            console.error('[MyInstants Fallback] Scraping error:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Resolve MyInstants page URL to MP3 URL
-     */
-    async resolveMyInstantsUrl(pageUrl) {
-        try {
-            const response = await axios.get(pageUrl, {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-
-            const $ = cheerio.load(response.data);
-
-            // Try different methods to find the MP3 URL
-            // Method 1: From onclick attribute (most common)
-            const playButtons = $('button[onclick*="play"]');
-            for (let i = 0; i < playButtons.length; i++) {
-                const onclickAttr = $(playButtons[i]).attr('onclick') || '';
-                const soundMatch = onclickAttr.match(/play\('([^']+)'/);
-                if (soundMatch && soundMatch[1]) {
-                    let soundPath = soundMatch[1];
-                    return soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`;
-                }
-            }
-
-            // Method 2: From onmousedown attribute (legacy)
-            const playButton = $('.small-button, .instant-play').first();
-            let soundPath = playButton.attr('onmousedown')?.match(/play\('([^']+)'/)?.[1];
-
-            if (soundPath) {
-                return soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`;
-            }
-
-            // Method 3: From data attributes
-            soundPath = playButton.attr('data-sound') || playButton.attr('data-url');
-            if (soundPath) {
-                return soundPath.startsWith('http') ? soundPath : `https://www.myinstants.com${soundPath}`;
-            }
-
-            // Method 4: Find any .mp3 link in the page
-            const mp3Match = response.data.match(/https?:\/\/[^\s"'<>]+?\.mp3[^\s"'<>]*/i);
-            if (mp3Match) {
-                return mp3Match[0];
-            }
-
-            // Method 5: Look in media directory paths
-            const mediaMatch = response.data.match(/\/media\/sounds\/[^\s"'<>]+\.mp3/i);
-            if (mediaMatch) {
-                return `https://www.myinstants.com${mediaMatch[0]}`;
-            }
-
-            throw new Error('Could not find MP3 URL in page');
-        } catch (error) {
-            console.error('MyInstants resolve error:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Get trending sounds from MyInstants
-     * Enhanced to support multiple API response formats and better MP3 URL extraction
-     */
-    async getTrendingSounds(limit = 20) {
-        try {
-            const response = await axios.get('https://myinstants-api.vercel.app/trending', {
-                params: { limit },
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'TikTok-Soundboard/1.0'
-                }
-            });
-
-            if (response.data && response.data.data && Array.isArray(response.data.data)) {
-                return response.data.data.map(instant => {
-                    // Extract MP3 URL from various possible fields
-                    let mp3Url = instant.mp3 || instant.sound || instant.url || instant.mp3_url || instant.audio;
-                    
-                    // If the URL is relative, make it absolute
-                    if (mp3Url && !mp3Url.startsWith('http')) {
-                        mp3Url = `https://www.myinstants.com${mp3Url}`;
-                    }
-                    
-                    return {
-                        id: instant.id || null,
-                        name: instant.title || instant.name || instant.label || 'Unknown',
-                        url: mp3Url,
-                        description: instant.description || instant.desc || '',
-                        tags: instant.tags || instant.categories || [],
-                        color: instant.color || null
-                    };
-                }).filter(sound => sound.url); // Filter out sounds without valid URLs
-            }
-
-            // Fallback to scraping trending page
-            console.log('MyInstants trending API returned no data, trying fallback...');
-            return await this.getTrendingSoundsFallback(limit);
-        } catch (error) {
-            console.error('MyInstants trending API error:', error.message);
-            
-            // Fallback to direct website scraping
-            try {
-                return await this.getTrendingSoundsFallback(limit);
-            } catch (fallbackError) {
-                console.error('Fallback trending scraping failed:', fallbackError.message);
-                return [];
-            }
-        }
-    }
-
-    /**
-     * Fallback method for trending sounds
-     */
-    async getTrendingSoundsFallback(limit = 20) {
-        try {
-            const response = await axios.get('https://www.myinstants.com/en/index/us/', {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-
-            const $ = cheerio.load(response.data);
-            const results = [];
-
-            $('.instant').each((i, elem) => {
-                if (results.length >= limit) return false;
-
-                const $elem = $(elem);
-                const $button = $elem.find('.small-button, button[onclick*="play"]').first();
-                
-                const onclickAttr = $button.attr('onclick') || '';
-                const soundMatch = onclickAttr.match(/play\('([^']+)'/);
-                
-                if (soundMatch && soundMatch[1]) {
-                    let soundUrl = soundMatch[1];
-                    if (!soundUrl.startsWith('http')) {
-                        soundUrl = `https://www.myinstants.com${soundUrl}`;
-                    }
-
-                    const name = $elem.find('.instant-link, a').first().text().trim() || 'Unknown Sound';
-                    
-                    results.push({
-                        id: null,
-                        name: name,
-                        url: soundUrl,
-                        description: '',
-                        tags: [],
-                        color: null
-                    });
-                }
-            });
-
-            console.log(`Fallback trending scraping found ${results.length} results`);
-            return results;
-        } catch (error) {
-            console.error('Fallback trending scraping error:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Get random sounds from MyInstants
-     * Enhanced to support multiple API response formats and better MP3 URL extraction
-     */
-    async getRandomSounds(limit = 20) {
-        try {
-            const response = await axios.get('https://myinstants-api.vercel.app/random', {
-                params: { limit },
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'TikTok-Soundboard/1.0'
-                }
-            });
-
-            if (response.data && response.data.data && Array.isArray(response.data.data)) {
-                return response.data.data.map(instant => {
-                    // Extract MP3 URL from various possible fields
-                    let mp3Url = instant.mp3 || instant.sound || instant.url || instant.mp3_url || instant.audio;
-                    
-                    // If the URL is relative, make it absolute
-                    if (mp3Url && !mp3Url.startsWith('http')) {
-                        mp3Url = `https://www.myinstants.com${mp3Url}`;
-                    }
-                    
-                    return {
-                        id: instant.id || null,
-                        name: instant.title || instant.name || instant.label || 'Unknown',
-                        url: mp3Url,
-                        description: instant.description || instant.desc || '',
-                        tags: instant.tags || instant.categories || [],
-                        color: instant.color || null
-                    };
-                }).filter(sound => sound.url); // Filter out sounds without valid URLs
-            }
-
-            // Fallback to scraping random page
-            console.log('MyInstants random API returned no data, trying fallback...');
-            return await this.getRandomSoundsFallback(limit);
-        } catch (error) {
-            console.error('MyInstants random API error:', error.message);
-            
-            // Fallback to direct website scraping
-            try {
-                return await this.getRandomSoundsFallback(limit);
-            } catch (fallbackError) {
-                console.error('Fallback random scraping failed:', fallbackError.message);
-                return [];
-            }
-        }
-    }
-
-    /**
-     * Fallback method for random sounds
-     */
-    async getRandomSoundsFallback(limit = 20) {
-        try {
-            // MyInstants doesn't have a dedicated random page, so we'll fetch from trending
-            // and shuffle the results to simulate randomness
-            const response = await axios.get('https://www.myinstants.com/en/index/us/', {
-                timeout: 10000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-
-            const $ = cheerio.load(response.data);
-            const allSounds = [];
-
-            $('.instant').each((i, elem) => {
-                const $elem = $(elem);
-                const $button = $elem.find('.small-button, button[onclick*="play"]').first();
-                
-                const onclickAttr = $button.attr('onclick') || '';
-                const soundMatch = onclickAttr.match(/play\('([^']+)'/);
-                
-                if (soundMatch && soundMatch[1]) {
-                    let soundUrl = soundMatch[1];
-                    if (!soundUrl.startsWith('http')) {
-                        soundUrl = `https://www.myinstants.com${soundUrl}`;
-                    }
-
-                    const name = $elem.find('.instant-link, a').first().text().trim() || 'Unknown Sound';
-                    
-                    allSounds.push({
-                        id: null,
-                        name: name,
-                        url: soundUrl,
-                        description: '',
-                        tags: [],
-                        color: null
-                    });
-                }
-            });
-
-            // Shuffle and take limited results
-            const shuffled = allSounds.sort(() => Math.random() - 0.5);
-            const results = shuffled.slice(0, limit);
-
-            console.log(`Fallback random scraping found ${results.length} results`);
-            return results;
-        } catch (error) {
-            console.error('Fallback random scraping error:', error.message);
-            throw error;
-        }
-    }
-
-    /**
      * Test sound playback
      */
     async testSound(url, volume = 1.0) {
@@ -726,6 +331,31 @@ class SoundboardPlugin {
             error: (msg) => this.api.log(msg, 'error'),
             debug: (msg) => this.api.log(msg, 'debug')
         });
+
+        // Initialize MyInstants API
+        this.myinstantsAPI = new MyInstantsAPI({
+            info: (msg) => this.api.log(msg, 'info'),
+            warn: (msg) => this.api.log(msg, 'warn'),
+            error: (msg) => this.api.log(msg, 'error')
+        });
+
+        // Initialize Audio Cache Manager
+        const cacheDir = path.join(__dirname, '../../data/soundboard-cache/sounds');
+        this.audioCacheManager = new AudioCacheManager(db, {
+            info: (msg) => this.api.log(msg, 'info'),
+            warn: (msg) => this.api.log(msg, 'warn'),
+            error: (msg) => this.api.log(msg, 'error')
+        }, cacheDir);
+
+        // Initialize Cache Cleanup Job
+        this.cleanupJob = new CacheCleanupJob(this.audioCacheManager, {
+            info: (msg) => this.api.log(msg, 'info'),
+            warn: (msg) => this.api.log(msg, 'warn'),
+            error: (msg) => this.api.log(msg, 'error')
+        });
+        
+        // Start cleanup job
+        this.cleanupJob.start();
 
         // Initialize preview system components
         this.initPreviewSystem();
@@ -869,7 +499,7 @@ class SoundboardPlugin {
             }
         });
 
-        // MyInstants search
+        // MyInstants search - NEW API
         this.api.registerRoute('get', '/api/myinstants/search', async (req, res) => {
             const { query, page, limit } = req.query;
 
@@ -878,7 +508,7 @@ class SoundboardPlugin {
             }
 
             try {
-                const results = await this.soundboard.searchMyInstants(query, page || 1, limit || 20);
+                const results = await this.myinstantsAPI.search(query, page || 1, limit || 20);
                 res.json({ success: true, results });
             } catch (error) {
                 this.api.log(`Error searching MyInstants: ${error.message}`, 'error');
@@ -886,12 +516,12 @@ class SoundboardPlugin {
             }
         });
 
-        // MyInstants trending
+        // MyInstants trending - NEW API
         this.api.registerRoute('get', '/api/myinstants/trending', async (req, res) => {
             const { limit } = req.query;
 
             try {
-                const results = await this.soundboard.getTrendingSounds(limit || 20);
+                const results = await this.myinstantsAPI.getTrending(limit || 20);
                 res.json({ success: true, results });
             } catch (error) {
                 this.api.log(`Error getting trending sounds: ${error.message}`, 'error');
@@ -899,12 +529,12 @@ class SoundboardPlugin {
             }
         });
 
-        // MyInstants random
+        // MyInstants random - NEW API
         this.api.registerRoute('get', '/api/myinstants/random', async (req, res) => {
             const { limit } = req.query;
 
             try {
-                const results = await this.soundboard.getRandomSounds(limit || 20);
+                const results = await this.myinstantsAPI.getRandom(limit || 20);
                 res.json({ success: true, results });
             } catch (error) {
                 this.api.log(`Error getting random sounds: ${error.message}`, 'error');
@@ -912,7 +542,18 @@ class SoundboardPlugin {
             }
         });
 
-        // MyInstants resolve URL
+        // MyInstants categories (optional) - NEW API
+        this.api.registerRoute('get', '/api/myinstants/categories', async (req, res) => {
+            try {
+                const results = await this.myinstantsAPI.getCategories();
+                res.json({ success: true, results });
+            } catch (error) {
+                this.api.log(`Error getting categories: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // MyInstants resolve URL - NEW API
         this.api.registerRoute('get', '/api/myinstants/resolve', async (req, res) => {
             const { url } = req.query;
 
@@ -926,7 +567,7 @@ class SoundboardPlugin {
             }
 
             try {
-                const mp3Url = await this.soundboard.resolveMyInstantsUrl(url);
+                const mp3Url = await this.myinstantsAPI.resolvePageUrl(url);
                 return res.json({ success: true, mp3: mp3Url });
             } catch (error) {
                 this.api.log(`Error resolving MyInstants URL: ${error.message}`, 'error');
@@ -934,7 +575,118 @@ class SoundboardPlugin {
             }
         });
 
-        this.api.log('✅ Soundboard routes registered', 'info');
+        // ========== WICHTIGSTER ENDPOINT: Audio Proxy mit Caching ==========
+        this.api.registerRoute('get', '/api/myinstants/proxy-audio', async (req, res) => {
+            const { url } = req.query;
+
+            if (!url) {
+                return res.status(400).json({ success: false, error: 'url parameter is required' });
+            }
+
+            try {
+                // Validate URL is from MyInstants
+                if (!this.myinstantsAPI.isValidMyInstantsUrl(url)) {
+                    return res.status(403).json({ 
+                        success: false, 
+                        error: 'Only MyInstants URLs are allowed' 
+                    });
+                }
+
+                // Check cache first
+                let cacheEntry = this.audioCacheManager.getCacheEntry(url);
+
+                if (cacheEntry) {
+                    // Cache HIT - serve from cache
+                    this.api.log(`[AudioProxy] Cache HIT: ${url}`, 'info');
+                    
+                    // Update last_played timestamp
+                    this.audioCacheManager.updateLastPlayed(url);
+
+                    // Stream cached file
+                    const fileStream = fs.createReadStream(cacheEntry.file_path);
+                    
+                    res.setHeader('Content-Type', 'audio/mpeg');
+                    res.setHeader('Cache-Control', 'public, max-age=3600');
+                    res.setHeader('X-Cache-Status', 'HIT');
+                    
+                    fileStream.pipe(res);
+                    
+                } else {
+                    // Cache MISS - download and cache
+                    this.api.log(`[AudioProxy] Cache MISS: ${url}`, 'info');
+
+                    try {
+                        // Download and cache
+                        cacheEntry = await this.audioCacheManager.cacheAudio(url);
+
+                        this.api.log(`[AudioProxy] Cached successfully: ${url}`, 'info');
+
+                        // Stream newly cached file
+                        const fileStream = fs.createReadStream(cacheEntry.file_path);
+                        
+                        res.setHeader('Content-Type', 'audio/mpeg');
+                        res.setHeader('Cache-Control', 'public, max-age=3600');
+                        res.setHeader('X-Cache-Status', 'MISS');
+                        
+                        fileStream.pipe(res);
+
+                    } catch (cacheError) {
+                        this.api.log(`[AudioProxy] Cache error, falling back to direct proxy: ${cacheError.message}`, 'warn');
+                        
+                        // Fallback: Direct proxy without caching
+                        const axios = require('axios');
+                        const response = await axios.get(url, {
+                            responseType: 'stream',
+                            timeout: 30000,
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            }
+                        });
+
+                        res.setHeader('Content-Type', 'audio/mpeg');
+                        res.setHeader('X-Cache-Status', 'BYPASS');
+                        response.data.pipe(res);
+                    }
+                }
+
+            } catch (error) {
+                this.api.log(`[AudioProxy] Error: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Cache management endpoints
+        this.api.registerRoute('get', '/api/soundboard/cache/stats', (req, res) => {
+            try {
+                const stats = this.audioCacheManager.getCacheStats();
+                res.json({ success: true, stats });
+            } catch (error) {
+                this.api.log(`Error getting cache stats: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/soundboard/cache/cleanup', async (req, res) => {
+            try {
+                const stats = await this.cleanupJob.runNow();
+                res.json({ success: true, stats });
+            } catch (error) {
+                this.api.log(`Error running cleanup: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('delete', '/api/soundboard/cache', async (req, res) => {
+            try {
+                await this.audioCacheManager.clearCache();
+                res.json({ success: true, message: 'Cache cleared' });
+            } catch (error) {
+                this.api.log(`Error clearing cache: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.log('✅ Soundboard routes registered (with audio proxy & caching)', 'info');
     }
 
     registerTikTokEventHandlers() {
@@ -1001,6 +753,10 @@ class SoundboardPlugin {
     }
 
     async destroy() {
+        // Stop cleanup job
+        if (this.cleanupJob) {
+            this.cleanupJob.stop();
+        }
         this.api.log('🎵 Soundboard Plugin destroyed', 'info');
     }
 }
