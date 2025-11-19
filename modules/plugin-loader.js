@@ -20,6 +20,7 @@ class PluginAPI {
         this.registeredRoutes = [];
         this.registeredSocketEvents = [];
         this.registeredTikTokEvents = [];
+        this.registeredFlowActions = [];
     }
 
     /**
@@ -114,6 +115,39 @@ class PluginAPI {
             return true;
         } catch (error) {
             this.log(`Failed to register TikTok event: ${error.message}`, 'error');
+            return false;
+        }
+    }
+
+    /**
+     * Registriert eine Flow-Action für Automatisierungen
+     * @param {string} actionName - Name der Action (z.B. 'goals.set_value')
+     * @param {function} handler - Action-Handler-Funktion
+     */
+    registerFlowAction(actionName, handler) {
+        try {
+            const wrappedHandler = async (params) => {
+                try {
+                    return await handler(params);
+                } catch (error) {
+                    this.log(`Flow action error in ${actionName}: ${error.message}`, 'error');
+                    return {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            };
+
+            this.registeredFlowActions.push({
+                actionName,
+                handler: wrappedHandler,
+                pluginId: this.pluginId
+            });
+            this.log(`Registered flow action: ${actionName}`);
+
+            return true;
+        } catch (error) {
+            this.log(`Failed to register flow action: ${error.message}`, 'error');
             return false;
         }
     }
@@ -239,6 +273,7 @@ class PluginAPI {
 
         this.registeredSocketEvents = [];
         this.registeredTikTokEvents = [];
+        this.registeredFlowActions = [];
 
         this.log('All registrations cleared (except Express routes)');
     }
@@ -331,12 +366,26 @@ class PluginLoader extends EventEmitter {
 
             this.logger.info(`Found ${pluginDirs.length} plugin directories`);
 
+            let successCount = 0;
+            let failCount = 0;
+
             for (const dir of pluginDirs) {
                 const pluginPath = path.join(this.pluginsDir, dir.name);
-                await this.loadPlugin(pluginPath);
+                try {
+                    const result = await this.loadPlugin(pluginPath);
+                    if (result) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (error) {
+                    // Error already logged in loadPlugin, just count it
+                    failCount++;
+                    this.logger.warn(`Skipping plugin ${dir.name} due to errors, continuing with next plugin...`);
+                }
             }
 
-            this.logger.info(`Loaded ${this.plugins.size} plugins successfully`);
+            this.logger.info(`Plugin loading complete: ${successCount} successful, ${failCount} failed`);
 
             return Array.from(this.plugins.values());
         } catch (error) {
@@ -386,7 +435,14 @@ class PluginLoader extends EventEmitter {
 
             // Plugin laden
             delete require.cache[require.resolve(entryPath)]; // Cache leeren für Reload
-            const PluginClass = require(entryPath);
+            let PluginClass;
+            try {
+                PluginClass = require(entryPath);
+            } catch (requireError) {
+                this.logger.error(`Failed to require plugin entry file ${entryPath}: ${requireError.message}`);
+                this.logger.error(requireError.stack);
+                throw new Error(`Plugin require failed: ${requireError.message}`);
+            }
 
             // PluginAPI erstellen
             const pluginAPI = new PluginAPI(
@@ -400,11 +456,26 @@ class PluginLoader extends EventEmitter {
             );
 
             // Plugin instanziieren
-            const pluginInstance = new PluginClass(pluginAPI);
+            let pluginInstance;
+            try {
+                pluginInstance = new PluginClass(pluginAPI);
+            } catch (constructError) {
+                this.logger.error(`Plugin ${manifest.id} constructor failed: ${constructError.message}`);
+                this.logger.error(constructError.stack);
+                throw new Error(`Plugin construction failed: ${constructError.message}`);
+            }
 
             // Plugin initialisieren
             if (typeof pluginInstance.init === 'function') {
-                await pluginInstance.init();
+                try {
+                    await pluginInstance.init();
+                } catch (initError) {
+                    this.logger.error(`Plugin ${manifest.id} init() failed: ${initError.message}`);
+                    this.logger.error(initError.stack);
+
+                    // Plugin-Instanz verwerfen bei Init-Fehler
+                    throw new Error(`Plugin initialization failed: ${initError.message}`);
+                }
             }
 
             // Plugin speichern

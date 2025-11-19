@@ -8,7 +8,7 @@
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-    <div id="overlay-container" class="overlay-container hidden">
+    <div id="overlay-container" class="overlay-container hidden" data-theme="dark">
         <!-- Background Effects -->
         <div class="background-effects">
             <div class="glow-orb glow-orb-1"></div>
@@ -19,7 +19,7 @@
         <!-- Main Content -->
         <div class="main-content">
             <!-- Question Section -->
-            <div id="questionSection" class="question-section">
+            <div id="questionSection" class="question-section draggable" data-element="question">
                 <div class="question-header">
                     <div class="quiz-logo">
                         <span class="logo-icon">🎯</span>
@@ -40,9 +40,10 @@
             </div>
 
             <!-- Answers Section -->
-            <div id="answersSection" class="answers-section">
-                <div class="answers-grid">
+            <div id="answersSection" class="answers-section draggable" data-element="answers">
+                <div class="answers-grid" id="answersGrid">
                     <div class="answer-card" data-index="0">
+                        <div class="voter-icons-container" data-answer="0"></div>
                         <div class="answer-letter">A</div>
                         <div class="answer-content">
                             <div class="answer-text" id="answerA">-</div>
@@ -51,6 +52,7 @@
                     </div>
 
                     <div class="answer-card" data-index="1">
+                        <div class="voter-icons-container" data-answer="1"></div>
                         <div class="answer-letter">B</div>
                         <div class="answer-content">
                             <div class="answer-text" id="answerB">-</div>
@@ -59,6 +61,7 @@
                     </div>
 
                     <div class="answer-card" data-index="2">
+                        <div class="voter-icons-container" data-answer="2"></div>
                         <div class="answer-letter">C</div>
                         <div class="answer-content">
                             <div class="answer-text" id="answerC">-</div>
@@ -67,6 +70,7 @@
                     </div>
 
                     <div class="answer-card" data-index="3">
+                        <div class="voter-icons-container" data-answer="3"></div>
                         <div class="answer-letter">D</div>
                         <div class="answer-content">
                             <div class="answer-text" id="answerD">-</div>
@@ -77,9 +81,9 @@
             </div>
 
             <!-- Timer Section -->
-            <div id="timerSection" class="timer-section">
-                <!-- Circular Progress Timer -->
-                <div class="timer-circular">
+            <div id="timerSection" class="timer-section draggable" data-element="timer">
+                <!-- Circular SVG Timer -->
+                <div class="timer-circular active" id="timerCircular">
                     <svg class="timer-svg" viewBox="0 0 200 200">
                         <defs>
                             <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -106,13 +110,40 @@
                     </div>
                 </div>
 
-                <!-- Alternative: Progress Bar Timer -->
-                <div class="timer-bar-wrapper hidden">
+                <!-- Progress Bar Timer -->
+                <div class="timer-bar-wrapper" id="timerBar">
                     <div class="timer-bar-container">
-                        <div id="timerBar" class="timer-bar"></div>
+                        <div id="timerBarProgress" class="timer-bar"></div>
                     </div>
                     <div class="timer-bar-text">
                         <span id="timerBarValue">30</span>s
+                    </div>
+                </div>
+
+                <!-- Neon Glow Timer -->
+                <div class="timer-neon" id="timerNeon">
+                    <div class="timer-neon-value" id="timerNeonValue">30</div>
+                    <div class="timer-neon-label">Sekunden verbleibend</div>
+                </div>
+
+                <!-- Ring Timer with Gradient -->
+                <div class="timer-ring" id="timerRing">
+                    <svg class="timer-ring-svg" viewBox="0 0 220 220">
+                        <defs>
+                            <linearGradient id="timerRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#fbbf24;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Background Circle -->
+                        <circle class="timer-ring-bg" cx="110" cy="110" r="90" />
+                        <!-- Progress Circle -->
+                        <circle id="timerRingProgress" class="timer-ring-progress" cx="110" cy="110" r="90" />
+                    </svg>
+                    <div class="timer-text">
+                        <div class="timer-value" id="timerRingValue">30</div>
+                        <div class="timer-label">Sekunden</div>
                     </div>
                 </div>
             </div>

@@ -7,37 +7,82 @@ const socketIO = require('socket.io');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
-const crypto = require('crypto');
+
+// Browser opening guard - prevents duplicate browser opens
+let browserOpened = false;
 
 // Import Core Modules
 const Database = require('./modules/database');
 const TikTokConnector = require('./modules/tiktok');
 const AlertManager = require('./modules/alerts');
-const FlowEngine = require('./modules/flows');
+const { IFTTTEngine } = require('./modules/ifttt'); // IFTTT Engine (replaces old FlowEngine)
 const { GoalManager } = require('./modules/goals');
 const UserProfileManager = require('./modules/user-profiles');
 const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integration
+const SessionExtractor = require('./modules/session-extractor');
 
 // Import New Modules
 const logger = require('./modules/logger');
+const debugLogger = require('./modules/debug-logger');
 const { apiLimiter, authLimiter, uploadLimiter } = require('./modules/rate-limiter');
-// OBS WebSocket will be integrated later
-// const OBSWebSocket = require('./modules/obs-websocket');
+const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
 const Leaderboard = require('./modules/leaderboard');
 const { setupSwagger } = require('./modules/swagger-config');
 const PluginLoader = require('./modules/plugin-loader');
 const { setupPluginRoutes } = require('./routes/plugin-routes');
+const { setupDebugRoutes } = require('./routes/debug-routes');
 const UpdateManager = require('./modules/update-manager');
 const { Validators, ValidationError } = require('./modules/validators');
 const getAutoStartManager = require('./modules/auto-start');
 const PresetManager = require('./modules/preset-manager');
+const CloudSyncEngine = require('./modules/cloud-sync');
 
 // ========== EXPRESS APP ==========
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+
+// ========== SOCKET.IO CONFIGURATION ==========
+// Configure Socket.IO with proper CORS and transport settings for OBS BrowserSource compatibility
+const io = socketIO(server, {
+    cors: {
+        origin: function(origin, callback) {
+            // Allow requests with no origin (like mobile apps, curl requests, or OBS BrowserSource)
+            if (!origin) return callback(null, true);
+            
+            // Check if origin is in the allowed list
+            const ALLOWED_ORIGINS = [
+                'http://localhost:3000',
+                'http://127.0.0.1:3000',
+                'http://localhost:8080',
+                'http://127.0.0.1:8080',
+                'null'
+            ];
+            
+            if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+                callback(null, true);
+            } else {
+                // For OBS BrowserSource and other local contexts, allow null origin
+                callback(null, true);
+            }
+        },
+        methods: ['GET', 'POST'],
+        credentials: true
+    },
+    // Transport configuration for OBS BrowserSource (Chromium 118+)
+    transports: ['websocket', 'polling'],
+    // Allow upgrades from polling to websocket
+    allowUpgrades: true,
+    // Ping timeout (default 20000ms may be too short for OBS)
+    pingTimeout: 60000,
+    // Ping interval
+    pingInterval: 25000,
+    // Max HTTP buffer size (for large payloads)
+    maxHttpBufferSize: 1e6,
+    // Allow EIO 4 (Socket.IO 4.x)
+    allowEIO3: true
+});
 
 // Middleware
 app.use(express.json());
@@ -66,51 +111,48 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    // Generiere CSP Nonce für jeden Request
-    const nonce = crypto.randomBytes(16).toString('base64');
-    res.locals.cspNonce = nonce;
-
-    // No overlay routes anymore (OBS integration will be added later)
-    const isOverlayRoute = false;
-
-    // Dashboard and plugin UIs need relaxed CSP for inline scripts
+    // Dashboard and plugin UIs need CSP policy
     const isDashboard = req.path === '/' || req.path.includes('/dashboard.html');
     const isPluginUI = req.path.includes('/goals/ui') || req.path.includes('/goals/overlay') ||
                        req.path.includes('/emoji-rain/ui') || req.path.includes('/gift-milestone/ui') ||
-                       req.path.includes('/plugins/');
+                       req.path.includes('/plugins/') ||
+                       req.path.includes('/openshock/');
 
     if (isDashboard || isPluginUI) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Dashboard & Plugin UI CSP: Allow inline scripts for functionality
+        // Dashboard & Plugin UI CSP: Strict policy - no inline scripts allowed
+        // NOTE: All HTML files (dashboard.html, soundboard.html, etc.) use EXTERNAL scripts
+        // via <script src="..."> tags, NOT inline scripts. This ensures CSP compliance.
+        // The script-src 'self' directive only allows scripts from the same origin,
+        // which prevents XSS attacks via inline script injection.
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'unsafe-inline'; ` +
-            `script-src-attr 'unsafe-inline'; ` +
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='; ` +  // Allow specific Socket.IO inline script via hash
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss:; ` +
+            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com; ` +
             `media-src 'self' blob: data: https:; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
-            `frame-ancestors 'self';`
+            `frame-ancestors 'self' null;`  // Allow OBS BrowserSource (null origin)
         );
     } else {
         res.header('X-Frame-Options', 'SAMEORIGIN');
-        // Strict CSP for other routes
+        // Strict CSP for other routes (including overlays for OBS)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self'; ` +
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='; ` +  // Allow specific Socket.IO inline script via hash
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss:; ` +
+            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com; ` +
             `media-src 'self' blob: data: https:; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
-            `frame-ancestors 'self';`
+            `frame-ancestors 'self' null;`  // Allow OBS BrowserSource (null origin)
         );
     }
 
@@ -118,6 +160,12 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static('public'));
+
+// Serve TTS UI files (legacy support)
+app.use('/tts', express.static(path.join(__dirname, 'tts')));
+
+// Serve soundboard static audio files
+app.use('/sounds', express.static(path.join(__dirname, 'public', 'sounds')));
 
 // i18n Middleware
 app.use(i18n.init);
@@ -202,20 +250,40 @@ if (!activeProfile) {
 
 logger.info(`👤 Aktives User-Profil: ${activeProfile}`);
 
+// ========== INITIALIZATION STATE MANAGER ==========
+const initState = require('./modules/initialization-state');
+
 // ========== DATABASE INITIALISIEREN ==========
 const dbPath = profileManager.getProfilePath(activeProfile);
 const db = new Database(dbPath);
 logger.info(`✅ Database initialized: ${dbPath}`);
+initState.setDatabaseReady();
 
 // ========== MODULE INITIALISIEREN ==========
 const tiktok = new TikTokConnector(io, db, logger);
 const alerts = new AlertManager(io, db, logger);
-const flows = new FlowEngine(db, alerts, logger);
 const goals = new GoalManager(db, io, logger);
 
+// Initialize IFTTT Engine with services (replaces old FlowEngine)
+const axios = require('axios');
+const iftttServices = {
+    io,
+    db,
+    alertManager: alerts,
+    axios,
+    fs: require('fs').promises,
+    path: require('path'),
+    safeDir: path.join(__dirname, 'user_data', 'flow_logs')
+};
+const iftttEngine = new IFTTTEngine(db, logger, iftttServices);
+logger.info('⚡ IFTTT Engine initialized (replaces FlowEngine)');
+
+// Session Extractor for TikTok authentication
+const sessionExtractor = new SessionExtractor(db);
+logger.info('🔐 Session Extractor initialized');
+
 // New Modules
-// OBS WebSocket will be integrated later
-// const obs = new OBSWebSocket(db, io, logger);
+const obs = new OBSWebSocket(db, io, logger);
 const subscriptionTiers = new SubscriptionTiers(db, io, logger);
 const leaderboard = new Leaderboard(db, io, logger);
 
@@ -227,9 +295,24 @@ logger.info('🔌 Plugin Loader initialized');
 // PluginLoader an AlertManager übergeben (um doppelte Sounds zu vermeiden)
 alerts.setPluginLoader(pluginLoader);
 
-// Update-Manager initialisieren
-const updateManager = new UpdateManager(logger);
-logger.info('🔄 Update Manager initialized');
+// Update-Manager initialisieren (mit Fehlerbehandlung)
+let updateManager;
+try {
+    updateManager = new UpdateManager(logger);
+    logger.info('🔄 Update Manager initialized');
+} catch (error) {
+    logger.warn(`⚠️  Update Manager konnte nicht initialisiert werden: ${error.message}`);
+    logger.info('   Update-Funktionen sind nicht verfügbar, aber der Server läuft normal weiter.');
+    // Erstelle einen Dummy-Manager für API-Kompatibilität
+    updateManager = {
+        currentVersion: '1.0.3',
+        isGitRepo: false,
+        checkForUpdates: async () => ({ success: false, error: 'Update Manager nicht verfügbar' }),
+        performUpdate: async () => ({ success: false, error: 'Update Manager nicht verfügbar' }),
+        startAutoCheck: () => {},
+        stopAutoCheck: () => {}
+    };
+}
 
 // Auto-Start Manager initialisieren
 const autoStartManager = getAutoStartManager();
@@ -239,6 +322,10 @@ logger.info('🚀 Auto-Start Manager initialized');
 const presetManager = new PresetManager(db.db);
 logger.info('📦 Preset Manager initialized');
 
+// Cloud-Sync-Engine initialisieren
+const cloudSync = new CloudSyncEngine(db.db);
+logger.info('☁️  Cloud Sync Engine initialized');
+
 logger.info('✅ All modules initialized');
 
 // ========== SWAGGER DOCUMENTATION ==========
@@ -246,12 +333,17 @@ setupSwagger(app);
 logger.info('📚 Swagger API Documentation available at /api-docs');
 
 // ========== PLUGIN ROUTES ==========
-setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger);
+setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger, io);
 
-// ========== PLUGIN STATIC FILES ==========
-// Serve static files from plugin directories
-app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
-logger.info('📂 Plugin static files served from /plugins/*');
+// ========== DEBUG ROUTES ==========
+setupDebugRoutes(app, debugLogger, logger);
+
+// ========== WIKI ROUTES ==========
+const wikiRoutes = require('./routes/wiki-routes');
+app.use('/api/wiki', wikiRoutes);
+
+// NOTE: Plugin static files middleware will be registered AFTER plugins are loaded
+// to ensure plugin-registered routes take precedence over static file serving
 
 // ========== UPDATE ROUTES ==========
 
@@ -488,6 +580,141 @@ app.post('/api/presets/import', authLimiter, async (req, res) => {
     }
 });
 
+// ========== CLOUD SYNC ROUTES ==========
+
+/**
+ * GET /api/cloud-sync/status - Gibt Cloud-Sync Status zurück
+ */
+app.get('/api/cloud-sync/status', apiLimiter, (req, res) => {
+    try {
+        const status = cloudSync.getStatus();
+        res.json({
+            success: true,
+            ...status
+        });
+    } catch (error) {
+        logger.error(`Cloud sync status check failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/cloud-sync/enable - Aktiviert Cloud-Sync mit angegebenem Pfad
+ */
+app.post('/api/cloud-sync/enable', authLimiter, async (req, res) => {
+    try {
+        const { cloudPath } = req.body;
+
+        if (!cloudPath) {
+            return res.status(400).json({
+                success: false,
+                error: 'Cloud path is required'
+            });
+        }
+
+        // Validate cloud path
+        const validation = cloudSync.validateCloudPath(cloudPath);
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                error: validation.error
+            });
+        }
+
+        const result = await cloudSync.enable(cloudPath);
+        logger.info(`Cloud sync enabled with path: ${cloudPath}`);
+        
+        res.json({
+            success: true,
+            message: 'Cloud sync enabled successfully',
+            ...cloudSync.getStatus()
+        });
+    } catch (error) {
+        logger.error(`Cloud sync enable failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/cloud-sync/disable - Deaktiviert Cloud-Sync
+ */
+app.post('/api/cloud-sync/disable', authLimiter, async (req, res) => {
+    try {
+        const result = await cloudSync.disable();
+        logger.info('Cloud sync disabled');
+        
+        res.json({
+            success: true,
+            message: 'Cloud sync disabled successfully',
+            ...cloudSync.getStatus()
+        });
+    } catch (error) {
+        logger.error(`Cloud sync disable failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/cloud-sync/manual-sync - Führt manuellen Sync durch
+ */
+app.post('/api/cloud-sync/manual-sync', authLimiter, async (req, res) => {
+    try {
+        const result = await cloudSync.manualSync();
+        logger.info('Manual cloud sync completed');
+        
+        res.json({
+            success: true,
+            message: 'Manual sync completed successfully',
+            ...result
+        });
+    } catch (error) {
+        logger.error(`Manual cloud sync failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/cloud-sync/validate-path - Validiert einen Cloud-Pfad
+ */
+app.post('/api/cloud-sync/validate-path', authLimiter, (req, res) => {
+    try {
+        const { cloudPath } = req.body;
+
+        if (!cloudPath) {
+            return res.status(400).json({
+                success: false,
+                error: 'Cloud path is required'
+            });
+        }
+
+        const validation = cloudSync.validateCloudPath(cloudPath);
+        
+        res.json({
+            success: validation.valid,
+            valid: validation.valid,
+            error: validation.error || null
+        });
+    } catch (error) {
+        logger.error(`Cloud path validation failed: ${error.message}`);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // ========== HELPER FUNCTIONS ==========
 // (OBS overlay generation will be added later)
 
@@ -496,6 +723,16 @@ app.post('/api/presets/import', authLimiter, async (req, res) => {
 // Haupt-Seite
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Overlay-Route (compatibility - redirects to dashboard)
+app.get('/overlay.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Favicon route (prevent 404 errors)
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
 });
 
 // ========== TIKTOK CONNECTION ROUTES ==========
@@ -537,8 +774,166 @@ app.get('/api/status', apiLimiter, (req, res) => {
     });
 });
 
+// Get deduplication statistics
+app.get('/api/deduplication-stats', apiLimiter, (req, res) => {
+    try {
+        const tiktokStats = tiktok.getDeduplicationStats();
+        res.json({
+            success: true,
+            tiktok: tiktokStats
+        });
+    } catch (error) {
+        logger.error('Deduplication stats error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Clear deduplication cache (for debugging/testing)
+app.post('/api/deduplication-clear', authLimiter, (req, res) => {
+    try {
+        tiktok.clearDeduplicationCache();
+        logger.info('🧹 Deduplication cache cleared');
+        res.json({
+            success: true,
+            message: 'Deduplication cache cleared'
+        });
+    } catch (error) {
+        logger.error('Clear deduplication cache error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ========== CONNECTION DIAGNOSTICS ROUTES ==========
+
+app.get('/api/diagnostics', apiLimiter, async (req, res) => {
+    try {
+        const username = req.query.username || tiktok.currentUsername || 'tiktok';
+        const diagnostics = await tiktok.runDiagnostics(username);
+        logger.info('🔍 Connection diagnostics run');
+        res.json(diagnostics);
+    } catch (error) {
+        logger.error('Diagnostics error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/connection-health', apiLimiter, async (req, res) => {
+    try {
+        const health = await tiktok.getConnectionHealth();
+        res.json(health);
+    } catch (error) {
+        logger.error('Connection health check error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ========== SESSION EXTRACTOR ROUTES ==========
+
+app.post('/api/session/extract', authLimiter, async (req, res) => {
+    try {
+        logger.info('🔐 Starting session extraction...');
+        const options = {
+            headless: req.body.headless !== false,
+            executablePath: req.body.executablePath || null
+        };
+        
+        const result = await sessionExtractor.extractSessionId(options);
+        
+        if (result.success) {
+            logger.info('✅ Session extraction successful');
+        } else {
+            logger.warn('⚠️  Session extraction failed:', result.message);
+        }
+        
+        res.json(result);
+    } catch (error) {
+        logger.error('Session extraction error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            message: 'Session extraction failed'
+        });
+    }
+});
+
+app.post('/api/session/extract-manual', authLimiter, async (req, res) => {
+    try {
+        logger.info('🔐 Starting manual session extraction...');
+        const options = {
+            executablePath: req.body.executablePath || null
+        };
+        
+        const result = await sessionExtractor.extractWithManualLogin(options);
+        
+        if (result.success) {
+            logger.info('✅ Manual session extraction successful');
+        } else {
+            logger.warn('⚠️  Manual session extraction failed:', result.message);
+        }
+        
+        res.json(result);
+    } catch (error) {
+        logger.error('Manual session extraction error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            message: 'Manual session extraction failed'
+        });
+    }
+});
+
+app.get('/api/session/status', apiLimiter, (req, res) => {
+    try {
+        const status = sessionExtractor.getSessionStatus();
+        res.json(status);
+    } catch (error) {
+        logger.error('Session status error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+app.delete('/api/session/clear', authLimiter, (req, res) => {
+    try {
+        logger.info('🗑️  Clearing session data...');
+        const result = sessionExtractor.clearSessionData();
+        
+        if (result.success) {
+            logger.info('✅ Session data cleared');
+        }
+        
+        res.json(result);
+    } catch (error) {
+        logger.error('Session clear error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+app.get('/api/session/test-browser', apiLimiter, async (req, res) => {
+    try {
+        const result = await sessionExtractor.testBrowserAvailability();
+        res.json(result);
+    } catch (error) {
+        logger.error('Browser test error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
 // ========== PLUGIN ROUTES ==========
 // Plugin routes are set up in routes/plugin-routes.js (setupPluginRoutes)
+
+// ========== INITIALIZATION STATE ROUTE ==========
+app.get('/api/init-state', (req, res) => {
+    res.json(initState.getState());
+});
 
 // ========== SETTINGS ROUTES ==========
 
@@ -875,11 +1270,157 @@ app.post('/api/flows/:id/test', apiLimiter, async (req, res) => {
     const testData = req.body;
 
     try {
-        await flows.testFlow(req.params.id, testData);
+        await iftttEngine.executeFlowById(req.params.id, testData);
         logger.info(`🧪 Tested flow: ${req.params.id}`);
         res.json({ success: true });
     } catch (error) {
         logger.error('Error testing flow:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ========== IFTTT ROUTES ==========
+
+/**
+ * GET /api/ifttt/triggers - Get all available triggers
+ */
+app.get('/api/ifttt/triggers', apiLimiter, (req, res) => {
+    try {
+        const triggers = iftttEngine.triggers.getAll();
+        res.json(triggers);
+    } catch (error) {
+        logger.error('Error getting triggers:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/conditions - Get all available conditions
+ */
+app.get('/api/ifttt/conditions', apiLimiter, (req, res) => {
+    try {
+        const conditions = iftttEngine.conditions.getAll();
+        const operators = iftttEngine.conditions.getAllOperators();
+        res.json({ conditions, operators });
+    } catch (error) {
+        logger.error('Error getting conditions:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/actions - Get all available actions
+ */
+app.get('/api/ifttt/actions', apiLimiter, (req, res) => {
+    try {
+        const actions = iftttEngine.actions.getAll();
+        res.json(actions);
+    } catch (error) {
+        logger.error('Error getting actions:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/stats - Get IFTTT engine statistics
+ */
+app.get('/api/ifttt/stats', apiLimiter, (req, res) => {
+    try {
+        const stats = iftttEngine.getStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error('Error getting IFTTT stats:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/execution-history - Get execution history
+ */
+app.get('/api/ifttt/execution-history', apiLimiter, (req, res) => {
+    try {
+        const count = parseInt(req.query.count) || 20;
+        const history = iftttEngine.getExecutionHistory(count);
+        res.json(history);
+    } catch (error) {
+        logger.error('Error getting execution history:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * GET /api/ifttt/variables - Get all variables
+ */
+app.get('/api/ifttt/variables', apiLimiter, (req, res) => {
+    try {
+        const variables = iftttEngine.variables.getAll();
+        const stats = iftttEngine.variables.getStats();
+        res.json({ variables, stats });
+    } catch (error) {
+        logger.error('Error getting variables:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/ifttt/variables/:name - Set a variable
+ */
+app.post('/api/ifttt/variables/:name', apiLimiter, (req, res) => {
+    try {
+        const { name } = req.params;
+        const { value } = req.body;
+        iftttEngine.variables.set(name, value);
+        logger.info(`📝 Variable set: ${name} = ${value}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error setting variable:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * DELETE /api/ifttt/variables/:name - Delete a variable
+ */
+app.delete('/api/ifttt/variables/:name', apiLimiter, (req, res) => {
+    try {
+        const { name } = req.params;
+        iftttEngine.variables.delete(name);
+        logger.info(`🗑️ Variable deleted: ${name}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error deleting variable:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/ifttt/trigger/:flowId - Manually trigger a flow
+ */
+app.post('/api/ifttt/trigger/:flowId', apiLimiter, async (req, res) => {
+    try {
+        const { flowId } = req.params;
+        const eventData = req.body || {};
+        await iftttEngine.executeFlowById(flowId, eventData);
+        logger.info(`⚡ Manually triggered flow: ${flowId}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error triggering flow:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/ifttt/event/:eventType - Manually trigger an event
+ */
+app.post('/api/ifttt/event/:eventType', apiLimiter, async (req, res) => {
+    try {
+        const { eventType } = req.params;
+        const eventData = req.body || {};
+        await iftttEngine.processEvent(eventType, eventData);
+        logger.info(`📡 Manually triggered event: ${eventType}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error triggering event:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1477,27 +2018,75 @@ app.post('/api/minigames/coinflip', apiLimiter, (req, res) => {
 
 io.on('connection', (socket) => {
     logger.info(`🔌 Client connected: ${socket.id}`);
+    debugLogger.log('websocket', `Client connected`, { socket_id: socket.id });
+
+    // Mark socket as ready on first connection
+    if (!initState.getState().socketReady) {
+        initState.setSocketReady();
+    }
+
+    // Send initialization state to client
+    socket.emit('init:state', initState.getState());
 
     // Plugin Socket Events registrieren
     pluginLoader.registerPluginSocketEvents(socket);
 
-    // Goal Room Join
+    // Goals: Subscribe to all goals updates (new centralized approach)
+    socket.on('goals:subscribe', () => {
+        socket.join('goals');
+        debugLogger.log('goals', `Client subscribed to goals room`, { socket_id: socket.id });
+        
+        // Send snapshot of all goals with current state
+        const snapshot = goals.getAllGoalsWithState();
+        const snapshotData = {
+            goals: snapshot,
+            timestamp: Date.now(),
+            sources: {
+                coins: 'gifts',
+                followers: 'follow',
+                likes: 'like',
+                subs: 'subscribe'
+            }
+        };
+        
+        socket.emit('goals:snapshot', snapshotData);
+        debugLogger.log('socket-emit', `Sent goals:snapshot`, { 
+            count: snapshot.length,
+            socket_id: socket.id 
+        }, 'debug');
+    });
+
+    // Goals: Unsubscribe from goals updates
+    socket.on('goals:unsubscribe', () => {
+        socket.leave('goals');
+        debugLogger.log('goals', `Client unsubscribed from goals room`, { socket_id: socket.id });
+    });
+
+    // Goal Room Join (legacy - single goal)
     socket.on('goal:join', (key) => {
         socket.join(`goal_${key}`);
         logger.debug(`📊 Client joined goal room: goal_${key}`);
+        debugLogger.log('goals', `Client joined goal room`, { 
+            goal_key: key,
+            socket_id: socket.id 
+        });
 
         // Send initial state
         const s = goals.state[key];
         const config = goals.getGoalConfig(key);
         if (s && config) {
-            socket.emit('goal:update', {
+            const updateData = {
                 type: 'goal',
+                goalId: key,
                 total: s.total,
                 goal: s.goal,
                 show: s.show,
                 pct: goals.getPercent(key),
+                percent: Math.round(goals.getPercent(key) * 100),
                 style: config.style
-            });
+            };
+            socket.emit('goal:update', updateData);
+            debugLogger.log('socket-emit', `Sent goal:update for ${key}`, updateData, 'debug');
         }
     });
 
@@ -1510,11 +2099,36 @@ io.on('connection', (socket) => {
     // Client disconnect
     socket.on('disconnect', () => {
         logger.info(`🔌 Client disconnected: ${socket.id}`);
+        debugLogger.log('websocket', `Client disconnected`, { socket_id: socket.id });
     });
 
     // Test Events (für Testing vom Dashboard)
     socket.on('test:alert', (data) => {
         alerts.testAlert(data.type, data.testData);
+    });
+
+    // Test Goals Events (for testing goals overlay)
+    socket.on('test:goal:increment', async (data) => {
+        if (data && data.id && typeof data.amount === 'number') {
+            debugLogger.log('goals', `Test increment for ${data.id}: +${data.amount}`, data);
+            await goals.incrementGoal(data.id, data.amount);
+        }
+    });
+
+    socket.on('test:goal:reset', async (data) => {
+        if (data && data.id) {
+            debugLogger.log('goals', `Test reset for ${data.id}`, data);
+            await goals.setGoal(data.id, 0);
+            // Emit reset event
+            io.to('goals').emit('goals:reset', { goalId: data.id, timestamp: Date.now() });
+        }
+    });
+
+    socket.on('test:goal:set', async (data) => {
+        if (data && data.id && typeof data.value === 'number') {
+            debugLogger.log('goals', `Test set ${data.id} to ${data.value}`, data);
+            await goals.setGoal(data.id, data.value);
+        }
     });
 
     // VDO.Ninja Socket.IO Events are now handled by VDO.Ninja Plugin
@@ -1535,6 +2149,12 @@ io.on('connection', (socket) => {
 
 // Gift Event
 tiktok.on('gift', async (data) => {
+    debugLogger.log('tiktok', `Gift event received`, { 
+        username: data.username,
+        gift: data.giftName,
+        coins: data.coins
+    });
+
     // Alert anzeigen (wenn konfiguriert)
     const minCoins = parseInt(db.getSetting('alert_gift_min_coins')) || 100;
     if (data.coins >= minCoins) {
@@ -1545,33 +2165,40 @@ tiktok.on('gift', async (data) => {
     // Der TikTok-Connector berechnet: diamondCount * 2 * repeatCount
     // und zählt nur bei Streak-Ende (bei streakable Gifts)
     await goals.incrementGoal('coins', data.coins || 0);
+    debugLogger.log('goals', `Coins goal incremented by ${data.coins}`);
 
     // Leaderboard: Update user stats
     await leaderboard.trackGift(data.username, data.giftName, data.coins);
 
-    // Flows verarbeiten
-    await flows.processEvent('gift', data);
+    // IFTTT Engine verarbeiten
+    await iftttEngine.processEvent('tiktok:gift', data);
 });
 
 // Follow Event
 tiktok.on('follow', async (data) => {
+    debugLogger.log('tiktok', `Follow event received`, { username: data.username });
+    
     alerts.addAlert('follow', data);
 
     // Goals: Follower erhöhen
     await goals.incrementGoal('followers', 1);
+    debugLogger.log('goals', `Followers goal incremented by 1`);
 
     // Leaderboard: Track follow
     await leaderboard.trackFollow(data.username);
 
-    await flows.processEvent('follow', data);
+    await iftttEngine.processEvent('tiktok:follow', data);
 });
 
 // Subscribe Event
 tiktok.on('subscribe', async (data) => {
+    debugLogger.log('tiktok', `Subscribe event received`, { username: data.username });
+    
     alerts.addAlert('subscribe', data);
 
     // Goals: Subscriber erhöhen
     await goals.incrementGoal('subs', 1);
+    debugLogger.log('goals', `Subs goal incremented by 1`);
 
     // Subscription Tiers: Process subscription
     await subscriptionTiers.processSubscription(data);
@@ -1579,7 +2206,7 @@ tiktok.on('subscribe', async (data) => {
     // Leaderboard: Track subscription
     await leaderboard.trackSubscription(data.username);
 
-    await flows.processEvent('subscribe', data);
+    await iftttEngine.processEvent('tiktok:subscribe', data);
 });
 
 // Share Event
@@ -1589,7 +2216,7 @@ tiktok.on('share', async (data) => {
     // Leaderboard: Track share
     await leaderboard.trackShare(data.username);
 
-    await flows.processEvent('share', data);
+    await iftttEngine.processEvent('tiktok:share', data);
 });
 
 // Chat Event
@@ -1597,28 +2224,58 @@ tiktok.on('chat', async (data) => {
     // Leaderboard: Track chat message
     await leaderboard.trackChat(data.username);
 
-    // Flows verarbeiten
-    await flows.processEvent('chat', data);
+    // IFTTT Engine verarbeiten
+    await iftttEngine.processEvent('tiktok:chat', data);
 });
 
 // Like Event
 tiktok.on('like', async (data) => {
+    debugLogger.log('tiktok', `Like event received`, { 
+        username: data.username,
+        likeCount: data.likeCount,
+        totalLikes: data.totalLikes
+    }, 'debug');
+
     // Goals: Total Likes setzen (Event-Data enthält bereits robustes totalLikes)
     // Der TikTok-Connector extrahiert totalLikes aus verschiedenen Properties
     if (data.totalLikes !== undefined && data.totalLikes !== null) {
         await goals.setGoal('likes', data.totalLikes);
+        debugLogger.log('goals', `Likes goal set to ${data.totalLikes}`, null, 'debug');
     } else {
         // Sollte nicht mehr vorkommen, da Connector immer totalLikes liefert
         await goals.incrementGoal('likes', data.likeCount || 1);
+        debugLogger.log('goals', `Likes goal incremented by ${data.likeCount || 1}`, null, 'debug');
     }
 
     // Leaderboard: Track likes
     await leaderboard.trackLike(data.username, data.likeCount || 1);
 
-    // Flows verarbeiten
-    // Likes normalerweise nicht als Alert (zu viele)
-    // Aber Flows könnten darauf reagieren
-    await flows.processEvent('like', data);
+    // IFTTT Engine verarbeiten
+    await iftttEngine.processEvent('tiktok:like', data);
+});
+
+// Connected Event (System)
+tiktok.on('connected', async (data) => {
+    debugLogger.log('system', 'TikTok connected', { username: data.username });
+    await iftttEngine.processEvent('system:connected', data);
+});
+
+// Disconnected Event (System)
+tiktok.on('disconnected', async (data) => {
+    debugLogger.log('system', 'TikTok disconnected', { username: data.username });
+    await iftttEngine.processEvent('system:disconnected', data);
+});
+
+// Error Event (System)
+tiktok.on('error', async (data) => {
+    debugLogger.log('system', 'TikTok error', { error: data.error });
+    await iftttEngine.processEvent('system:error', data);
+});
+
+// Viewer Change Event
+tiktok.on('viewerChange', async (data) => {
+    debugLogger.log('tiktok', 'Viewer count changed', { viewerCount: data.viewerCount }, 'debug');
+    await iftttEngine.processEvent('tiktok:viewerChange', data);
 });
 
 // ========== SERVER STARTEN ==========
@@ -1630,54 +2287,102 @@ const PORT = process.env.PORT || 3000;
     // Plugins laden VOR Server-Start, damit alle Routen verfügbar sind
     logger.info('🔌 Loading plugins...');
     try {
-        await pluginLoader.loadAllPlugins();
+        const plugins = await pluginLoader.loadAllPlugins();
+        const loadedCount = pluginLoader.plugins.size;
+
+        initState.setPluginsLoaded(loadedCount);
+
+        // Mark each loaded plugin as initialized
+        plugins.forEach(plugin => {
+            if (plugin) {
+                initState.setPluginInitialized(plugin.id, true);
+            }
+        });
 
         // TikTok-Events für Plugins registrieren
         pluginLoader.registerPluginTikTokEvents(tiktok);
 
-        const loadedCount = pluginLoader.plugins.size;
+        // ========== PLUGIN STATIC FILES ==========
+        // Register static file serving AFTER plugins are loaded
+        // This ensures plugin-registered routes take precedence over static file serving
+        app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
+        logger.info('📂 Plugin static files served from /plugins/*');
+
         if (loadedCount > 0) {
             logger.info(`✅ ${loadedCount} plugin(s) loaded successfully`);
 
-            // Plugin-Injektionen in Flows
+            // IFTTT Engine: Plugin-Injektionen
             const vdoninjaPlugin = pluginLoader.getPluginInstance('vdoninja');
             if (vdoninjaPlugin && vdoninjaPlugin.getManager) {
-                flows.vdoninjaManager = vdoninjaPlugin.getManager();
-                logger.info('✅ VDO.Ninja Manager injected into Flows');
+                iftttServices.vdoninja = vdoninjaPlugin.getManager();
+                logger.info('✅ VDO.Ninja Manager injected into IFTTT Engine');
             }
 
-            // OSC-Bridge Plugin Injektion
             const oscBridgePlugin = pluginLoader.getPluginInstance('osc-bridge');
             if (oscBridgePlugin && oscBridgePlugin.getOSCBridge) {
-                flows.oscBridge = oscBridgePlugin.getOSCBridge();
-                logger.info('✅ OSC-Bridge injected into Flows');
+                iftttServices.osc = oscBridgePlugin.getOSCBridge();
+                logger.info('✅ OSC-Bridge injected into IFTTT Engine');
             }
 
-            // TTS Plugin Injektion
             const ttsPlugin = pluginLoader.getPluginInstance('tts');
             if (ttsPlugin) {
-                flows.ttsEngine = ttsPlugin;
-                logger.info('✅ TTS injected into Flows');
+                iftttServices.tts = ttsPlugin;
+                logger.info('✅ TTS injected into IFTTT Engine');
             }
+
+            iftttServices.pluginLoader = pluginLoader;
+            iftttServices.obs = obs;
+            iftttServices.goals = goals;
+            logger.info('✅ All services injected into IFTTT Engine');
+
+            // Allow plugins to register IFTTT components
+            pluginLoader.plugins.forEach((plugin, pluginId) => {
+                if (plugin.registerIFTTTComponents) {
+                    try {
+                        plugin.registerIFTTTComponents(iftttEngine.getRegistries());
+                        logger.info(`✅ Plugin "${pluginId}" registered IFTTT components`);
+                    } catch (error) {
+                        logger.error(`❌ Plugin "${pluginId}" failed to register IFTTT components:`, error);
+                    }
+                }
+            });
+
+            // Setup timer-based triggers
+            iftttEngine.setupTimerTriggers();
+            logger.info('⏰ IFTTT timer triggers initialized');
+            
+            initState.setPluginInjectionsComplete();
         } else {
             logger.info('ℹ️  No plugins found in /plugins directory');
+            
+            // Still register static file serving even with no plugins
+            app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
+            logger.info('📂 Plugin static files served from /plugins/*');
+            
+            initState.setPluginsLoaded(0);
+            initState.setPluginInjectionsComplete();
         }
     } catch (error) {
         logger.error(`⚠️  Error loading plugins: ${error.message}`);
+        initState.addError('plugin-loader', 'Failed to load plugins', error);
     }
 
     // Jetzt Server starten
     server.listen(PORT, async () => {
+        initState.setServerStarted();
+
         logger.info('\n' + '='.repeat(50));
-        logger.info('🎥 TikTok Stream Tool');
+        logger.info('✅ Pup Cids little TikTok Helper läuft!');
         logger.info('='.repeat(50));
-        logger.info(`\n✅ Server running on http://localhost:${PORT}`);
         logger.info(`\n📊 Dashboard:     http://localhost:${PORT}/dashboard.html`);
-        logger.info(`🖼️  Overlay:      http://localhost:${PORT}/overlay.html`);
+        logger.info(`🎬 Overlay:       http://localhost:${PORT}/overlay.html`);
         logger.info(`📚 API Docs:      http://localhost:${PORT}/api-docs`);
+        logger.info(`🐾 Pup Cid:       https://www.tiktok.com/@pupcid`);
         logger.info('\n' + '='.repeat(50));
-        logger.info('\n⚠️  WICHTIG: Öffne das Overlay und klicke auf "🔊 Audio aktivieren"!');
-        logger.info('   Browser Autoplay Policy erfordert User-Interaktion.\n');
+        logger.info('\n💡 HINWEIS: Öffne das Overlay im OBS Browser-Source');
+        logger.info('   und klicke "✅ Audio aktivieren" für vollständige Funktionalität.');
+        logger.info('\n⌨️  Beenden:      Drücke Strg+C');
+        logger.info('='.repeat(50) + '\n');
 
         // OBS WebSocket auto-connect (if configured)
     const obsConfigStr = db.getSetting('obs_websocket_config');
@@ -1721,16 +2426,85 @@ const PORT = process.env.PORT || 3000;
         }, 3000);
     }
 
-        // Auto-Update-Check starten (alle 24 Stunden)
-        updateManager.startAutoCheck(24);
-
-        // Browser automatisch öffnen (async)
+        // Cloud Sync initialisieren (wenn aktiviert)
         try {
-            const open = (await import('open')).default;
-            await open(`http://localhost:${PORT}/dashboard.html`);
+            await cloudSync.initialize();
         } catch (error) {
-            logger.info('ℹ️  Browser konnte nicht automatisch geöffnet werden.');
-            logger.info(`   Öffne manuell: http://localhost:${PORT}/dashboard.html\n`);
+            logger.warn(`⚠️  Cloud Sync konnte nicht initialisiert werden: ${error.message}`);
+        }
+
+        // Auto-Update-Check starten (alle 24 Stunden)
+        // Nur wenn Update-Manager verfügbar ist
+        try {
+            if (updateManager && typeof updateManager.startAutoCheck === 'function') {
+                updateManager.startAutoCheck(24);
+            }
+        } catch (error) {
+            logger.warn(`⚠️  Auto-Update-Check konnte nicht gestartet werden: ${error.message}`);
+        }
+
+        // ========== ERROR HANDLING MIDDLEWARE ==========
+        // IMPORTANT: Error handlers must be registered AFTER plugin routes are loaded
+        // Catch-all error handler - ensures JSON responses for API routes
+        app.use((err, req, res, next) => {
+            logger.error('Express Error Handler:', err);
+
+            // Always return JSON for API routes
+            if (req.path.startsWith('/api/')) {
+                return res.status(err.status || 500).json({
+                    success: false,
+                    error: err.message || 'Internal Server Error'
+                });
+            }
+
+            // For non-API routes, return JSON if Accept header indicates JSON
+            if (req.accepts('json') && !req.accepts('html')) {
+                return res.status(err.status || 500).json({
+                    success: false,
+                    error: err.message || 'Internal Server Error'
+                });
+            }
+
+            // Default: return generic error page
+            res.status(err.status || 500).send('Internal Server Error');
+        });
+
+        // 404 handler - ensures JSON responses for API routes
+        app.use((req, res) => {
+            if (req.path.startsWith('/api/')) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'API endpoint not found'
+                });
+            }
+
+            if (req.accepts('json') && !req.accepts('html')) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Not found'
+                });
+            }
+
+            res.status(404).send('Page not found');
+        });
+
+        // Browser automatisch öffnen (mit Guard gegen Duplikate)
+        // Respektiert OPEN_BROWSER Umgebungsvariable
+        const shouldOpenBrowser = process.env.OPEN_BROWSER !== 'false' && !browserOpened;
+        
+        if (shouldOpenBrowser) {
+            browserOpened = true; // Setze Guard sofort
+            
+            try {
+                const open = (await import('open')).default;
+                await open(`http://localhost:${PORT}/dashboard.html`);
+                logger.info(`ℹ️  Browser geöffnet: http://localhost:${PORT}/dashboard.html\n`);
+            } catch (error) {
+                logger.info('ℹ️  Browser konnte nicht automatisch geöffnet werden.');
+                logger.info(`   Öffne manuell: http://localhost:${PORT}/dashboard.html\n`);
+            }
+        } else if (process.env.OPEN_BROWSER === 'false') {
+            logger.info('ℹ️  Browser-Auto-Open deaktiviert (OPEN_BROWSER=false)\n');
         }
     });
 })(); // Schließe async IIFE
@@ -1747,6 +2521,13 @@ process.on('SIGINT', async () => {
     // OBS-Verbindung trennen
     if (obs.isConnected()) {
         await obs.disconnect();
+    }
+
+    // Cloud Sync beenden
+    try {
+        await cloudSync.shutdown();
+    } catch (error) {
+        logger.error('Error shutting down cloud sync:', error);
     }
 
     // Datenbank schließen
@@ -1768,4 +2549,4 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, tiktok, alerts, flows, goals, leaderboard, subscriptionTiers };
+module.exports = { app, server, io, db, tiktok, alerts, iftttEngine, goals, leaderboard, subscriptionTiers };

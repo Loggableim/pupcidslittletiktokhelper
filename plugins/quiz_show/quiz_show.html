@@ -31,6 +31,9 @@
             <button class="tab-button" data-tab="leaderboard">
                 <span>🏆 Leaderboard</span>
             </button>
+            <button class="tab-button" data-tab="hud">
+                <span>🎨 HUD Overlay</span>
+            </button>
         </div>
 
         <!-- Dashboard Tab -->
@@ -41,6 +44,16 @@
                     <div class="panel-header">
                         <h2>Aktuelle Frage</h2>
                         <div class="panel-controls">
+                            <select id="gameModeSelect" class="form-control" style="width: auto; display: inline-block; margin-right: 10px;">
+                                <option value="classic">Klassisch</option>
+                                <option value="fastestFinger">Schnellste Finger</option>
+                                <option value="elimination">Elimination</option>
+                                <option value="marathon">Marathon</option>
+                            </select>
+                            <select id="categoryFilter" class="form-control" style="width: auto; display: inline-block; margin-right: 10px;">
+                                <option value="Alle">Alle Kategorien</option>
+                                <!-- Categories will be populated dynamically -->
+                            </select>
                             <button id="startQuizBtn" class="btn btn-primary">▶️ Quiz Starten</button>
                             <button id="nextQuestionBtn" class="btn btn-secondary" disabled>⏭️ Nächste Frage</button>
                             <button id="stopQuizBtn" class="btn btn-danger" disabled>⏹️ Stoppen</button>
@@ -118,13 +131,16 @@
                     <div class="panel-body">
                         <div class="upload-section">
                             <div class="help-text">
-                                Format: <code>[{"question": "...", "answers": ["A", "B", "C", "D"], "correct": 0}]</code>
+                                Format: <code>[{"question": "...", "answers": ["A", "B", "C", "D"], "correct": 0, "difficulty": 2, "category": "...", "info": "..."}]</code>
                             </div>
                             <textarea id="jsonUpload" class="json-input" placeholder='[
   {
     "question": "Was ist die Hauptstadt von Deutschland?",
     "answers": ["Berlin", "München", "Hamburg", "Köln"],
-    "correct": 0
+    "correct": 0,
+    "difficulty": 2,
+    "category": "Geographie",
+    "info": "Berlin ist seit 1990 die Hauptstadt des wiedervereinigten Deutschlands"
   }
 ]'></textarea>
                             <div class="button-group">
@@ -173,6 +189,31 @@
                                 <option value="2">C</option>
                                 <option value="3">D</option>
                             </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kategorie:</label>
+                                <input type="text" id="questionCategory" class="form-control" placeholder="Allgemein" list="categoryList">
+                                <datalist id="categoryList">
+                                    <!-- Categories will be populated dynamically -->
+                                </datalist>
+                            </div>
+                            <div class="form-group">
+                                <label>Schwierigkeit:</label>
+                                <select id="questionDifficulty" class="form-control">
+                                    <option value="1">⭐ Leicht</option>
+                                    <option value="2" selected>⭐⭐ Mittel</option>
+                                    <option value="3">⭐⭐⭐ Schwer</option>
+                                    <option value="4">⭐⭐⭐⭐ Experte</option>
+                                    <option value="5">⭐⭐⭐⭐⭐ Master</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Info (optional - wird nach der Runde angezeigt):</label>
+                            <textarea id="questionInfo" class="form-control" rows="2" placeholder="Zusätzliche Informationen zur Antwort (optional)"></textarea>
                         </div>
 
                         <div class="button-group">
@@ -303,6 +344,131 @@
                     </div>
                 </div>
 
+                <!-- TTS Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>🗣️ TTS Einstellungen</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="ttsEnabled">
+                                <span>TTS Aktiviert (Fragen vorlesen)</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>TTS Stimme:</label>
+                            <select id="ttsVoice" class="form-control">
+                                <option value="default">Standard</option>
+                                <option value="de-DE-Standard-A">Deutsch (Weiblich A)</option>
+                                <option value="de-DE-Standard-B">Deutsch (Männlich B)</option>
+                                <option value="de-DE-Standard-C">Deutsch (Weiblich C)</option>
+                                <option value="de-DE-Standard-D">Deutsch (Männlich D)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Marathon Mode Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>🏃 Marathon Modus</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Marathon Länge (Anzahl richtiger Antworten):</label>
+                            <input type="number" id="marathonLength" class="form-control" min="5" max="50" value="15">
+                            <div class="help-text small">Wie viele Fragen muss ein Spieler in Folge richtig beantworten?</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auto Mode Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>⚡ Auto Modus</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="autoMode">
+                                <span>Auto Modus aktiviert (Automatisch zur nächsten Frage)</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Wartezeit vor nächster Frage (Sekunden):</label>
+                            <input type="number" id="autoModeDelay" class="form-control" min="3" max="30" value="5">
+                            <div class="help-text small">Zeit in Sekunden zwischen Antwortanzeige und nächster Frage</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Voter Icons Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>👥 Voter Icons (Antwortvisualisierung)</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="voterIconsEnabled" checked>
+                                <span>Voter Icons anzeigen</span>
+                            </label>
+                            <div class="help-text small">Zeigt Profilbilder der Zuschauer über den Antworten an, für die sie gestimmt haben</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Icon-Größe:</label>
+                            <select id="voterIconSize" class="form-control">
+                                <option value="small">Klein (24px)</option>
+                                <option value="medium" selected>Mittel (32px)</option>
+                                <option value="large">Groß (40px)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Maximale Icons pro Antwort:</label>
+                            <input type="number" id="voterIconMaxVisible" class="form-control" min="3" max="50" value="10">
+                            <div class="help-text small">Überschüssige Voter werden als "+X weitere" angezeigt</div>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="voterIconCompactMode" checked>
+                                <span>Kompaktmodus bei vielen Votes</span>
+                            </label>
+                            <div class="help-text small">Verkleinert Icons automatisch bei mehr als 5 Teilnehmern</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Animationsstil:</label>
+                            <select id="voterIconAnimation" class="form-control">
+                                <option value="fade" selected>Einblenden (Fade)</option>
+                                <option value="slide">Einsliden (Slide)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Positionierung:</label>
+                            <select id="voterIconPosition" class="form-control">
+                                <option value="above" selected>Über der Antwort</option>
+                                <option value="beside">Neben der Antwort</option>
+                                <option value="embedded">Eingebettet</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="voterIconShowOnScoreboard">
+                                <span>Avatare im Scoreboard anzeigen</span>
+                            </label>
+                            <div class="help-text small">Zeigt kleine Avatare neben der Punktzahl bei korrekten Antworten</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Save Button -->
                 <div class="panel full-width">
                     <div class="panel-body">
@@ -319,6 +485,11 @@
                 <div class="panel-header">
                     <h2>🏆 Leaderboard</h2>
                     <div class="panel-controls">
+                        <select id="seasonSelect" class="form-control" style="width: auto; display: inline-block; margin-right: 10px;">
+                            <option value="active">Aktuelle Saison</option>
+                            <!-- Seasons will be populated dynamically -->
+                        </select>
+                        <button id="newSeasonBtn" class="btn btn-secondary">🆕 Neue Saison</button>
                         <button id="exportLeaderboardBtn" class="btn btn-secondary">📥 Exportieren</button>
                         <button id="importLeaderboardBtn" class="btn btn-secondary">📤 Importieren</button>
                         <button id="resetLeaderboardBtn" class="btn btn-danger">🗑️ Zurücksetzen</button>
@@ -363,6 +534,232 @@
                     <div class="modal-footer">
                         <button id="confirmImportBtn" class="btn btn-primary">Importieren</button>
                         <button id="cancelImportBtn" class="btn btn-secondary">Abbrechen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HUD Overlay Tab -->
+        <div id="hud" class="tab-content">
+            <div class="hud-config-grid">
+                <!-- Preview Panel -->
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>🎬 Live Preview</h2>
+                        <div class="panel-controls">
+                            <button id="openOverlayBtn" class="btn btn-secondary">🔗 Overlay öffnen</button>
+                            <button id="refreshPreviewBtn" class="btn btn-secondary">🔄 Aktualisieren</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="preview-container">
+                            <div class="preview-info">
+                                <label>Stream-Auflösung:</label>
+                                <select id="streamResolution" class="form-control">
+                                    <option value="1920x1080">1920x1080 (Full HD)</option>
+                                    <option value="1280x720">1280x720 (HD)</option>
+                                    <option value="2560x1440">2560x1440 (2K)</option>
+                                    <option value="3840x2160">3840x2160 (4K)</option>
+                                </select>
+                                <div class="help-text">Overlay-URL: <code id="overlayUrl">/quiz-show/overlay</code></div>
+                            </div>
+                            <div class="preview-wrapper" id="previewWrapper">
+                                <iframe id="overlayPreview" src="/quiz-show/overlay" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theme & Style -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>🎨 Theme & Style</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Theme:</label>
+                            <select id="hudTheme" class="form-control">
+                                <option value="dark">Dark Professional</option>
+                                <option value="light">Light Clean</option>
+                                <option value="neon">Neon Cyberpunk</option>
+                                <option value="gold">Gold TV Show</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Antworten Layout:</label>
+                            <select id="answersLayout" class="form-control">
+                                <option value="grid">Grid (2x2)</option>
+                                <option value="vertical">Vertikal</option>
+                                <option value="horizontal">Horizontal</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Animations-Geschwindigkeit:</label>
+                            <input type="range" id="animationSpeed" min="0.5" max="2" step="0.1" value="1" class="form-range">
+                            <div class="range-value"><span id="animationSpeedValue">1.0</span>x</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Glow-Intensität:</label>
+                            <input type="range" id="glowIntensity" min="0" max="2" step="0.1" value="1" class="form-range">
+                            <div class="range-value"><span id="glowIntensityValue">1.0</span>x</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Animations -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>✨ Animationen</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Frage-Einblendung:</label>
+                            <select id="questionAnimation" class="form-control">
+                                <option value="slide-in-left">Slide In Left</option>
+                                <option value="slide-in-right">Slide In Right</option>
+                                <option value="slide-in-top">Slide In Top</option>
+                                <option value="slide-in-bottom" selected>Slide In Bottom</option>
+                                <option value="fade-in">Fade In</option>
+                                <option value="scale-in">Scale In</option>
+                                <option value="bounce-in">Bounce In</option>
+                                <option value="elastic-in">Elastic Pop</option>
+                                <option value="flip-in">Flip In</option>
+                                <option value="rotate-in">Rotate In</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Richtige Antwort:</label>
+                            <select id="correctAnimation" class="form-control">
+                                <option value="glow-pulse" selected>Glow Pulse</option>
+                                <option value="explode">Explode Highlight</option>
+                                <option value="burst">Correct Burst</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Falsche Antwort:</label>
+                            <select id="wrongAnimation" class="form-control">
+                                <option value="shake" selected>Shake Reject</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timer -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>⏱️ Timer</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Timer-Variante:</label>
+                            <select id="timerVariant" class="form-control">
+                                <option value="circular" selected>Circular SVG</option>
+                                <option value="bar">Progress Bar</option>
+                                <option value="neon">Neon Glow</option>
+                                <option value="ring">Ring mit Farbverlauf</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Colors -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>🎨 Farben</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="color-grid">
+                            <div class="form-group">
+                                <label>Primärfarbe:</label>
+                                <input type="color" id="colorPrimary" value="#3b82f6" class="form-control color-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Sekundärfarbe:</label>
+                                <input type="color" id="colorSecondary" value="#8b5cf6" class="form-control color-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Erfolg:</label>
+                                <input type="color" id="colorSuccess" value="#10b981" class="form-control color-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Warnung:</label>
+                                <input type="color" id="colorWarning" value="#f59e0b" class="form-control color-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Fehler:</label>
+                                <input type="color" id="colorDanger" value="#ef4444" class="form-control color-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fonts -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>🔤 Schriftarten</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Schriftfamilie:</label>
+                            <select id="fontFamily" class="form-control">
+                                <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" selected>System Standard</option>
+                                <option value="'Arial', sans-serif">Arial</option>
+                                <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
+                                <option value="'Georgia', serif">Georgia</option>
+                                <option value="'Times New Roman', serif">Times New Roman</option>
+                                <option value="'Courier New', monospace">Courier New</option>
+                                <option value="'Comic Sans MS', cursive">Comic Sans</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Frage-Schriftgröße:</label>
+                            <input type="text" id="fontSizeQuestion" value="2.2rem" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Antwort-Schriftgröße:</label>
+                            <input type="text" id="fontSizeAnswer" value="1.1rem" class="form-control">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom CSS -->
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>💻 Custom CSS</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="help-text">
+                            Fügen Sie hier eigenes CSS hinzu, um das Overlay weiter anzupassen.
+                        </div>
+                        <textarea id="customCSS" class="css-editor" placeholder="/* Eigenes CSS hier einfügen */
+.question-text {
+    /* Beispiel: Textschatten */
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}"></textarea>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>💾 Speichern & Zurücksetzen</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="button-group">
+                            <button id="saveHUDConfigBtn" class="btn btn-primary btn-large">💾 HUD-Konfiguration Speichern</button>
+                            <button id="resetHUDConfigBtn" class="btn btn-danger">🔄 Auf Standard zurücksetzen</button>
+                        </div>
+                        <div class="help-text">
+                            <strong>Drag & Drop:</strong> Öffnen Sie das Overlay und halten Sie Strg/Cmd gedrückt, um Elemente zu verschieben. Drücken Sie 'G', um Snap-to-Grid zu aktivieren/deaktivieren.
+                        </div>
+                        <div id="hudSaveMessage" class="message hidden"></div>
                     </div>
                 </div>
             </div>

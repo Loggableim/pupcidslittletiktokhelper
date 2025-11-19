@@ -401,8 +401,10 @@ class MultiCamPlugin {
         this.api.registerTikTokEvent('gift', async (data) => {
             if (!this.config.enabled) return;
 
-            const { uniqueId: username, giftId, giftName, diamondCount } = data;
-            const coins = diamondCount || 0;
+            // FIX: Use data.coins (already calculated as diamondCount * 2 * repeatCount)
+            // instead of data.diamondCount (which is just the raw diamond value per gift)
+            const { uniqueId: username, giftId, giftName } = data;
+            const coins = data.coins || 0;
 
             this.api.log(`Multi-Cam: Gift from ${username}: ${giftName} (${coins} coins)`);
 

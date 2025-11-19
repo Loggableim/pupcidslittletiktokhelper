@@ -1,5 +1,5 @@
-// Socket.io Verbindung
-const socket = io();
+// Socket.io Verbindung - delayed until DOM ready to avoid race conditions
+let socket = null;
 
 // State
 let currentTab = 'events';
@@ -8,88 +8,79 @@ let settings = {};
 
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize UI first, dann Plugins checken (non-blocking)
-    initializeTabs();
+    // Initialize UI first
     initializeButtons();
-    initializeSocketListeners();
-    initializeAudioInfoBanner();
 
-    // Dann asynchron (ohne await) laden - blockiert nicht die UI
-    checkPluginsAndUpdateUI().catch(err => console.error('Plugin check failed:', err));
-    loadSettings().catch(err => console.error('Settings load failed:', err));
-    // loadVoices und loadVoiceMapping werden vom tts_core_v2 Plugin verwaltet
-    loadFlows().catch(err => console.error('Flows load failed:', err));
-    loadActiveProfile().catch(err => console.error('Profile load failed:', err));
-});
-
-// ========== TABS ==========
-function initializeTabs() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabName = btn.dataset.tab;
-            switchTab(tabName);
-        });
-    });
-
-    // Restore last active tab from localStorage
-    const savedTab = localStorage.getItem('dashboard-active-tab');
-    if (savedTab) {
-        // Check if the saved tab button exists (plugin might be disabled)
-        const tabButton = document.querySelector(`[data-tab="${savedTab}"]`);
-        if (tabButton && tabButton.style.display !== 'none') {
-            switchTab(savedTab);
-        } else {
-            // Fallback to events tab if saved tab is not available
-            switchTab('events');
+    // Wait for server to be fully initialized (prevents race conditions)
+    if (window.initHelper) {
+        try {
+            console.log('⏳ Waiting for server initialization...');
+            await window.initHelper.waitForReady(10000); // 10s timeout
+            console.log('✅ Server ready, loading dashboard data...');
+        } catch (err) {
+            console.warn('Server initialization check timed out, proceeding anyway:', err);
         }
     }
-}
 
-function switchTab(tabName) {
-    // Button-States
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabName);
-    });
-
-    // Content-States
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.toggle('active', content.id === `tab-${tabName}`);
-    });
-
-    currentTab = tabName;
-
-    // Save active tab to localStorage
-    localStorage.setItem('dashboard-active-tab', tabName);
-
-    // Tab-spezifische Aktionen
-    if (tabName === 'flows') {
-        loadFlows();
-    } else if (tabName === 'soundboard') {
-        loadSoundboardSettings();
-        loadGiftSounds();
-        loadGiftCatalog();
+    // Load critical data BEFORE initializing socket listeners
+    // This prevents race conditions where UI tries to use data that hasn't loaded yet
+    try {
+        await Promise.all([
+            loadSettings(),
+            loadFlows(),
+            loadActiveProfile()
+        ]);
+    } catch (err) {
+        console.error('Failed to load initial data:', err);
     }
-    // TTS-Tab wird vom tts_core_v2 Plugin verwaltet
-}
+
+    // Initialize socket connection AFTER data is loaded
+    socket = io();
+
+    // Listen for init state updates
+    if (window.initHelper && socket) {
+        window.initHelper.listenForUpdates(socket);
+    }
+
+    initializeSocketListeners();
+});
+
+// ========== TABS (Legacy - now handled by navigation.js) ==========
+// Tab functions removed - navigation is now handled by navigation.js
+// View switching is done through NavigationManager.switchView()
 
 // ========== BUTTONS ==========
 function initializeButtons() {
     // Connect Button
-    document.getElementById('connect-btn').addEventListener('click', connect);
+    const connectBtn = document.getElementById('connect-btn');
+    if (connectBtn) {
+        connectBtn.addEventListener('click', connect);
+    }
 
     // Disconnect Button
-    document.getElementById('disconnect-btn').addEventListener('click', disconnect);
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', disconnect);
+    }
 
     // Enter-Taste im Username-Input
-    document.getElementById('username-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') connect();
-    });
+    const usernameInput = document.getElementById('username-input');
+    if (usernameInput) {
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') connect();
+        });
+    }
 
     // Clear Events
-    document.getElementById('clear-events-btn').addEventListener('click', () => {
-        document.getElementById('event-log').innerHTML = '';
-    });
+    const clearEventsBtn = document.getElementById('clear-events-btn');
+    if (clearEventsBtn) {
+        clearEventsBtn.addEventListener('click', () => {
+            const eventLog = document.getElementById('event-log');
+            if (eventLog) {
+                eventLog.innerHTML = '';
+            }
+        });
+    }
 
     // TTS Voice Buttons (nur wenn Elemente existieren - Plugin könnte diese zur Verfügung stellen)
     const addVoiceBtn = document.getElementById('add-voice-btn');
@@ -146,14 +137,28 @@ function initializeButtons() {
     }
 
     // Profile Buttons
-    document.getElementById('profile-btn').addEventListener('click', showProfileModal);
-    document.getElementById('profile-modal-close').addEventListener('click', hideProfileModal);
-    document.getElementById('create-profile-btn').addEventListener('click', createProfile);
+    const profileBtn = document.getElementById('profile-btn');
+    if (profileBtn) {
+        profileBtn.addEventListener('click', showProfileModal);
+    }
+
+    const profileModalClose = document.getElementById('profile-modal-close');
+    if (profileModalClose) {
+        profileModalClose.addEventListener('click', hideProfileModal);
+    }
+
+    const createProfileBtn = document.getElementById('create-profile-btn');
+    if (createProfileBtn) {
+        createProfileBtn.addEventListener('click', createProfile);
+    }
 
     // Enter-Taste im Profile-Input
-    document.getElementById('new-profile-username').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') createProfile();
-    });
+    const newProfileUsername = document.getElementById('new-profile-username');
+    if (newProfileUsername) {
+        newProfileUsername.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') createProfile();
+        });
+    }
 
     // TTS Settings Buttons (nur wenn Elemente existieren - Plugin könnte diese zur Verfügung stellen)
     const saveTTSBtn = document.getElementById('save-tts-settings-btn');
@@ -187,6 +192,76 @@ function initializeButtons() {
             if (label) label.textContent = e.target.value;
         });
     }
+
+    // Auto-start toggle
+    const autostartCheckbox = document.getElementById('autostart-enabled');
+    if (autostartCheckbox) {
+        autostartCheckbox.addEventListener('change', (e) => {
+            toggleAutoStart(e.target.checked);
+        });
+    }
+
+    // Preset management buttons
+    const exportBtn = document.getElementById('export-preset-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportPreset);
+    }
+
+    const importBtn = document.getElementById('import-preset-btn');
+    if (importBtn) {
+        importBtn.addEventListener('click', importPreset);
+    }
+
+    // Resource Monitor - Save button
+    const saveResourceMonitorBtn = document.getElementById('save-resource-monitor-settings');
+    if (saveResourceMonitorBtn) {
+        saveResourceMonitorBtn.addEventListener('click', saveResourceMonitorSettings);
+    }
+
+    // Resource Monitor - Interval slider live update
+    const resourceMonitorInterval = document.getElementById('resource-monitor-interval');
+    if (resourceMonitorInterval) {
+        resourceMonitorInterval.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            const label = document.getElementById('resource-monitor-interval-label');
+            if (label) {
+                label.textContent = (value / 1000).toFixed(1) + 's';
+            }
+        });
+    }
+
+    // OSC-Bridge settings checkbox handler
+    const oscBridgeCheckbox = document.getElementById('osc-bridge-enabled');
+    if (oscBridgeCheckbox) {
+        oscBridgeCheckbox.addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ osc_bridge_enabled: enabled ? 'true' : 'false' })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log(`OSC-Bridge ${enabled ? 'enabled' : 'disabled'}`);
+                    // Update the quick action button state if it exists
+                    const quickBtn = document.getElementById('quick-osc-bridge-btn');
+                    if (quickBtn) {
+                        quickBtn.setAttribute('data-state', enabled ? 'on' : 'off');
+                    }
+                } else {
+                    // Revert on error
+                    oscBridgeCheckbox.checked = !enabled;
+                    alert('Error saving OSC-Bridge setting');
+                }
+            } catch (error) {
+                console.error('Error saving OSC-Bridge setting:', error);
+                oscBridgeCheckbox.checked = !enabled;
+            }
+        });
+    }
 }
 
 // ========== SOCKET.IO LISTENERS ==========
@@ -199,6 +274,11 @@ function initializeSocketListeners() {
     // Stats Update
     socket.on('tiktok:stats', (stats) => {
         updateStats(stats);
+    });
+
+    // Stream Time Info (Debug)
+    socket.on('tiktok:streamTimeInfo', (info) => {
+        updateStreamTimeDebug(info);
     });
 
     // Event
@@ -267,33 +347,47 @@ async function disconnect() {
 }
 
 function updateConnectionStatus(status, data = {}) {
-    const statusEl = document.getElementById('connection-status');
     const infoEl = document.getElementById('connection-info');
     const connectBtn = document.getElementById('connect-btn');
     const disconnectBtn = document.getElementById('disconnect-btn');
 
+    // Check if elements exist
+    if (!infoEl || !connectBtn || !disconnectBtn) {
+        console.warn('Connection status elements not found');
+        return;
+    }
+
+    // Update status badge via NavigationManager
+    if (window.NavigationManager) {
+        window.NavigationManager.updateConnectionStatus(status, data);
+    }
+
     switch (status) {
         case 'connected':
-            statusEl.className = 'status-badge status-connected';
-            statusEl.textContent = '🟢 Connected';
-            infoEl.textContent = `Connected to @${data.username}`;
-            infoEl.className = 'mt-4 text-green-400 text-sm';
+            infoEl.innerHTML = `<div class="text-green-400 text-sm">Connected to @${data.username}</div>`;
             connectBtn.disabled = true;
             disconnectBtn.disabled = false;
             break;
 
         case 'disconnected':
-            statusEl.className = 'status-badge status-disconnected';
-            statusEl.textContent = '⚫ Disconnected';
             infoEl.textContent = '';
-            infoEl.className = 'mt-4 text-gray-400 text-sm';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
+            
+            // Reset runtime display
+            const runtimeEl = document.getElementById('stat-runtime');
+            if (runtimeEl) {
+                runtimeEl.textContent = '--:--:--';
+            }
+            
+            // Hide debug panel
+            const debugPanel = document.getElementById('stream-time-debug');
+            if (debugPanel) {
+                debugPanel.style.display = 'none';
+            }
             break;
 
         case 'retrying':
-            statusEl.className = 'status-badge bg-yellow-600';
-            statusEl.textContent = `🔄 Retrying (${data.attempt}/${data.maxRetries})`;
             infoEl.innerHTML = `
                 <div class="p-3 bg-yellow-900 bg-opacity-50 border border-yellow-600 rounded">
                     <div class="font-semibold text-yellow-300">Verbindung wird wiederholt...</div>
@@ -303,15 +397,11 @@ function updateConnectionStatus(status, data = {}) {
                     </div>
                 </div>
             `;
-            infoEl.className = 'mt-4 text-sm';
             connectBtn.disabled = true;
             disconnectBtn.disabled = false;
             break;
 
         case 'error':
-            statusEl.className = 'status-badge status-error';
-            statusEl.textContent = '🔴 Error';
-
             // Detaillierte Fehleranzeige mit Type und Suggestion
             let errorHtml = `
                 <div class="p-3 bg-red-900 bg-opacity-50 border border-red-600 rounded">
@@ -339,16 +429,12 @@ function updateConnectionStatus(status, data = {}) {
             errorHtml += `</div>`;
 
             infoEl.innerHTML = errorHtml;
-            infoEl.className = 'mt-4 text-sm';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
             break;
 
         case 'stream_ended':
-            statusEl.className = 'status-badge status-error';
-            statusEl.textContent = '📺 Stream Ended';
-            infoEl.textContent = 'The stream has ended';
-            infoEl.className = 'mt-4 text-gray-400 text-sm';
+            infoEl.innerHTML = '<div class="text-gray-400 text-sm">The stream has ended</div>';
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
             break;
@@ -357,10 +443,68 @@ function updateConnectionStatus(status, data = {}) {
 
 // ========== STATS ==========
 function updateStats(stats) {
-    document.getElementById('stat-viewers').textContent = stats.viewers.toLocaleString();
-    document.getElementById('stat-likes').textContent = stats.likes.toLocaleString();
-    document.getElementById('stat-coins').textContent = stats.totalCoins.toLocaleString();
-    document.getElementById('stat-followers').textContent = stats.followers.toLocaleString();
+    const viewersEl = document.getElementById('stat-viewers');
+    const likesEl = document.getElementById('stat-likes');
+    const coinsEl = document.getElementById('stat-coins');
+    const followersEl = document.getElementById('stat-followers');
+    const runtimeEl = document.getElementById('stat-runtime');
+
+    if (viewersEl) viewersEl.textContent = stats.viewers.toLocaleString();
+    if (likesEl) likesEl.textContent = stats.likes.toLocaleString();
+    if (coinsEl) coinsEl.textContent = stats.totalCoins.toLocaleString();
+    if (followersEl) followersEl.textContent = stats.followers.toLocaleString();
+
+    // Update stream runtime
+    if (runtimeEl && stats.streamDuration !== undefined) {
+        const duration = stats.streamDuration;
+        const hours = Math.floor(duration / 3600);
+        const minutes = Math.floor((duration % 3600) / 60);
+        const seconds = duration % 60;
+        
+        const formatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        runtimeEl.textContent = formatted;
+    } else if (runtimeEl) {
+        runtimeEl.textContent = '--:--:--';
+    }
+
+    // Update gifts counter if available
+    const giftsElement = document.getElementById('stat-gifts');
+    if (giftsElement) {
+        // Use stats.gifts if available, otherwise fallback to counting gifts from events
+        giftsElement.textContent = (stats.gifts || 0).toLocaleString();
+    }
+}
+
+// ========== STREAM TIME DEBUG ==========
+function updateStreamTimeDebug(info) {
+    const debugPanel = document.getElementById('stream-time-debug');
+    const startEl = document.getElementById('debug-stream-start');
+    const durationEl = document.getElementById('debug-stream-duration');
+    const methodEl = document.getElementById('debug-detection-method');
+
+    if (debugPanel && startEl && durationEl && methodEl) {
+        // Show the debug panel
+        debugPanel.style.display = 'block';
+        
+        // Update values
+        startEl.textContent = info.streamStartISO || '--';
+        
+        const hours = Math.floor(info.currentDuration / 3600);
+        const minutes = Math.floor((info.currentDuration % 3600) / 60);
+        const seconds = info.currentDuration % 60;
+        durationEl.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        methodEl.textContent = info.detectionMethod || '--';
+        
+        // Color code based on detection method
+        if (info.detectionMethod && info.detectionMethod.includes('roomInfo')) {
+            methodEl.style.color = '#10b981'; // Green - good
+        } else if (info.detectionMethod && info.detectionMethod.includes('Event')) {
+            methodEl.style.color = '#f59e0b'; // Orange - acceptable
+        } else {
+            methodEl.style.color = '#ef4444'; // Red - fallback
+        }
+    }
 }
 
 // ========== EVENT LOG ==========
@@ -606,28 +750,50 @@ async function loadFlows() {
         container.innerHTML = '';
 
         if (flows.length === 0) {
-            container.innerHTML = '<div class="text-center text-gray-400 py-8">No flows yet. Create one to get started!</div>';
+            container.innerHTML = `
+                <div class="text-center text-gray-400 py-8">
+                    <p>No flows yet. Create your first automation flow!</p>
+                    <a href="/ifttt-flow-editor.html" target="_blank" class="btn btn-primary mt-4" style="display: inline-block;">
+                        Open Visual Flow Editor
+                    </a>
+                </div>
+            `;
             return;
         }
 
         flows.forEach(flow => {
             const flowDiv = document.createElement('div');
-            flowDiv.className = 'bg-gray-700 rounded p-4';
+            flowDiv.className = 'bg-gray-700 rounded p-4 mb-3';
+            
+            // Get trigger name
+            const triggerName = flow.trigger_type.replace('tiktok:', '').replace(':', ' ');
+            const triggerIcon = getTriggerIcon(flow.trigger_type);
+            
             flowDiv.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
                         <h3 class="font-bold text-lg">${flow.name}</h3>
-                        <div class="text-sm text-gray-400 mt-1">
-                            Trigger: ${flow.trigger_type}
-                            ${flow.trigger_condition ? ` (${flow.trigger_condition.field} ${flow.trigger_condition.operator} ${flow.trigger_condition.value})` : ''}
+                        <div class="text-sm text-gray-400 mt-2 flex items-center gap-2">
+                            <span>${triggerIcon}</span>
+                            <span><strong>Trigger:</strong> ${triggerName}</span>
                         </div>
+                        ${flow.trigger_condition ? `
+                            <div class="text-sm text-gray-400 mt-1">
+                                <strong>Condition:</strong> ${flow.trigger_condition.field || ''} ${flow.trigger_condition.operator || ''} ${flow.trigger_condition.value || ''}
+                            </div>
+                        ` : ''}
                         <div class="text-sm text-gray-400 mt-1">
-                            Actions: ${flow.actions.length}
+                            <strong>Actions:</strong> ${flow.actions.length} action(s)
                         </div>
                     </div>
                     <div class="flex gap-2">
+                        <button onclick="testFlow(${flow.id})" 
+                                class="px-3 py-1 rounded text-sm bg-blue-600 hover:bg-blue-700"
+                                title="Test flow">
+                            🧪 Test
+                        </button>
                         <button onclick="toggleFlow(${flow.id}, ${!flow.enabled})"
-                                class="px-3 py-1 rounded text-sm ${flow.enabled ? 'bg-green-600' : 'bg-gray-600'}">
+                                class="px-3 py-1 rounded text-sm ${flow.enabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}">
                             ${flow.enabled ? '✅ Enabled' : '⏸️ Disabled'}
                         </button>
                         <button onclick="deleteFlow(${flow.id})" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">
@@ -641,6 +807,50 @@ async function loadFlows() {
 
     } catch (error) {
         console.error('Error loading flows:', error);
+    }
+}
+
+function getTriggerIcon(triggerType) {
+    const icons = {
+        'tiktok:gift': '🎁',
+        'tiktok:chat': '💬',
+        'tiktok:follow': '👤',
+        'tiktok:share': '🔗',
+        'tiktok:like': '❤️',
+        'tiktok:subscribe': '⭐',
+        'tiktok:join': '👋',
+        'timer:interval': '⏰',
+        'timer:countdown': '⏱️',
+        'system:connected': '📡',
+        'system:disconnected': '📴',
+        'goal:reached': '🎯'
+    };
+    return icons[triggerType] || '⚡';
+}
+
+async function testFlow(id) {
+    try {
+        const response = await fetch(`/api/ifttt/trigger/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: 'TestUser',
+                message: 'Test message from dashboard',
+                coins: 100,
+                giftName: 'Rose'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Flow test triggered successfully!');
+        } else {
+            alert(`❌ Test failed: ${result.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error testing flow:', error);
+        alert('❌ Error testing flow');
     }
 }
 
@@ -765,24 +975,52 @@ async function loadSoundboardSettings() {
         const response = await fetch('/api/settings');
         const settings = await response.json();
 
-        // Load settings into UI
-        document.getElementById('soundboard-enabled').checked = settings.soundboard_enabled === 'true';
-        document.getElementById('soundboard-play-mode').value = settings.soundboard_play_mode || 'overlap';
-        document.getElementById('soundboard-max-queue').value = settings.soundboard_max_queue_length || '10';
+        // Load settings into UI with null checks
+        const soundboardEnabled = document.getElementById('soundboard-enabled');
+        if (soundboardEnabled) soundboardEnabled.checked = settings.soundboard_enabled === 'true';
 
-        // Event sounds
-        document.getElementById('soundboard-follow-url').value = settings.soundboard_follow_sound || '';
-        document.getElementById('soundboard-follow-volume').value = settings.soundboard_follow_volume || '1.0';
-        document.getElementById('soundboard-subscribe-url').value = settings.soundboard_subscribe_sound || '';
-        document.getElementById('soundboard-subscribe-volume').value = settings.soundboard_subscribe_volume || '1.0';
-        document.getElementById('soundboard-share-url').value = settings.soundboard_share_sound || '';
-        document.getElementById('soundboard-share-volume').value = settings.soundboard_share_volume || '1.0';
-        document.getElementById('soundboard-gift-url').value = settings.soundboard_default_gift_sound || '';
-        document.getElementById('soundboard-gift-volume').value = settings.soundboard_gift_volume || '1.0';
-        document.getElementById('soundboard-like-url').value = settings.soundboard_like_sound || '';
-        document.getElementById('soundboard-like-volume').value = settings.soundboard_like_volume || '1.0';
-        document.getElementById('soundboard-like-threshold').value = settings.soundboard_like_threshold || '0';
-        document.getElementById('soundboard-like-window').value = settings.soundboard_like_window_seconds || '10';
+        const playMode = document.getElementById('soundboard-play-mode');
+        if (playMode) playMode.value = settings.soundboard_play_mode || 'overlap';
+
+        const maxQueue = document.getElementById('soundboard-max-queue');
+        if (maxQueue) maxQueue.value = settings.soundboard_max_queue_length || '10';
+
+        // Event sounds with null checks
+        const followUrl = document.getElementById('soundboard-follow-url');
+        if (followUrl) followUrl.value = settings.soundboard_follow_sound || '';
+
+        const followVolume = document.getElementById('soundboard-follow-volume');
+        if (followVolume) followVolume.value = settings.soundboard_follow_volume || '1.0';
+
+        const subscribeUrl = document.getElementById('soundboard-subscribe-url');
+        if (subscribeUrl) subscribeUrl.value = settings.soundboard_subscribe_sound || '';
+
+        const subscribeVolume = document.getElementById('soundboard-subscribe-volume');
+        if (subscribeVolume) subscribeVolume.value = settings.soundboard_subscribe_volume || '1.0';
+
+        const shareUrl = document.getElementById('soundboard-share-url');
+        if (shareUrl) shareUrl.value = settings.soundboard_share_sound || '';
+
+        const shareVolume = document.getElementById('soundboard-share-volume');
+        if (shareVolume) shareVolume.value = settings.soundboard_share_volume || '1.0';
+
+        const giftUrl = document.getElementById('soundboard-gift-url');
+        if (giftUrl) giftUrl.value = settings.soundboard_default_gift_sound || '';
+
+        const giftVolume = document.getElementById('soundboard-gift-volume');
+        if (giftVolume) giftVolume.value = settings.soundboard_gift_volume || '1.0';
+
+        const likeUrl = document.getElementById('soundboard-like-url');
+        if (likeUrl) likeUrl.value = settings.soundboard_like_sound || '';
+
+        const likeVolume = document.getElementById('soundboard-like-volume');
+        if (likeVolume) likeVolume.value = settings.soundboard_like_volume || '1.0';
+
+        const likeThreshold = document.getElementById('soundboard-like-threshold');
+        if (likeThreshold) likeThreshold.value = settings.soundboard_like_threshold || '0';
+
+        const likeWindow = document.getElementById('soundboard-like-window');
+        if (likeWindow) likeWindow.value = settings.soundboard_like_window_seconds || '10';
 
     } catch (error) {
         console.error('Error loading soundboard settings:', error);
@@ -790,22 +1028,39 @@ async function loadSoundboardSettings() {
 }
 
 async function saveSoundboardSettings() {
+    // Collect settings with null checks
+    const soundboardEnabled = document.getElementById('soundboard-enabled');
+    const playMode = document.getElementById('soundboard-play-mode');
+    const maxQueue = document.getElementById('soundboard-max-queue');
+    const followUrl = document.getElementById('soundboard-follow-url');
+    const followVolume = document.getElementById('soundboard-follow-volume');
+    const subscribeUrl = document.getElementById('soundboard-subscribe-url');
+    const subscribeVolume = document.getElementById('soundboard-subscribe-volume');
+    const shareUrl = document.getElementById('soundboard-share-url');
+    const shareVolume = document.getElementById('soundboard-share-volume');
+    const giftUrl = document.getElementById('soundboard-gift-url');
+    const giftVolume = document.getElementById('soundboard-gift-volume');
+    const likeUrl = document.getElementById('soundboard-like-url');
+    const likeVolume = document.getElementById('soundboard-like-volume');
+    const likeThreshold = document.getElementById('soundboard-like-threshold');
+    const likeWindow = document.getElementById('soundboard-like-window');
+
     const newSettings = {
-        soundboard_enabled: document.getElementById('soundboard-enabled').checked ? 'true' : 'false',
-        soundboard_play_mode: document.getElementById('soundboard-play-mode').value,
-        soundboard_max_queue_length: document.getElementById('soundboard-max-queue').value,
-        soundboard_follow_sound: document.getElementById('soundboard-follow-url').value,
-        soundboard_follow_volume: document.getElementById('soundboard-follow-volume').value,
-        soundboard_subscribe_sound: document.getElementById('soundboard-subscribe-url').value,
-        soundboard_subscribe_volume: document.getElementById('soundboard-subscribe-volume').value,
-        soundboard_share_sound: document.getElementById('soundboard-share-url').value,
-        soundboard_share_volume: document.getElementById('soundboard-share-volume').value,
-        soundboard_default_gift_sound: document.getElementById('soundboard-gift-url').value,
-        soundboard_gift_volume: document.getElementById('soundboard-gift-volume').value,
-        soundboard_like_sound: document.getElementById('soundboard-like-url').value,
-        soundboard_like_volume: document.getElementById('soundboard-like-volume').value,
-        soundboard_like_threshold: document.getElementById('soundboard-like-threshold').value,
-        soundboard_like_window_seconds: document.getElementById('soundboard-like-window').value
+        soundboard_enabled: soundboardEnabled ? (soundboardEnabled.checked ? 'true' : 'false') : 'false',
+        soundboard_play_mode: playMode?.value || 'overlap',
+        soundboard_max_queue_length: maxQueue?.value || '10',
+        soundboard_follow_sound: followUrl?.value || '',
+        soundboard_follow_volume: followVolume?.value || '1.0',
+        soundboard_subscribe_sound: subscribeUrl?.value || '',
+        soundboard_subscribe_volume: subscribeVolume?.value || '1.0',
+        soundboard_share_sound: shareUrl?.value || '',
+        soundboard_share_volume: shareVolume?.value || '1.0',
+        soundboard_default_gift_sound: giftUrl?.value || '',
+        soundboard_gift_volume: giftVolume?.value || '1.0',
+        soundboard_like_sound: likeUrl?.value || '',
+        soundboard_like_volume: likeVolume?.value || '1.0',
+        soundboard_like_threshold: likeThreshold?.value || '0',
+        soundboard_like_window_seconds: likeWindow?.value || '10'
     };
 
     try {
@@ -831,6 +1086,10 @@ async function loadGiftSounds() {
         const gifts = await response.json();
 
         const tbody = document.getElementById('gift-sounds-list');
+        if (!tbody) {
+            console.warn('gift-sounds-list element not found');
+            return;
+        }
         tbody.innerHTML = '';
 
         if (gifts.length === 0) {
@@ -872,9 +1131,18 @@ async function loadGiftSounds() {
 }
 
 async function addGiftSound() {
-    const giftId = document.getElementById('new-gift-id').value;
-    const label = document.getElementById('new-gift-label').value;
-    const url = document.getElementById('new-gift-url').value;
+    const giftIdEl = document.getElementById('new-gift-id');
+    const labelEl = document.getElementById('new-gift-label');
+    const urlEl = document.getElementById('new-gift-url');
+
+    if (!giftIdEl || !labelEl || !urlEl) {
+        console.warn('Gift sound form elements not found');
+        return;
+    }
+
+    const giftId = giftIdEl.value;
+    const label = labelEl.value;
+    const url = urlEl.value;
     const volume = document.getElementById('new-gift-volume').value;
     const animationUrl = document.getElementById('new-gift-animation-url').value;
     const animationType = document.getElementById('new-gift-animation-type').value;
@@ -1581,63 +1849,8 @@ function initializeAudioInfoBanner() {
 }
 
 // ========== PLUGIN-BASED UI VISIBILITY ==========
-async function checkPluginsAndUpdateUI() {
-    try {
-        // Lade Plugin-Liste vom Server (mit Timeout)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-        const response = await fetch('/api/plugins', { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            console.warn(`Failed to load plugins: ${response.status} ${response.statusText}`);
-            return;
-        }
-
-        const data = await response.json();
-
-        if (!data.success) {
-            console.warn('Failed to load plugins, showing all UI elements');
-            return;
-        }
-
-        // Erstelle Set von aktiven Plugin-IDs
-        const activePlugins = new Set(
-            data.plugins
-                .filter(p => p.enabled)
-                .map(p => p.id)
-        );
-
-        console.log('Active plugins:', Array.from(activePlugins));
-
-        // Verstecke Tab-Buttons für inaktive Plugins
-        document.querySelectorAll('[data-plugin]').forEach(element => {
-            const requiredPlugin = element.getAttribute('data-plugin');
-
-            if (!activePlugins.has(requiredPlugin)) {
-                // Plugin ist nicht aktiv -> Element verstecken
-                element.style.display = 'none';
-                console.log(`Hiding UI element for inactive plugin: ${requiredPlugin}`);
-
-                // Wenn es ein Tab-Button ist und er aktiv war, wechsle zu Events-Tab
-                if (element.classList.contains('tab-btn') && element.classList.contains('active')) {
-                    const eventsTab = document.querySelector('[data-tab="events"]');
-                    if (eventsTab) {
-                        eventsTab.click();
-                    }
-                }
-            } else {
-                // Plugin ist aktiv -> Element anzeigen (falls es versteckt war)
-                element.style.display = '';
-            }
-        });
-
-    } catch (error) {
-        console.error('Error checking plugins:', error);
-        // Bei Fehler: Zeige alle UI-Elemente an (fail-safe)
-    }
-}
+// This functionality is now handled by navigation.js
+// See NavigationManager.initializePluginVisibility()
 
 // ========== DASHBOARD AUDIO PLAYBACK ==========
 
@@ -1740,9 +1953,13 @@ async function loadAutoStartSettings() {
         const platformData = await platformResponse.json();
 
         if (platformData.success) {
-            document.getElementById('autostart-platform-name').textContent = platformData.name || 'Unknown';
-            document.getElementById('autostart-platform-method').textContent = platformData.method || 'Unknown';
-            document.getElementById('autostart-supported').textContent = platformData.supported ? '✅ Yes' : '❌ No';
+            const platformName = document.getElementById('autostart-platform-name');
+            const platformMethod = document.getElementById('autostart-platform-method');
+            const supported = document.getElementById('autostart-supported');
+
+            if (platformName) platformName.textContent = platformData.name || 'Unknown';
+            if (platformMethod) platformMethod.textContent = platformData.method || 'Unknown';
+            if (supported) supported.textContent = platformData.supported ? '✅ Yes' : '❌ No';
         }
 
         // Load status
@@ -1751,16 +1968,24 @@ async function loadAutoStartSettings() {
 
         if (statusData.success) {
             const checkbox = document.getElementById('autostart-enabled');
-            checkbox.checked = statusData.enabled;
+            if (checkbox) {
+                checkbox.checked = statusData.enabled;
+            }
 
             const statusText = statusData.enabled ? '✅ Enabled' : '❌ Disabled';
-            document.getElementById('autostart-status').textContent = statusText;
-            document.getElementById('autostart-status').className = statusData.enabled ? 'font-semibold text-green-400' : 'font-semibold text-gray-400';
+            const statusElement = document.getElementById('autostart-status');
+            if (statusElement) {
+                statusElement.textContent = statusText;
+                statusElement.className = statusData.enabled ? 'font-semibold text-green-400' : 'font-semibold text-gray-400';
+            }
         }
     } catch (error) {
         console.error('Failed to load auto-start settings:', error);
-        document.getElementById('autostart-status').textContent = '❌ Error';
-        document.getElementById('autostart-status').className = 'font-semibold text-red-400';
+        const statusElement = document.getElementById('autostart-status');
+        if (statusElement) {
+            statusElement.textContent = '❌ Error';
+            statusElement.className = 'font-semibold text-red-400';
+        }
     }
 }
 
@@ -1801,55 +2026,9 @@ async function toggleAutoStart(enabled) {
     }
 }
 
-// Initialize auto-start event listener
-document.addEventListener('DOMContentLoaded', () => {
-    // Load auto-start settings when settings tab is opened
-    const settingsTabBtn = document.querySelector('[data-tab="settings"]');
-    if (settingsTabBtn) {
-        settingsTabBtn.addEventListener('click', () => {
-            loadAutoStartSettings();
-            loadResourceMonitorSettings();
-        });
-    }
-
-    // Auto-start toggle
-    const autostartCheckbox = document.getElementById('autostart-enabled');
-    if (autostartCheckbox) {
-        autostartCheckbox.addEventListener('change', (e) => {
-            toggleAutoStart(e.target.checked);
-        });
-    }
-
-    // Export preset button
-    const exportBtn = document.getElementById('export-preset-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportPreset);
-    }
-
-    // Import preset button
-    const importBtn = document.getElementById('import-preset-btn');
-    if (importBtn) {
-        importBtn.addEventListener('click', importPreset);
-    }
-
-    // Resource Monitor - Save button
-    const saveResourceMonitorBtn = document.getElementById('save-resource-monitor-settings');
-    if (saveResourceMonitorBtn) {
-        saveResourceMonitorBtn.addEventListener('click', saveResourceMonitorSettings);
-    }
-
-    // Resource Monitor - Interval slider live update
-    const resourceMonitorInterval = document.getElementById('resource-monitor-interval');
-    if (resourceMonitorInterval) {
-        resourceMonitorInterval.addEventListener('input', (e) => {
-            const value = parseInt(e.target.value);
-            const label = document.getElementById('resource-monitor-interval-label');
-            if (label) {
-                label.textContent = (value / 1000).toFixed(1) + 's';
-            }
-        });
-    }
-});
+// REMOVED: Duplicate DOMContentLoaded listener consolidated into main initialization above
+// NOTE: Settings loading is now handled by navigation.js when view switches to 'settings'
+// Event listeners moved to initializeButtons() function for proper consolidation
 
 // ========== PRESET IMPORT/EXPORT FUNCTIONALITY ==========
 
@@ -2003,21 +2182,38 @@ async function loadResourceMonitorSettings() {
         const response = await fetch('/api/settings');
         const settings = await response.json();
 
-        // Load settings into UI
-        document.getElementById('resource-monitor-enabled').checked = settings.resource_monitor_enabled === 'true';
-        document.getElementById('resource-monitor-interval').value = settings.resource_monitor_interval || '1000';
-        document.getElementById('resource-monitor-show-cpu').checked = settings.resource_monitor_show_cpu !== 'false';
-        document.getElementById('resource-monitor-show-ram').checked = settings.resource_monitor_show_ram !== 'false';
-        document.getElementById('resource-monitor-show-gpu').checked = settings.resource_monitor_show_gpu !== 'false';
-        document.getElementById('cpu-warning-yellow').value = settings.cpu_warning_yellow || '5';
-        document.getElementById('cpu-warning-red').value = settings.cpu_warning_red || '8';
-        document.getElementById('ram-warning-threshold').value = settings.ram_warning_threshold || '90';
-        document.getElementById('resource-monitor-history-length').value = settings.resource_monitor_history_length || '60';
-        document.getElementById('resource-monitor-notifications').checked = settings.resource_monitor_notifications !== 'false';
+        // Get all elements with null checks
+        const elements = {
+            enabled: document.getElementById('resource-monitor-enabled'),
+            interval: document.getElementById('resource-monitor-interval'),
+            showCpu: document.getElementById('resource-monitor-show-cpu'),
+            showRam: document.getElementById('resource-monitor-show-ram'),
+            showGpu: document.getElementById('resource-monitor-show-gpu'),
+            cpuYellow: document.getElementById('cpu-warning-yellow'),
+            cpuRed: document.getElementById('cpu-warning-red'),
+            ramThreshold: document.getElementById('ram-warning-threshold'),
+            historyLength: document.getElementById('resource-monitor-history-length'),
+            notifications: document.getElementById('resource-monitor-notifications'),
+            intervalLabel: document.getElementById('resource-monitor-interval-label')
+        };
+
+        // Load settings into UI with null checks
+        if (elements.enabled) elements.enabled.checked = settings.resource_monitor_enabled === 'true';
+        if (elements.interval) elements.interval.value = settings.resource_monitor_interval || '1000';
+        if (elements.showCpu) elements.showCpu.checked = settings.resource_monitor_show_cpu !== 'false';
+        if (elements.showRam) elements.showRam.checked = settings.resource_monitor_show_ram !== 'false';
+        if (elements.showGpu) elements.showGpu.checked = settings.resource_monitor_show_gpu !== 'false';
+        if (elements.cpuYellow) elements.cpuYellow.value = settings.cpu_warning_yellow || '5';
+        if (elements.cpuRed) elements.cpuRed.value = settings.cpu_warning_red || '8';
+        if (elements.ramThreshold) elements.ramThreshold.value = settings.ram_warning_threshold || '90';
+        if (elements.historyLength) elements.historyLength.value = settings.resource_monitor_history_length || '60';
+        if (elements.notifications) elements.notifications.checked = settings.resource_monitor_notifications !== 'false';
 
         // Update interval label
-        const intervalValue = parseInt(settings.resource_monitor_interval || '1000');
-        document.getElementById('resource-monitor-interval-label').textContent = (intervalValue / 1000).toFixed(1) + 's';
+        if (elements.intervalLabel) {
+            const intervalValue = parseInt(settings.resource_monitor_interval || '1000');
+            elements.intervalLabel.textContent = (intervalValue / 1000).toFixed(1) + 's';
+        }
 
     } catch (error) {
         console.error('Error loading resource monitor settings:', error);
@@ -2028,17 +2224,37 @@ async function loadResourceMonitorSettings() {
  * Save resource monitor settings
  */
 async function saveResourceMonitorSettings() {
+    // Get all elements with null checks
+    const elements = {
+        enabled: document.getElementById('resource-monitor-enabled'),
+        interval: document.getElementById('resource-monitor-interval'),
+        showCpu: document.getElementById('resource-monitor-show-cpu'),
+        showRam: document.getElementById('resource-monitor-show-ram'),
+        showGpu: document.getElementById('resource-monitor-show-gpu'),
+        cpuYellow: document.getElementById('cpu-warning-yellow'),
+        cpuRed: document.getElementById('cpu-warning-red'),
+        ramThreshold: document.getElementById('ram-warning-threshold'),
+        historyLength: document.getElementById('resource-monitor-history-length'),
+        notifications: document.getElementById('resource-monitor-notifications')
+    };
+
+    // Verify all elements exist before saving
+    if (!elements.enabled || !elements.interval || !elements.showCpu || !elements.showRam) {
+        console.error('Resource monitor settings form elements not found');
+        return;
+    }
+
     const newSettings = {
-        resource_monitor_enabled: document.getElementById('resource-monitor-enabled').checked ? 'true' : 'false',
-        resource_monitor_interval: document.getElementById('resource-monitor-interval').value,
-        resource_monitor_show_cpu: document.getElementById('resource-monitor-show-cpu').checked ? 'true' : 'false',
-        resource_monitor_show_ram: document.getElementById('resource-monitor-show-ram').checked ? 'true' : 'false',
-        resource_monitor_show_gpu: document.getElementById('resource-monitor-show-gpu').checked ? 'true' : 'false',
-        cpu_warning_yellow: document.getElementById('cpu-warning-yellow').value,
-        cpu_warning_red: document.getElementById('cpu-warning-red').value,
-        ram_warning_threshold: document.getElementById('ram-warning-threshold').value,
-        resource_monitor_history_length: document.getElementById('resource-monitor-history-length').value,
-        resource_monitor_notifications: document.getElementById('resource-monitor-notifications').checked ? 'true' : 'false'
+        resource_monitor_enabled: elements.enabled.checked ? 'true' : 'false',
+        resource_monitor_interval: elements.interval.value,
+        resource_monitor_show_cpu: elements.showCpu.checked ? 'true' : 'false',
+        resource_monitor_show_ram: elements.showRam.checked ? 'true' : 'false',
+        resource_monitor_show_gpu: elements.showGpu ? elements.showGpu.checked ? 'true' : 'false' : 'false',
+        cpu_warning_yellow: elements.cpuYellow ? elements.cpuYellow.value : '5',
+        cpu_warning_red: elements.cpuRed ? elements.cpuRed.value : '8',
+        ram_warning_threshold: elements.ramThreshold ? elements.ramThreshold.value : '90',
+        resource_monitor_history_length: elements.historyLength ? elements.historyLength.value : '60',
+        resource_monitor_notifications: elements.notifications ? elements.notifications.checked ? 'true' : 'false' : 'false'
     };
 
     try {
@@ -2059,3 +2275,482 @@ async function saveResourceMonitorSettings() {
         alert('❌ Error saving Resource Monitor settings!');
     }
 }
+
+// ========== OSC-BRIDGE SETTINGS ==========
+async function loadOSCBridgeSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        // Load OSC-Bridge enabled setting
+        const oscBridgeEnabled = document.getElementById('osc-bridge-enabled');
+        if (oscBridgeEnabled) {
+            oscBridgeEnabled.checked = settings.osc_bridge_enabled === 'true';
+        }
+
+    } catch (error) {
+        console.error('Error loading OSC-Bridge settings:', error);
+    }
+}
+// Set up event listeners for soundboard buttons
+document.addEventListener('click', function(event) {
+    // Test sound buttons
+    const testSoundBtn = event.target.closest('[data-test-sound]');
+    if (testSoundBtn) {
+        const soundType = testSoundBtn.dataset.testSound;
+        testEventSound(soundType);
+        return;
+    }
+});
+
+// Soundboard specific buttons
+const refreshCatalogBtn = document.getElementById('refresh-catalog-btn');
+if (refreshCatalogBtn) {
+    refreshCatalogBtn.addEventListener('click', refreshGiftCatalog);
+}
+
+const myinstantsSearchBtn = document.getElementById('myinstants-search-btn');
+if (myinstantsSearchBtn) {
+    myinstantsSearchBtn.addEventListener('click', searchMyInstants);
+}
+
+const addGiftSoundBtn = document.getElementById('add-gift-sound-btn');
+if (addGiftSoundBtn) {
+    addGiftSoundBtn.addEventListener('click', addGiftSound);
+}
+
+const clearGiftFormBtn = document.getElementById('clear-gift-form-btn');
+if (clearGiftFormBtn) {
+    clearGiftFormBtn.addEventListener('click', clearGiftSoundForm);
+}
+
+const saveSoundboardBtn = document.getElementById('save-soundboard-btn');
+if (saveSoundboardBtn) {
+    saveSoundboardBtn.addEventListener('click', saveSoundboardSettings);
+}
+
+// ========== TIKTOK CONNECTION SETTINGS ==========
+
+// Load TikTok settings on page load
+async function loadTikTokSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        // Load Euler API Key
+        const eulerApiKeyInput = document.getElementById('tiktok-euler-api-key');
+        if (eulerApiKeyInput) {
+            eulerApiKeyInput.value = settings.tiktok_euler_api_key || '';
+        }
+
+        // Load Enable Euler Fallbacks checkbox
+        const eulerFallbacksCheckbox = document.getElementById('tiktok-enable-euler-fallbacks');
+        if (eulerFallbacksCheckbox) {
+            eulerFallbacksCheckbox.checked = settings.tiktok_enable_euler_fallbacks === 'true';
+        }
+
+        // Load Connect with Unique ID checkbox
+        const connectUniqueIdCheckbox = document.getElementById('tiktok-connect-with-unique-id');
+        if (connectUniqueIdCheckbox) {
+            connectUniqueIdCheckbox.checked = settings.tiktok_connect_with_unique_id === 'true';
+        }
+    } catch (error) {
+        console.error('Error loading TikTok settings:', error);
+    }
+}
+
+// Save TikTok settings
+async function saveTikTokSettings() {
+    try {
+        const eulerApiKey = document.getElementById('tiktok-euler-api-key').value.trim();
+        const enableEulerFallbacks = document.getElementById('tiktok-enable-euler-fallbacks').checked;
+        const connectWithUniqueId = document.getElementById('tiktok-connect-with-unique-id').checked;
+
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                tiktok_euler_api_key: eulerApiKey,
+                tiktok_enable_euler_fallbacks: enableEulerFallbacks ? 'true' : 'false',
+                tiktok_connect_with_unique_id: connectWithUniqueId ? 'true' : 'false'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ TikTok Einstellungen gespeichert!\n\nDie Änderungen werden bei der nächsten Verbindung zu TikTok wirksam.\nWenn bereits verbunden, bitte trennen und erneut verbinden.');
+        } else {
+            alert('❌ Fehler beim Speichern: ' + (result.error || 'Unbekannter Fehler'));
+        }
+    } catch (error) {
+        console.error('Error saving TikTok settings:', error);
+        alert('❌ Fehler beim Speichern der Einstellungen');
+    }
+}
+
+// Set up event listener for save button
+const saveTikTokSettingsBtn = document.getElementById('save-tiktok-settings-btn');
+if (saveTikTokSettingsBtn) {
+    saveTikTokSettingsBtn.addEventListener('click', saveTikTokSettings);
+}
+
+// Load TikTok settings when page loads
+if (typeof loadSettings === 'function') {
+    const originalLoadSettings = loadSettings;
+    window.loadSettings = async function() {
+        await originalLoadSettings();
+        await loadTikTokSettings();
+    };
+} else {
+    // If loadSettings doesn't exist, just call loadTikTokSettings directly
+    document.addEventListener('DOMContentLoaded', loadTikTokSettings);
+}
+
+// ========== SESSION EXTRACTOR ==========
+
+// Load session status
+async function loadSessionStatus() {
+    try {
+        const response = await fetch('/api/session/status');
+        const status = await response.json();
+        
+        const statusContainer = document.getElementById('session-status-container');
+        const statusText = document.getElementById('session-status-text');
+        
+        if (status.hasSession) {
+            statusContainer.className = 'alert alert-success';
+            statusText.innerHTML = `✅ Session-ID aktiv: ${status.sessionId}<br>` +
+                                  `Extrahiert am: ${new Date(status.extractedAt).toLocaleString('de-DE')}`;
+        } else {
+            statusContainer.className = 'alert alert-info';
+            statusText.textContent = 'ℹ️ Keine Session-ID konfiguriert';
+        }
+    } catch (error) {
+        console.error('Failed to load session status:', error);
+    }
+}
+
+// Extract session (automatic)
+document.getElementById('extract-session-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('extract-session-btn');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Extrahiere...';
+    lucide.createIcons();
+    
+    try {
+        const response = await fetch('/api/session/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ headless: true })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('✅ Session-ID erfolgreich extrahiert!', 'success');
+            await loadSessionStatus();
+        } else if (result.requiresLogin) {
+            showNotification('⚠️ Nicht eingeloggt. Verwende "Manuell" und logge dich in TikTok ein.', 'warning');
+        } else {
+            showNotification(`❌ Fehler: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Session extraction error:', error);
+        showNotification('❌ Fehler bei der Session-Extraktion', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        lucide.createIcons();
+    }
+});
+
+// Extract session (manual login)
+document.getElementById('extract-session-manual-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('extract-session-manual-btn');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Browser öffnet...';
+    lucide.createIcons();
+    
+    showNotification('🌐 Browser wird geöffnet. Bitte logge dich in TikTok ein.', 'info');
+    
+    try {
+        const response = await fetch('/api/session/extract-manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('✅ Session-ID erfolgreich extrahiert!', 'success');
+            await loadSessionStatus();
+        } else {
+            showNotification(`❌ Fehler: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Manual session extraction error:', error);
+        showNotification('❌ Fehler bei der manuellen Session-Extraktion', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        lucide.createIcons();
+    }
+});
+
+// Clear session
+document.getElementById('clear-session-btn')?.addEventListener('click', async () => {
+    if (!confirm('Möchtest du die gespeicherte Session-ID wirklich löschen?')) {
+        return;
+    }
+    
+    const btn = document.getElementById('clear-session-btn');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Lösche...';
+    lucide.createIcons();
+    
+    try {
+        const response = await fetch('/api/session/clear', {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('✅ Session-ID gelöscht', 'success');
+            await loadSessionStatus();
+        } else {
+            showNotification(`❌ Fehler: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('Session clear error:', error);
+        showNotification('❌ Fehler beim Löschen der Session', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        lucide.createIcons();
+    }
+});
+
+// Test browser availability
+document.getElementById('test-browser-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('test-browser-btn');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Teste...';
+    lucide.createIcons();
+    
+    try {
+        const response = await fetch('/api/session/test-browser');
+        const result = await response.json();
+        
+        if (result.available) {
+            showNotification('✅ Browser-Automation verfügbar!', 'success');
+        } else {
+            showNotification(`⚠️ Browser nicht verfügbar: ${result.message}`, 'warning');
+        }
+    } catch (error) {
+        console.error('Browser test error:', error);
+        showNotification('❌ Fehler beim Browser-Test', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        lucide.createIcons();
+    }
+});
+
+// Load session status when settings page is opened
+document.addEventListener('DOMContentLoaded', () => {
+    const settingsTab = document.querySelector('[data-page="settings"]');
+    if (settingsTab) {
+        settingsTab.addEventListener('click', () => {
+            setTimeout(loadSessionStatus, 100);
+        });
+    }
+    
+    // Also load on page load if on settings page
+    if (window.location.hash === '#settings' || !window.location.hash) {
+        setTimeout(loadSessionStatus, 500);
+    }
+});
+
+// ========== CONNECTION DIAGNOSTICS ==========
+
+// Run diagnostics
+document.getElementById('run-diagnostics-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('run-diagnostics-btn');
+    const resultDiv = document.getElementById('diagnostics-result');
+    const contentDiv = document.getElementById('diagnostics-content');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2"></i> Läuft...';
+    
+    try {
+        const username = document.getElementById('username-input').value || 'tiktok';
+        const response = await fetch(`/api/diagnostics?username=${encodeURIComponent(username)}`);
+        const diagnostics = await response.json();
+        
+        // Display results
+        resultDiv.style.display = 'block';
+        
+        let html = '<div style="font-family: monospace; line-height: 1.6;">';
+        
+        // Euler API Key Status
+        html += '<div style="margin-bottom: 1rem;"><strong>🔑 Euler API Key:</strong><br>';
+        const keyInfo = diagnostics.eulerApiKey;
+        if (keyInfo.activeKey) {
+            html += `✅ Aktiv (${keyInfo.activeSource}): ${keyInfo.activeKey}<br>`;
+        } else {
+            html += '❌ Nicht konfiguriert<br>';
+        }
+        html += '</div>';
+        
+        // TikTok API Test
+        html += '<div style="margin-bottom: 1rem;"><strong>🌐 TikTok API:</strong><br>';
+        if (diagnostics.tiktokApi.success) {
+            html += `✅ Erreichbar (${diagnostics.tiktokApi.responseTime}ms)<br>`;
+        } else {
+            html += `❌ Fehler: ${diagnostics.tiktokApi.error || 'Nicht erreichbar'}<br>`;
+        }
+        html += '</div>';
+        
+        // Euler WebSocket Test
+        html += '<div style="margin-bottom: 1rem;"><strong>🔌 Euler WebSocket:</strong><br>';
+        if (diagnostics.eulerWebSocket.success) {
+            html += `✅ Verbindung OK (${diagnostics.eulerWebSocket.responseTime}ms)<br>`;
+        } else {
+            html += `⚠️ ${diagnostics.eulerWebSocket.error || 'Nicht verbunden'}<br>`;
+        }
+        html += '</div>';
+        
+        // Configuration
+        html += '<div style="margin-bottom: 1rem;"><strong>⚙️ Konfiguration:</strong><br>';
+        html += `Euler Fallbacks: ${diagnostics.connectionConfig.enableEulerFallbacks ? '✅ Aktiviert' : '❌ Deaktiviert'}<br>`;
+        html += `Connect with Unique ID: ${diagnostics.connectionConfig.connectWithUniqueId ? '✅ Aktiviert' : '❌ Deaktiviert'}<br>`;
+        html += `Timeout: ${diagnostics.connectionConfig.connectionTimeout / 1000}s<br>`;
+        html += '</div>';
+        
+        // Recent Attempts
+        if (diagnostics.recentAttempts && diagnostics.recentAttempts.length > 0) {
+            html += '<div style="margin-bottom: 1rem;"><strong>📜 Letzte Verbindungsversuche:</strong><br>';
+            diagnostics.recentAttempts.slice(0, 5).forEach(attempt => {
+                const icon = attempt.success ? '✅' : '❌';
+                const time = new Date(attempt.timestamp).toLocaleTimeString('de-DE');
+                html += `${icon} ${time} - @${attempt.username}`;
+                if (!attempt.success) {
+                    html += ` (${attempt.errorType})`;
+                }
+                html += '<br>';
+            });
+            html += '</div>';
+        }
+        
+        // Recommendations
+        if (diagnostics.recommendations && diagnostics.recommendations.length > 0) {
+            html += '<div><strong>💡 Empfehlungen:</strong><br>';
+            diagnostics.recommendations.forEach(rec => {
+                const icon = rec.severity === 'error' ? '🔴' : rec.severity === 'warning' ? '🟡' : '🔵';
+                html += `${icon} ${rec.message}<br>`;
+                html += `<span style="color: var(--text-secondary); font-size: 0.9em;">→ ${rec.action}</span><br><br>`;
+            });
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        contentDiv.innerHTML = html;
+        
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+        
+    } catch (error) {
+        resultDiv.style.display = 'block';
+        contentDiv.innerHTML = `<div style="color: var(--error);">❌ Fehler: ${error.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="activity"></i> Verbindungsdiagnose ausführen';
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+});
+
+// Load connection health on page load
+async function loadConnectionHealth() {
+    try {
+        const response = await fetch('/api/connection-health');
+        const health = await response.json();
+        
+        const healthDiv = document.getElementById('connection-health');
+        const statusSpan = document.getElementById('health-status');
+        const detailsDiv = document.getElementById('health-details');
+        
+        if (healthDiv && statusSpan && detailsDiv) {
+            healthDiv.style.display = 'block';
+            
+            // Set status color
+            let bgColor = 'var(--bg-secondary)';
+            let textColor = 'var(--text-primary)';
+            
+            switch (health.status) {
+                case 'healthy':
+                    bgColor = 'rgba(34, 197, 94, 0.1)';
+                    textColor = 'rgb(34, 197, 94)';
+                    break;
+                case 'warning':
+                    bgColor = 'rgba(234, 179, 8, 0.1)';
+                    textColor = 'rgb(234, 179, 8)';
+                    break;
+                case 'degraded':
+                    bgColor = 'rgba(249, 115, 22, 0.1)';
+                    textColor = 'rgb(249, 115, 22)';
+                    break;
+                case 'critical':
+                    bgColor = 'rgba(239, 68, 68, 0.1)';
+                    textColor = 'rgb(239, 68, 68)';
+                    break;
+            }
+            
+            healthDiv.style.background = bgColor;
+            statusSpan.style.color = textColor;
+            statusSpan.textContent = health.message;
+            
+            let details = '';
+            if (health.eulerKeyConfigured) {
+                details += `Euler Key: ${health.eulerKeySource}`;
+            } else {
+                details += 'Kein Euler Key konfiguriert';
+            }
+            
+            if (health.recentAttempts && health.recentAttempts.length > 0) {
+                const failures = health.recentAttempts.filter(a => !a.success).length;
+                details += ` | ${failures}/${health.recentAttempts.length} fehlgeschlagen`;
+            }
+            
+            detailsDiv.textContent = details;
+            
+            // Re-initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load connection health:', error);
+    }
+}
+
+// Load health on page load
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(loadConnectionHealth, 1000);
+});
+

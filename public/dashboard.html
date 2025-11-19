@@ -3,162 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Stream Tool - Dashboard</title>
+    <title>Pup Cid's Little TikTok Helper</title>
     <link rel="stylesheet" href="/css/tailwind.output.css">
+    <link rel="stylesheet" href="/css/navigation.css">
+    <link rel="stylesheet" href="/css/wiki.css">
+    <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <style>
-        .tab-btn {
-            padding: 12px 24px;
-            cursor: pointer;
-            background: transparent;
-            color: #9ca3af;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-        }
-        .tab-btn:hover {
-            color: #fff;
-        }
-        .tab-btn.active {
-            color: #3b82f6;
-            border-bottom-color: #3b82f6;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 9999px;
-            font-weight: 500;
-        }
-        .status-connected {
-            background: #10b981;
-            color: white;
-        }
-        .status-disconnected {
-            background: #6b7280;
-            color: white;
-        }
-        .status-error {
-            background: #ef4444;
-            color: white;
-        }
-        .event-row {
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 50;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.7);
-        }
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-    </style>
 </head>
 <body class="bg-gray-900 text-white">
 
-    <!-- Navigation -->
-    <nav class="bg-gray-800 p-4 shadow-lg">
-        <div class="container mx-auto flex items-center justify-between">
-            <h1 class="text-2xl font-bold">🎥 TikTok Stream Tool</h1>
-            <div class="flex items-center gap-4">
-                <button id="profile-btn" class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600 transition font-semibold flex items-center gap-2">
-                    👤 <span id="current-profile-name">default</span>
-                </button>
-                <span id="connection-status" class="status-badge status-disconnected">⚫ Disconnected</span>
-            </div>
-        </div>
-    </nav>
+    <!-- Main Layout Container -->
+    <div class="flex h-screen">
 
-    <div class="container mx-auto p-6">
-
-        <!-- Connection Section -->
-        <div class="bg-gray-800 rounded-lg p-6 mb-6">
-            <h2 class="text-xl mb-4 font-semibold">TikTok Live Connection</h2>
-            <div class="flex gap-4">
-                <input type="text" id="username-input" placeholder="TikTok Username (ohne @)"
-                       class="bg-gray-700 text-white px-4 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button id="connect-btn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 transition font-semibold">
-                    🔗 Connect
-                </button>
-                <button id="disconnect-btn" class="bg-red-600 px-6 py-2 rounded hover:bg-red-700 transition font-semibold" disabled>
-                    ⛔ Disconnect
-                </button>
-            </div>
-            <div id="connection-info" class="mt-4 text-gray-400 text-sm"></div>
-        </div>
-
-        <!-- Update Notification Banner -->
-        <div id="update-banner" class="mb-6 bg-blue-600 rounded-lg p-4 hidden">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <span class="text-2xl">🎉</span>
-                    <div>
-                        <div class="font-semibold">Neue Version verfügbar!</div>
-                        <div class="text-sm opacity-90" id="update-version-info"></div>
-                    </div>
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="sidebar sidebar-expanded">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i data-lucide="dog" class="sidebar-logo-icon"></i>
+                    <span class="sidebar-logo-text">LTTH</span>
                 </div>
-                <div class="flex gap-2">
-                    <button id="update-download-btn" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100 font-semibold">
-                        📥 Update installieren
-                    </button>
-                    <button id="update-dismiss-btn" class="bg-blue-700 px-4 py-2 rounded hover:bg-blue-800">
-                        Später
-                    </button>
-                </div>
+                <button id="sidebar-toggle" class="sidebar-toggle-btn">
+                    <i data-lucide="panel-left"></i>
+                </button>
             </div>
-        </div>
-
-        <!-- Live Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="text-gray-400 text-sm mb-2">👥 Viewers</div>
-                <div class="text-3xl font-bold" id="stat-viewers">0</div>
-            </div>
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="text-gray-400 text-sm mb-2">❤️ Likes</div>
-                <div class="text-3xl font-bold" id="stat-likes">0</div>
-            </div>
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="text-gray-400 text-sm mb-2">🎁 Coins</div>
-                <div class="text-3xl font-bold text-yellow-400" id="stat-coins">0</div>
-            </div>
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="text-gray-400 text-sm mb-2">⭐ Followers</div>
-                <div class="text-3xl font-bold" id="stat-followers">0</div>
-            </div>
-        </div>
 
         <!-- Tabs -->
         <div class="mb-6">
@@ -189,674 +56,949 @@
                 <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
         </div>
+            <nav class="sidebar-nav">
+                <!-- Dashboard -->
+                <a href="#" class="sidebar-item active" data-view="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span class="sidebar-item-text">Dashboard</span>
+                </a>
 
-        <!-- Tab: Events -->
-        <div id="tab-events" class="tab-content active">
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Live Event Log</h2>
-                    <button id="clear-events-btn" class="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600 text-sm">
-                        🗑️ Clear
-                    </button>
+                <!-- Category: Automations -->
+                <div class="sidebar-category">
+                    <span class="sidebar-category-label">Automations</span>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="text-left text-gray-400 border-b border-gray-700">
-                                <th class="pb-2 pr-4">Time</th>
-                                <th class="pb-2 pr-4">Type</th>
-                                <th class="pb-2 pr-4">User</th>
-                                <th class="pb-2">Details</th>
-                            </tr>
-                        </thead>
-                        <tbody id="event-log" class="text-gray-300"></tbody>
-                    </table>
+                <a href="#" class="sidebar-item" data-view="events">
+                    <i data-lucide="activity"></i>
+                    <span class="sidebar-item-text">Events</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="flows">
+                    <i data-lucide="git-branch"></i>
+                    <span class="sidebar-item-text">Flows</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="goals">
+                    <i data-lucide="target"></i>
+                    <span class="sidebar-item-text">Goals</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="lastevent-spotlight" data-plugin="lastevent-spotlight">
+                    <i data-lucide="eye"></i>
+                    <span class="sidebar-item-text">LastEvent</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="clarityhud" data-plugin="clarityhud">
+                    <i data-lucide="layout"></i>
+                    <span class="sidebar-item-text">ClarityHUD</span>
+                </a>
+
+                <!-- Category: Interaktive Effekte -->
+                <div class="sidebar-category">
+                    <span class="sidebar-category-label">Interaktive Effekte</span>
                 </div>
-            </div>
-        </div>
+                <a href="#" class="sidebar-item" data-view="tts">
+                    <i data-lucide="mic"></i>
+                    <span class="sidebar-item-text">TTS</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="soundboard">
+                    <i data-lucide="music"></i>
+                    <span class="sidebar-item-text">Soundboard</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="emoji-rain">
+                    <i data-lucide="cloud-rain"></i>
+                    <span class="sidebar-item-text">Emoji Rain</span>
+                </a>
 
-        <!-- Tab: TTS -->
-        <div id="tab-tts" class="tab-content" data-plugin="tts">
-            <!-- TTS v2.0 Header -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">🔊 TTS v2.0 - Enterprise Text-to-Speech System</h2>
-                    <a href="/plugins/tts/ui/admin-panel.html" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                        🔗 Open in New Tab
-                    </a>
+                <!-- Category: Plugins & Tools -->
+                <div class="sidebar-category">
+                    <span class="sidebar-category-label">Plugins & Tools</span>
                 </div>
-                <div class="text-sm text-gray-400">
-                    Multi-Engine (TikTok + Google) • Auto Language Detection • Permission System • Profanity Filter • Queue Management • 175+ Voices
+                <a href="#" class="sidebar-item" data-view="multi-guest" data-plugin="vdoninja">
+                    <i data-lucide="users"></i>
+                    <span class="sidebar-item-text">Multi-Guest</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="gift-milestone" data-plugin="gift-milestone">
+                    <i data-lucide="gift"></i>
+                    <span class="sidebar-item-text">Gift Milestone</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="multicam" data-plugin="multicam">
+                    <i data-lucide="video"></i>
+                    <span class="sidebar-item-text">Multi-Cam</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="osc-bridge" data-plugin="osc-bridge">
+                    <i data-lucide="gamepad-2"></i>
+                    <span class="sidebar-item-text">OSC-Bridge</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="hybridshock" data-plugin="hybridshock">
+                    <i data-lucide="zap"></i>
+                    <span class="sidebar-item-text">HybridShock</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="openshock" data-plugin="openshock">
+                    <i data-lucide="zap"></i>
+                    <span class="sidebar-item-text">OpenShock</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="quiz-show" data-plugin="quiz-show">
+                    <i data-lucide="help-circle"></i>
+                    <span class="sidebar-item-text">Quiz Show</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="viewer-xp" data-plugin="viewer-xp">
+                    <i data-lucide="award"></i>
+                    <span class="sidebar-item-text">Viewer XP</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="resource-monitor" data-plugin="resource-monitor">
+                    <i data-lucide="cpu"></i>
+                    <span class="sidebar-item-text">Resources</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="weather-control" data-plugin="weather-control">
+                    <i data-lucide="cloud-rain"></i>
+                    <span class="sidebar-item-text">Weather Control</span>
+                </a>
+
+                <a href="#" class="sidebar-item" data-view="plugins">
+                    <i data-lucide="plug"></i>
+                    <span class="sidebar-item-text">Plugin Manager</span>
+                </a>
+
+                <!-- Settings (Fixed at bottom) -->
+                <div class="sidebar-spacer"></div>
+                <a href="#" class="sidebar-item" data-view="wiki">
+                    <i data-lucide="book-open"></i>
+                    <span class="sidebar-item-text">Wiki</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="settings">
+                    <i data-lucide="settings"></i>
+                    <span class="sidebar-item-text">Settings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- Topbar (Reduced) -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 class="topbar-title">Pup Cid's Little TikTok Helper</h1>
                 </div>
-            </div>
-
-            <!-- TTS v2.0 Admin Panel Iframe -->
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe
-                    src="/plugins/tts/ui/admin-panel.html"
-                    style="width: 100%; height: 100%; border: none;"
-                    title="TTS v2.0 Admin Panel">
-                </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: Flows -->
-        <div id="tab-flows" class="tab-content">
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Automation Flows</h2>
-                    <button id="add-flow-btn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">
-                        ➕ Create Flow
-                    </button>
-                </div>
-                <div id="flows-list" class="space-y-3"></div>
-            </div>
-        </div>
-
-        <!-- Tab: Soundboard -->
-        <div id="tab-soundboard" class="tab-content" data-plugin="soundboard">
-            <div class="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 class="text-xl mb-6 font-semibold">🔊 Soundboard Configuration</h2>
-
-                <!-- Playback Settings -->
-                <div class="mb-8">
-                    <h3 class="font-bold text-lg mb-4">⚙️ Playback Settings</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-gray-400 mb-2">Play Mode</label>
-                            <select id="soundboard-play-mode" class="bg-gray-700 text-white px-4 py-2 rounded w-full">
-                                <option value="overlap">Overlap (play immediately)</option>
-                                <option value="sequential">Sequential (queue)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-400 mb-2">Max Queue Length</label>
-                            <input type="number" id="soundboard-max-queue" min="1" max="50" value="10"
-                                   class="bg-gray-700 text-white px-4 py-2 rounded w-full">
-                            <p class="text-xs text-gray-500 mt-1">Maximum number of sounds in queue/overlap</p>
-                        </div>
-                        <div>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="soundboard-enabled" class="w-5 h-5" checked>
-                                <span>Enable Soundboard</span>
-                            </label>
-                        </div>
+                <div class="topbar-right">
+                    <div class="topbar-status">
+                        <span id="connection-status" class="status-badge status-disconnected">
+                            <i data-lucide="circle"></i>
+                            <span>Disconnected</span>
+                        </span>
                     </div>
+                    <button id="profile-btn" class="topbar-profile-btn">
+                        <i data-lucide="user"></i>
+                        <span id="current-profile-name">default</span>
+                    </button>
+                    <button id="topbar-settings-btn" class="topbar-icon-btn" title="Global Settings">
+                        <i data-lucide="settings"></i>
+                    </button>
                 </div>
+            </header>
 
-                <!-- Event Sounds -->
-                <div class="mb-8">
-                    <h3 class="font-bold text-lg mb-4">🎵 Event Sounds</h3>
-                    <div class="space-y-4">
-                        <!-- Follow Sound -->
-                        <div class="bg-gray-700 p-4 rounded">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="font-semibold">⭐ Follow Sound</span>
-                                <button onclick="testEventSound('follow')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                <input type="text" id="soundboard-follow-url" placeholder="Sound URL"
-                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
-                                <input type="number" id="soundboard-follow-volume" min="0" max="1" step="0.1" value="1.0"
-                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
-                            </div>
+            <!-- Content Views Container -->
+            <div class="content-container">
+
+                <!-- View: Dashboard -->
+                <div id="view-dashboard" class="content-view active">
+
+                    <!-- 1. TikTok Live Connection Section -->
+                    <section class="dashboard-section connection-section">
+                        <h2 class="section-title">
+                            <i data-lucide="wifi"></i>
+                            TikTok Live Connection
+                        </h2>
+                        <div class="connection-controls">
+                            <input type="text" id="username-input" placeholder="TikTok Username (ohne @)"
+                                   class="connection-input">
+                            <button id="connect-btn" class="btn btn-primary">
+                                <i data-lucide="link"></i>
+                                Connect
+                            </button>
+                            <button id="disconnect-btn" class="btn btn-danger" disabled>
+                                <i data-lucide="link-2-off"></i>
+                                Disconnect
+                            </button>
                         </div>
-
-                        <!-- Subscribe Sound -->
-                        <div class="bg-gray-700 p-4 rounded">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="font-semibold">🌟 Subscribe Sound</span>
-                                <button onclick="testEventSound('subscribe')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
+                        <div id="connection-info" class="connection-info"></div>
+                        
+                        <!-- Stream Time Debug Panel -->
+                        <div id="stream-time-debug" style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; display: none;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <i data-lucide="clock" style="width: 16px; height: 16px; color: #3b82f6;"></i>
+                                <span style="font-weight: 600; color: #60a5fa;">Stream Time Debug Info</span>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                <input type="text" id="soundboard-subscribe-url" placeholder="Sound URL"
-                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
-                                <input type="number" id="soundboard-subscribe-volume" min="0" max="1" step="0.1" value="1.0"
-                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
-                            </div>
-                        </div>
-
-                        <!-- Share Sound -->
-                        <div class="bg-gray-700 p-4 rounded">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="font-semibold">🔄 Share Sound</span>
-                                <button onclick="testEventSound('share')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                <input type="text" id="soundboard-share-url" placeholder="Sound URL"
-                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
-                                <input type="number" id="soundboard-share-volume" min="0" max="1" step="0.1" value="1.0"
-                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
-                            </div>
-                        </div>
-
-                        <!-- Default Gift Sound -->
-                        <div class="bg-gray-700 p-4 rounded">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="font-semibold">🎁 Default Gift Sound</span>
-                                <button onclick="testEventSound('gift')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                <input type="text" id="soundboard-gift-url" placeholder="Sound URL"
-                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
-                                <input type="number" id="soundboard-gift-volume" min="0" max="1" step="0.1" value="1.0"
-                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
-                            </div>
-                        </div>
-
-                        <!-- Like Threshold Sound -->
-                        <div class="bg-gray-700 p-4 rounded">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="font-semibold">❤️ Like Threshold Sound</span>
-                                <button onclick="testEventSound('like')" class="bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-700">🔊 Test</button>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                <input type="text" id="soundboard-like-url" placeholder="Sound URL"
-                                       class="bg-gray-600 text-white px-3 py-2 rounded col-span-2">
-                                <input type="number" id="soundboard-like-volume" min="0" max="1" step="0.1" value="1.0"
-                                       placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 mt-2">
-                                <div>
-                                    <label class="text-gray-400 text-sm">Threshold (0 = disabled)</label>
-                                    <input type="number" id="soundboard-like-threshold" min="0" value="0"
-                                           class="bg-gray-600 text-white px-3 py-2 rounded w-full">
-                                </div>
-                                <div>
-                                    <label class="text-gray-400 text-sm">Time Window (seconds)</label>
-                                    <input type="number" id="soundboard-like-window" min="1" value="10"
-                                           class="bg-gray-600 text-white px-3 py-2 rounded w-full">
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                                <div><strong>Stream Start Time:</strong> <span id="debug-stream-start">--</span></div>
+                                <div><strong>Current Duration:</strong> <span id="debug-stream-duration">--</span></div>
+                                <div><strong>Detection Method:</strong> <span id="debug-detection-method">--</span></div>
+                                <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                    <em>This panel shows how the stream start time was detected. If it shows "Connection Time" instead of a roomInfo field, the API may not be providing stream start time.</em>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        
+                        <!-- Connection Diagnostics Panel -->
+                        <div class="connection-diagnostics" style="margin-top: 1rem;">
+                            <button id="run-diagnostics-btn" class="btn btn-secondary" style="width: 100%;">
+                                <i data-lucide="activity"></i>
+                                Verbindungsdiagnose ausführen
+                            </button>
+                            <div id="diagnostics-result" style="margin-top: 1rem; display: none;">
+                                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">
+                                    Diagnose-Ergebnis
+                                </h3>
+                                <div id="diagnostics-content" style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; font-size: 0.85rem;"></div>
+                            </div>
+                            <div id="connection-health" style="margin-top: 1rem; padding: 0.75rem; border-radius: 8px; display: none;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i data-lucide="heart-pulse" style="width: 16px; height: 16px;"></i>
+                                    <span id="health-status" style="font-weight: 600;"></span>
+                                </div>
+                                <div id="health-details" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 2. Quick Actions Section (Compact Button Grid) -->
+                    <section class="dashboard-section actions-section">
+                        <h2 class="section-title">
+                            <i data-lucide="zap"></i>
+                            Quick Actions
+                        </h2>
+                        <div class="quick-actions-button-grid">
+                            <button class="quick-action-btn" id="quick-tts-btn" data-action="tts" data-state="on">
+                                <i data-lucide="mic"></i>
+                                <span>Text-to-Speech</span>
+                            </button>
+                            <button class="quick-action-btn" id="quick-soundboard-btn" data-action="soundboard" data-state="on">
+                                <i data-lucide="music"></i>
+                                <span>Soundboard</span>
+                            </button>
+                            <button class="quick-action-btn" id="quick-flows-btn" data-action="flows" data-state="on">
+                                <i data-lucide="git-branch"></i>
+                                <span>Automation Flows</span>
+                            </button>
+                            <button class="quick-action-btn" id="quick-emoji-rain-btn" data-action="emoji-rain" data-state="on">
+                                <i data-lucide="cloud-rain"></i>
+                                <span>Emoji Rain</span>
+                            </button>
+                            <button class="quick-action-btn" id="quick-osc-bridge-btn" data-action="osc-bridge" data-state="off" data-plugin="osc-bridge">
+                                <i data-lucide="gamepad-2"></i>
+                                <span>OSC-Bridge</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- 3. Live Statistics Section (with Runtime) -->
+                    <section class="dashboard-section stats-section">
+                        <h2 class="section-title">
+                            <i data-lucide="trending-up"></i>
+                            Live Statistics
+                        </h2>
+                        <div class="stats-grid">
+                            <div class="stat-card stat-card-runtime">
+                                <div class="stat-icon">
+                                    <i data-lucide="clock"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Stream Runtime</div>
+                                    <div class="stat-value" id="stat-runtime">--:--:--</div>
+                                </div>
+                                <canvas id="runtime-sparkline" class="stat-sparkline" width="150" height="40"></canvas>
+                            </div>
+                            <div class="stat-card stat-card-viewers">
+                                <div class="stat-icon">
+                                    <i data-lucide="users"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Viewers</div>
+                                    <div class="stat-value" id="stat-viewers">0</div>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-likes">
+                                <div class="stat-icon">
+                                    <i data-lucide="heart"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Likes</div>
+                                    <div class="stat-value" id="stat-likes">0</div>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-coins">
+                                <div class="stat-icon">
+                                    <i data-lucide="coins"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Coins</div>
+                                    <div class="stat-value" id="stat-coins">0</div>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-followers">
+                                <div class="stat-icon">
+                                    <i data-lucide="star"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Followers</div>
+                                    <div class="stat-value" id="stat-followers">0</div>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-gifts">
+                                <div class="stat-icon">
+                                    <i data-lucide="gift"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Gifts</div>
+                                    <div class="stat-value" id="stat-gifts">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 4. Updates / Features / Changelog Section (NEW) -->
+                    <section class="dashboard-section updates-section" id="updates-section">
+                        <div class="updates-header">
+                            <h2 class="section-title">
+                                <i data-lucide="sparkles"></i>
+                                Updates & Features
+                            </h2>
+                            <button id="dismiss-updates-btn" class="btn btn-sm btn-ghost">
+                                <i data-lucide="x"></i>
+                                Ausblenden
+                            </button>
+                        </div>
+                        <div class="updates-content" id="updates-content">
+                            <div class="loading-indicator">
+                                <i data-lucide="loader"></i>
+                                <span>Loading changelog...</span>
+                            </div>
+                        </div>
+                        <button id="show-more-changelog-btn" class="btn btn-sm btn-ghost" style="margin-top: 1rem; display: none;">
+                            <i data-lucide="chevron-down"></i>
+                            Mehr anzeigen
+                        </button>
+                    </section>
+
+                    <!-- 5. Plugin & Tool Shortcuts -->
+                    <section class="dashboard-section shortcuts-section">
+                        <h2 class="section-title">
+                            <i data-lucide="grid-3x3"></i>
+                            Tools & Plugins
+                        </h2>
+                        <div class="shortcuts-grid" id="shortcuts-grid">
+                            <!-- Will be dynamically populated -->
+                        </div>
+                    </section>
+
+                    <!-- 6. FAQ / Help Center Section (NEW) -->
+                    <section class="dashboard-section faq-section">
+                        <h2 class="section-title">
+                            <i data-lucide="help-circle"></i>
+                            FAQ & Help Center
+                        </h2>
+                        <div class="faq-accordion" id="faq-accordion">
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wie verbinde ich mich mit einem TikTok LIVE Stream?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>Geben Sie einfach den TikTok-Benutzernamen (ohne @-Zeichen) in das Eingabefeld ein und klicken Sie auf "Connect". Stellen Sie sicher, dass der Benutzer gerade LIVE ist.</p>
+                                    <p><strong>Tipp:</strong> Der Benutzer muss während der Verbindung live streamen.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wie aktiviere ich Text-to-Speech (TTS)?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>TTS ist standardmäßig aktiviert. Sie können es über den grünen "Text-to-Speech" Button in den Quick Actions steuern.</p>
+                                    <p>Für erweiterte Einstellungen gehen Sie zu TTS in der Seitenleiste oder den Settings.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Was sind Automation Flows?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>Automation Flows ermöglichen es Ihnen, automatische Aktionen basierend auf TikTok-Events zu erstellen.</p>
+                                    <p>Beispiel: Spielen Sie einen Sound ab, wenn jemand ein bestimmtes Gift sendet, oder zeigen Sie eine Alert an, wenn Sie einen neuen Follower bekommen.</p>
+                                    <p><strong>Zugriff:</strong> Klicken Sie auf "Flows" in der Seitenleiste.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wie füge ich das Overlay zu OBS hinzu?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>1. Öffnen Sie OBS Studio</p>
+                                    <p>2. Fügen Sie eine neue "Browser"-Quelle hinzu</p>
+                                    <p>3. URL: <code>http://localhost:3000/overlay</code></p>
+                                    <p>4. Breite: 1920, Höhe: 1080</p>
+                                    <p>5. Aktivieren Sie "Shutdown source when not visible"</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wo finde ich die System Resources?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>Die System-Ressourcen (CPU, RAM, etc.) werden kompakt am Ende des Dashboards angezeigt.</p>
+                                    <p>Für detaillierte Informationen klicken Sie auf "Resources" in der Seitenleiste oder in den Tools & Plugins.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-toggle">
+                                    <i data-lucide="chevron-right"></i>
+                                    <span>Wie installiere ich neue Plugins?</span>
+                                </button>
+                                <div class="faq-content">
+                                    <p>1. Gehen Sie zum "Plugin Manager" in der Seitenleiste</p>
+                                    <p>2. Klicken Sie auf "Upload Plugin (ZIP)"</p>
+                                    <p>3. Wählen Sie die Plugin-ZIP-Datei aus</p>
+                                    <p>4. Das Plugin wird automatisch installiert und aktiviert</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 7. System Resources Section (Compact, at bottom) -->
+                    <section class="dashboard-section resource-section-compact">
+                        <h2 class="section-title-compact">
+                            <i data-lucide="activity"></i>
+                            <span>System Resources</span>
+                            <a href="#" class="resource-details-link" data-view="resource-monitor" data-plugin="resource-monitor">
+                                Details <i data-lucide="arrow-right"></i>
+                            </a>
+                        </h2>
+                        <div class="resource-grid-compact">
+                            <div class="resource-card-compact">
+                                <div class="resource-info">
+                                    <i data-lucide="cpu"></i>
+                                    <span class="resource-label">CPU</span>
+                                    <span class="resource-value-compact" id="resource-cpu-compact">0%</span>
+                                </div>
+                                <div class="resource-bar-compact">
+                                    <div class="resource-bar-fill-compact" id="resource-cpu-bar-compact" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="resource-card-compact">
+                                <div class="resource-info">
+                                    <i data-lucide="memory-stick"></i>
+                                    <span class="resource-label">RAM</span>
+                                    <span class="resource-value-compact" id="resource-ram-compact">0%</span>
+                                </div>
+                                <div class="resource-bar-compact">
+                                    <div class="resource-bar-fill-compact" id="resource-ram-bar-compact" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="resource-card-compact">
+                                <div class="resource-info">
+                                    <i data-lucide="hard-drive"></i>
+                                    <span class="resource-label">GPU</span>
+                                    <span class="resource-value-compact" id="resource-gpu-compact">--</span>
+                                </div>
+                                <canvas id="gpu-sparkline" class="resource-sparkline-compact" width="100" height="20"></canvas>
+                            </div>
+                            <div class="resource-card-compact">
+                                <div class="resource-info">
+                                    <i data-lucide="wifi"></i>
+                                    <span class="resource-label">Network</span>
+                                    <span class="resource-value-compact" id="resource-network-compact">0 KB/s</span>
+                                </div>
+                                <canvas id="network-sparkline" class="resource-sparkline-compact" width="100" height="20"></canvas>
+                            </div>
+                        </div>
+                    </section>
+
                 </div>
 
-                <!-- Gift-Specific Sounds -->
-                <div class="mb-8">
-                    <h3 class="font-bold text-lg mb-4">🎁 Gift-Specific Sounds</h3>
-
-                    <!-- Gift Catalog Browser -->
-                    <div class="mb-4 bg-gray-700 p-4 rounded">
-                        <div class="flex items-center justify-between mb-3">
-                            <h4 class="font-semibold">📦 Available Gifts from Stream</h4>
-                            <button onclick="refreshGiftCatalog()" id="refresh-catalog-btn"
-                                    class="bg-purple-600 px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2">
-                                <span id="refresh-icon">🔄</span> Refresh Catalog
-                            </button>
-                        </div>
-                        <div id="gift-catalog-info" class="text-sm text-gray-400 mb-3"></div>
-                        <div id="gift-catalog-list" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-96 overflow-y-auto">
-                            <!-- Wird dynamisch gefüllt -->
-                        </div>
-                    </div>
-
-                    <!-- MyInstants Search -->
-                    <div class="mb-4 bg-gray-700 p-4 rounded">
-                        <h4 class="font-semibold mb-2">🔍 Search MyInstants</h4>
-                        <div class="flex gap-2">
-                            <input type="text" id="myinstants-search-input" placeholder="Search sounds..."
-                                   class="bg-gray-600 text-white px-4 py-2 rounded flex-1">
-                            <button onclick="searchMyInstants()" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700">Search</button>
-                        </div>
-                        <div id="myinstants-results" class="mt-3 space-y-2 max-h-60 overflow-y-auto"></div>
-                    </div>
-
-                    <!-- Add Gift Sound -->
-                    <div class="mb-4 bg-gray-700 p-4 rounded">
-                        <h4 class="font-semibold mb-2">➕ Add/Edit Gift Sound</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <input type="number" id="new-gift-id" placeholder="Gift ID" readonly
-                                   class="bg-gray-600 text-white px-3 py-2 rounded">
-                            <input type="text" id="new-gift-label" placeholder="Label (e.g., Rose)" readonly
-                                   class="bg-gray-600 text-white px-3 py-2 rounded">
-                            <input type="text" id="new-gift-url" placeholder="MP3 URL"
-                                   class="bg-gray-600 text-white px-3 py-2 rounded">
-                            <input type="number" id="new-gift-volume" min="0" max="1" step="0.1" value="1.0"
-                                   placeholder="Volume" class="bg-gray-600 text-white px-3 py-2 rounded">
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                            <input type="text" id="new-gift-animation-url" placeholder="Animation URL (optional)"
-                                   class="bg-gray-600 text-white px-3 py-2 rounded">
-                            <select id="new-gift-animation-type" class="bg-gray-600 text-white px-3 py-2 rounded">
-                                <option value="none">No Animation</option>
-                                <option value="image">Image</option>
-                                <option value="video">Video</option>
-                                <option value="gif">GIF</option>
-                            </select>
-                        </div>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="addGiftSound()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 flex-1">
-                                ➕ Add/Update Gift Sound
-                            </button>
-                            <button onclick="clearGiftSoundForm()" class="bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">
+                <!-- View: Events -->
+                <div id="view-events" class="content-view">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="activity"></i>
+                                Live Event Log
+                            </h2>
+                            <button id="clear-events-btn" class="btn btn-sm btn-ghost">
+                                <i data-lucide="trash-2"></i>
                                 Clear
                             </button>
                         </div>
-                    </div>
-
-                    <!-- Gift Sounds List -->
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <thead>
-                                <tr class="text-left text-gray-400 border-b border-gray-700">
-                                    <th class="pb-2 pr-4">Gift ID</th>
-                                    <th class="pb-2 pr-4">Label</th>
-                                    <th class="pb-2 pr-4">Sound</th>
-                                    <th class="pb-2 pr-4">Volume</th>
-                                    <th class="pb-2 pr-4">Animation</th>
-                                    <th class="pb-2">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="gift-sounds-list" class="text-gray-300"></tbody>
-                        </table>
-                    </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Type</th>
+                                        <th>User</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="event-log"></tbody>
+                            </table>
+                        </div>
+                    </section>
                 </div>
 
-                <button onclick="saveSoundboardSettings()" class="bg-blue-600 px-6 py-3 rounded hover:bg-blue-700 font-semibold">
-                    💾 Save Soundboard Settings
-                </button>
-            </div>
-        </div>
-
-        <!-- PATCH: Tab: Multi-Guest (VDO.Ninja) -->
-        <div id="tab-multiGuest" class="tab-content" data-plugin="vdoninja">
-            <!-- Room Management -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 class="text-xl mb-6 font-semibold">🏠 VDO.Ninja Room Management</h2>
-
-                <!-- Active Room Status -->
-                <div id="vdo-room-status" class="mb-6 bg-gray-700 p-4 rounded">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-sm text-gray-400">Room Status</div>
-                            <div id="vdo-room-name" class="text-xl font-bold text-gray-400">No Active Room</div>
-                        </div>
-                        <div>
-                            <span id="vdo-guest-count" class="text-3xl font-bold text-blue-400">0/6</span>
-                            <div class="text-xs text-gray-400 text-center">Guests</div>
-                        </div>
-                    </div>
-                    <div id="vdo-room-urls" class="space-y-2 hidden">
-                        <div>
-                            <label class="text-xs text-gray-400">Director URL (OBS Overlay)</label>
-                            <div class="flex gap-2">
-                                <input type="text" readonly id="vdo-director-url" class="bg-gray-600 text-white px-3 py-2 rounded flex-1 font-mono text-xs">
-                                <button onclick="copyVDOUrl('vdo-director-url')" class="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm">📋</button>
+                <!-- View: Flows -->
+                <div id="view-flows" class="content-view">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="git-branch"></i>
+                                IFTTT Automation Flows
+                            </h2>
+                            <div style="display: flex; gap: 12px;">
+                                <a href="/ifttt-flow-editor.html" target="_blank" class="btn btn-primary">
+                                    <i data-lucide="edit"></i>
+                                    Visual Flow Editor
+                                </a>
+                                <button id="add-flow-btn" class="btn btn-ghost">
+                                    <i data-lucide="plus"></i>
+                                    Quick Create
+                                </button>
                             </div>
                         </div>
-                        <div>
-                            <label class="text-xs text-gray-400">Guest Invite URL (Share with Guests)</label>
-                            <div class="flex gap-2">
-                                <input type="text" readonly id="vdo-invite-url" class="bg-gray-600 text-white px-3 py-2 rounded flex-1 font-mono text-xs">
-                                <button onclick="copyVDOUrl('vdo-invite-url')" class="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm">📋</button>
+                        <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <i data-lucide="zap" style="color: #3b82f6; width: 24px; height: 24px;"></i>
+                                <div>
+                                    <strong style="color: #60a5fa;">New: Visual IFTTT Flow Editor</strong>
+                                    <p style="margin: 4px 0 0 0; font-size: 14px; color: #cbd5e1;">
+                                        Create powerful automation flows with drag-and-drop interface. Supports triggers, conditions, actions, and real-time monitoring.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        <div id="flows-list" class="flows-container"></div>
+                    </section>
                 </div>
 
-                <!-- Room Controls -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Create New Room -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-semibold mb-3">➕ Create New Room</h3>
-                        <div class="space-y-2">
-                            <input type="text" id="vdo-new-room-name" placeholder="Room Name"
-                                   class="bg-gray-600 text-white px-3 py-2 rounded w-full text-sm">
-                            <input type="number" id="vdo-new-room-max-guests" min="1" max="12" value="6"
-                                   placeholder="Max Guests" class="bg-gray-600 text-white px-3 py-2 rounded w-full text-sm">
-                            <button onclick="createVDORoom()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full text-sm font-semibold">
-                                🚀 Create Room
-                            </button>
+                <!-- View: Goals -->
+                <div id="view-goals" class="content-view" data-plugin="goals">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="target"></i>
+                                Live Goals
+                            </h2>
+                            <a href="/goals/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
                         </div>
-                    </div>
-
-                    <!-- Load Existing Room -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-semibold mb-3">📂 Load Existing Room</h3>
-                        <div class="space-y-2">
-                            <select id="vdo-existing-rooms" class="bg-gray-600 text-white px-3 py-2 rounded w-full text-sm">
-                                <option value="">Select Room...</option>
-                            </select>
-                            <button onclick="loadVDORoom()" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 w-full text-sm font-semibold">
-                                📥 Load Room
-                            </button>
+                        <div class="iframe-container">
+                            <iframe src="/goals/ui" title="Live Goals Configuration"></iframe>
                         </div>
-                    </div>
+                    </section>
+                </div>
 
-                    <!-- Close Room -->
-                    <div class="bg-gray-700 p-4 rounded">
-                        <h3 class="font-semibold mb-3">🔒 Close Active Room</h3>
-                        <div class="space-y-2">
-                            <button onclick="closeVDORoom()" id="vdo-close-room-btn" disabled
-                                    class="bg-red-600 px-4 py-2 rounded hover:bg-red-700 w-full text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                                ⛔ Close Room
-                            </button>
-                            <button onclick="deleteVDORoom()" id="vdo-delete-room-btn" disabled
-                                    class="bg-red-800 px-4 py-2 rounded hover:bg-red-900 w-full text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                                🗑️ Delete Room
-                            </button>
+                <!-- View: TTS -->
+                <div id="view-tts" class="content-view" data-plugin="tts">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="mic"></i>
+                                TTS v2.0 - Text-to-Speech System
+                            </h2>
+                            <a href="/plugins/tts/ui/admin-panel.html" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Guest Controls -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-semibold">👥 Guest Controls</h2>
-                    <div class="flex gap-2">
-                        <button onclick="muteAllVDOGuests()" id="vdo-mute-all-btn" disabled
-                                class="bg-orange-600 px-4 py-2 rounded hover:bg-orange-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                            🔇 Mute All
-                        </button>
-                        <button onclick="unmuteAllVDOGuests()" id="vdo-unmute-all-btn" disabled
-                                class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                            🔊 Unmute All
-                        </button>
-                    </div>
+                        <div class="iframe-container">
+                            <iframe src="/plugins/tts/ui/admin-panel.html" title="TTS Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
 
-                <!-- Guest List -->
-                <div id="vdo-guest-list" class="space-y-3">
-                    <!-- Guests will be dynamically inserted here -->
-                    <div class="text-center text-gray-400 py-8">
-                        No guests connected. Share the invite URL with your guests!
-                    </div>
+                <!-- View: Soundboard -->
+                <div id="view-soundboard" class="content-view" data-plugin="soundboard">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="music"></i>
+                                Soundboard Configuration
+                            </h2>
+                        </div>
+                        <div class="soundboard-content">
+                            <!-- Playback Settings -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="settings"></i>
+                                    Playback Settings
+                                </h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label>Play Mode</label>
+                                        <select id="soundboard-play-mode" class="form-select">
+                                            <option value="overlap">Overlap (play immediately)</option>
+                                            <option value="sequential">Sequential (queue)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Max Queue Length</label>
+                                        <input type="number" id="soundboard-max-queue" min="1" max="50" value="10" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="soundboard-enabled" checked>
+                                            <span>Enable Soundboard</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Event Sounds -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="volume-2"></i>
+                                    Event Sounds
+                                </h3>
+                                <div class="event-sounds-grid">
+                                    <div class="event-sound-item">
+                                        <div class="event-sound-header">
+                                            <i data-lucide="star"></i>
+                                            <span>Follow Sound</span>
+                                            <button data-test-sound="follow" class="btn btn-xs btn-ghost">
+                                                <i data-lucide="play"></i>
+                                            </button>
+                                        </div>
+                                        <input type="text" id="soundboard-follow-url" placeholder="Sound URL" class="form-input">
+                                        <input type="number" id="soundboard-follow-volume" min="0" max="1" step="0.1" value="1.0" placeholder="Volume" class="form-input">
+                                    </div>
+
+                                    <div class="event-sound-item">
+                                        <div class="event-sound-header">
+                                            <i data-lucide="users"></i>
+                                            <span>Subscribe Sound</span>
+                                            <button data-test-sound="subscribe" class="btn btn-xs btn-ghost">
+                                                <i data-lucide="play"></i>
+                                            </button>
+                                        </div>
+                                        <input type="text" id="soundboard-subscribe-url" placeholder="Sound URL" class="form-input">
+                                        <input type="number" id="soundboard-subscribe-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                                    </div>
+
+                                    <div class="event-sound-item">
+                                        <div class="event-sound-header">
+                                            <i data-lucide="share-2"></i>
+                                            <span>Share Sound</span>
+                                            <button data-test-sound="share" class="btn btn-xs btn-ghost">
+                                                <i data-lucide="play"></i>
+                                            </button>
+                                        </div>
+                                        <input type="text" id="soundboard-share-url" placeholder="Sound URL" class="form-input">
+                                        <input type="number" id="soundboard-share-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                                    </div>
+
+                                    <div class="event-sound-item">
+                                        <div class="event-sound-header">
+                                            <i data-lucide="gift"></i>
+                                            <span>Default Gift Sound</span>
+                                            <button data-test-sound="gift" class="btn btn-xs btn-ghost">
+                                                <i data-lucide="play"></i>
+                                            </button>
+                                        </div>
+                                        <input type="text" id="soundboard-gift-url" placeholder="Sound URL" class="form-input">
+                                        <input type="number" id="soundboard-gift-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                                    </div>
+
+                                    <div class="event-sound-item">
+                                        <div class="event-sound-header">
+                                            <i data-lucide="heart"></i>
+                                            <span>Like Threshold Sound</span>
+                                            <button data-test-sound="like" class="btn btn-xs btn-ghost">
+                                                <i data-lucide="play"></i>
+                                            </button>
+                                        </div>
+                                        <input type="text" id="soundboard-like-url" placeholder="Sound URL" class="form-input">
+                                        <input type="number" id="soundboard-like-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                                        <div class="form-grid">
+                                            <input type="number" id="soundboard-like-threshold" min="0" value="0" placeholder="Threshold" class="form-input">
+                                            <input type="number" id="soundboard-like-window" min="1" value="10" placeholder="Window (s)" class="form-input">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Gift-Specific Sounds -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="gift"></i>
+                                    Gift-Specific Sounds
+                                </h3>
+
+                                <!-- Gift Catalog Browser -->
+                                <div class="gift-catalog">
+                                    <div class="gift-catalog-header">
+                                        <h4>Available Gifts from Stream</h4>
+                                        <button id="refresh-catalog-btn" class="btn btn-sm btn-primary">
+                                            <i data-lucide="refresh-cw" id="refresh-icon"></i>
+                                            Refresh Catalog
+                                        </button>
+                                    </div>
+                                    <div id="gift-catalog-info" class="gift-catalog-info"></div>
+                                    <div id="gift-catalog-list" class="gift-catalog-grid"></div>
+                                </div>
+
+                                <!-- MyInstants Search -->
+                                <div class="myinstants-search">
+                                    <h4>Search MyInstants</h4>
+                                    <div class="search-box">
+                                        <input type="text" id="myinstants-search-input" placeholder="Search sounds..." class="form-input">
+                                        <button id="myinstants-search-btn" class="btn btn-primary">
+                                            <i data-lucide="search"></i>
+                                            Search
+                                        </button>
+                                    </div>
+                                    <div id="myinstants-results" class="myinstants-results"></div>
+                                </div>
+
+                                <!-- Add Gift Sound -->
+                                <div class="add-gift-sound">
+                                    <h4>Add/Edit Gift Sound</h4>
+                                    <div class="form-grid">
+                                        <input type="number" id="new-gift-id" placeholder="Gift ID" readonly class="form-input">
+                                        <input type="text" id="new-gift-label" placeholder="Label" readonly class="form-input">
+                                        <input type="text" id="new-gift-url" placeholder="MP3 URL" class="form-input">
+                                        <input type="number" id="new-gift-volume" min="0" max="1" step="0.1" value="1.0" placeholder="Volume" class="form-input">
+                                    </div>
+                                    <div class="form-grid">
+                                        <input type="text" id="new-gift-animation-url" placeholder="Animation URL (optional)" class="form-input">
+                                        <select id="new-gift-animation-type" class="form-select">
+                                            <option value="none">No Animation</option>
+                                            <option value="image">Image</option>
+                                            <option value="video">Video</option>
+                                            <option value="gif">GIF</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button id="add-gift-sound-btn" class="btn btn-primary">
+                                            <i data-lucide="plus"></i>
+                                            Add/Update Gift Sound
+                                        </button>
+                                        <button id="clear-gift-form-btn" class="btn btn-ghost">Clear</button>
+                                    </div>
+                                </div>
+
+                                <!-- Gift Sounds List -->
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Gift ID</th>
+                                                <th>Label</th>
+                                                <th>Sound</th>
+                                                <th>Volume</th>
+                                                <th>Animation</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gift-sounds-list"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button id="save-soundboard-btn" class="btn btn-primary btn-lg">
+                                    <i data-lucide="save"></i>
+                                    Save Soundboard Settings
+                                </button>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
-                <!-- Add Guest Manually (Optional) -->
-                <div class="mt-6 p-4 bg-gray-700 rounded">
-                    <h3 class="font-semibold mb-3">➕ Add Guest Manually</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-                        <input type="number" id="vdo-manual-slot" min="0" max="11" placeholder="Slot (0-11)"
-                               class="bg-gray-600 text-white px-3 py-2 rounded text-sm">
-                        <input type="text" id="vdo-manual-stream-id" placeholder="Stream ID"
-                               class="bg-gray-600 text-white px-3 py-2 rounded text-sm">
-                        <input type="text" id="vdo-manual-guest-name" placeholder="Guest Name"
-                               class="bg-gray-600 text-white px-3 py-2 rounded text-sm">
-                        <button onclick="addVDOGuest()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 text-sm font-semibold">
-                            ✅ Add Guest
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Layout Controls -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 class="text-xl mb-4 font-semibold">🎨 Layout Presets</h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <button onclick="changeVDOLayout('Grid 2x2', 'fade')"
-                            class="bg-purple-600 px-4 py-3 rounded hover:bg-purple-700 font-semibold">
-                        ⬜⬜<br>⬜⬜ Grid 2x2
-                    </button>
-                    <button onclick="changeVDOLayout('Grid 3x2', 'fade')"
-                            class="bg-purple-600 px-4 py-3 rounded hover:bg-purple-700 font-semibold">
-                        ⬜⬜⬜<br>⬜⬜⬜ Grid 3x2
-                    </button>
-                    <button onclick="changeVDOLayout('Solo', 'fade')"
-                            class="bg-purple-600 px-4 py-3 rounded hover:bg-purple-700 font-semibold">
-                        ◻️<br>Solo
-                    </button>
-                    <button onclick="changeVDOLayout('PIP', 'fade')"
-                            class="bg-purple-600 px-4 py-3 rounded hover:bg-purple-700 font-semibold">
-                        ◻️<small>◽</small><br>PIP
-                    </button>
+                <!-- View: Emoji Rain -->
+                <div id="view-emoji-rain" class="content-view" data-plugin="emoji-rain">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="cloud-rain"></i>
+                                Emoji Rain v2.0
+                            </h2>
+                            <a href="/emoji-rain/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/emoji-rain/ui" title="Emoji Rain Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
 
-                <!-- Current Layout Display -->
-                <div class="mt-4 p-3 bg-gray-700 rounded text-center">
-                    <div class="text-sm text-gray-400">Current Layout:</div>
-                    <div id="vdo-current-layout" class="text-lg font-bold text-purple-400">Grid 2x2</div>
-                </div>
-            </div>
-
-            <!-- Info & Help -->
-            <div class="bg-gradient-to-r from-blue-900 to-purple-900 bg-opacity-50 border border-blue-600 rounded-lg p-6">
-                <h2 class="text-xl mb-4 font-semibold">📚 VDO.Ninja Multi-Guest Info</h2>
-                <div class="space-y-3 text-sm">
-                    <div>
-                        <strong>✅ Setup:</strong>
-                        <ol class="list-decimal list-inside ml-4 mt-2 space-y-1 text-gray-300">
-                            <li>Create a new room or load an existing one</li>
-                            <li>Copy the Director URL and add it as Browser Source in OBS (1920x1080)</li>
-                            <li>Share the Guest Invite URL with your guests</li>
-                            <li>Control guests in real-time from this dashboard</li>
-                        </ol>
-                    </div>
-                    <div>
-                        <strong>🎮 Features:</strong>
-                        <ul class="list-disc list-inside ml-4 mt-2 space-y-1 text-gray-300">
-                            <li>Mute/Unmute audio and video per guest</li>
-                            <li>Adjust individual guest volume</li>
-                            <li>Solo mode: Spotlight one guest temporarily</li>
-                            <li>Kick guests if needed</li>
-                            <li>Switch layouts instantly (Grid, Solo, PIP)</li>
-                            <li>Integrate with Flows: TikTok events can trigger guest actions!</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <strong>⚡ Flow Integration Example:</strong>
-                        <p class="ml-4 mt-2 text-gray-300 italic">
-                            "When user sends 1000 coin gift → Solo Guest #1 for 15 seconds"
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab: Plugins -->
-        <div id="tab-plugins" class="tab-content">
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">🔌 Plugin Manager</h2>
-                    <div class="flex gap-2">
-                        <button id="reload-plugins-btn" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                            🔄 Reload All
-                        </button>
-                        <button id="upload-plugin-btn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 text-sm">
-                            ⬆️ Upload Plugin (ZIP)
-                        </button>
-                    </div>
+                <!-- View: Multi-Guest -->
+                <div id="view-multi-guest" class="content-view" data-plugin="vdoninja">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="users"></i>
+                                VDO.Ninja Multi-Guest
+                            </h2>
+                        </div>
+                        <!-- Content from original multiGuest tab -->
+                        <div class="vdo-content">
+                            <p class="text-gray-400">VDO.Ninja Multi-Guest controls will be integrated here...</p>
+                        </div>
+                    </section>
                 </div>
 
-                <input type="file" id="plugin-file-input" accept=".zip" style="display: none">
-
-                <div class="mb-4 p-4 bg-gray-700 rounded">
-                    <p class="text-sm text-gray-300">
-                        <strong>ℹ️ Info:</strong> Plugins erweitern die Funktionalität des Tools.
-                        Du kannst ZIP-Dateien hochladen, die ein <code>plugin.json</code> und eine <code>main.js</code> enthalten.
-                    </p>
+                <!-- View: Gift Milestone -->
+                <div id="view-gift-milestone" class="content-view" data-plugin="gift-milestone">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="gift"></i>
+                                Gift Milestone Celebration
+                            </h2>
+                            <a href="/gift-milestone/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/gift-milestone/ui" title="Gift Milestone Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
 
-                <!-- Plugin-Liste -->
-                <div id="plugins-container" class="space-y-3">
-                    <div class="text-center text-gray-400 py-8">
-                        <p>Lade Plugins...</p>
-                    </div>
+                <!-- View: Multi-Cam -->
+                <div id="view-multicam" class="content-view" data-plugin="multicam">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="video"></i>
+                                Multi-Cam Switcher
+                            </h2>
+                            <a href="/plugins/multicam/ui.html" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/plugins/multicam/ui.html" title="Multi-Cam Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
-            </div>
-        </div>
 
-        <!-- Tab: Emoji Rain -->
-        <div id="tab-emojiRain" class="tab-content" data-plugin="emoji-rain">
-            <!-- Emoji Rain v2.0 Header -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">🌧️ Emoji Rain v2.0 - Enhanced Edition</h2>
-                    <a href="/emoji-rain/ui" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                        🔗 Open in New Tab
-                    </a>
+                <!-- View: OSC-Bridge -->
+                <div id="view-osc-bridge" class="content-view" data-plugin="osc-bridge">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="gamepad-2"></i>
+                                OSC-Bridge (VRChat)
+                            </h2>
+                            <a href="/plugins/osc-bridge/ui.html" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/plugins/osc-bridge/ui.html" title="OSC-Bridge Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
-                <div class="text-sm text-gray-400">
-                    Physics-based Emoji Rain • OBS HUD Support • Game-Quality Graphics • 60 FPS Performance • Glow & Particle Effects
-                </div>
-            </div>
 
-            <!-- Emoji Rain UI Iframe -->
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe
-                    src="/emoji-rain/ui"
-                    style="width: 100%; height: 100%; border: none;"
-                    title="Emoji Rain Configuration">
-                </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: Gift Milestone -->
-        <div id="tab-giftMilestone" class="tab-content" data-plugin="gift-milestone">
-            <!-- Gift Milestone Header -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">🎁 Gift Milestone Celebration</h2>
-                    <a href="/gift-milestone/ui" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                        🔗 Open in New Tab
-                    </a>
+                <!-- View: HybridShock -->
+                <div id="view-hybridshock" class="content-view" data-plugin="hybridshock">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="zap"></i>
+                                HybridShock Integration
+                            </h2>
+                            <a href="/hybridshock/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/hybridshock/ui" title="HybridShock Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
-                <div class="text-sm text-gray-400">
-                    Celebrate coin milestones with custom animations (GIF, MP4) and audio
-                </div>
-            </div>
 
-            <!-- Gift Milestone UI Iframe -->
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe
-                    src="/gift-milestone/ui"
-                    style="width: 100%; height: 100%; border: none;"
-                    title="Gift Milestone Configuration">
-                </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: Multi-Cam Switcher -->
-        <div id="tab-multicam" class="tab-content" data-plugin="multicam">
-            <!-- Multi-Cam Header -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">🎥 Multi-Cam Switcher</h2>
-                    <a href="/plugins/multicam/ui.html" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                        🔗 Open in New Tab
-                    </a>
+                <!-- View: OpenShock -->
+                <div id="view-openshock" class="content-view" data-plugin="openshock">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="zap"></i>
+                                OpenShock Integration
+                            </h2>
+                            <a href="/openshock/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/openshock/ui" title="OpenShock Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
-                <div class="text-sm text-gray-400">
-                    Switch OBS scenes via gifts or chat commands • Supports Spout feeds and multiple cameras
-                </div>
-            </div>
 
-            <!-- Multi-Cam UI Iframe -->
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe
-                    src="/plugins/multicam/ui.html"
-                    style="width: 100%; height: 100%; border: none;"
-                    title="Multi-Cam Switcher Configuration">
-                </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: OSC-Bridge -->
-        <div id="tab-oscBridge" class="tab-content" data-plugin="osc-bridge">
-            <!-- OSC-Bridge Header -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">🎮 OSC-Bridge (VRChat)</h2>
-                    <a href="/plugins/osc-bridge/ui.html" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                        🔗 Open in New Tab
-                    </a>
+                <!-- View: Quiz Show -->
+                <div id="view-quiz-show" class="content-view" data-plugin="quiz-show">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="help-circle"></i>
+                                Quiz Show
+                            </h2>
+                            <a href="/quiz-show/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/quiz-show/ui" title="Quiz Show Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
-                <div class="text-sm text-gray-400">
-                    Bidirectional OSC bridge for VRChat integration • TikTok events to avatar parameters
-                </div>
-            </div>
 
-            <!-- OSC-Bridge UI Iframe -->
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe
-                    src="/plugins/osc-bridge/ui.html"
-                    style="width: 100%; height: 100%; border: none;"
-                    title="OSC-Bridge Configuration">
-                </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: HybridShock Integration -->
-        <div id="tab-hybridshock" class="tab-content" data-plugin="hybridshock">
-            <!-- HybridShock Header -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">⚡ HybridShock Integration</h2>
-                    <a href="/hybridshock/ui" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                        🔗 Open in New Tab
-                    </a>
+                <!-- View: Viewer XP -->
+                <div id="view-viewer-xp" class="content-view" data-plugin="viewer-xp">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="award"></i>
+                                Viewer XP System
+                            </h2>
+                            <a href="/viewer-xp/admin" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/viewer-xp/admin" title="Viewer XP Admin Panel"></iframe>
+                        </div>
+                    </section>
                 </div>
-                <div class="text-sm text-gray-400">
-                    Bidirektionale Bridge zwischen TikTok Live Events und HybridShock API • WebSocket + HTTP Integration • Event-Mapping-System • Action-Queue mit Rate-Limiting
-                </div>
-            </div>
 
-            <!-- HybridShock UI Iframe -->
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe
-                    src="/hybridshock/ui"
-                    style="width: 100%; height: 100%; border: none;"
-                    title="HybridShock Configuration">
-                </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: Live Goals -->
-        <div id="tab-liveGoals" class="tab-content" data-plugin="goals">
-            <!-- Live Goals Header -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">🎯 Live Goals - Real-Time Goal Tracking</h2>
-                    <a href="/goals/ui" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                        🔗 Open in New Tab
-                    </a>
+                <!-- View: Resource Monitor -->
+                <div id="view-resource-monitor" class="content-view" data-plugin="resource-monitor">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="cpu"></i>
+                                System Resource Monitor
+                            </h2>
+                            <a href="/resource-monitor/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/resource-monitor/ui" title="Resource Monitor"></iframe>
+                        </div>
+                    </section>
                 </div>
-                <div class="text-sm text-gray-400">
-                    Track Coins, Likes, Followers & Custom Goals • Event API Integration • Real-time Overlays • Auto-Progression Modes
-                    Track Coins, Likes, Followers & Custom Goals • TikFinity Event API Integration • Real-time Overlays • Auto-Progression Modes
-                </div>
-            </div>
-
-            <!-- Live Goals UI Iframe -->
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe
-                    src="/goals/ui"
-                    style="width: 100%; height: 100%; border: none;"
-                    title="Live Goals Configuration">
-                </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: Resource Monitor -->
-        <div id="tab-resourceMonitor" class="tab-content" data-plugin="resource-monitor">
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">🖥️ System Resource Monitor</h2>
-                    <a href="/resource-monitor/ui" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm transition-colors">
-                        🔗 Open in New Tab
-                    </a>
-                </div>
-                <p class="text-gray-400 text-sm">
-                    Monitor real-time CPU, RAM, and GPU usage. The software should use less than 5% CPU for optimal performance.
-                </p>
-            </div>
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe src="/resource-monitor/ui"
-                        style="width: 100%; height: 100%; border: none;"
-                        title="Resource Monitor">
-                </iframe>
-            </div>
-        </div>
 
         <!-- Tab: Quiz Show -->
         <div id="tab-quizShow" class="tab-content" data-plugin="quiz-show">
@@ -896,425 +1038,582 @@
         <div id="tab-settings" class="tab-content">
             <div class="bg-gray-800 rounded-lg p-6 mb-6">
                 <h2 class="text-xl mb-6 font-semibold">⚙️ General Settings</h2>
-
-                <div class="p-4 bg-gray-700 rounded">
-                    <p class="text-gray-300">
-                        <strong>ℹ️ Info:</strong> TTS settings have been moved to the TTS tab for easier access.
-                    </p>
+                <!-- View: Weather Control -->
+                <div id="view-weather-control" class="content-view" data-plugin="weather-control">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="cloud-rain"></i>
+                                Weather Control System
+                            </h2>
+                            <a href="/weather-control/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/weather-control/ui" title="Weather Control"></iframe>
+                        </div>
+                    </section>
                 </div>
-            </div>
 
-            <!-- Audio Engine Settings -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <h2 class="text-xl mb-6 font-semibold">🎵 Audio Engine Settings</h2>
-
-                <div class="space-y-6">
-                    <!-- Master Volume -->
-                    <div>
-                        <label class="block text-gray-400 mb-2">Master Volume: <span id="master-volume-label">100</span>%</label>
-                        <input type="range" min="0" max="100" value="100" id="master-volume" class="w-full">
-                        <p class="text-xs text-gray-500 mt-1">Globale Lautstärke für alle Sounds, TTS und Alerts</p>
-                    </div>
-
-                    <!-- Audio Output Device Selection -->
-                    <div>
-                        <label class="block text-gray-400 mb-2">Audio Output Device</label>
-                        <select id="audio-output-device" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="default">Standard-Ausgabegerät</option>
-                            <!-- Wird dynamisch gefüllt -->
-                        </select>
-                        <p class="text-xs text-gray-500 mt-1">
-                            ⚠️ Hinweis: Die Auswahl des Audio-Geräts funktioniert nur in Chromium-basierten Browsern und OBS.
-                            <br>
-                            In OBS: Verwende OBS Audio-Mixer zum Routing.
-                        </p>
-                    </div>
-
-                    <!-- Audio Engine Status -->
-                    <div class="p-4 bg-gray-700 rounded">
-                        <h3 class="font-bold mb-3">Audio Engine Status</h3>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-between">
-                                <span class="text-gray-400">Status:</span>
-                                <span id="audio-status" class="font-semibold text-green-400">Initialisiere...</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-400">Sample Rate:</span>
-                                <span id="audio-samplerate" class="font-semibold">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-400">Latenz:</span>
-                                <span id="audio-latency" class="font-semibold">-</span>
-                            </div>
+                <!-- View: LastEvent Spotlight -->
+                <div id="view-lastevent-spotlight" class="content-view" data-plugin="lastevent-spotlight">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="eye"></i>
+                                LastEvent Spotlight
+                            </h2>
+                            <a href="/lastevent-spotlight/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
                         </div>
-                    </div>
-
-                    <!-- Audio Test -->
-                    <div class="p-4 bg-gray-700 rounded">
-                        <h3 class="font-bold mb-3">🔊 Audio Test</h3>
-                        <button id="test-audio-btn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 font-semibold">
-                            🎵 Test Audio abspielen
-                        </button>
-                        <p class="text-xs text-gray-500 mt-2">Spielt einen Test-Ton ab, um die Audio-Konfiguration zu überprüfen.</p>
-                    </div>
+                        <div class="iframe-container">
+                            <iframe src="/lastevent-spotlight/ui" title="LastEvent Spotlight Configuration"></iframe>
+                        </div>
+                    </section>
                 </div>
-            </div>
 
-            <!-- Auto-Start Settings -->
-            <div class="bg-gray-800 rounded-lg p-6 mt-6">
-                <h2 class="text-xl mb-6 font-semibold">🚀 Auto-Start Settings</h2>
+                <!-- View: ClarityHUD -->
+                <div id="view-clarityhud" class="content-view" data-plugin="clarityhud">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="layout"></i>
+                                ClarityHUD - VR-Optimized Overlays
+                            </h2>
+                            <a href="/clarityhud/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/clarityhud/ui" title="ClarityHUD Configuration"></iframe>
+                        </div>
+                    </section>
+                </div>
 
-                <div class="space-y-6">
-                    <!-- Platform Info -->
-                    <div class="p-4 bg-gray-700 rounded">
-                        <h3 class="font-bold mb-3">Platform Information</h3>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-between">
-                                <span class="text-gray-400">Platform:</span>
-                                <span id="autostart-platform-name" class="font-semibold">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-400">Method:</span>
-                                <span id="autostart-platform-method" class="font-semibold text-xs">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-400">Supported:</span>
-                                <span id="autostart-supported" class="font-semibold">-</span>
+                <!-- View: Plugins -->
+                <div id="view-plugins" class="content-view">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="plug"></i>
+                                Plugin Manager
+                            </h2>
+                            <div class="view-actions">
+                                <button id="reload-plugins-btn" class="btn btn-sm btn-ghost">
+                                    <i data-lucide="refresh-cw"></i>
+                                    Reload All
+                                </button>
+                                <button id="upload-plugin-btn" class="btn btn-sm btn-primary">
+                                    <i data-lucide="upload"></i>
+                                    Upload Plugin (ZIP)
+                                </button>
                             </div>
                         </div>
-                    </div>
+                        <input type="file" id="plugin-file-input" accept=".zip" style="display: none">
+                        <div class="info-banner">
+                            <i data-lucide="info"></i>
+                            <p>Plugins erweitern die Funktionalität des Tools. Du kannst ZIP-Dateien hochladen, die ein plugin.json und eine main.js enthalten.</p>
+                        </div>
+                        <div id="plugins-container" class="plugins-grid"></div>
+                    </section>
+                </div>
 
-                    <!-- Auto-Start Toggle -->
-                    <div class="p-4 bg-gray-700 rounded">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 class="font-bold">Enable Auto-Start</h3>
-                                <p class="text-xs text-gray-400 mt-1">Start application automatically when your computer boots</p>
+                <!-- View: Wiki -->
+                <div id="view-wiki" class="content-view">
+                    <div class="wiki-container">
+                        <!-- Wiki Sidebar -->
+                        <aside class="wiki-sidebar">
+                            <div class="wiki-search-container">
+                                <div class="wiki-search-input-wrapper">
+                                    <i data-lucide="search"></i>
+                                    <input type="text" id="wiki-search" placeholder="Search documentation..." class="wiki-search-input">
+                                </div>
                             </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="autostart-enabled" class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-
-                        <!-- Hidden/Minimized Option (Currently not supported in Node.js app) -->
-                        <div class="text-xs text-gray-500 p-3 bg-gray-800 rounded">
-                            <strong>Note:</strong> Auto-start will launch the application when your system boots.
-                            <br>The application will start normally with a terminal window.
-                            <br><br>
-                            <strong>Future Enhancement:</strong> Minimize to system tray will be available in the Electron desktop version.
-                        </div>
-                    </div>
-
-                    <!-- Status -->
-                    <div class="p-4 bg-gray-700 rounded">
-                        <h3 class="font-bold mb-3">Current Status</h3>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-between">
-                                <span class="text-gray-400">Auto-Start:</span>
-                                <span id="autostart-status" class="font-semibold">Checking...</span>
+                            <nav class="wiki-nav" id="wiki-nav">
+                                <!-- Will be dynamically populated -->
+                            </nav>
+                        </aside>
+                        
+                        <!-- Wiki Content -->
+                        <main class="wiki-content">
+                            <div class="wiki-article" id="wiki-article">
+                                <div class="wiki-loading">
+                                    <i data-lucide="loader"></i>
+                                    <span>Loading documentation...</span>
+                                </div>
                             </div>
-                        </div>
+                        </main>
                     </div>
                 </div>
-            </div>
 
-            <!-- Import/Export Presets -->
-            <div class="bg-gray-800 rounded-lg p-6 mt-6">
-                <h2 class="text-xl mb-6 font-semibold">📦 Import/Export Configuration Presets</h2>
+                <!-- View: Settings -->
+                <div id="view-settings" class="content-view">
+                    <section class="view-section">
+                        <h2 class="view-title">
+                            <i data-lucide="settings"></i>
+                            Global Settings
+                        </h2>
 
-                <div class="space-y-6">
-                    <!-- Export Section -->
-                    <div class="p-4 bg-gray-700 rounded">
-                        <h3 class="font-bold mb-3">Export Configuration</h3>
-                        <p class="text-sm text-gray-400 mb-4">
-                            Export your complete configuration (settings, flows, alerts, sounds, etc.) as a preset file that you can share or backup.
-                        </p>
-
-                        <!-- Export Options -->
-                        <div class="space-y-2 mb-4">
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="export-settings" checked class="w-4 h-4">
-                                <span>Settings</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="export-flows" checked class="w-4 h-4">
-                                <span>Flows (Automation)</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="export-alerts" checked class="w-4 h-4">
-                                <span>Alert Configurations</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="export-gift-sounds" checked class="w-4 h-4">
-                                <span>Gift Sound Mappings</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="export-voice-mappings" checked class="w-4 h-4">
-                                <span>User Voice Mappings</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="export-plugin-configs" checked class="w-4 h-4">
-                                <span>Plugin Configurations</span>
-                            </label>
-                        </div>
-
-                        <!-- Preset Name -->
-                        <div class="mb-4">
-                            <label class="block text-sm text-gray-400 mb-2">Preset Name:</label>
-                            <input type="text" id="preset-name" placeholder="My Awesome Config"
-                                   class="bg-gray-600 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-
-                        <!-- Preset Description -->
-                        <div class="mb-4">
-                            <label class="block text-sm text-gray-400 mb-2">Description (optional):</label>
-                            <textarea id="preset-description" placeholder="Describe your configuration..." rows="2"
-                                   class="bg-gray-600 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                        </div>
-
-                        <!-- Export Button -->
-                        <button id="export-preset-btn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 font-semibold w-full">
-                            📥 Export Configuration
-                        </button>
-                    </div>
-
-                    <!-- Import Section -->
-                    <div class="p-4 bg-gray-700 rounded">
-                        <h3 class="font-bold mb-3">Import Configuration</h3>
-                        <p class="text-sm text-gray-400 mb-4">
-                            Import a preset file to restore or load a saved configuration.
-                        </p>
-
-                        <!-- Import Options -->
-                        <div class="space-y-2 mb-4">
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="import-overwrite" class="w-4 h-4">
-                                <span>Overwrite existing configuration</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" id="import-backup" checked class="w-4 h-4">
-                                <span>Create backup before import</span>
-                            </label>
-                        </div>
-
-                        <!-- File Input -->
-                        <div class="mb-4">
-                            <label class="block text-sm text-gray-400 mb-2">Select Preset File:</label>
-                            <input type="file" id="preset-file-input" accept=".json"
-                                   class="bg-gray-600 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-
-                        <!-- Import Button -->
-                        <button id="import-preset-btn" class="bg-green-600 px-6 py-2 rounded hover:bg-green-700 font-semibold w-full">
-                            📤 Import Configuration
-                        </button>
-
-                        <!-- Warning -->
-                        <div class="mt-4 p-3 bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded text-xs">
-                            <strong>⚠️ Warning:</strong> Importing a configuration may overwrite your current settings.
-                            A backup will be created automatically if enabled.
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Resource Monitor Settings -->
-            <div class="bg-gray-800 rounded-lg p-6 mt-6">
-                <h2 class="text-xl mb-6 font-semibold">🖥️ Resource Monitor Settings</h2>
-
-                <div class="space-y-4">
-                    <!-- Enable/Disable -->
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" id="resource-monitor-enabled" class="w-4 h-4">
-                        <span>Enable Resource Monitor</span>
-                    </label>
-
-                    <!-- Update Interval -->
-                    <div>
-                        <label class="block text-gray-400 mb-2">Update Interval</label>
-                        <input type="range" id="resource-monitor-interval"
-                               min="500" max="5000" step="100" value="1000"
-                               class="w-full accent-blue-600">
-                        <div class="flex justify-between text-sm text-gray-400 mt-1">
-                            <span>0.5s (Fast)</span>
-                            <span id="resource-monitor-interval-label" class="text-white font-semibold">1.0s</span>
-                            <span>5.0s (Slow)</span>
-                        </div>
-                    </div>
-
-                    <!-- Display Options -->
-                    <div class="border-t border-gray-700 pt-4">
-                        <div class="text-gray-400 mb-3 font-semibold">Display Components</div>
-                        <div class="space-y-2">
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" id="resource-monitor-show-cpu" class="w-4 h-4" checked>
-                                <span>Show CPU Usage</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" id="resource-monitor-show-ram" class="w-4 h-4" checked>
-                                <span>Show RAM Usage</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" id="resource-monitor-show-gpu" class="w-4 h-4" checked>
-                                <span>Show GPU Usage</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- CPU Warning Thresholds -->
-                    <div class="border-t border-gray-700 pt-4">
-                        <div class="text-gray-400 mb-3 font-semibold">CPU Warning Thresholds</div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-400 text-sm mb-1">Yellow Warning (%)</label>
-                                <input type="number" id="cpu-warning-yellow" value="5" min="1" max="100"
-                                       class="bg-gray-700 text-white px-3 py-2 rounded w-full">
+                        <!-- Audio Engine Settings -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="volume-2"></i>
+                                Audio Engine Settings
+                            </h3>
+                            <div class="form-group">
+                                <label for="master-volume">Master Volume: <span id="master-volume-label">100</span>%</label>
+                                <input type="range" min="0" max="100" value="100" id="master-volume" class="form-range">
                             </div>
-                            <div>
-                                <label class="block text-gray-400 text-sm mb-1">Red Warning (%)</label>
-                                <input type="number" id="cpu-warning-red" value="8" min="1" max="100"
-                                       class="bg-gray-700 text-white px-3 py-2 rounded w-full">
+                            <div class="form-group">
+                                <label for="audio-output-device">Audio Output Device</label>
+                                <select id="audio-output-device" class="form-select">
+                                    <option value="default">Standard-Ausgabegerät</option>
+                                </select>
+                                <p class="form-help">⚠️ Die Auswahl des Audio-Geräts funktioniert nur in Chromium-basierten Browsern und OBS.</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">
-                            The software should use less than 5% CPU. Yellow at 5-8%, red above 8%.
-                        </p>
-                    </div>
 
-                    <!-- RAM Warning Thresholds -->
-                    <div>
-                        <label class="block text-gray-400 mb-2">System RAM Warning Threshold (%)</label>
-                        <input type="number" id="ram-warning-threshold" value="90" min="50" max="100"
-                               class="bg-gray-700 text-white px-3 py-2 rounded w-full">
-                        <p class="text-xs text-gray-500 mt-1">
-                            Warn when system RAM usage exceeds this percentage.
-                        </p>
-                    </div>
+                        <!-- Auto-Start Settings -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="power"></i>
+                                Auto-Start Settings
+                            </h3>
+                            <div class="settings-info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Platform:</span>
+                                    <span id="autostart-platform-name" class="info-value">-</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Supported:</span>
+                                    <span id="autostart-supported" class="info-value">-</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Status:</span>
+                                    <span id="autostart-status" class="info-value">Checking...</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="autostart-enabled">
+                                    <span>Enable Auto-Start on System Boot</span>
+                                </label>
+                            </div>
+                        </div>
 
-                    <!-- History Length -->
-                    <div>
-                        <label class="block text-gray-400 mb-2">Graph History Duration</label>
-                        <select id="resource-monitor-history-length"
-                                class="bg-gray-700 text-white px-4 py-2 rounded w-full">
-                            <option value="30">30 seconds</option>
-                            <option value="60" selected>60 seconds</option>
-                            <option value="120">2 minutes</option>
-                            <option value="300">5 minutes</option>
-                        </select>
-                    </div>
+                        <!-- TikTok Connection Settings -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="radio"></i>
+                                TikTok Connection Settings
+                            </h3>
+                            <p class="form-help">
+                                Konfiguriere erweiterte Verbindungsoptionen für TikTok LIVE. 
+                                Diese Einstellungen können helfen, Verbindungsprobleme zu beheben.
+                            </p>
+                            
+                            <!-- Euler Stream API Key -->
+                            <div class="form-group">
+                                <label for="tiktok-euler-api-key">
+                                    Euler Stream API Key (Optional)
+                                    <a href="https://www.eulerstream.com" target="_blank" rel="noopener noreferrer" style="margin-left: 0.5rem; font-size: 0.875rem;">
+                                        <i data-lucide="external-link" style="width: 14px; height: 14px; vertical-align: middle;"></i>
+                                        API Key erhalten
+                                    </a>
+                                </label>
+                                <input 
+                                    type="password" 
+                                    id="tiktok-euler-api-key" 
+                                    placeholder="Dein Euler Stream API Key" 
+                                    class="form-input"
+                                    autocomplete="off"
+                                >
+                                <p class="form-help">
+                                    📌 Ein eigener Euler Stream API Key kann die Verbindungsstabilität weiter verbessern. 
+                                    Kostenlos bei <a href="https://www.eulerstream.com" target="_blank" rel="noopener noreferrer">eulerstream.com</a> registrieren.
+                                    <br>
+                                    ℹ️ <strong>Falls kein API Key konfiguriert ist, wird automatisch ein Backup-Key verwendet.</strong>
+                                    Ein eigener Key ist empfohlen für optimale Leistung.
+                                </p>
+                            </div>
 
-                    <!-- Notifications -->
-                    <div class="border-t border-gray-700 pt-4">
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" id="resource-monitor-notifications" class="w-4 h-4" checked>
-                            <span>Enable Performance Warnings</span>
-                        </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-6">
-                            Show alerts when resource usage exceeds thresholds.
-                        </p>
-                    </div>
+                            <!-- Enable Euler Fallbacks -->
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="tiktok-enable-euler-fallbacks">
+                                    <span>Euler Stream Fallbacks aktivieren</span>
+                                </label>
+                                <p class="form-help">
+                                    Verwendet Euler Stream als Fallback-Methode wenn normale Verbindungsmethoden fehlschlagen. 
+                                    Erfordert einen API Key.
+                                </p>
+                            </div>
 
-                    <!-- Save Button -->
-                    <div class="border-t border-gray-700 pt-4">
-                        <button id="save-resource-monitor-settings"
-                                class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 transition-colors">
-                            💾 Save Resource Monitor Settings
-                        </button>
-                    </div>
+                            <!-- Connect with Unique ID -->
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="tiktok-connect-with-unique-id">
+                                    <span>ConnectWithUniqueId verwenden</span>
+                                </label>
+                                <p class="form-help">
+                                    Ermöglicht es dem externen Service, die Room ID automatisch zu ermitteln. 
+                                    Kann helfen, Captchas zu umgehen, besonders bei problematischen IP-Adressen.
+                                </p>
+                            </div>
+
+                            <button id="save-tiktok-settings-btn" class="btn btn-primary">
+                                <i data-lucide="save"></i>
+                                TikTok Einstellungen speichern
+                            </button>
+                        </div>
+
+                        <!-- Session Extractor -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="key"></i>
+                                TikTok Session-ID Extraktion
+                            </h3>
+                            <p class="form-help">
+                                Extrahiere eine Session-ID von TikTok, um die Verbindungsstabilität zu verbessern. 
+                                Dies ist besonders hilfreich bei 504-Fehlern vom Sign-Server.
+                            </p>
+
+                            <!-- Session Status -->
+                            <div id="session-status-container" class="alert alert-info" style="margin-bottom: 1rem;">
+                                <i data-lucide="info"></i>
+                                <span id="session-status-text">Lade Session-Status...</span>
+                            </div>
+
+                            <!-- Extraction Buttons -->
+                            <div class="form-grid" style="margin-bottom: 1rem;">
+                                <button id="extract-session-btn" class="btn btn-primary">
+                                    <i data-lucide="download"></i>
+                                    Session-ID extrahieren (Automatisch)
+                                </button>
+                                <button id="extract-session-manual-btn" class="btn btn-secondary">
+                                    <i data-lucide="user"></i>
+                                    Session-ID extrahieren (Manuell)
+                                </button>
+                            </div>
+
+                            <div class="form-group">
+                                <button id="clear-session-btn" class="btn btn-danger">
+                                    <i data-lucide="trash-2"></i>
+                                    Session-ID löschen
+                                </button>
+                                <button id="test-browser-btn" class="btn btn-secondary">
+                                    <i data-lucide="check-circle"></i>
+                                    Browser-Verfügbarkeit testen
+                                </button>
+                            </div>
+
+                            <div class="alert alert-warning">
+                                <i data-lucide="alert-triangle"></i>
+                                <span>
+                                    <strong>Hinweis:</strong> Die automatische Extraktion funktioniert nur, wenn du bereits in TikTok eingeloggt bist.
+                                    Verwende "Manuell" wenn du dich erst einloggen musst.
+                                </span>
+                            </div>
+
+                            <div class="form-help" style="margin-top: 1rem;">
+                                <h4>So funktioniert's:</h4>
+                                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                    <li><strong>Automatisch:</strong> Startet einen unsichtbaren Browser, navigiert zu TikTok und extrahiert die Session-ID aus deinen Cookies.</li>
+                                    <li><strong>Manuell:</strong> Öffnet einen sichtbaren Browser. Du kannst dich einloggen und die Session-ID wird nach 60 Sekunden automatisch extrahiert.</li>
+                                    <li>Die extrahierte Session-ID wird automatisch bei der nächsten Verbindung verwendet.</li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <!-- Cloud Sync Settings -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="cloud"></i>
+                                Cloud Sync (Optional)
+                            </h3>
+                            <p class="form-help">
+                                Synchronisiere deine Konfigurationen automatisch mit OneDrive, Google Drive oder Dropbox.
+                                Alle User-Settings, Plugin-Konfigurationen, TTS-Profile, Flows, HUD-Layouts und Custom-Assets werden automatisch gesichert.
+                            </p>
+
+                            <!-- Sync Status -->
+                            <div id="cloud-sync-status-container" class="alert alert-info" style="margin-bottom: 1rem;">
+                                <i data-lucide="info"></i>
+                                <span id="cloud-sync-status-text">Lade Cloud-Sync-Status...</span>
+                            </div>
+
+                            <!-- Sync Statistics -->
+                            <div id="cloud-sync-stats" style="display: none; margin-bottom: 1rem;">
+                                <div class="settings-info-grid">
+                                    <div class="info-item">
+                                        <span class="info-label">Status:</span>
+                                        <span id="cloud-sync-enabled-status" class="info-value badge badge-secondary">Deaktiviert</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Letzte Synchronisation:</span>
+                                        <span id="cloud-sync-last-sync" class="info-value">Nie</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Dateien hochgeladen:</span>
+                                        <span id="cloud-sync-uploaded" class="info-value">0</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Dateien heruntergeladen:</span>
+                                        <span id="cloud-sync-downloaded" class="info-value">0</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Konflikte gelöst:</span>
+                                        <span id="cloud-sync-conflicts" class="info-value">0</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Erfolgreiche Syncs:</span>
+                                        <span id="cloud-sync-successful" class="info-value">0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cloud Path Configuration -->
+                            <div class="form-group">
+                                <label for="cloud-sync-path">Cloud-Sync Ordner:</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input 
+                                        type="text" 
+                                        id="cloud-sync-path" 
+                                        placeholder="z.B. C:\Users\DeinName\OneDrive\TikTokHelper" 
+                                        class="form-input"
+                                        style="flex: 1;"
+                                        readonly
+                                    >
+                                    <button id="choose-cloud-path-btn" class="btn btn-secondary">
+                                        <i data-lucide="folder"></i>
+                                        Auswählen
+                                    </button>
+                                </div>
+                                <p class="form-help">
+                                    💡 <strong>Unterstützte Cloud-Anbieter:</strong> OneDrive, Google Drive, Dropbox<br>
+                                    Wähle einen Ordner innerhalb deines Cloud-Speicher-Verzeichnisses.<br>
+                                    Die Synchronisation erfolgt automatisch über lokale Ordner-Überwachung.
+                                </p>
+                            </div>
+
+                            <!-- Current Cloud Path Display -->
+                            <div id="cloud-sync-current-path" style="display: none; margin-bottom: 1rem;">
+                                <strong>Aktueller Cloud-Pfad:</strong>
+                                <div style="background: #f5f5f5; padding: 0.5rem; border-radius: 4px; margin-top: 0.25rem; word-break: break-all;">
+                                    <code id="cloud-sync-path-display"></code>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="form-grid" style="margin-bottom: 1rem;">
+                                <button id="enable-cloud-sync-btn" class="btn btn-success" disabled>
+                                    <i data-lucide="cloud"></i>
+                                    Cloud Sync aktivieren
+                                </button>
+                                <button id="disable-cloud-sync-btn" class="btn btn-danger" style="display: none;">
+                                    <i data-lucide="cloud-off"></i>
+                                    Cloud Sync deaktivieren
+                                </button>
+                                <button id="manual-cloud-sync-btn" class="btn btn-primary" style="display: none;">
+                                    <i data-lucide="refresh-cw"></i>
+                                    Manueller Sync
+                                </button>
+                            </div>
+
+                            <div class="alert alert-warning">
+                                <i data-lucide="alert-triangle"></i>
+                                <span>
+                                    <strong>Wichtig:</strong> Der Cloud-Sync ist standardmäßig deaktiviert.
+                                    Stelle sicher, dass der ausgewählte Ordner in deinem Cloud-Speicher liegt (OneDrive, Google Drive, Dropbox).
+                                    Das Tool macht keine direkten API-Aufrufe an die Cloud-Anbieter, sondern nutzt die lokale Synchronisation.
+                                </span>
+                            </div>
+
+                            <div class="form-help" style="margin-top: 1rem;">
+                                <h4>So funktioniert Cloud Sync:</h4>
+                                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                                    <li><strong>Ordner wählen:</strong> Wähle einen Ordner in deinem OneDrive/Google Drive/Dropbox Verzeichnis.</li>
+                                    <li><strong>Sync aktivieren:</strong> Das Tool synchronisiert automatisch alle Konfigurationen beim Start.</li>
+                                    <li><strong>Bidirektionale Sync:</strong> Änderungen werden in beide Richtungen synchronisiert (lokal ↔ Cloud).</li>
+                                    <li><strong>Konfliktlösung:</strong> Bei Konflikten wird die neuere Datei (basierend auf Zeitstempel) verwendet.</li>
+                                    <li><strong>Sicherheit:</strong> Alle Schreibvorgänge nutzen atomare Operationen, um Datenverlust zu vermeiden.</li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <!-- Import/Export Presets -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="package"></i>
+                                Import/Export Configuration Presets
+                            </h3>
+
+                            <!-- Export Section -->
+                            <div class="preset-section">
+                                <h4>Export Configuration</h4>
+                                <div class="checkbox-grid">
+                                    <label class="checkbox-label"><input type="checkbox" id="export-settings" checked> Settings</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="export-flows" checked> Flows</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="export-alerts" checked> Alerts</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="export-gift-sounds" checked> Gift Sounds</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="export-voice-mappings" checked> Voice Mappings</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="export-plugin-configs" checked> Plugin Configs</label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="preset-name">Preset Name:</label>
+                                    <input type="text" id="preset-name" placeholder="My Awesome Config" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label for="preset-description">Description (optional):</label>
+                                    <textarea id="preset-description" placeholder="Describe your configuration..." rows="2" class="form-textarea"></textarea>
+                                </div>
+                                <button id="export-preset-btn" class="btn btn-primary">
+                                    <i data-lucide="download"></i>
+                                    Export Configuration
+                                </button>
+                            </div>
+
+                            <!-- Import Section -->
+                            <div class="preset-section">
+                                <h4>Import Configuration</h4>
+                                <div class="checkbox-grid">
+                                    <label class="checkbox-label"><input type="checkbox" id="import-overwrite"> Overwrite existing</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="import-backup" checked> Create backup first</label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="preset-file-input">Select Preset File:</label>
+                                    <input type="file" id="preset-file-input" accept=".json" class="form-file">
+                                </div>
+                                <button id="import-preset-btn" class="btn btn-primary">
+                                    <i data-lucide="upload"></i>
+                                    Import Configuration
+                                </button>
+                                <div class="alert alert-warning">
+                                    <i data-lucide="alert-triangle"></i>
+                                    <span>Importing may overwrite your current settings. A backup will be created if enabled.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resource Monitor Settings -->
+                        <div class="settings-card">
+                            <h3 class="card-title">
+                                <i data-lucide="cpu"></i>
+                                Resource Monitor Settings
+                            </h3>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="resource-monitor-enabled">
+                                    <span>Enable Resource Monitor</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="resource-monitor-interval">Update Interval: <span id="resource-monitor-interval-label">1.0s</span></label>
+                                <input type="range" id="resource-monitor-interval" min="500" max="5000" step="100" value="1000" class="form-range">
+                            </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="cpu-warning-yellow">CPU Yellow Warning (%)</label>
+                                    <input type="number" id="cpu-warning-yellow" value="5" min="1" max="100" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cpu-warning-red">CPU Red Warning (%)</label>
+                                    <input type="number" id="cpu-warning-red" value="8" min="1" max="100" class="form-input">
+                                </div>
+                            </div>
+                            <button id="save-resource-monitor-settings" class="btn btn-primary">
+                                <i data-lucide="save"></i>
+                                Save Resource Monitor Settings
+                            </button>
+                        </div>
+
+                        <!-- OSC-Bridge Settings -->
+                        <div class="settings-card" data-plugin="osc-bridge">
+                            <h3 class="card-title">
+                                <i data-lucide="gamepad-2"></i>
+                                OSC-Bridge Settings
+                            </h3>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="osc-bridge-enabled">
+                                    <span>Enable OSC-Bridge</span>
+                                </label>
+                                <p class="form-help">Aktiviert die OSC-Bridge für VRChat-Integration. Wenn aktiviert, startet die Bridge automatisch beim Verbindungsaufbau.</p>
+                            </div>
+                            <div class="info-banner">
+                                <i data-lucide="info"></i>
+                                <p>Die vollständigen OSC-Bridge Einstellungen (Ports, Verbose-Modus, etc.) finden Sie im OSC-Bridge Tab in der Seitenleiste.</p>
+                            </div>
+                        </div>
+
+                    </section>
                 </div>
-            </div>
-        </div>
 
+            </div>
+        </main>
     </div>
 
     <!-- Modal: User Profiles -->
     <div id="profile-modal" class="modal">
-        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-2xl font-bold">👤 User Profile Management</h3>
-                <button id="profile-modal-close" class="text-gray-400 hover:text-white text-2xl">&times;</button>
-            </div>
-
-            <!-- Current Active Profile -->
-            <div class="bg-blue-900 bg-opacity-30 border border-blue-500 rounded-lg p-4 mb-6">
-                <div class="text-sm text-gray-400 mb-1">Aktives Profil:</div>
-                <div class="text-xl font-bold" id="active-profile-display">default</div>
-                <div class="text-xs text-gray-400 mt-2">
-                    ⚠️ Ein Profilwechsel erfordert einen Neustart der Anwendung
-                </div>
-            </div>
-
-            <!-- Profile List -->
-            <div class="mb-6">
-                <h4 class="text-lg font-semibold mb-3">Verfügbare Profile</h4>
-                <div id="profile-list" class="space-y-2 max-h-64 overflow-y-auto">
-                    <!-- Profile werden hier dynamisch eingefügt -->
-                </div>
-            </div>
-
-            <!-- Create New Profile -->
-            <div class="border-t border-gray-700 pt-4">
-                <h4 class="text-lg font-semibold mb-3">Neues Profil erstellen</h4>
-                <div class="flex gap-3">
-                    <input type="text" id="new-profile-username" placeholder="Profile Name (z.B. dein Username)"
-                           class="bg-gray-700 text-white px-4 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button id="create-profile-btn" class="bg-green-600 px-6 py-2 rounded hover:bg-green-700 transition font-semibold">
-                        ➕ Erstellen
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Add Voice Mapping -->
-    <div id="voice-modal" class="modal">
-        <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 class="text-xl font-bold mb-4">Add Voice Mapping</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-gray-400 mb-2">Username</label>
-                    <input type="text" id="modal-username" placeholder="TikTok Username"
-                           class="bg-gray-700 text-white px-4 py-2 rounded w-full">
-                </div>
-                <div>
-                    <label class="block text-gray-400 mb-2">Voice</label>
-                    <select id="modal-voice" class="bg-gray-700 text-white px-4 py-2 rounded w-full">
-                        <!-- Wird dynamisch gefüllt -->
-                    </select>
-                </div>
-            </div>
-            <div class="flex gap-3 mt-6">
-                <button id="modal-save-btn" class="bg-green-600 px-6 py-2 rounded hover:bg-green-700 flex-1">
-                    Save
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i data-lucide="user"></i>
+                    User Profile Management
+                </h3>
+                <button id="profile-modal-close" class="modal-close">
+                    <i data-lucide="x"></i>
                 </button>
-                <button id="modal-cancel-btn" class="bg-gray-600 px-6 py-2 rounded hover:bg-gray-700 flex-1">
-                    Cancel
-                </button>
+            </div>
+            <div class="modal-body">
+                <div class="active-profile-banner">
+                    <div class="banner-label">Aktives Profil:</div>
+                    <div class="banner-value" id="active-profile-display">default</div>
+                    <div class="banner-hint">⚠️ Ein Profilwechsel erfordert einen Neustart der Anwendung</div>
+                </div>
+                <div class="profile-list-container">
+                    <h4>Verfügbare Profile</h4>
+                    <div id="profile-list" class="profile-list"></div>
+                </div>
+                <div class="create-profile-container">
+                    <h4>Neues Profil erstellen</h4>
+                    <div class="create-profile-form">
+                        <input type="text" id="new-profile-username" placeholder="Profile Name" class="form-input">
+                        <button id="create-profile-btn" class="btn btn-primary">
+                            <i data-lucide="plus"></i>
+                            Erstellen
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modal: Create Flow -->
     <div id="flow-modal" class="modal">
-        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-2xl font-bold">⚡ Create Automation Flow</h3>
-                <button id="flow-modal-close" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i data-lucide="git-branch"></i>
+                    Create Automation Flow
+                </h3>
+                <button id="flow-modal-close" class="modal-close">
+                    <i data-lucide="x"></i>
+                </button>
             </div>
-
-            <div class="space-y-4">
-                <!-- Flow Name -->
-                <div>
-                    <label class="block text-gray-400 mb-2">Flow Name</label>
-                    <input type="text" id="flow-name" placeholder="e.g., Thank you for big gifts"
-                           class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="flow-name">Flow Name</label>
+                    <input type="text" id="flow-name" placeholder="e.g., Thank you for big gifts" class="form-input">
                 </div>
-
-                <!-- Trigger Type -->
-                <div>
-                    <label class="block text-gray-400 mb-2">Trigger Event</label>
-                    <select id="flow-trigger-type" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="form-group">
+                    <label for="flow-trigger-type">Trigger Event</label>
+                    <select id="flow-trigger-type" class="form-select">
                         <option value="gift">🎁 Gift Received</option>
                         <option value="follow">⭐ New Follow</option>
                         <option value="subscribe">🌟 New Subscribe</option>
@@ -1323,60 +1622,52 @@
                         <option value="chat">💬 Chat Message</option>
                     </select>
                 </div>
-
-                <!-- Action Type -->
-                <div>
-                    <label class="block text-gray-400 mb-2">Action Type</label>
-                    <select id="flow-action-type" class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="form-group">
+                    <label for="flow-action-type">Action Type</label>
+                    <select id="flow-action-type" class="form-select">
                         <option value="alert">🔔 Show Alert</option>
                         <option value="webhook">🌐 Webhook (HTTP Request)</option>
                     </select>
                 </div>
-
-                <!-- Alert Action Settings -->
-                <div id="alert-settings">
-                    <label class="block text-gray-400 mb-2">Alert Text (supports variables)</label>
-                    <textarea id="flow-action-text" placeholder="e.g., Thank you {username} for {gift_name}!"
-                              class="bg-gray-700 text-white px-4 py-2 rounded w-full h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    <div class="text-xs text-gray-500 mt-1">
-                        Available variables: {username}, {gift_name}, {coins}, {message}
-                    </div>
+                <div id="alert-settings" class="form-group">
+                    <label for="flow-action-text">Alert Text (supports variables)</label>
+                    <textarea id="flow-action-text" placeholder="e.g., Thank you {username} for {gift_name}!" class="form-textarea"></textarea>
+                    <p class="form-help">Available variables: {username}, {gift_name}, {coins}, {message}</p>
                 </div>
-
-                <!-- Webhook Action Settings (hidden by default) -->
-                <div id="webhook-settings" style="display: none;">
-                    <label class="block text-gray-400 mb-2">Webhook URL</label>
-                    <input type="text" id="flow-webhook-url" placeholder="https://webhook.site/..."
-                           class="bg-gray-700 text-white px-4 py-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <div class="text-xs text-gray-500 mt-1">
-                        Allowed domains: webhook.site, discord.com, zapier.com, ifttt.com, make.com
-                    </div>
+                <div id="webhook-settings" class="form-group" style="display: none;">
+                    <label for="flow-webhook-url">Webhook URL</label>
+                    <input type="text" id="flow-webhook-url" placeholder="https://webhook.site/..." class="form-input">
+                    <p class="form-help">Allowed domains: webhook.site, discord.com, zapier.com, ifttt.com, make.com</p>
                 </div>
             </div>
-
-            <div class="flex gap-3 mt-6">
-                <button id="flow-modal-save-btn" class="bg-green-600 px-6 py-2 rounded hover:bg-green-700 flex-1 font-semibold">
-                    ✅ Create Flow
+            <div class="modal-footer">
+                <button id="flow-modal-save-btn" class="btn btn-primary">
+                    <i data-lucide="check"></i>
+                    Create Flow
                 </button>
-                <button id="flow-modal-cancel-btn" class="bg-gray-600 px-6 py-2 rounded hover:bg-gray-700 flex-1 font-semibold">
-                    Cancel
-                </button>
+                <button id="flow-modal-cancel-btn" class="btn btn-ghost">Cancel</button>
             </div>
         </div>
     </div>
 
-    <!-- Audio Elements für Dashboard-Playback -->
+    <!-- Audio Elements for Dashboard Playback -->
     <audio id="dashboard-tts-audio"></audio>
     <div id="dashboard-soundboard-pool"></div>
 
+    <!-- Scripts -->
+    <!-- Audio unlock must load first to handle autoplay restrictions -->
+    <script src="/js/audio-unlock.js"></script>
+    <!-- Initialization helper to prevent race conditions -->
+    <script src="/js/init-helper.js"></script>
     <script src="/js/dashboard.js"></script>
-    <!-- PATCH: VDO.Ninja Dashboard Client -->
+    <script src="/js/navigation.js"></script>
+    <script src="/js/dashboard-enhancements.js"></script>
     <script src="/js/vdoninja-dashboard.js"></script>
-    <!-- Plugin Manager -->
     <script src="/js/plugin-manager.js"></script>
-    <!-- Update Checker -->
     <script src="/js/update-checker.js"></script>
-    <!-- Audio Engine Settings -->
     <script src="/js/audio-settings.js"></script>
+    <script src="/js/debug-panel.js"></script>
+    <script src="/js/wiki.js"></script>
+    <script src="/js/cloud-sync-settings.js"></script>
 </body>
 </html>

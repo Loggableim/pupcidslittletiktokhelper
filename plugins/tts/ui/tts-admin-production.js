@@ -272,6 +272,12 @@ function populateConfig(config) {
     setValue('enabledForChat', config.enabledForChat !== false);
     setValue('autoLanguageDetection', config.autoLanguageDetection !== false);
 
+    // Language detection settings
+    setValue('fallbackLanguage', config.fallbackLanguage || 'de');
+    setValue('languageConfidenceThreshold', config.languageConfidenceThreshold || 0.90);
+    setText('confidenceThresholdValue', Math.round((config.languageConfidenceThreshold || 0.90) * 100));
+    setValue('languageMinTextLength', config.languageMinTextLength || 10);
+
     // Handle API key - show placeholder if hidden
     const apiKeyInput = document.getElementById('googleApiKey');
     if (apiKeyInput) {
@@ -303,6 +309,22 @@ function populateConfig(config) {
             speechifyKeyInput.value = '';
         }
     }
+
+    // Load ElevenLabs API key
+    const elevenlabsKeyInput = document.getElementById('elevenlabsApiKey');
+    if (elevenlabsKeyInput) {
+        if (config.elevenlabsApiKey) {
+            if (config.elevenlabsApiKey === '***REDACTED***') {
+                elevenlabsKeyInput.placeholder = 'API key configured (hidden for security)';
+                elevenlabsKeyInput.value = '';
+            } else {
+                elevenlabsKeyInput.value = config.elevenlabsApiKey;
+            }
+        } else {
+            elevenlabsKeyInput.placeholder = 'Enter API key...';
+            elevenlabsKeyInput.value = '';
+        }
+    }
 }
 
 async function saveConfig() {
@@ -322,7 +344,11 @@ async function saveConfig() {
             duckOtherAudio: document.getElementById('duckOtherAudio').checked,
             duckVolume: parseInt(document.getElementById('duckVolume').value, 10) / 100,
             enabledForChat: document.getElementById('enabledForChat').checked,
-            autoLanguageDetection: document.getElementById('autoLanguageDetection').checked
+            autoLanguageDetection: document.getElementById('autoLanguageDetection').checked,
+            // Language detection settings
+            fallbackLanguage: document.getElementById('fallbackLanguage').value,
+            languageConfidenceThreshold: parseFloat(document.getElementById('languageConfidenceThreshold').value),
+            languageMinTextLength: parseInt(document.getElementById('languageMinTextLength').value, 10)
         };
 
         // Add API key if provided
@@ -335,6 +361,12 @@ async function saveConfig() {
         const speechifyApiKey = document.getElementById('speechifyApiKey')?.value?.trim();
         if (speechifyApiKey && speechifyApiKey !== '***REDACTED***') {
             config.speechifyApiKey = speechifyApiKey;
+        }
+
+        // Get ElevenLabs API key
+        const elevenlabsApiKey = document.getElementById('elevenlabsApiKey')?.value?.trim();
+        if (elevenlabsApiKey && elevenlabsApiKey !== '***REDACTED***') {
+            config.elevenlabsApiKey = elevenlabsApiKey;
         }
 
         // Save to server
@@ -1130,6 +1162,15 @@ function setupEventListeners() {
         });
     }
 
+    // Confidence threshold slider
+    const confidenceThresholdInput = document.getElementById('languageConfidenceThreshold');
+    if (confidenceThresholdInput) {
+        confidenceThresholdInput.addEventListener('input', (e) => {
+            const valueEl = document.getElementById('confidenceThresholdValue');
+            if (valueEl) valueEl.textContent = Math.round(parseFloat(e.target.value) * 100);
+        });
+    }
+
     // Engine selector
     const engineSelect = document.getElementById('defaultEngine');
     if (engineSelect) {
@@ -1252,6 +1293,18 @@ function setupEventListeners() {
             speechifyKeyInput.type = type;
             toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye');
             toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // Toggle ElevenLabs API key visibility
+    const toggleElevenlabsKey = document.getElementById('toggle-elevenlabs-key');
+    const elevenlabsKeyInput = document.getElementById('elevenlabsApiKey');
+    if (toggleElevenlabsKey && elevenlabsKeyInput) {
+        toggleElevenlabsKey.addEventListener('click', () => {
+            const type = elevenlabsKeyInput.type === 'password' ? 'text' : 'password';
+            elevenlabsKeyInput.type = type;
+            toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye');
+            toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye-slash');
         });
     }
 
