@@ -1067,15 +1067,6 @@ function renderSoundResults(items, targetElement, showPagination = false) {
     // Generate clickable tag pills
     const tagPills = itemTags.map(tag => {
       const safeTag = escapeHtml(tag);
-    const mp3 = String(item.url || '').replace(/'/g, "&#39;");
-    const title = String(item.name || 'Unbenannt').replace(/'/g, "&#39;");
-    const description = String(item.description || '').replace(/'/g, "&#39;");
-    const itemTags = (item.tags || []).slice(0, 4);
-    const isFavorite = favorites.some(f => f.url === mp3);
-
-    // Generate clickable tag pills
-    const tagPills = itemTags.map(tag => {
-      const safeTag = String(tag).replace(/'/g, "&#39;");
       return `<button class="inline-block px-2 py-0.5 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors"
                       data-action="filter-category" data-category="${safeTag}" title="Nach '${safeTag}' filtern">${safeTag}</button>`;
     }).join(' ');
@@ -1094,9 +1085,6 @@ function renderSoundResults(items, targetElement, showPagination = false) {
                   data-name="${title}"
                   data-description="${description}"
                   data-tags="${escapeHtml(JSON.stringify(itemTags))}"
-                  data-name="${title.replace(/"/g, '&quot;')}"
-                  data-description="${(description || '').replace(/"/g, '&quot;')}"
-                  data-tags="${JSON.stringify(itemTags).replace(/"/g, '&quot;')}"
                   title="${isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}">⭐</button>
           <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-2 py-1 text-sm"
                   data-action="play-sound" data-url="${mp3}" data-title="${title}" title="Vorschau">▶</button>
