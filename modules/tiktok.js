@@ -79,17 +79,29 @@ class TikTokConnector extends EventEmitter {
             this.currentUsername = username;
 
             // Read Eulerstream API key from configuration
-            const HARDCODED_API_KEY = Buffer.from('ZXVsZXJfTlRJMU1URm1NbUprWm1FMk1URm1PREE0TmprNU5XVmpaREExTkRrMU9UVXhaRE15TnpFME5ESXlZekptWkRWbFpEUmpPV1Uy', 'base64').toString('utf-8');
-            
-            const apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY || HARDCODED_API_KEY;
+            // Priority: Database setting > Environment variables
+            const apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
             
             if (!apiKey) {
-                throw new Error('Eulerstream API key is required. Please set EULER_API_KEY in environment or tiktok_euler_api_key in settings.');
+                const errorMsg = 'Eulerstream API key is required. Please configure it in one of the following ways:\n' +
+                    '1. Dashboard Settings: Set "tiktok_euler_api_key" in the settings\n' +
+                    '2. Environment Variable: Set EULER_API_KEY=your_key\n' +
+                    '3. Environment Variable: Set SIGN_API_KEY=your_key\n' +
+                    'Get your API key from: https://www.eulerstream.com';
+                this.logger.error('❌ ' + errorMsg);
+                throw new Error(errorMsg);
+            }
+            
+            // Validate API key format (basic check)
+            if (typeof apiKey !== 'string' || apiKey.trim().length < 32) {
+                const errorMsg = 'Invalid Eulerstream API key format. The key should be a long alphanumeric string (64+ characters).';
+                this.logger.error('❌ ' + errorMsg);
+                throw new Error(errorMsg);
             }
 
             this.logger.info(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
             this.logger.info(`⚙️  Connection Mode: Eulerstream WebSocket API`);
-            this.logger.info('🔑 Eulerstream API Key configured');
+            this.logger.info(`🔑 Eulerstream API Key configured (${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)})`);
 
             // Create WebSocket URL using Eulerstream SDK
             const wsUrl = createWebSocketUrl({
@@ -221,7 +233,27 @@ class TikTokConnector extends EventEmitter {
         });
 
         this.ws.on('close', (code, reason) => {
-            this.logger.info(`🔴 Eulerstream WebSocket disconnected: ${code} - ${ClientCloseCode[code] || reason}`);
+            const reasonText = Buffer.isBuffer(reason) ? reason.toString('utf-8') : (reason || '');
+            this.logger.info(`🔴 Eulerstream WebSocket disconnected: ${code} - ${ClientCloseCode[code] || reasonText}`);
+            
+            // Special handling for authentication errors
+            if (code === 4401) {
+                this.logger.error('❌ Authentication Error: The provided Eulerstream API key is invalid.');
+                this.logger.error('💡 Please check your API key configuration:');
+                this.logger.error('   1. Verify the API key in Dashboard Settings (tiktok_euler_api_key)');
+                this.logger.error('   2. Or check environment variable EULER_API_KEY');
+                this.logger.error('   3. Get a valid key from: https://www.eulerstream.com');
+                this.logger.error(`   4. Key format should be a long alphanumeric string (64+ characters)`);
+                if (reasonText) {
+                    this.logger.error(`   Server message: ${reasonText}`);
+                }
+            } else if (code === 4400) {
+                this.logger.error('❌ Invalid Options: The connection parameters are incorrect.');
+                this.logger.error('💡 Please check the username and API key are correct.');
+            } else if (code === 4404) {
+                this.logger.warn('⚠️  User Not Live: The requested TikTok user is not currently streaming.');
+            }
+            
             this.isConnected = false;
             this.broadcastStatus('disconnected');
             
@@ -229,10 +261,22 @@ class TikTokConnector extends EventEmitter {
             this.emit('disconnected', {
                 username: this.currentUsername,
                 timestamp: new Date().toISOString(),
-                reason: reason || ClientCloseCode[code] || 'Connection closed'
+                reason: reasonText || ClientCloseCode[code] || 'Connection closed',
+                code: code
             });
 
-            // Auto-Reconnect with limit
+            // Don't auto-reconnect on authentication errors
+            if (code === 4401 || code === 4400) {
+                this.logger.warn('⚠️  Auto-reconnect disabled due to authentication/configuration error. Please fix the issue and manually reconnect.');
+                this.broadcastStatus('auth_error', {
+                    code: code,
+                    message: 'Authentication failed - manual reconnect required',
+                    suggestion: 'Please check your Eulerstream API key configuration'
+                });
+                return;
+            }
+            
+            // Auto-Reconnect with limit (for non-auth errors)
             if (this.currentUsername && this.autoReconnectCount < this.maxAutoReconnects) {
                 this.autoReconnectCount++;
                 const delay = 5000;

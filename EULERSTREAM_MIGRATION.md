@@ -82,9 +82,13 @@ The API key can also be configured via dashboard settings:
 
 **IMPORTANT**: An Eulerstream API key is now **REQUIRED** for connections.
 
-- Get your free API key at: https://www.eulerstream.com
-- Configure via environment variable or dashboard settings
-- Hardcoded fallback key is included for testing (should be replaced in production)
+- Get your API key at: https://www.eulerstream.com
+- Configure via one of these methods (in order of priority):
+  1. Dashboard Settings UI: Set `tiktok_euler_api_key`
+  2. Environment Variable: Set `EULER_API_KEY`
+  3. Environment Variable: Set `SIGN_API_KEY` (legacy name, also supported)
+- API key format: Long alphanumeric string (64+ characters)
+- No fallback key is provided for security reasons - you must provide your own key
 
 ## Backward Compatibility
 
