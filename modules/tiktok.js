@@ -655,7 +655,59 @@ class TikTokConnector extends EventEmitter {
     _analyzeError(error) {
         const errorMessage = error.message || error.toString();
 
-        // User not live or room not found
+        // SIGI_STATE / TikTok blocking errors
+        if (errorMessage.includes('SIGI_STATE') || 
+            errorMessage.includes('blocked by TikTok')) {
+            return {
+                type: 'BLOCKED_BY_TIKTOK',
+                message: 'Möglicherweise von TikTok blockiert. SIGI_STATE konnte nicht extrahiert werden.',
+                suggestion: 'NICHT SOFORT ERNEUT VERSUCHEN - Warte mindestens 30-60 Minuten bevor du es erneut versuchst.',
+                retryable: false
+            };
+        }
+
+        // Sign API 401 errors (invalid API key)
+        if (errorMessage.includes('401') && 
+            (errorMessage.includes('Sign Error') || errorMessage.includes('API Key is invalid'))) {
+            return {
+                type: 'SIGN_API_INVALID_KEY',
+                message: 'Sign API Fehler 401 - Der API-Schlüssel ist ungültig',
+                suggestion: 'Prüfe deinen Eulerstream API-Schlüssel auf https://www.eulerstream.com',
+                retryable: false
+            };
+        }
+
+        // Sign API 504 Gateway Timeout
+        if (errorMessage.includes('504')) {
+            return {
+                type: 'SIGN_API_GATEWAY_TIMEOUT',
+                message: '504 Gateway Timeout - Eulerstream Sign API ist überlastet oder nicht erreichbar',
+                suggestion: 'Warte 2-5 Minuten und versuche es dann erneut',
+                retryable: true
+            };
+        }
+
+        // Sign API 500 errors
+        if (errorMessage.includes('500') && errorMessage.includes('Sign Error')) {
+            return {
+                type: 'SIGN_API_ERROR',
+                message: '500 Internal Server Error - Eulerstream Sign API Problem',
+                suggestion: 'Warte 1-2 Minuten und versuche es dann erneut',
+                retryable: true
+            };
+        }
+
+        // Room ID / User not live errors
+        if (errorMessage.includes('Failed to retrieve Room ID')) {
+            return {
+                type: 'ROOM_NOT_FOUND',
+                message: 'Raum-ID konnte nicht abgerufen werden - Benutzer existiert nicht oder ist nicht live',
+                suggestion: 'Prüfe ob der Benutzername korrekt ist und der Benutzer gerade live ist',
+                retryable: false
+            };
+        }
+
+        // User not live or room not found (Eulerstream errors)
         if (errorMessage.includes('LIVE_NOT_FOUND') || 
             errorMessage.includes('not live') ||
             errorMessage.includes('room id') ||
@@ -663,19 +715,23 @@ class TikTokConnector extends EventEmitter {
             return {
                 type: 'NOT_LIVE',
                 message: 'User is not currently live or username is incorrect',
-                suggestion: 'Verify the username is correct and the user is streaming on TikTok'
+                suggestion: 'Verify the username is correct and the user is streaming on TikTok',
+                retryable: false
             };
         }
 
-        // Network/timeout errors
-        if (errorMessage.includes('timeout') || 
+        // Timeout errors
+        if (errorMessage.includes('Verbindungs-Timeout') || 
+            errorMessage.includes('Connection timeout') ||
+            errorMessage.includes('timeout') || 
             errorMessage.includes('TIMEOUT') ||
             errorMessage.includes('ECONNABORTED') ||
             errorMessage.includes('ETIMEDOUT')) {
             return {
-                type: 'TIMEOUT',
-                message: 'Connection timeout - Eulerstream servers did not respond in time',
-                suggestion: 'Check your internet connection. If the problem persists, Eulerstream servers may be slow or unavailable'
+                type: 'CONNECTION_TIMEOUT',
+                message: 'Verbindungs-Timeout - Server hat nicht rechtzeitig geantwortet',
+                suggestion: 'Prüfe deine Internetverbindung. Falls das Problem weiterhin besteht, könnte der Eulerstream-Server langsam oder nicht erreichbar sein',
+                retryable: true
             };
         }
 
@@ -684,18 +740,19 @@ class TikTokConnector extends EventEmitter {
             return {
                 type: 'WEBSOCKET_ERROR',
                 message: errorMessage,
-                suggestion: 'Check Eulerstream API key and connection settings'
+                suggestion: 'Check Eulerstream API key and connection settings',
+                retryable: true
             };
         }
 
-        // API key errors
+        // API key errors (general)
         if (errorMessage.includes('API key') || 
-            errorMessage.includes('401') ||
             errorMessage.includes('403')) {
             return {
                 type: 'API_KEY_ERROR',
                 message: 'Invalid or missing Eulerstream API key',
-                suggestion: 'Check your Eulerstream API key at https://www.eulerstream.com or set tiktok_euler_api_key in settings'
+                suggestion: 'Check your Eulerstream API key at https://www.eulerstream.com or set tiktok_euler_api_key in settings',
+                retryable: false
             };
         }
 
@@ -706,7 +763,8 @@ class TikTokConnector extends EventEmitter {
             return {
                 type: 'NETWORK_ERROR',
                 message: 'Network error - cannot reach Eulerstream servers',
-                suggestion: 'Check your internet connection and firewall settings'
+                suggestion: 'Check your internet connection and firewall settings',
+                retryable: true
             };
         }
 
@@ -714,8 +772,18 @@ class TikTokConnector extends EventEmitter {
         return {
             type: 'UNKNOWN_ERROR',
             message: errorMessage,
-            suggestion: 'Check the console logs for more details. If the problem persists, report this error'
+            suggestion: 'Check the console logs for more details. If the problem persists, report this error',
+            retryable: true
         };
+    }
+
+    /**
+     * Public method for analyzing connection errors (for testing)
+     * @param {Error} error - The error to analyze
+     * @returns {Object} Error analysis result
+     */
+    analyzeConnectionError(error) {
+        return this._analyzeError(error);
     }
 
     /**

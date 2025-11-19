@@ -12,6 +12,7 @@ class MockIO {
 
 class MockDB {
     setSetting() {}
+    getSetting() { return null; }
     getGift() { return null; }
     getGiftCatalog() { return []; }
     updateGiftCatalog() { return 0; }
