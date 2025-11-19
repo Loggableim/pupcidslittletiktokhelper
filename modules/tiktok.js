@@ -336,19 +336,25 @@ class TikTokConnector extends EventEmitter {
         // Handle incoming WebSocket messages
         this.ws.on('message', (data) => {
             try {
+                // Log that we received a message
+                this.logger.debug(`📨 Received WebSocket message: ${typeof data}, length: ${data ? data.length : 0}`);
+                
                 // First, try to parse as JSON (EulerStream default format)
                 let parsedData;
                 
                 if (typeof data === 'string') {
                     // Text message - parse as JSON
+                    this.logger.debug('Parsing as text/JSON...');
                     parsedData = JSON.parse(data);
                 } else {
                     // Binary message - try JSON first, then protobuf
                     const textData = data.toString('utf-8');
                     try {
+                        this.logger.debug('Trying JSON parse on binary data...');
                         parsedData = JSON.parse(textData);
                     } catch (jsonError) {
                         // If JSON parsing fails, try protobuf deserialization
+                        this.logger.debug('JSON failed, trying protobuf...');
                         const frame = deserializeWebSocketMessage(
                             new Uint8Array(data),
                             SchemaVersion.V2
@@ -357,14 +363,22 @@ class TikTokConnector extends EventEmitter {
                     }
                 }
 
+                this.logger.debug(`Parsed data: ${JSON.stringify(parsedData).substring(0, 200)}`);
+
                 // Process messages
                 if (parsedData && parsedData.messages && Array.isArray(parsedData.messages)) {
+                    this.logger.info(`🎉 Processing ${parsedData.messages.length} messages from WebSocket`);
                     for (const message of parsedData.messages) {
                         if (message.type && message.data) {
+                            this.logger.debug(`Emitting event: ${message.type}`);
                             // Emit the parsed event to our event emitter
                             this.eventEmitter.emit(message.type, message.data);
+                        } else {
+                            this.logger.warn(`Message missing type or data: ${JSON.stringify(message).substring(0, 100)}`);
                         }
                     }
+                } else {
+                    this.logger.warn(`⚠️ Parsed data does not contain messages array: ${JSON.stringify(Object.keys(parsedData || {}))}`);
                 }
             } catch (error) {
                 // Log comprehensive error information in a single message
