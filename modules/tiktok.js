@@ -336,15 +336,30 @@ class TikTokConnector extends EventEmitter {
         // Handle incoming WebSocket messages
         this.ws.on('message', (data) => {
             try {
-                // Deserialize the protobuf message
-                const frame = deserializeWebSocketMessage(
-                    new Uint8Array(data),
-                    SchemaVersion.V2 // Use V2 schema
-                );
+                // First, try to parse as JSON (EulerStream default format)
+                let parsedData;
+                
+                if (typeof data === 'string') {
+                    // Text message - parse as JSON
+                    parsedData = JSON.parse(data);
+                } else {
+                    // Binary message - try JSON first, then protobuf
+                    const textData = data.toString('utf-8');
+                    try {
+                        parsedData = JSON.parse(textData);
+                    } catch (jsonError) {
+                        // If JSON parsing fails, try protobuf deserialization
+                        const frame = deserializeWebSocketMessage(
+                            new Uint8Array(data),
+                            SchemaVersion.V2
+                        );
+                        parsedData = frame;
+                    }
+                }
 
-                // Process messages in the frame
-                if (frame.messages && Array.isArray(frame.messages)) {
-                    for (const message of frame.messages) {
+                // Process messages
+                if (parsedData && parsedData.messages && Array.isArray(parsedData.messages)) {
+                    for (const message of parsedData.messages) {
                         if (message.type && message.data) {
                             // Emit the parsed event to our event emitter
                             this.eventEmitter.emit(message.type, message.data);
@@ -358,7 +373,8 @@ class TikTokConnector extends EventEmitter {
                     name: error.name || 'Error',
                     stack: error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : 'No stack trace',
                     dataLength: data ? data.length : 0,
-                    dataType: typeof data
+                    dataType: typeof data,
+                    dataPreview: data ? (typeof data === 'string' ? data.substring(0, 100) : Buffer.from(data).toString('utf-8', 0, 100)) : 'No data'
                 };
                 this.logger.error(`WebSocket message processing failed: ${JSON.stringify(errorDetails)}`);
             }
