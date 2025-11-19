@@ -1,0 +1,33 @@
+{
+  "id": "ghoststream-connector",
+  "name": "GhostStream Connector",
+  "description": "Alternative TikTok LIVE connection layer using Playwright browser automation. Replaces problematic EulerStream API with a controlled browser instance.",
+  "version": "1.0.0",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": false,
+  "type": "integration",
+  "dependencies": ["playwright", "jsonwebtoken"],
+  "permissions": [
+    "tiktok-events",
+    "database",
+    "socket-emit",
+    "routes",
+    "file-system"
+  ],
+  "config": {
+    "headlessMode": false,
+    "sessionTimeout": 3600000,
+    "commandRateLimit": 10,
+    "commandRateLimitWindow": 60000,
+    "allowedIPs": [],
+    "jwtSecret": "",
+    "autoRestart": true,
+    "maxSessions": 5,
+    "chatCommands": {
+      "enabled": true,
+      "prefix": "!",
+      "allowedCommands": ["scene", "tts", "click"]
+    }
+  }
+}
