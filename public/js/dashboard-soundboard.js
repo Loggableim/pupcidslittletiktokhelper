@@ -12,11 +12,11 @@ let audioPool = [];
 // ========== SOCKET EVENTS ==========
 socket.on('soundboard:play', (data) => {
     playDashboardSoundboard(data);
-    logAudioEvent('play', `Playing sound: ${data.label}`, data);
+    logAudioEvent('play', `Playing sound: ${data.label}`, data, true);
 });
 
 socket.on('soundboard:preview', (payload) => {
-    logAudioEvent('preview', `Preview request received`, payload);
+    logAudioEvent('preview', `Preview request received`, payload, true);
     
     if (payload.sourceType === 'local') {
         playDashboardSoundboard({
@@ -36,7 +36,7 @@ socket.on('soundboard:preview', (payload) => {
 // ========== AUDIO PLAYBACK ==========
 function playDashboardSoundboard(data) {
     console.log('🔊 [Soundboard] Playing:', data.label);
-    logAudioEvent('info', `Attempting to play: ${data.label}`, { url: data.url, volume: data.volume });
+    logAudioEvent('info', `Attempting to play: ${data.label}`, { url: data.url, volume: data.volume }, true);
     
     // Create new audio element
     const audio = document.createElement('audio');
@@ -50,10 +50,10 @@ function playDashboardSoundboard(data) {
     // Play
     audio.play().then(() => {
         console.log('✅ [Soundboard] Started playing:', data.label);
-        logAudioEvent('success', `Successfully started: ${data.label}`, { url: data.url });
+        logAudioEvent('success', `Successfully started: ${data.label}`, { url: data.url }, true);
     }).catch(err => {
         console.error('❌ [Soundboard] Playback error:', err);
-        logAudioEvent('error', `Playback failed: ${err.message}`, { url: data.url, error: err });
+        logAudioEvent('error', `Playback failed: ${err.message}`, { url: data.url, error: err }, true);
     });
     
     // Remove after playback
@@ -69,7 +69,7 @@ function playDashboardSoundboard(data) {
     
     audio.onerror = (e) => {
         console.error('❌ [Soundboard] Error playing:', data.label, e);
-        logAudioEvent('error', `Audio error for ${data.label}: ${e.type}`, { url: data.url, error: e });
+        logAudioEvent('error', `Audio error for ${data.label}: ${e.type}`, { url: data.url, error: e }, true);
         const index = audioPool.indexOf(audio);
         if (index > -1) {
             audioPool.splice(index, 1);
@@ -319,15 +319,39 @@ async function deleteGiftSound(giftId) {
 
 async function testGiftSound(url, volume) {
     try {
-        logAudioEvent('info', `Testing sound: ${url}`, { volume });
-        await fetch('/api/soundboard/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, volume })
+        logAudioEvent('info', `Testing sound: ${url}`, { volume }, true);
+        
+        // Play audio directly in browser for immediate feedback
+        const audio = document.createElement('audio');
+        audio.src = url;
+        audio.volume = volume || 1.0;
+        
+        // Add to pool for tracking
+        audioPool.push(audio);
+        updateActiveSoundsCount();
+        
+        audio.play().then(() => {
+            logAudioEvent('success', `Test sound playing: ${url}`, null, true);
+        }).catch(err => {
+            logAudioEvent('error', `Test sound failed: ${err.message}`, { url, error: err.message }, true);
         });
+        
+        // Clean up when done
+        audio.onended = () => {
+            const index = audioPool.indexOf(audio);
+            if (index > -1) audioPool.splice(index, 1);
+            updateActiveSoundsCount();
+        };
+        
+        audio.onerror = (e) => {
+            logAudioEvent('error', `Audio error: ${e.type}`, { url }, true);
+            const index = audioPool.indexOf(audio);
+            if (index > -1) audioPool.splice(index, 1);
+            updateActiveSoundsCount();
+        };
     } catch (error) {
         console.error('Error testing sound:', error);
-        logAudioEvent('error', `Failed to test sound: ${error.message}`, null);
+        logAudioEvent('error', `Failed to test sound: ${error.message}`, null, true);
     }
 }
 
@@ -557,25 +581,34 @@ async function searchMyInstants() {
         resultsDiv.innerHTML = '';
         data.results.forEach(sound => {
             const div = document.createElement('div');
-            div.className = 'bg-gray-600 p-2 rounded flex items-center justify-between';
+            div.className = 'myinstants-result-item';
             div.innerHTML = `
-                <div class="flex-1">
-                    <div class="font-semibold text-sm">${sound.name}</div>
-                    <div class="text-xs text-gray-400 truncate">${sound.url}</div>
+                <div class="myinstants-result-info">
+                    <div class="myinstants-result-name">${sound.name}</div>
+                    <div class="myinstants-result-url">${sound.url}</div>
                 </div>
-                <div class="flex gap-2">
+                <div class="myinstants-result-actions">
                     <button onclick="testGiftSound('${sound.url}', 1.0)"
-                            class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700">
-                        🔊
+                            class="bg-blue-600 px-3 py-2 rounded text-sm hover:bg-blue-700 transition flex items-center gap-2"
+                            title="Preview this sound">
+                        <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+                        <span>Play</span>
                     </button>
                     <button onclick="useMyInstantsSound('${sound.name}', '${sound.url}')"
-                            class="bg-green-600 px-2 py-1 rounded text-xs hover:bg-green-700">
-                        Use
+                            class="bg-green-600 px-3 py-2 rounded text-sm hover:bg-green-700 transition flex items-center gap-2"
+                            title="Use this sound for selected gift">
+                        <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+                        <span>Use</span>
                     </button>
                 </div>
             `;
             resultsDiv.appendChild(div);
         });
+        
+        // Re-initialize Lucide icons for new elements
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
         
     } catch (error) {
         console.error('Error searching MyInstants:', error);
@@ -600,12 +633,12 @@ function toggleAudioTestCard() {
     
     if (audioTestMinimized) {
         content.style.display = 'none';
-        btn.innerHTML = '<i data-lucide="maximize-2" style="width: 16px; height: 16px;"></i>';
-        btn.title = 'Maximize';
+        btn.innerHTML = '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>';
+        btn.title = 'Expand section';
     } else {
         content.style.display = 'block';
-        btn.innerHTML = '<i data-lucide="minimize-2" style="width: 16px; height: 16px;"></i>';
-        btn.title = 'Minimize';
+        btn.innerHTML = '<i data-lucide="chevron-up" style="width: 16px; height: 16px;"></i>';
+        btn.title = 'Collapse section';
     }
     
     // Re-initialize Lucide icons
@@ -701,10 +734,12 @@ function updateAutoplayStatus(status) {
     }
 }
 
-function logAudioEvent(level, message, data) {
+function logAudioEvent(level, message, data, alwaysLog = false) {
     const verboseLogging = document.getElementById('verbose-logging');
-    if (!verboseLogging || !verboseLogging.checked) {
-        return; // Skip logging if verbose logging is disabled
+    
+    // Skip logging if verbose logging is disabled AND this is not a critical event
+    if (!alwaysLog && verboseLogging && !verboseLogging.checked) {
+        return;
     }
     
     const logDiv = document.getElementById('audio-debug-log');
@@ -716,7 +751,8 @@ function logAudioEvent(level, message, data) {
         'success': '✅',
         'warning': '⚠️',
         'error': '❌',
-        'play': '🔊'
+        'play': '🔊',
+        'preview': '👁️'
     };
     const colors = {
         'info': '#60a5fa',
