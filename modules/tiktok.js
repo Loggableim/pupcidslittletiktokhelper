@@ -76,7 +76,11 @@ class TikTokConnector extends EventEmitter {
             this.currentUsername = username;
 
             // Read configuration from database or environment variables
-            const signApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.SIGN_API_KEY;
+            // Hardcoded encrypted API key as fallback (Base64 encoded)
+            const HARDCODED_API_KEY = Buffer.from('ZXVsZXJfTlRJMU1URm1NbUprWm1FMk1URm1PREE0TmprNU5XVmpaREExTkRrMU9UVXhaRE15TnpFME5ESXlZekptWkRWbFpEUmpPV1Uy', 'base64').toString('utf-8');
+            const HARDCODED_WEBHOOK_SECRET = Buffer.from('NjkyNDdjYjFmMjhiYWM0NmUzMTVmNjUwYzY0NTA3ZTgyOGFjYjRmNjE3MThiMmJmNTUyNmM1ZmJiZGViYjdhOA==', 'base64').toString('utf-8');
+            
+            const signApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.SIGN_API_KEY || HARDCODED_API_KEY;
             const httpTimeout = parseInt(this.db.getSetting('tiktok_http_timeout')) || 20000;
             // Euler fallbacks are MANDATORY - keep enabled by default
             const enableEulerFallbacks = this.db.getSetting('tiktok_enable_euler_fallbacks') !== 'false'; // Default: true
@@ -86,7 +90,11 @@ class TikTokConnector extends EventEmitter {
             // Configure Sign API key globally for the library
             if (signApiKey) {
                 process.env.SIGN_API_KEY = signApiKey;
-                console.log('🔑 Euler API Key configured');
+                if (signApiKey === HARDCODED_API_KEY) {
+                    console.log('🔑 Euler API Key configured (hardcoded fallback)');
+                } else {
+                    console.log('🔑 Euler API Key configured');
+                }
             } else {
                 console.log('⚠️  No Euler API Key configured - using free tier (may have rate limits)');
             }
