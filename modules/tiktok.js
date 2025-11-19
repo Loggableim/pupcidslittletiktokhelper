@@ -78,6 +78,7 @@ class TikTokConnector extends EventEmitter {
             // Read configuration from database or environment variables
             const signApiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.SIGN_API_KEY;
             const httpTimeout = parseInt(this.db.getSetting('tiktok_http_timeout')) || 20000;
+            // Euler fallbacks are MANDATORY - keep enabled by default
             const enableEulerFallbacks = this.db.getSetting('tiktok_enable_euler_fallbacks') !== 'false'; // Default: true
             const connectWithUniqueId = this.db.getSetting('tiktok_connect_with_unique_id') === 'true'; // Default: false
             const sessionId = this.db.getSetting('tiktok_session_id') || options.sessionId;
@@ -86,6 +87,8 @@ class TikTokConnector extends EventEmitter {
             if (signApiKey) {
                 process.env.SIGN_API_KEY = signApiKey;
                 console.log('🔑 Euler API Key configured');
+            } else {
+                console.log('⚠️  No Euler API Key configured - using free tier (may have rate limits)');
             }
 
             // Configure connection options using official API
@@ -95,6 +98,10 @@ class TikTokConnector extends EventEmitter {
                 
                 // Enable extended gift information (images, prices, etc.)
                 enableExtendedGiftInfo: true,
+                
+                // DON'T fetch room info on connect - this causes additional Euler Stream calls that can timeout
+                // We'll rely on the connection itself to verify the stream is live
+                fetchRoomInfoOnConnect: false,
                 
                 // Polling interval for events (1 second)
                 requestPollingIntervalMs: 1000,
@@ -109,10 +116,14 @@ class TikTokConnector extends EventEmitter {
                 disableEulerFallbacks: !enableEulerFallbacks,
                 
                 // Web client options (HTTP requests for HTML/API)
+                // INCREASED TIMEOUT: TikTok servers can be slow, especially from certain regions
                 webClientOptions: {
-                    timeout: httpTimeout,
+                    timeout: Math.max(httpTimeout, 30000), // At least 30 seconds for international connections
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Accept-Encoding': 'gzip, deflate, br'
                     }
                 },
                 
@@ -122,6 +133,15 @@ class TikTokConnector extends EventEmitter {
 
             console.log(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
             console.log(`⚙️  Connection Mode: ${connectWithUniqueId ? 'Webcast API via UniqueId (Euler)' : 'Webcast API (Standard)'}, Euler Fallbacks: ${enableEulerFallbacks ? 'Enabled' : 'Disabled'}`);
+            console.log(`🔧 Connection Options:`, JSON.stringify({
+                processInitialData: connectionOptions.processInitialData,
+                enableExtendedGiftInfo: connectionOptions.enableExtendedGiftInfo,
+                fetchRoomInfoOnConnect: connectionOptions.fetchRoomInfoOnConnect,
+                connectWithUniqueId: connectionOptions.connectWithUniqueId,
+                disableEulerFallbacks: connectionOptions.disableEulerFallbacks,
+                hasSessionId: !!sessionId,
+                httpTimeout: httpTimeout
+            }, null, 2));
 
             // Create connection using official API
             this.connection = new TikTokLiveConnection(username, connectionOptions);
@@ -605,8 +625,8 @@ class TikTokConnector extends EventEmitter {
             if (errorMessage.includes('504') || errorMessage.includes('Gateway')) {
                 return {
                     type: 'SIGN_API_GATEWAY_TIMEOUT',
-                    message: 'TikTok Sign-Server antwortet nicht (504 Gateway Timeout). Der externe Sign-API-Dienst ist überlastet oder nicht erreichbar.',
-                    suggestion: 'Warte 2-5 Minuten bevor du es erneut versuchst. ODER: Extrahiere eine Session-ID über das Dashboard (Einstellungen → Session-ID extrahieren), um die Verbindung zu verbessern. Falls dauerhaft: Prüfe ob tiktok-live-connector Updates verfügbar sind.',
+                    message: 'Euler Stream Sign-Server Timeout (504). Der externe Sign-API-Dienst ist überlastet oder nicht erreichbar.',
+                    suggestion: 'LÖSUNG: Deaktiviere "Euler Stream Fallbacks" in den Einstellungen (Dashboard → Einstellungen → TikTok → Euler Fallbacks: AUS). Die Verbindung funktioniert dann direkt über TikTok ohne den externen Dienst. Alternativ: Warte 5-10 Minuten und versuche es erneut.',
                     retryable: true
                 };
             }
@@ -614,16 +634,16 @@ class TikTokConnector extends EventEmitter {
             if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
                 return {
                     type: 'SIGN_API_ERROR',
-                    message: 'TikTok Sign-Server meldet einen internen Fehler (500). Der externe Sign-API-Dienst hat ein Problem.',
-                    suggestion: 'Warte 1-2 Minuten und versuche es erneut. ODER: Extrahiere eine Session-ID über das Dashboard (Einstellungen → Session-ID extrahieren), um die Verbindung zu verbessern. Falls dauerhaft: Prüfe ob tiktok-live-connector Updates verfügbar sind.',
+                    message: 'Euler Stream Sign-Server Fehler (500). Der externe Sign-API-Dienst hat ein Problem.',
+                    suggestion: 'LÖSUNG: Deaktiviere "Euler Stream Fallbacks" in den Einstellungen (Dashboard → Einstellungen → TikTok → Euler Fallbacks: AUS). Die Verbindung funktioniert dann direkt über TikTok ohne den externen Dienst. Alternativ: Warte 2-5 Minuten und versuche es erneut.',
                     retryable: true
                 };
             }
             // Allgemeiner Sign-Fehler
             return {
                 type: 'SIGN_API_ERROR',
-                message: 'Fehler beim TikTok Sign-Server. Der externe Signatur-Dienst ist möglicherweise nicht verfügbar.',
-                suggestion: 'Warte 1-2 Minuten und versuche es erneut. ODER: Extrahiere eine Session-ID über das Dashboard (Einstellungen → Session-ID extrahieren). Falls das Problem anhält: Prüfe auf Updates der tiktok-live-connector Library.',
+                message: 'Fehler beim Euler Stream Sign-Server. Der externe Signatur-Dienst ist möglicherweise nicht verfügbar.',
+                suggestion: 'LÖSUNG: Deaktiviere "Euler Stream Fallbacks" in den Einstellungen (Dashboard → Einstellungen → TikTok → Euler Fallbacks: AUS). Die Verbindung funktioniert dann direkt über TikTok. Falls das Problem weiterhin besteht, extrahiere eine Session-ID über das Dashboard.',
                 retryable: true
             };
         }
@@ -1418,7 +1438,7 @@ class TikTokConnector extends EventEmitter {
             configuration: {
                 httpTimeout: parseInt(this.db.getSetting('tiktok_http_timeout')) || 20000,
                 connectionTimeout: parseInt(this.db.getSetting('tiktok_connection_timeout')) || 60000,
-                enableEulerFallbacks: this.db.getSetting('tiktok_enable_euler_fallbacks') !== 'false',
+                enableEulerFallbacks: this.db.getSetting('tiktok_enable_euler_fallbacks') !== 'false', // Default: true (mandatory)
                 connectWithUniqueId: this.db.getSetting('tiktok_connect_with_unique_id') === 'true',
                 signApiConfigured: !!process.env.SIGN_API_KEY
             },
