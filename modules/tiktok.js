@@ -352,7 +352,15 @@ class TikTokConnector extends EventEmitter {
                     }
                 }
             } catch (error) {
-                this.logger.error('Error processing WebSocket message:', error.message);
+                // Log comprehensive error information in a single message
+                const errorDetails = {
+                    message: error.message || 'Unknown error',
+                    name: error.name || 'Error',
+                    stack: error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : 'No stack trace',
+                    dataLength: data ? data.length : 0,
+                    dataType: typeof data
+                };
+                this.logger.error(`WebSocket message processing failed: ${JSON.stringify(errorDetails)}`);
             }
         });
 
