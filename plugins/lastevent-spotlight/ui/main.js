@@ -37,22 +37,58 @@ function renderOverlayCards() {
       </div>
 
       <div class="button-group">
-        <button class="btn btn-primary btn-sm" onclick="copyURL('${type.id}')">
+        <button class="btn btn-primary btn-sm" data-action="copy" data-type="${type.id}">
           📋 Copy URL
         </button>
-        <button class="btn btn-info btn-sm" onclick="openPreview('${type.id}')">
+        <button class="btn btn-info btn-sm" data-action="preview" data-type="${type.id}">
           👁️ Preview
         </button>
-        <button class="btn btn-success btn-sm" onclick="testOverlay('${type.id}')">
+        <button class="btn btn-success btn-sm" data-action="test" data-type="${type.id}">
           🧪 Test
         </button>
-        <button class="btn btn-secondary btn-sm" onclick="openSettings('${type.id}')">
+        <button class="btn btn-secondary btn-sm" data-action="settings" data-type="${type.id}">
           ⚙️ Settings
         </button>
       </div>
     `;
 
     grid.appendChild(card);
+  });
+
+  // Set up event delegation for button clicks
+  setupButtonEventListeners();
+}
+
+// Setup event listeners for dynamically created buttons
+function setupButtonEventListeners() {
+  const grid = document.getElementById('overlay-grid');
+  
+  // Remove any existing listeners to prevent duplicates
+  const oldGrid = grid.cloneNode(true);
+  grid.parentNode.replaceChild(oldGrid, grid);
+  
+  // Add event delegation
+  document.getElementById('overlay-grid').addEventListener('click', function(event) {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+
+    const action = button.getAttribute('data-action');
+    const type = button.getAttribute('data-type');
+
+    switch (action) {
+      case 'copy':
+        copyURL(type);
+        break;
+      case 'preview':
+        openPreview(type);
+        break;
+      case 'test':
+        testOverlay(type);
+        break;
+      case 'settings':
+        openSettings(type);
+        break;
+    }
   });
 }
 
