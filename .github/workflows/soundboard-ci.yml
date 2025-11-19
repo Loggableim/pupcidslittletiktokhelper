@@ -10,6 +10,9 @@ on:
       - 'plugins/new-soundboard/**'
       - '.github/workflows/soundboard-ci.yml'
 
+permissions:
+  contents: read
+
 jobs:
   lint-and-test:
     name: Lint and Test

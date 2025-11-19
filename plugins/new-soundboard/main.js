@@ -246,16 +246,25 @@ class NewSoundboardPlugin {
     // Register API routes
     this.apiRoutes.register(this.router);
     
-    // Serve UI files
-    this.router.use('/new-soundboard/ui', express.static(path.join(__dirname, 'src/ui/public')));
+    // Rate limiter for UI routes
+    const uiLimiter = rateLimit({
+      windowMs: 60 * 1000, // 1 minute
+      max: 30, // 30 requests per minute
+      message: 'Too many requests to UI, please try again later',
+      standardHeaders: true,
+      legacyHeaders: false
+    });
     
-    // Serve overlay
-    this.router.get('/new-soundboard/overlay', (req, res) => {
+    // Serve UI files with rate limiting
+    this.router.use('/new-soundboard/ui', uiLimiter, express.static(path.join(__dirname, 'src/ui/public')));
+    
+    // Serve overlay with rate limiting
+    this.router.get('/new-soundboard/overlay', uiLimiter, (req, res) => {
       res.sendFile(path.join(__dirname, 'src/ui/public/overlay.html'));
     });
     
-    // Serve dashboard
-    this.router.get('/new-soundboard/dashboard', (req, res) => {
+    // Serve dashboard with rate limiting
+    this.router.get('/new-soundboard/dashboard', uiLimiter, (req, res) => {
       res.sendFile(path.join(__dirname, 'src/ui/public/dashboard.html'));
     });
     

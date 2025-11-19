@@ -214,19 +214,30 @@ class MyInstantsAdapter {
       // The audioPath is relative, we need to construct the full URL
       let audioUrl;
       
-      if (instant.audioPath.startsWith('http')) {
+      if (instant.audioPath.startsWith('http://') || instant.audioPath.startsWith('https://')) {
         audioUrl = instant.audioPath;
       } else if (instant.audioPath.startsWith('//')) {
         audioUrl = 'https:' + instant.audioPath;
-      } else {
+      } else if (instant.audioPath.startsWith('/')) {
         audioUrl = this.baseUrl + instant.audioPath;
+      } else {
+        // Relative path without leading slash
+        audioUrl = this.baseUrl + '/' + instant.audioPath;
       }
       
-      // Validate the URL by making a HEAD request
+      // Validate the URL by making a HEAD request with error handling
       const headResponse = await axios.head(audioUrl, {
         timeout: this.timeout,
+        maxRedirects: 3,
         validateStatus: (status) => status === 200 || status === 206
+      }).catch(err => {
+        this.logger.warn(`[MyInstants] HEAD request failed for ${audioUrl}: ${err.message}`);
+        return null;
       });
+      
+      if (!headResponse) {
+        return null;
+      }
       
       const contentType = headResponse.headers['content-type'];
       if (!contentType || !contentType.includes('audio')) {

@@ -40,9 +40,10 @@ class QueueManager {
   /**
    * Add a job to the queue
    * @param {Object} jobData - Job data
+   * @param {Function} processor - Optional processor function
    * @returns {Promise<string>} Job ID
    */
-  async add(jobData) {
+  async add(jobData, processor = null) {
     const jobId = nanoid(10);
     
     const job = {
@@ -61,7 +62,7 @@ class QueueManager {
     // Add to queue with priority
     this.queue.add(
       async () => {
-        return await this._processJob(job);
+        return await this._processJob(job, processor);
       },
       { priority: job.priority }
     );
@@ -73,8 +74,10 @@ class QueueManager {
   
   /**
    * Process a job
+   * @param {Object} job - Job object
+   * @param {Function} processor - Optional processor function
    */
-  async _processJob(job) {
+  async _processJob(job, processor) {
     try {
       job.status = 'processing';
       job.startedAt = new Date().toISOString();
@@ -82,8 +85,14 @@ class QueueManager {
       
       this.logger.info(`[Queue] Processing job: ${job.id}`);
       
-      // Job processing is handled by the consumer via callbacks
-      // Here we just track the lifecycle
+      // If processor is provided, execute it
+      if (processor && typeof processor === 'function') {
+        await processor(job);
+      }
+      
+      // Note: In the current implementation, the actual playback is handled
+      // by the WebSocket broadcast to clients. The queue just tracks the job lifecycle.
+      // Clients will report back when playback is complete via play-end message.
       
       job.status = 'completed';
       job.completedAt = new Date().toISOString();
@@ -261,6 +270,63 @@ class QueueManager {
     this.queue.concurrency = concurrency;
     
     this.logger.info(`[Queue] Concurrency updated to ${concurrency}`);
+  }
+  
+  /**
+   * Mark job as completed (called externally when playback finishes)
+   * @param {string} jobId - Job ID
+   * @param {Object} result - Result data
+   */
+  markJobCompleted(jobId, result = {}) {
+    const job = this.jobs.get(jobId);
+    
+    if (!job) {
+      this.logger.warn(`[Queue] Cannot mark unknown job as completed: ${jobId}`);
+      return false;
+    }
+    
+    if (job.status !== 'processing') {
+      this.logger.warn(`[Queue] Cannot mark non-processing job as completed: ${jobId}`);
+      return false;
+    }
+    
+    job.status = 'completed';
+    job.completedAt = new Date().toISOString();
+    job.result = result;
+    
+    this.activeJobs.delete(jobId);
+    this._addToCompleted(job);
+    
+    this.logger.info(`[Queue] Job externally marked as completed: ${jobId}`);
+    
+    return true;
+  }
+  
+  /**
+   * Mark job as failed (called externally when playback fails)
+   * @param {string} jobId - Job ID
+   * @param {string} error - Error message
+   */
+  markJobFailed(jobId, error) {
+    const job = this.jobs.get(jobId);
+    
+    if (!job) {
+      this.logger.warn(`[Queue] Cannot mark unknown job as failed: ${jobId}`);
+      return false;
+    }
+    
+    job.status = 'failed';
+    job.error = error;
+    job.completedAt = new Date().toISOString();
+    
+    this.stats.totalFailed++;
+    
+    this.activeJobs.delete(jobId);
+    this._addToCompleted(job);
+    
+    this.logger.info(`[Queue] Job externally marked as failed: ${jobId}`);
+    
+    return true;
   }
   
   /**

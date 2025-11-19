@@ -28,7 +28,8 @@ class ApiRoutes {
     this.logger = plugin.logger;
     
     // Configure multer for file uploads
-    this.upload = multer({
+    this.multerUpload = multer({
+      storage: multer.memoryStorage(),
       limits: {
         fileSize: plugin.config.maxFileSize || 10 * 1024 * 1024 // 10MB default
       },
@@ -57,7 +58,7 @@ class ApiRoutes {
     router.get('/api/new-soundboard/list', this._authMiddleware.bind(this), this.list.bind(this));
     
     // Upload sound
-    router.post('/api/new-soundboard/upload', this._authMiddleware.bind(this), this.upload.single('file'), this.uploadSound.bind(this));
+    router.post('/api/new-soundboard/upload', this._authMiddleware.bind(this), this.multerUpload.single('file'), this.uploadSound.bind(this));
     
     // Get metadata
     router.get('/api/new-soundboard/meta/:soundId', this._authMiddleware.bind(this), this.getMeta.bind(this));
@@ -78,8 +79,9 @@ class ApiRoutes {
    * Authentication middleware
    */
   _authMiddleware(req, res, next) {
-    const apiKey = req.headers['x-sb-key'] || req.query.key;
+    const apiKey = req.headers['x-sb-key'];
     
+    // Never use query parameter for API key - security risk
     if (!apiKey) {
       // Check if global auth is configured
       if (this.plugin.config.requireAuth) {

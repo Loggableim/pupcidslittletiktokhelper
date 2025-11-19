@@ -6,6 +6,13 @@
   "author": "Pup Cid",
   "entry": "main.js",
   "enabled": true,
+  "ui": {
+    "enabled": true,
+    "path": "/new-soundboard/dashboard",
+    "icon": "🎵",
+    "title": "New Soundboard",
+    "category": "Content"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "ws": "^8.18.3",
