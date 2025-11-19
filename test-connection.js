@@ -12,10 +12,13 @@ if (!apiKey) {
 
 console.log(`Testing Eulerstream connection to @${username}...`);
 
-// Create WebSocket URL
+// Create WebSocket URL with Enterprise API enabled (recommended)
 const wsUrl = createWebSocketUrl({
     uniqueId: username,
-    apiKey: apiKey
+    apiKey: apiKey,
+    features: {
+        useEnterpriseApi: true  // Use Enterprise API infrastructure for better reliability
+    }
 });
 
 console.log('Connecting to Eulerstream WebSocket...');
