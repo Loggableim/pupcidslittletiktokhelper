@@ -22,21 +22,21 @@ console.log(`Username: @${USERNAME}`);
 console.log(`API Key: ${API_KEY.substring(0, 8)}...${API_KEY.substring(API_KEY.length - 4)}`);
 console.log('');
 
-// Create WebSocket URL with Enterprise API flag
+// Create WebSocket URL with basic configuration
 console.log('Creating WebSocket URL...');
 const wsUrl = createWebSocketUrl({
     uniqueId: USERNAME,
-    apiKey: API_KEY,
-    features: {
-        useEnterpriseApi: true
-    }
+    apiKey: API_KEY
+    // Note: useEnterpriseApi requires Enterprise plan upgrade
+    // features: {
+    //     useEnterpriseApi: true
+    // }
 });
 
 console.log(`WebSocket URL created`);
 console.log(`  Base: wss://ws.eulerstream.com`);
 console.log(`  uniqueId: ${USERNAME}`);
 console.log(`  apiKey: ${API_KEY.substring(0, 8)}...`);
-console.log(`  features.useEnterpriseApi: true`);
 console.log('');
 
 // Create WebSocket connection

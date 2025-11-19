@@ -119,13 +119,14 @@ class TikTokConnector extends EventEmitter {
                 this.logger.warn(`   Key Type: Unknown format - connection may fail`);
             }
             // Create WebSocket URL using Eulerstream SDK
-            // Configure features for optimal connection reliability
+            // Note: useEnterpriseApi requires Enterprise plan upgrade
+            // Community plan users should NOT enable this feature
             const wsUrl = createWebSocketUrl({
                 uniqueId: username,
-                apiKey: apiKey,
-                features: {
-                    useEnterpriseApi: true  // Use Enterprise API infrastructure (recommended for better reliability)
-                }
+                apiKey: apiKey
+                // features: {
+                //     useEnterpriseApi: true  // Only for Enterprise plan subscribers
+                // }
             });
 
             this.logger.info(`🔧 Connecting to Eulerstream WebSocket...`);

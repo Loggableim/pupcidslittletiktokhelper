@@ -6,53 +6,55 @@ This guide explains the different authentication methods and keys used with Eule
 
 EulerStream Sign Server provides different keys for different purposes. **For WebSocket connections, you need the WEBHOOK SECRET, not the euler_ API key!**
 
-### 1. Webhook Secret (for WebSocket Connections) ✅ **THIS IS WHAT YOU NEED**
+### 1. Webhook Secret OR API Key (für WebSocket Verbindungen) ✅ **DU BRAUCHST EINEN VON DIESEN**
 
-**Purpose:** Authenticate WebSocket connections to receive live TikTok stream data
+**Zweck:** Authentifizierung für WebSocket-Verbindungen um Live-TikTok-Stream-Daten zu empfangen
 
-**Where to get it:**
-1. Visit https://www.eulerstream.com
-2. Log in to your account
-3. Go to Dashboard → **Account Details**
-4. Find **"Webhook Secret"** under Basic Details
-5. Your account identifier will also be shown (e.g., "2380")
-6. Check your plan (e.g., "Community plan")
+**WICHTIG - Du hast zwei verschiedene Keys, aber nur der API Key (mit `euler_` Präfix) funktioniert für Community Plan:**
 
-**IMPORTANT - Key Format:**
-- **CORRECT for WebSocket:** Pure hexadecimal string (64 characters)
-  - Example: `69247cb1f28bac46e315f650c64507e828acb4f61718b2bf5526c5fbbdebb7a8`
-  - ✅ **This is the WEBHOOK SECRET - use THIS for WebSocket connections!**
-- **WRONG for WebSocket:** `euler_` prefixed key
-  - Example: `euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2`
-  - ❌ **This is the REST API key - NOT for WebSocket connections!**
+**Option 1: API Key (euler_ Präfix) - EMPFOHLEN für Community Plan**
+- **Format:** `euler_` gefolgt von Base64-kodierten Zeichen
+- **Beispiel:** `euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2`
+- **Wo zu finden:** EulerStream Dashboard → API Keys Bereich
+- **Plan:** Funktioniert mit Community Plan ✅
 
-**How to use it:**
-- **Environment Variable:** `EULER_API_KEY=your_webhook_secret_here` in `.env` file
-- **Dashboard Setting:** Set `tiktok_euler_api_key` to your webhook secret value
-- **Legacy Variable:** `SIGN_API_KEY=your_webhook_secret_here` (for backward compatibility)
+**Option 2: Webhook Secret (Hexadezimal) - NUR für spezielle Zwecke**
+- **Format:** 64-Zeichen Hexadezimal-String
+- **Beispiel:** `69247cb1f28bac46e315f650c64507e828acb4f61718b2bf5526c5fbbdebb7a8`
+- **Wo zu finden:** EulerStream Dashboard → Account Details → "Webhook Secret"
+- **Verwendung:** Primär für HTTP Webhook-Validierung, nicht für WebSocket-Verbindungen
 
-**Example:**
+**FEHLER BEHOBEN:** Die vorherige Version verwendete `useEnterpriseApi: true`, was ein Enterprise Plan Upgrade erfordert. Das wurde jetzt entfernt.
+
+**Wie zu verwenden:**
+- **Umgebungsvariable:** `EULER_API_KEY=euler_dein_api_key_hier` in `.env` Datei
+- **Dashboard-Einstellung:** Setze `tiktok_euler_api_key` auf deinen API Key
+- **Legacy Variable:** `SIGN_API_KEY=euler_dein_api_key_hier` (für Rückwärtskompatibilität)
+
+**Beispiel:**
 ```bash
-# In .env file
-EULER_API_KEY=69247cb1f28bac46e315f650c64507e828acb4f61718b2bf5526c5fbbdebb7a8
+# In .env Datei - Verwende den API Key mit euler_ Präfix
+EULER_API_KEY=euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2
 ```
 
-**What it does:**
-- Authenticates your WebSocket connection to `wss://ws.eulerstream.com`
-- Allows you to receive real-time stream events (chat, gifts, likes, etc.)
-- Used in the backend only (never expose in frontend code)
-- Also used for validating incoming HTTP webhooks (same secret)
+**Was es macht:**
+- Authentifiziert deine WebSocket-Verbindung zu `wss://ws.eulerstream.com`
+- Erlaubt dir Echtzeit-Stream-Events zu empfangen (Chat, Geschenke, Likes, etc.)
+- Nur im Backend verwenden (niemals im Frontend-Code exponieren)
 
-**Example:**
+**Beispiel:**
 ```javascript
 const wsUrl = createWebSocketUrl({
     uniqueId: 'tiktok_username',
-    apiKey: '69247cb1f28bac46e315f650c64507e828acb4f61718b2bf5526c5fbbdebb7a8', // Webhook Secret
-    features: {
-        useEnterpriseApi: true
-    }
+    apiKey: 'euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2' // API Key mit euler_ Präfix
 });
 ```
+
+**WICHTIG - Enterprise API Feature:**
+- Die vorherige Version verwendete `features: { useEnterpriseApi: true }`
+- Dies erfordert ein Enterprise Plan Upgrade
+- Für Community Plan: NICHT `useEnterpriseApi` verwenden
+- Die Fehlermeldung war: "You cannot access the Enterprise servers without the Enterprise servers feature"
 
 ### 2. REST API Key (NOT for WebSockets) ❌ **DO NOT USE THIS**
 

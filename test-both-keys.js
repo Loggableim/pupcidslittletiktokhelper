@@ -29,10 +29,11 @@ async function testKey(keyName, keyValue, username) {
             // Erstelle WebSocket URL
             const wsUrl = createWebSocketUrl({
                 uniqueId: username,
-                apiKey: keyValue,
-                features: {
-                    useEnterpriseApi: true
-                }
+                apiKey: keyValue
+                // Note: useEnterpriseApi requires Enterprise plan
+                // features: {
+                //     useEnterpriseApi: true
+                // }
             });
 
             console.log('✅ WebSocket URL erfolgreich erstellt');

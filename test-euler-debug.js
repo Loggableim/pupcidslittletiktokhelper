@@ -21,10 +21,11 @@ console.log('');
 console.log('Test 1: Generate WebSocket URL');
 const wsUrl = createWebSocketUrl({
     uniqueId: USERNAME,
-    apiKey: API_KEY,
-    features: {
-        useEnterpriseApi: true  // Use Enterprise API infrastructure (recommended)
-    }
+    apiKey: API_KEY
+    // Note: useEnterpriseApi requires Enterprise plan
+    // features: {
+    //     useEnterpriseApi: true
+    // }
 });
 console.log(`Generated URL: ${wsUrl}`);
 console.log('');
