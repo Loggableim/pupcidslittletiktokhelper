@@ -12,6 +12,10 @@ async function checkPluginsAndUpdateUI() {
 class PluginManager {
     constructor() {
         this.plugins = [];
+        this.filteredPlugins = [];
+        this.currentFilter = 'all';
+        this.currentSort = 'name';
+        this.searchQuery = '';
         this.init();
     }
 
@@ -39,8 +43,86 @@ class PluginManager {
             });
         }
 
+        // Search functionality
+        const searchInput = document.getElementById('plugin-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.searchQuery = e.target.value.toLowerCase();
+                this.applyFiltersAndSort();
+            });
+        }
+
+        // Filter buttons
+        const filterBtns = document.querySelectorAll('.plugin-filter-btn');
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                filterBtns.forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = 'rgba(255, 255, 255, 0.05)';
+                    b.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    b.style.color = '#9ca3af';
+                });
+                
+                btn.classList.add('active');
+                btn.style.background = 'rgba(59, 130, 246, 0.2)';
+                btn.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                btn.style.color = '#60a5fa';
+                
+                this.currentFilter = btn.getAttribute('data-filter');
+                this.applyFiltersAndSort();
+            });
+        });
+
+        // Sort functionality
+        const sortSelect = document.getElementById('plugin-sort');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+                this.currentSort = e.target.value;
+                this.applyFiltersAndSort();
+            });
+        }
+
         // Note: Plugin loading is now triggered by navigation.js handleViewChange()
         // when switching to the plugins view
+    }
+
+    applyFiltersAndSort() {
+        // Apply search filter
+        let filtered = this.plugins.filter(plugin => {
+            if (this.searchQuery) {
+                const searchStr = `${plugin.name} ${plugin.description} ${plugin.id} ${plugin.author}`.toLowerCase();
+                if (!searchStr.includes(this.searchQuery)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        // Apply status filter
+        if (this.currentFilter === 'active') {
+            filtered = filtered.filter(p => p.enabled);
+        } else if (this.currentFilter === 'inactive') {
+            filtered = filtered.filter(p => !p.enabled);
+        }
+
+        // Apply sorting
+        filtered.sort((a, b) => {
+            switch (this.currentSort) {
+                case 'name':
+                    return a.name.localeCompare(b.name);
+                case 'status':
+                    return (b.enabled ? 1 : 0) - (a.enabled ? 1 : 0);
+                case 'type':
+                    return (a.type || '').localeCompare(b.type || '');
+                case 'author':
+                    return (a.author || '').localeCompare(b.author || '');
+                default:
+                    return 0;
+            }
+        });
+
+        this.filteredPlugins = filtered;
+        this.renderPlugins();
     }
 
     /**
@@ -53,7 +135,8 @@ class PluginManager {
 
             if (data.success) {
                 this.plugins = data.plugins;
-                this.renderPlugins();
+                this.updateStats();
+                this.applyFiltersAndSort();
             } else {
                 this.showError('Fehler beim Laden der Plugins: ' + data.error);
             }
@@ -64,26 +147,58 @@ class PluginManager {
     }
 
     /**
+     * Updates plugin statistics
+     */
+    updateStats() {
+        const activeCount = this.plugins.filter(p => p.enabled).length;
+        const inactiveCount = this.plugins.filter(p => !p.enabled).length;
+        const totalCount = this.plugins.length;
+
+        const statActive = document.getElementById('stat-active-plugins');
+        const statInactive = document.getElementById('stat-inactive-plugins');
+        const statTotal = document.getElementById('stat-total-plugins');
+
+        if (statActive) statActive.textContent = activeCount;
+        if (statInactive) statInactive.textContent = inactiveCount;
+        if (statTotal) statTotal.textContent = totalCount;
+    }
+
+    /**
      * Rendert die Plugin-Liste
      */
     renderPlugins() {
         const container = document.getElementById('plugins-container');
         if (!container) return;
 
-        if (this.plugins.length === 0) {
+        if (this.filteredPlugins.length === 0) {
+            const message = this.searchQuery || this.currentFilter !== 'all'
+                ? 'Keine Plugins gefunden, die den Filterkriterien entsprechen.'
+                : 'Keine Plugins gefunden.';
+            
             container.innerHTML = `
-                <div class="text-center text-gray-400 py-8">
-                    <p>Keine Plugins gefunden.</p>
-                    <p class="text-sm mt-2">Lade ein Plugin hoch, um zu beginnen.</p>
+                <div class="text-center text-gray-400 py-12">
+                    <i data-lucide="package-x" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #60a5fa;"></i>
+                    <p class="text-lg">${message}</p>
+                    ${!this.searchQuery && this.currentFilter === 'all' ? '<p class="text-sm mt-2">Lade ein Plugin hoch, um zu beginnen.</p>' : ''}
                 </div>
             `;
+            
+            // Re-initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
             return;
         }
 
-        container.innerHTML = this.plugins.map(plugin => this.renderPlugin(plugin)).join('');
+        container.innerHTML = this.filteredPlugins.map(plugin => this.renderPlugin(plugin)).join('');
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
 
         // Event-Listener für Buttons
-        this.plugins.forEach(plugin => {
+        this.filteredPlugins.forEach(plugin => {
             const enableBtn = document.getElementById(`enable-${plugin.id}`);
             const disableBtn = document.getElementById(`disable-${plugin.id}`);
             const reloadBtn = document.getElementById(`reload-${plugin.id}`);
@@ -109,50 +224,110 @@ class PluginManager {
      */
     renderPlugin(plugin) {
         const statusBadge = plugin.enabled
-            ? '<span class="px-2 py-1 text-xs bg-green-600 rounded">Aktiv</span>'
-            : '<span class="px-2 py-1 text-xs bg-gray-600 rounded">Inaktiv</span>';
+            ? '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 20px; font-size: 0.75rem; font-weight: 600;"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Aktiv</span>'
+            : '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: rgba(107, 114, 128, 0.3); border: 1px solid rgba(107, 114, 128, 0.5); border-radius: 20px; font-size: 0.75rem; font-weight: 600;"><i data-lucide="pause-circle" style="width: 14px; height: 14px;"></i> Inaktiv</span>';
+
+        const typeIcon = this.getTypeIcon(plugin.type);
+        const typeBadge = plugin.type 
+            ? `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; font-size: 0.7rem; color: #60a5fa;">${typeIcon} ${this.escapeHtml(plugin.type)}</span>` 
+            : '';
 
         const actionButtons = plugin.enabled
             ? `
-                <button id="reload-${plugin.id}" class="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700">
-                    🔄 Reload
+                <button id="reload-${plugin.id}" class="plugin-action-btn" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                    <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                    <span>Reload</span>
                 </button>
-                <button id="disable-${plugin.id}" class="px-3 py-1 text-sm bg-yellow-600 rounded hover:bg-yellow-700">
-                    ⏸️ Deaktivieren
+                <button id="disable-${plugin.id}" class="plugin-action-btn" style="background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.3); color: #fbbf24;">
+                    <i data-lucide="pause" style="width: 16px; height: 16px;"></i>
+                    <span>Disable</span>
                 </button>
             `
             : `
-                <button id="enable-${plugin.id}" class="px-3 py-1 text-sm bg-green-600 rounded hover:bg-green-700">
-                    ▶️ Aktivieren
+                <button id="enable-${plugin.id}" class="plugin-action-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <i data-lucide="play" style="width: 16px; height: 16px;"></i>
+                    <span>Enable</span>
                 </button>
             `;
 
+        const loadedTime = plugin.loadedAt 
+            ? `<div style="display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: #6b7280; margin-top: 8px;">
+                <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                Loaded: ${new Date(plugin.loadedAt).toLocaleString('de-DE', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                })}
+            </div>` 
+            : '';
+
         return `
-            <div class="bg-gray-700 rounded-lg p-4">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-3 mb-2">
-                            <h3 class="text-lg font-semibold">${this.escapeHtml(plugin.name)}</h3>
-                            ${statusBadge}
-                            <span class="text-xs text-gray-400">v${this.escapeHtml(plugin.version)}</span>
+            <div class="plugin-card" style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 1.5rem; transition: all 0.3s ease; position: relative; overflow: hidden;">
+                <!-- Subtle gradient overlay -->
+                <div style="position: absolute; top: 0; right: 0; width: 200px; height: 200px; background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.1) 0%, transparent 70%); pointer-events: none;"></div>
+                
+                <div style="position: relative; display: flex; gap: 1.5rem;">
+                    <!-- Plugin Icon -->
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%); border: 2px solid rgba(59, 130, 246, 0.3); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="package" style="width: 32px; height: 32px; color: #60a5fa;"></i>
                         </div>
-                        <p class="text-sm text-gray-300 mb-2">${this.escapeHtml(plugin.description || 'Keine Beschreibung')}</p>
-                        <div class="flex gap-4 text-xs text-gray-400">
-                            <span>📦 ID: ${this.escapeHtml(plugin.id)}</span>
-                            <span>👤 Autor: ${this.escapeHtml(plugin.author || 'Unbekannt')}</span>
-                            ${plugin.type ? `<span>🏷️ Typ: ${this.escapeHtml(plugin.type)}</span>` : ''}
-                        </div>
-                        ${plugin.loadedAt ? `<div class="text-xs text-gray-500 mt-1">Geladen: ${new Date(plugin.loadedAt).toLocaleString()}</div>` : ''}
                     </div>
-                    <div class="flex flex-col gap-2 ml-4">
-                        ${actionButtons}
-                        <button id="delete-${plugin.id}" class="px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700">
-                            🗑️ Löschen
-                        </button>
+
+                    <!-- Plugin Info -->
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+                                    <h3 style="font-size: 1.25rem; font-weight: 700; color: white; margin: 0;">${this.escapeHtml(plugin.name)}</h3>
+                                    ${statusBadge}
+                                    <span style="padding: 4px 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px; font-size: 0.75rem; color: #9ca3af; font-family: monospace;">v${this.escapeHtml(plugin.version)}</span>
+                                </div>
+                                <p style="font-size: 0.9rem; color: #d1d5db; margin: 0 0 12px 0; line-height: 1.5;">${this.escapeHtml(plugin.description || 'No description available')}</p>
+                                
+                                <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: #9ca3af;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
+                                        <span style="font-family: monospace;">${this.escapeHtml(plugin.id)}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+                                        <span>${this.escapeHtml(plugin.author || 'Unknown')}</span>
+                                    </div>
+                                    ${plugin.type ? `<div>${typeBadge}</div>` : ''}
+                                </div>
+                                ${loadedTime}
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div style="display: flex; flex-direction: column; gap: 8px; min-width: 140px;">
+                                ${actionButtons}
+                                <button id="delete-${plugin.id}" class="plugin-action-btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">
+                                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Get icon for plugin type
+     */
+    getTypeIcon(type) {
+        const icons = {
+            'core': '⚡',
+            'integration': '🔌',
+            'overlay': '🎨',
+            'module': '📦',
+            'utility': '🔧'
+        };
+        return icons[type] || '📦';
     }
 
     /**

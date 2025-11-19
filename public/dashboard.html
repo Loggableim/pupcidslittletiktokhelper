@@ -7,6 +7,96 @@
     <link rel="stylesheet" href="/css/tailwind.output.css">
     <link rel="stylesheet" href="/css/navigation.css">
     <link rel="stylesheet" href="/css/wiki.css">
+    <style>
+        /* Plugin Manager Modern Styles */
+        .plugin-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .plugin-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.3) !important;
+        }
+
+        .plugin-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            white-space: nowrap;
+        }
+
+        .plugin-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            filter: brightness(1.1);
+        }
+
+        .plugin-action-btn:active {
+            transform: translateY(0);
+        }
+
+        .plugin-filter-btn:hover {
+            background: rgba(59, 130, 246, 0.15) !important;
+            border-color: rgba(59, 130, 246, 0.2) !important;
+            color: #93c5fd !important;
+        }
+
+        .plugin-filter-btn.active {
+            background: rgba(59, 130, 246, 0.2) !important;
+            border-color: rgba(59, 130, 246, 0.3) !important;
+            color: #60a5fa !important;
+        }
+
+        #plugin-search:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        #plugin-sort:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Smooth animations for filter transitions */
+        #plugins-container {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Stats card improvements */
+        .stat-card {
+            background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+    </style>
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -1130,6 +1220,71 @@
                             </div>
                         </div>
                         <input type="file" id="plugin-file-input" accept=".zip" style="display: none;">
+                        
+                        <!-- Plugin Stats Overview -->
+                        <div id="plugin-stats" class="stats-grid" style="margin-bottom: 1.5rem;">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                    <i data-lucide="check-circle"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Active Plugins</div>
+                                    <div class="stat-value" id="stat-active-plugins">0</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);">
+                                    <i data-lucide="pause-circle"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Inactive Plugins</div>
+                                    <div class="stat-value" id="stat-inactive-plugins">0</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                                    <i data-lucide="package"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-label">Total Plugins</div>
+                                    <div class="stat-value" id="stat-total-plugins">0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filters and Search -->
+                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                                <div style="flex: 1; min-width: 250px;">
+                                    <div style="position: relative;">
+                                        <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #9ca3af;"></i>
+                                        <input type="text" id="plugin-search" placeholder="Search plugins..." 
+                                               style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 0.95rem;">
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="plugin-filter-btn active" data-filter="all" style="padding: 0.75rem 1.25rem; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; color: #60a5fa; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+                                        <i data-lucide="grid-3x3" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;"></i>
+                                        All
+                                    </button>
+                                    <button class="plugin-filter-btn" data-filter="active" style="padding: 0.75rem 1.25rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #9ca3af; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+                                        <i data-lucide="check-circle" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;"></i>
+                                        Active
+                                    </button>
+                                    <button class="plugin-filter-btn" data-filter="inactive" style="padding: 0.75rem 1.25rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #9ca3af; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+                                        <i data-lucide="pause-circle" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;"></i>
+                                        Inactive
+                                    </button>
+                                </div>
+                                <select id="plugin-sort" style="padding: 0.75rem 1rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 0.9rem; cursor: pointer;">
+                                    <option value="name">Sort by Name</option>
+                                    <option value="status">Sort by Status</option>
+                                    <option value="type">Sort by Type</option>
+                                    <option value="author">Sort by Author</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div id="plugins-container" class="space-y-4">
                             <!-- Plugin list will be populated by plugin-manager.js -->
                         </div>
