@@ -164,6 +164,9 @@ app.use(express.static('public'));
 // Serve TTS UI files (legacy support)
 app.use('/tts', express.static(path.join(__dirname, 'tts')));
 
+// Serve soundboard static audio files
+app.use('/sounds', express.static(path.join(__dirname, 'public', 'sounds')));
+
 // i18n Middleware
 app.use(i18n.init);
 
