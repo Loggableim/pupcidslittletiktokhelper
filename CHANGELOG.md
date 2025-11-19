@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Weather Control Plugin** (`plugins/weather-control/`) - Professional weather effects system
+  - 7 Modern Weather Effects: Rain, Snow, Storm, Fog, Thunder, Sunbeam, Glitch Clouds
+  - GPU-accelerated Canvas 2D rendering with 60 FPS performance
+  - Permission-based access control (Followers, Superfans, Subscribers, Team Members, Top Gifters)
+  - Configurable rate limiting (default 10 requests/minute per user)
+  - WebSocket real-time event streaming to overlays
+  - Flow action support for IFTTT automation (`weather.trigger`)
+  - Gift-based automatic triggers (coin thresholds: 100, 500, 1000, 5000+)
+  - REST API with input validation and sanitization
+  - API endpoints:
+    - `POST /api/weather/trigger` - Trigger weather effects
+    - `GET /api/weather/config` - Get configuration
+    - `POST /api/weather/config` - Update configuration
+    - `GET /api/weather/effects` - List supported effects
+    - `POST /api/weather/reset-key` - Reset API key
+  - UI configuration panel at `/weather-control/ui`
+  - Overlay at `/weather-control/overlay`
+  - Comprehensive README with setup instructions
+- **Integration Tests** (`test-weather-control.js`) - Weather Control Plugin test suite
+  - 10 comprehensive integration tests
+  - Tests API endpoints, validation, rate limiting, all weather effects
+  - All tests passing
+
 ## [1.0.3] - 2025-11-10
 
 ### Added
