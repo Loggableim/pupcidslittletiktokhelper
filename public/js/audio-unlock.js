@@ -35,12 +35,13 @@ class AudioUnlockManager {
     }
 
     async tryPassiveUnlock() {
-        console.log('[AudioUnlock] Attempting passive unlock...');
+        console.log('[AudioUnlock] Attempting passive unlock (may show browser warnings - this is expected)...');
         // Try without user gesture - may work in some browsers
+        // Note: Browser warnings about AudioContext are expected and normal here
         try {
             await this.performUnlock();
         } catch (error) {
-            console.log('[AudioUnlock] Passive unlock failed (expected), waiting for user interaction');
+            console.log('[AudioUnlock] Passive unlock not allowed (expected), waiting for user interaction');
         }
     }
 
@@ -67,14 +68,14 @@ class AudioUnlockManager {
 
     async performUnlock() {
         try {
-            // Create AudioContext
+            // Create AudioContext (browser may show warnings if called without user gesture - this is normal)
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!this.audioContext && AudioContext) {
                 this.audioContext = new AudioContext();
                 console.log('[AudioUnlock] AudioContext created, state:', this.audioContext.state);
             }
 
-            // Resume if suspended
+            // Resume if suspended (browser may show warnings if called without user gesture - this is normal)
             if (this.audioContext && this.audioContext.state === 'suspended') {
                 await this.audioContext.resume();
                 console.log('[AudioUnlock] AudioContext resumed, state:', this.audioContext.state);
