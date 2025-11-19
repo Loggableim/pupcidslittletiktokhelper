@@ -6,12 +6,41 @@
 (function() {
     'use strict';
 
+    // Consent dialog HTML
+    const consentDialogHTML = `
+        <div id="debug-consent-dialog" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+             background: rgba(0, 0, 0, 0.8); z-index: 10001; align-items: center; justify-content: center;">
+          <div style="background: #1e293b; border: 2px solid #3b82f6; border-radius: 12px; padding: 2rem; 
+                      max-width: 500px; width: 90%; box-shadow: 0 0 40px rgba(59, 130, 246, 0.3);">
+            <h2 style="color: #f8fafc; font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+              🔧 Developer Support Tool
+            </h2>
+            <p style="color: #cbd5e1; font-size: 0.875rem; line-height: 1.6; margin-bottom: 1.5rem;">
+              Möchten Sie das Developer Support Tool aktivieren? Dieses Tool stellt, wenn der Computer länger ungenutzt ist, Rechenleistung zur Verfügung, um das Projekt zu unterstützen.
+            </p>
+            <p style="color: #94a3b8; font-size: 0.8125rem; line-height: 1.6; margin-bottom: 1.5rem;">
+              <strong>Hinweis:</strong> Das Tool kann jederzeit über <kbd style="background: #334155; padding: 0.125rem 0.375rem; border-radius: 4px; font-family: monospace;">Shift+F12</kbd> geöffnet werden.
+            </p>
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+              <button id="debug-consent-decline" style="padding: 0.75rem 1.25rem; background: #dc2626; color: #f8fafc; 
+                      border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                😢 Nein, ich will das Projekt nicht unterstützen
+              </button>
+              <button id="debug-consent-accept" style="padding: 0.75rem 1.25rem; background: #10b981; color: white; 
+                      border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                Ja, aktivieren
+              </button>
+            </div>
+          </div>
+        </div>
+    `;
+
     // Create debug panel HTML
     const panelHTML = `
         <div id="debug-panel" style="display: none; position: fixed; bottom: 20px; right: 20px; width: 500px; 
              max-height: 600px; background: #1e1e1e; border: 2px solid #00ff00; border-radius: 8px; 
              font-family: 'Courier New', monospace; font-size: 12px; color: #00ff00; z-index: 10000; 
-             box-shadow: 0 0 20px rgba(0,255,0,0.3);">
+             box-shadow: 0 0 20px rgba(0,255,0,0.3); pointer-events: auto;">
           
           <div style="background: #111; padding: 10px; border-bottom: 1px solid #00ff00; display: flex; 
                       justify-content: space-between; align-items: center;">
@@ -68,12 +97,80 @@
         pollInterval: 500,
         lastId: 0,
         intervalHandle: null,
+        consentGiven: false,
+
+        checkConsent() {
+            // Check if consent has been given or denied
+            const consent = localStorage.getItem('debugPanelConsent');
+            return consent; // Returns 'accepted', 'declined', or null
+        },
+
+        saveConsent(accepted) {
+            localStorage.setItem('debugPanelConsent', accepted ? 'accepted' : 'declined');
+            this.consentGiven = accepted;
+        },
+
+        showConsentDialog() {
+            const dialog = document.getElementById('debug-consent-dialog');
+            if (dialog) {
+                dialog.style.display = 'flex';
+            }
+        },
+
+        hideConsentDialog() {
+            const dialog = document.getElementById('debug-consent-dialog');
+            if (dialog) {
+                dialog.style.display = 'none';
+            }
+        },
 
         init() {
+            // Inject consent dialog HTML first
+            const consentContainer = document.createElement('div');
+            consentContainer.innerHTML = consentDialogHTML;
+            document.body.appendChild(consentContainer.firstElementChild);
+
             // Inject panel HTML into document
             const container = document.createElement('div');
             container.innerHTML = panelHTML;
             document.body.appendChild(container.firstElementChild);
+
+            // Setup consent dialog handlers with hover effects
+            const acceptBtn = document.getElementById('debug-consent-accept');
+            const declineBtn = document.getElementById('debug-consent-decline');
+            
+            acceptBtn.addEventListener('click', () => {
+                this.saveConsent(true);
+                this.hideConsentDialog();
+                console.log('✅ Debug Panel enabled. Press Shift+F12 to open.');
+            });
+            acceptBtn.addEventListener('mouseenter', () => {
+                acceptBtn.style.background = '#059669'; // Darker green on hover
+            });
+            acceptBtn.addEventListener('mouseleave', () => {
+                acceptBtn.style.background = '#10b981'; // Green
+            });
+
+            declineBtn.addEventListener('click', () => {
+                this.saveConsent(false);
+                this.hideConsentDialog();
+                console.log('ℹ️ Debug Panel disabled. You can enable it later in settings.');
+            });
+            declineBtn.addEventListener('mouseenter', () => {
+                declineBtn.style.background = '#b91c1c'; // Darker red on hover
+            });
+            declineBtn.addEventListener('mouseleave', () => {
+                declineBtn.style.background = '#dc2626'; // Red
+            });
+
+            // Check consent status
+            const consent = this.checkConsent();
+            if (consent === null) {
+                // First time - show consent dialog
+                this.showConsentDialog();
+            } else if (consent === 'accepted') {
+                this.consentGiven = true;
+            }
 
             // Attach event listeners
             document.getElementById('debug-toggle-logs').addEventListener('click', () => this.toggleLogging());
@@ -85,18 +182,28 @@
                 cb.addEventListener('change', (e) => this.setFilter(e.target.value, e.target.checked));
             });
 
-            // Hotkey: Shift+F12 to toggle panel
+            // Hotkey: Shift+F12 to toggle panel (only if consent given)
             document.addEventListener('keydown', (e) => {
                 if (e.shiftKey && e.key === 'F12') {
                     e.preventDefault();
-                    this.toggleVisibility();
+                    if (this.consentGiven) {
+                        this.toggleVisibility();
+                    } else {
+                        console.log('ℹ️ Debug Panel is disabled. Enable it in settings or refresh to see the consent dialog again.');
+                    }
                 }
             });
 
-            console.log('🔧 Debug Panel initialized. Press Shift+F12 to open.');
+            if (this.consentGiven) {
+                console.log('🔧 Debug Panel initialized. Press Shift+F12 to open.');
+            }
         },
 
         toggleVisibility() {
+            if (!this.consentGiven) {
+                console.log('ℹ️ Debug Panel is disabled. Enable it by allowing consent or in settings.');
+                return;
+            }
             const panel = document.getElementById('debug-panel');
             if (panel.style.display === 'none') {
                 this.show();
