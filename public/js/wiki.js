@@ -23,20 +23,27 @@
     document.addEventListener('DOMContentLoaded', async () => {
         // Initialize when wiki view becomes active
         const wikiView = document.getElementById('view-wiki');
-        if (!wikiView) return;
+        
+        // Check if we're in standalone mode (wiki.html without dashboard)
+        const isStandalone = !wikiView;
+        
+        if (isStandalone) {
+            // Standalone mode: initialize immediately
+            initializeWiki();
+        } else {
+            // Dashboard mode: initialize when view becomes active (lazy initialization)
+            viewObserver = new MutationObserver(() => {
+                if (wikiView.classList.contains('active') && !isInitialized) {
+                    initializeWiki();
+                }
+            });
 
-        // Set up observer to load wiki when view becomes active (lazy initialization)
-        viewObserver = new MutationObserver(() => {
-            if (wikiView.classList.contains('active') && !isInitialized) {
+            viewObserver.observe(wikiView, { attributes: true, attributeFilter: ['class'] });
+
+            // Also check if it's already active
+            if (wikiView.classList.contains('active')) {
                 initializeWiki();
             }
-        });
-
-        viewObserver.observe(wikiView, { attributes: true, attributeFilter: ['class'] });
-
-        // Also check if it's already active
-        if (wikiView.classList.contains('active')) {
-            initializeWiki();
         }
 
         // Handle URL hash navigation
