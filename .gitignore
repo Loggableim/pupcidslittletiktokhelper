@@ -42,6 +42,9 @@ tmp/
 temp/
 *.tmp
 
+# Test/debug files
+test-euler-debug.js
+
 # Plugin runtime data
 plugins/*/data/
 plugins/plugins_state.json
