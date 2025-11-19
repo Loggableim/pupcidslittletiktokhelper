@@ -79,17 +79,29 @@ class TikTokConnector extends EventEmitter {
             this.currentUsername = username;
 
             // Read Eulerstream API key from configuration
-            const HARDCODED_API_KEY = Buffer.from('ZXVsZXJfTlRJMU1URm1NbUprWm1FMk1URm1PREE0TmprNU5XVmpaREExTkRrMU9UVXhaRE15TnpFME5ESXlZekptWkRWbFpEUmpPV1Uy', 'base64').toString('utf-8');
-            
-            const apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY || HARDCODED_API_KEY;
+            // Priority: Database setting > Environment variables
+            const apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
             
             if (!apiKey) {
-                throw new Error('Eulerstream API key is required. Please set EULER_API_KEY in environment or tiktok_euler_api_key in settings.');
+                const errorMsg = 'Eulerstream API key is required. Please configure it in one of the following ways:\n' +
+                    '1. Dashboard Settings: Set "tiktok_euler_api_key" in the settings\n' +
+                    '2. Environment Variable: Set EULER_API_KEY=your_key\n' +
+                    '3. Environment Variable: Set SIGN_API_KEY=your_key\n' +
+                    'Get your API key from: https://www.eulerstream.com';
+                this.logger.error('❌ ' + errorMsg);
+                throw new Error(errorMsg);
+            }
+            
+            // Validate API key format (basic check)
+            if (typeof apiKey !== 'string' || apiKey.trim().length < 32) {
+                const errorMsg = 'Invalid Eulerstream API key format. The key should be a long alphanumeric string (64+ characters).';
+                this.logger.error('❌ ' + errorMsg);
+                throw new Error(errorMsg);
             }
 
             this.logger.info(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
             this.logger.info(`⚙️  Connection Mode: Eulerstream WebSocket API`);
-            this.logger.info('🔑 Eulerstream API Key configured');
+            this.logger.info(`🔑 Eulerstream API Key configured (${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)})`);
 
             // Create WebSocket URL using Eulerstream SDK
             const wsUrl = createWebSocketUrl({
@@ -221,7 +233,27 @@ class TikTokConnector extends EventEmitter {
         });
 
         this.ws.on('close', (code, reason) => {
-            this.logger.info(`🔴 Eulerstream WebSocket disconnected: ${code} - ${ClientCloseCode[code] || reason}`);
+            const reasonText = Buffer.isBuffer(reason) ? reason.toString('utf-8') : (reason || '');
+            this.logger.info(`🔴 Eulerstream WebSocket disconnected: ${code} - ${ClientCloseCode[code] || reasonText}`);
+            
+            // Special handling for authentication errors
+            if (code === 4401) {
+                this.logger.error('❌ Authentication Error: The provided Eulerstream API key is invalid.');
+                this.logger.error('💡 Please check your API key configuration:');
+                this.logger.error('   1. Verify the API key in Dashboard Settings (tiktok_euler_api_key)');
+                this.logger.error('   2. Or check environment variable EULER_API_KEY');
+                this.logger.error('   3. Get a valid key from: https://www.eulerstream.com');
+                this.logger.error(`   4. Key format should be a long alphanumeric string (64+ characters)`);
+                if (reasonText) {
+                    this.logger.error(`   Server message: ${reasonText}`);
+                }
+            } else if (code === 4400) {
+                this.logger.error('❌ Invalid Options: The connection parameters are incorrect.');
+                this.logger.error('💡 Please check the username and API key are correct.');
+            } else if (code === 4404) {
+                this.logger.warn('⚠️  User Not Live: The requested TikTok user is not currently streaming.');
+            }
+            
             this.isConnected = false;
             this.broadcastStatus('disconnected');
             
@@ -229,10 +261,22 @@ class TikTokConnector extends EventEmitter {
             this.emit('disconnected', {
                 username: this.currentUsername,
                 timestamp: new Date().toISOString(),
-                reason: reason || ClientCloseCode[code] || 'Connection closed'
+                reason: reasonText || ClientCloseCode[code] || 'Connection closed',
+                code: code
             });
 
-            // Auto-Reconnect with limit
+            // Don't auto-reconnect on authentication errors
+            if (code === 4401 || code === 4400) {
+                this.logger.warn('⚠️  Auto-reconnect disabled due to authentication/configuration error. Please fix the issue and manually reconnect.');
+                this.broadcastStatus('auth_error', {
+                    code: code,
+                    message: 'Authentication failed - manual reconnect required',
+                    suggestion: 'Please check your Eulerstream API key configuration'
+                });
+                return;
+            }
+            
+            // Auto-Reconnect with limit (for non-auth errors)
             if (this.currentUsername && this.autoReconnectCount < this.maxAutoReconnects) {
                 this.autoReconnectCount++;
                 const delay = 5000;
@@ -611,7 +655,59 @@ class TikTokConnector extends EventEmitter {
     _analyzeError(error) {
         const errorMessage = error.message || error.toString();
 
-        // User not live or room not found
+        // SIGI_STATE / TikTok blocking errors
+        if (errorMessage.includes('SIGI_STATE') || 
+            errorMessage.includes('blocked by TikTok')) {
+            return {
+                type: 'BLOCKED_BY_TIKTOK',
+                message: 'Möglicherweise von TikTok blockiert. SIGI_STATE konnte nicht extrahiert werden.',
+                suggestion: 'NICHT SOFORT ERNEUT VERSUCHEN - Warte mindestens 30-60 Minuten bevor du es erneut versuchst.',
+                retryable: false
+            };
+        }
+
+        // Sign API 401 errors (invalid API key)
+        if (errorMessage.includes('401') && 
+            (errorMessage.includes('Sign Error') || errorMessage.includes('API Key is invalid'))) {
+            return {
+                type: 'SIGN_API_INVALID_KEY',
+                message: 'Sign API Fehler 401 - Der API-Schlüssel ist ungültig',
+                suggestion: 'Prüfe deinen Eulerstream API-Schlüssel auf https://www.eulerstream.com',
+                retryable: false
+            };
+        }
+
+        // Sign API 504 Gateway Timeout
+        if (errorMessage.includes('504')) {
+            return {
+                type: 'SIGN_API_GATEWAY_TIMEOUT',
+                message: '504 Gateway Timeout - Eulerstream Sign API ist überlastet oder nicht erreichbar',
+                suggestion: 'Warte 2-5 Minuten und versuche es dann erneut',
+                retryable: true
+            };
+        }
+
+        // Sign API 500 errors
+        if (errorMessage.includes('500') && errorMessage.includes('Sign Error')) {
+            return {
+                type: 'SIGN_API_ERROR',
+                message: '500 Internal Server Error - Eulerstream Sign API Problem',
+                suggestion: 'Warte 1-2 Minuten und versuche es dann erneut',
+                retryable: true
+            };
+        }
+
+        // Room ID / User not live errors
+        if (errorMessage.includes('Failed to retrieve Room ID')) {
+            return {
+                type: 'ROOM_NOT_FOUND',
+                message: 'Raum-ID konnte nicht abgerufen werden - Benutzer existiert nicht oder ist nicht live',
+                suggestion: 'Prüfe ob der Benutzername korrekt ist und der Benutzer gerade live ist',
+                retryable: false
+            };
+        }
+
+        // User not live or room not found (Eulerstream errors)
         if (errorMessage.includes('LIVE_NOT_FOUND') || 
             errorMessage.includes('not live') ||
             errorMessage.includes('room id') ||
@@ -619,19 +715,23 @@ class TikTokConnector extends EventEmitter {
             return {
                 type: 'NOT_LIVE',
                 message: 'User is not currently live or username is incorrect',
-                suggestion: 'Verify the username is correct and the user is streaming on TikTok'
+                suggestion: 'Verify the username is correct and the user is streaming on TikTok',
+                retryable: false
             };
         }
 
-        // Network/timeout errors
-        if (errorMessage.includes('timeout') || 
+        // Timeout errors
+        if (errorMessage.includes('Verbindungs-Timeout') || 
+            errorMessage.includes('Connection timeout') ||
+            errorMessage.includes('timeout') || 
             errorMessage.includes('TIMEOUT') ||
             errorMessage.includes('ECONNABORTED') ||
             errorMessage.includes('ETIMEDOUT')) {
             return {
-                type: 'TIMEOUT',
-                message: 'Connection timeout - Eulerstream servers did not respond in time',
-                suggestion: 'Check your internet connection. If the problem persists, Eulerstream servers may be slow or unavailable'
+                type: 'CONNECTION_TIMEOUT',
+                message: 'Verbindungs-Timeout - Server hat nicht rechtzeitig geantwortet',
+                suggestion: 'Prüfe deine Internetverbindung. Falls das Problem weiterhin besteht, könnte der Eulerstream-Server langsam oder nicht erreichbar sein',
+                retryable: true
             };
         }
 
@@ -640,18 +740,19 @@ class TikTokConnector extends EventEmitter {
             return {
                 type: 'WEBSOCKET_ERROR',
                 message: errorMessage,
-                suggestion: 'Check Eulerstream API key and connection settings'
+                suggestion: 'Check Eulerstream API key and connection settings',
+                retryable: true
             };
         }
 
-        // API key errors
+        // API key errors (general)
         if (errorMessage.includes('API key') || 
-            errorMessage.includes('401') ||
             errorMessage.includes('403')) {
             return {
                 type: 'API_KEY_ERROR',
                 message: 'Invalid or missing Eulerstream API key',
-                suggestion: 'Check your Eulerstream API key at https://www.eulerstream.com or set tiktok_euler_api_key in settings'
+                suggestion: 'Check your Eulerstream API key at https://www.eulerstream.com or set tiktok_euler_api_key in settings',
+                retryable: false
             };
         }
 
@@ -662,7 +763,8 @@ class TikTokConnector extends EventEmitter {
             return {
                 type: 'NETWORK_ERROR',
                 message: 'Network error - cannot reach Eulerstream servers',
-                suggestion: 'Check your internet connection and firewall settings'
+                suggestion: 'Check your internet connection and firewall settings',
+                retryable: true
             };
         }
 
@@ -670,8 +772,18 @@ class TikTokConnector extends EventEmitter {
         return {
             type: 'UNKNOWN_ERROR',
             message: errorMessage,
-            suggestion: 'Check the console logs for more details. If the problem persists, report this error'
+            suggestion: 'Check the console logs for more details. If the problem persists, report this error',
+            retryable: true
         };
+    }
+
+    /**
+     * Public method for analyzing connection errors (for testing)
+     * @param {Error} error - The error to analyze
+     * @returns {Object} Error analysis result
+     */
+    analyzeConnectionError(error) {
+        return this._analyzeError(error);
     }
 
     /**
