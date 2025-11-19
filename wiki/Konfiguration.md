@@ -15,8 +15,9 @@
 7. [OBS WebSocket-Konfiguration](#obs-websocket-konfiguration)
 8. [Plugin-Konfigurationen](#plugin-konfigurationen)
 9. [Multi-Profile-System](#multi-profile-system)
-10. [Umgebungsvariablen](#umgebungsvariablen)
-11. [Erweiterte Einstellungen](#erweiterte-einstellungen)
+10. [Cloud Sync](#cloud-sync)
+11. [Umgebungsvariablen](#umgebungsvariablen)
+12. [Erweiterte Einstellungen](#erweiterte-einstellungen)
 
 ---
 
@@ -856,6 +857,138 @@ POST http://localhost:3000/api/profiles/my_stream_setup/backup
 ```
 
 **Backup-Speicherort:** `user_configs/backups/my_stream_setup_TIMESTAMP.db`
+
+---
+
+## ☁️ Cloud Sync
+
+**Beschreibung:** Optionale bidirektionale Synchronisation aller User-Konfigurationen mit Cloud-Speichern.
+
+### Übersicht
+
+Cloud Sync ermöglicht die automatische Synchronisation des gesamten `user_configs/` Verzeichnisses mit OneDrive, Google Drive oder Dropbox. Die Funktion ist standardmäßig deaktiviert und muss vom User bewusst aktiviert werden.
+
+### Konfiguration
+
+**Settings-Key:** `cloud_sync:config`
+
+```json
+{
+  "enabled": false,
+  "cloudPath": null,
+  "lastSyncTime": null,
+  "stats": {
+    "totalSyncs": 0,
+    "successfulSyncs": 0,
+    "failedSyncs": 0,
+    "filesUploaded": 0,
+    "filesDownloaded": 0,
+    "conflicts": 0
+  }
+}
+```
+
+### Aktivierung über UI
+
+1. Öffne **Settings** → **Cloud Sync**
+2. Klicke auf **"Auswählen"**
+3. Gib den Cloud-Ordner-Pfad ein (z.B. `C:\Users\Name\OneDrive\TikTokHelper`)
+4. Klicke auf **"Cloud Sync aktivieren"**
+
+### Aktivierung über API
+
+**POST** `/api/cloud-sync/enable`
+
+```json
+{
+  "cloudPath": "/path/to/cloud/folder"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Cloud sync enabled successfully",
+  "enabled": true,
+  "cloudPath": "/path/to/cloud/folder",
+  "stats": { ... }
+}
+```
+
+### Deaktivierung
+
+**POST** `/api/cloud-sync/disable`
+
+```json
+{
+  "success": true,
+  "message": "Cloud sync disabled successfully",
+  "enabled": false
+}
+```
+
+### Manueller Sync
+
+**POST** `/api/cloud-sync/manual-sync`
+
+Triggert einen sofortigen Sync-Vorgang.
+
+### Status abfragen
+
+**GET** `/api/cloud-sync/status`
+
+```json
+{
+  "success": true,
+  "enabled": true,
+  "cloudPath": "/path/to/cloud",
+  "syncInProgress": false,
+  "lastSyncTime": "2025-11-17T23:44:37.000Z",
+  "stats": {
+    "totalSyncs": 10,
+    "successfulSyncs": 10,
+    "failedSyncs": 0,
+    "filesUploaded": 25,
+    "filesDownloaded": 5,
+    "conflicts": 2
+  },
+  "watchers": {
+    "local": true,
+    "cloud": true
+  }
+}
+```
+
+### Synchronisierte Daten
+
+Alle Dateien in `user_configs/` werden synchronisiert:
+- ✅ Datenbanken (*.db)
+- ✅ Plugin-Konfigurationen
+- ✅ TTS-Profile
+- ✅ Flow-Definitionen
+- ✅ Custom-Assets
+- ✅ Alle anderen Dateien
+
+### Technische Details
+
+- **Synchronisation:** Bidirektional (Local ↔ Cloud)
+- **Konfliktlösung:** Timestamp-basiert (neuere Datei gewinnt)
+- **File-Watcher:** Echtzeit-Überwachung beider Verzeichnisse
+- **Debounce:** 1 Sekunde (verhindert Sync-Schleifen)
+- **Atomare Schreibvorgänge:** Kein Datenverlust bei Fehlern
+
+### Best Practices
+
+1. **Dedizierter Ordner:** Nutze einen separaten Ordner im Cloud-Speicher
+2. **Regelmäßige Backups:** Cloud-Sync ersetzt keine Backups
+3. **Ein Gerät aktiv:** Nutze nicht gleichzeitig auf mehreren Geräten
+4. **Überwache Stats:** Behalte Sync-Statistiken im Auge
+
+### Weitere Informationen
+
+- **Feature-Dokumentation:** [Features/Cloud-Sync](Features/Cloud-Sync.md)
+- **Technische Dokumentation:** [CLOUD_SYNC_DOCUMENTATION.md](../../CLOUD_SYNC_DOCUMENTATION.md)
 
 ---
 

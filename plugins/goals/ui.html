@@ -1,16 +1,12 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Goals - Advanced Settings</title>
+    <title>Goals - Multi-Overlay System</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             --primary-bg: #0f172a;
@@ -20,1597 +16,198 @@
             --accent-purple: #a78bfa;
             --accent-green: #22c55e;
             --accent-red: #ef4444;
-            --accent-yellow: #fbbf24;
             --text-primary: #f8fafc;
             --text-secondary: #cbd5e1;
             --text-muted: #64748b;
             --border-color: rgba(148, 163, 184, 0.2);
-            --sidebar-width: 280px;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--primary-bg);
             color: var(--text-primary);
             height: 100vh;
             overflow: hidden;
         }
 
-        /* ====== LAYOUT ====== */
-        .app-container {
-            display: flex;
-            height: 100vh;
-            width: 100vw;
-        }
-
-        /* ====== SIDEBAR ====== */
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--secondary-bg);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        .sidebar-header {
-            padding: 24px 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .sidebar-logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 8px;
-        }
-
-        .sidebar-subtitle {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-
-        .sidebar-nav {
-            flex: 1;
-            padding: 16px 0;
-        }
-
-        .nav-section {
-            margin-bottom: 24px;
-        }
-
-        .nav-section-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            padding: 0 20px;
-            margin-bottom: 8px;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.2s;
-            border-left: 3px solid transparent;
-        }
-
-        .nav-item:hover {
-            background: rgba(148, 163, 184, 0.1);
-            color: var(--text-primary);
-        }
-
-        .nav-item.active {
-            background: rgba(96, 165, 250, 0.1);
-            border-left-color: var(--accent-blue);
-            color: var(--accent-blue);
-        }
-
-        .nav-item-icon {
-            font-size: 1.25rem;
-            width: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .nav-item-text {
-            font-size: 0.9375rem;
-            font-weight: 500;
-        }
-
-        .nav-item-badge {
-            margin-left: auto;
-            background: var(--accent-blue);
-            color: white;
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-weight: 600;
-        }
-
-        /* ====== MAIN CONTENT ====== */
-        .main-content {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
-
-        /* ====== SETTINGS PANEL ====== */
-        .settings-panel {
-            flex: 1;
-            background: var(--primary-bg);
-            overflow-y: auto;
-            padding: 32px;
-            position: relative;
-            z-index: 0;
-        }
-
-        .panel-header {
-            margin-bottom: 32px;
-        }
-
-        .panel-title {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .panel-description {
-            font-size: 1rem;
-            color: var(--text-secondary);
-        }
-
-        .settings-section {
-            background: var(--secondary-bg);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
-            border: 1px solid var(--border-color);
-        }
-
-        .section-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .section-title-icon {
-            font-size: 1.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 10px 14px;
-            background: var(--primary-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 0.9375rem;
-            transition: all 0.2s;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
-        }
-
-        .form-input:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        .form-row-3 {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-        }
-
-        .toggle-switch {
-            position: relative;
-            width: 52px;
-            height: 28px;
-        }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--tertiary-bg);
-            transition: 0.3s;
-            border-radius: 28px;
-        }
-
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 20px;
-            width: 20px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: 0.3s;
-            border-radius: 50%;
-        }
-
-        .toggle-switch input:checked + .toggle-slider {
-            background-color: var(--accent-blue);
-        }
-
-        .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(24px);
-        }
-
-        .color-picker-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .color-picker {
-            width: 50px;
-            height: 50px;
-            border-radius: 8px;
-            border: 2px solid var(--border-color);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .color-picker:hover {
-            border-color: var(--accent-blue);
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            font-size: 0.9375rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: var(--accent-blue);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #3b82f6;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: var(--tertiary-bg);
-            color: var(--text-primary);
-        }
-
-        .btn-secondary:hover {
-            background: var(--border-color);
-        }
-
-        .btn-success {
-            background: var(--accent-green);
-            color: white;
-        }
-
-        .btn-danger {
-            background: var(--accent-red);
-            color: white;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        /* ====== PREVIEW PANEL ====== */
-        .preview-panel {
-            width: 600px;
-            background: var(--secondary-bg);
-            border-left: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-            z-index: 1;
-        }
-
-        .preview-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .preview-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .preview-subtitle {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }
-
-        .preview-controls {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-
-        .preview-resolution-btn {
-            padding: 6px 12px;
-            background: var(--tertiary-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: var(--text-secondary);
-            font-size: 0.8125rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .preview-resolution-btn:hover {
-            background: var(--primary-bg);
-            color: var(--text-primary);
-        }
-
-        .preview-resolution-btn.active {
-            background: var(--accent-blue);
-            border-color: var(--accent-blue);
-            color: white;
-        }
-
-        .preview-canvas-wrapper {
-            flex: 1;
-            padding: 20px;
-            overflow: auto;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .preview-canvas {
-            position: relative;
-            background: transparent;
-            border: 1px dashed rgba(255, 255, 255, 0.2);
-            transition: all 0.3s;
-        }
-
-        .preview-goal {
-            position: absolute;
-            cursor: move;
-            user-select: none;
-            transition: box-shadow 0.2s;
-        }
-
-        .preview-goal:hover {
-            box-shadow: 0 0 0 2px var(--accent-blue);
-        }
-
-        .preview-goal.dragging {
-            opacity: 0.8;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        }
-
-        .preview-goal-inner {
-            background: rgba(15, 23, 42, 0.95);
-            border-radius: 12px;
-            padding: 16px 20px;
-            border: 2px solid rgba(96, 165, 250, 0.5);
-        }
-
-        .preview-goal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .preview-goal-name {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #ffffff;
-        }
-
-        .preview-goal-value {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .preview-progress-bar {
-            height: 24px;
-            background: rgba(30, 41, 59, 0.8);
-            border-radius: 12px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .preview-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent-blue), #3b82f6);
-            transition: width 0.5s;
-        }
-
-        .preview-progress-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: white;
-        }
-
-        .preview-footer {
-            padding: 16px 20px;
-            border-top: 1px solid var(--border-color);
-            background: var(--primary-bg);
-        }
-
-        .preview-info {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            text-align: center;
-        }
-
-        /* ====== TEMPLATE GALLERY ====== */
-        .template-gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .template-card {
-            background: var(--tertiary-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-
-        .template-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--accent-blue);
-        }
-
-        .template-card.active {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-        }
-
-        .template-preview {
-            height: 120px;
-            background: linear-gradient(135deg, #1e3a8a, #7c3aed);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-        }
-
-        .template-info {
-            padding: 12px;
-        }
-
-        .template-name {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .template-description {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-        }
-
-        /* ====== CONNECTION STATUS ====== */
-        .connection-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
-            margin: 16px 20px;
-            background: var(--primary-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .status-indicator.connected {
-            background: var(--accent-green);
-            box-shadow: 0 0 8px var(--accent-green);
-        }
-
-        .status-indicator.disconnected {
-            background: var(--accent-red);
-            box-shadow: 0 0 8px var(--accent-red);
-            animation: none;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .status-text {
-            font-size: 0.8125rem;
-            color: var(--text-secondary);
-        }
-
-        /* ====== SCROLLBAR STYLING ====== */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--secondary-bg);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--tertiary-bg);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--border-color);
-        }
-
-        /* ====== UTILITY CLASSES ====== */
-        .hidden {
-            display: none !important;
-        }
-
-        .mb-1 { margin-bottom: 8px; }
-        .mb-2 { margin-bottom: 16px; }
-        .mb-3 { margin-bottom: 24px; }
-        .mt-1 { margin-top: 8px; }
-        .mt-2 { margin-top: 16px; }
-        .mt-3 { margin-top: 24px; }
+        .app-container { display: flex; height: 100vh; }
+        .sidebar { width: 280px; background: var(--secondary-bg); border-right: 1px solid var(--border-color); padding: 24px 20px; overflow-y: auto; }
+        .main-content { flex: 1; padding: 32px; overflow-y: auto; }
+
+        .logo { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 24px; }
+
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--accent-blue); color: white; }
+        .btn-primary:hover { background: #3b82f6; transform: translateY(-1px); }
+        .btn-success { background: var(--accent-green); color: white; }
+        .btn-danger { background: var(--accent-red); color: white; }
+        .btn-secondary { background: var(--tertiary-bg); color: var(--text-primary); }
+
+        .goal-card { background: var(--secondary-bg); border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid var(--border-color); }
+        .goal-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .goal-card-title { font-size: 1.1rem; font-weight: 700; }
+        .goal-card-badge { padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .badge-coin { background: #fbbf2440; color: #fbbf24; }
+        .badge-likes { background: #ef444440; color: #ef4444; }
+        .badge-follower { background: #60a5fa40; color: #60a5fa; }
+        .badge-custom { background: #a78bfa40; color: #a78bfa; }
+
+        .progress-bar { height: 12px; background: rgba(255, 255, 255, 0.1); border-radius: 6px; overflow: hidden; margin: 12px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); transition: width 0.3s; }
+
+        .goal-stats { display: flex; gap: 20px; font-size: 0.9rem; color: var(--text-secondary); }
+
+        .goal-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .goal-actions button { padding: 6px 12px; font-size: 0.85rem; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--secondary-bg); border-radius: 16px; padding: 32px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { font-size: 1.5rem; font-weight: 700; margin-bottom: 24px; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--tertiary-bg); color: var(--text-primary); font-family: inherit; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent-blue); }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+        .overlay-url { background: var(--tertiary-bg); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.9rem; word-break: break-all; border: 1px solid var(--border-color); margin-top: 8px; }
+        .copy-btn { margin-left: 8px; padding: 4px 8px; font-size: 0.8rem; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state-icon { font-size: 4rem; margin-bottom: 16px; }
+        .empty-state-text { font-size: 1.1rem; margin-bottom: 24px; }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- ===== SIDEBAR ===== -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">Live Goals</div>
-                <div class="sidebar-subtitle">Advanced Live Goals System</div>
-            </div>
+        <div class="sidebar">
+            <div class="logo">🎯 Goals Plugin</div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 24px;">Multi-Overlay System</p>
+            <button class="btn btn-primary" style="width: 100%;" id="create-goal-btn">+ Create New Goal</button>
+        </div>
 
-            <!-- OBS Overlay Link -->
-            <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color);">
-                <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
-                    🎥 OBS Browser Source
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="text" id="overlayUrl" readonly value=""
-                           style="flex: 1; padding: 8px; background: var(--primary-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.8125rem; font-family: monospace;">
-                    <button onclick="copyOverlayUrl()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8125rem;">
-                        📋 Copy
-                    </button>
-                </div>
-                <a href="" id="overlayLink" target="_blank" style="display: inline-block; margin-top: 8px; font-size: 0.8125rem; color: var(--accent-blue); text-decoration: none;">
-                    → Open Overlay in New Tab
-                </a>
-            </div>
+        <div class="main-content">
+            <h1 style="margin-bottom: 8px;">Live Goals</h1>
+            <p style="color: var(--text-muted); margin-bottom: 32px;">Each goal has its own overlay URL. Position them in OBS.</p>
 
-            <div class="connection-status">
-                <div class="status-indicator" id="connectionIndicator"></div>
-                <div class="status-text" id="connectionText">Connecting...</div>
-            </div>
-
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Goals</div>
-                    <div class="nav-item active" data-view="goals-overview">
-                        <span class="nav-item-icon">📊</span>
-                        <span class="nav-item-text">Overview</span>
-                    </div>
-                    <div class="nav-item" data-view="goal-coin">
-                        <span class="nav-item-icon">💰</span>
-                        <span class="nav-item-text">Coins Goal</span>
-                    </div>
-                    <div class="nav-item" data-view="goal-likes">
-                        <span class="nav-item-icon">❤️</span>
-                        <span class="nav-item-text">Likes Goal</span>
-                    </div>
-                    <div class="nav-item" data-view="goal-follower">
-                        <span class="nav-item-icon">👥</span>
-                        <span class="nav-item-text">Followers Goal</span>
-                    </div>
-                    <div class="nav-item" data-view="goal-custom">
-                        <span class="nav-item-icon">🎯</span>
-                        <span class="nav-item-text">Custom Goal</span>
-                    </div>
-                </div>
-
-                <div class="nav-section">
-                    <div class="nav-section-title">Customization</div>
-                    <div class="nav-item" data-view="templates">
-                        <span class="nav-item-icon">🎨</span>
-                        <span class="nav-item-text">Templates</span>
-                        <span class="nav-item-badge">6</span>
-                    </div>
-                    <div class="nav-item" data-view="hud-settings">
-                        <span class="nav-item-icon">⚙️</span>
-                        <span class="nav-item-text">HUD Settings</span>
-                    </div>
-                    <div class="nav-item" data-view="animations">
-                        <span class="nav-item-icon">✨</span>
-                        <span class="nav-item-text">Animations</span>
-                    </div>
-                </div>
-            </nav>
-        </aside>
-
-        <!-- ===== MAIN CONTENT ===== -->
-        <main class="main-content">
-            <!-- ===== SETTINGS PANEL ===== -->
-            <div class="settings-panel" id="settingsPanel">
-                <!-- Content will be dynamically loaded here -->
-                <div class="panel-header">
-                    <h1 class="panel-title">Goals Overview</h1>
-                    <p class="panel-description">Configure your live streaming goals and track progress in real-time</p>
-                </div>
-
-                <div id="dynamicContent">
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <span class="section-title-icon">📊</span>
-                            <span>All Goals</span>
-                        </div>
-                        <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                            Select a goal from the sidebar to configure its settings, or choose a template to quickly style all goals.
-                        </p>
-                        <div class="form-group">
-                            <button class="btn btn-primary" onclick="loadAllGoals()">
-                                Refresh Goals
-                            </button>
-                        </div>
-                    </div>
+            <div id="goals-container">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🎯</div>
+                    <div class="empty-state-text">No goals created yet</div>
+                    <button class="btn btn-primary" id="create-first-goal-initial-btn">Create Your First Goal</button>
                 </div>
             </div>
-
-            <!-- ===== PREVIEW PANEL ===== -->
-            <aside class="preview-panel">
-                <div class="preview-header">
-                    <div class="preview-title">🎯 Live Preview</div>
-                    <div class="preview-subtitle">Drag goals to reposition them on your stream overlay</div>
-                    <div class="preview-controls">
-                        <button class="preview-resolution-btn active" data-resolution="1920x1080">1080p</button>
-                        <button class="preview-resolution-btn" data-resolution="1280x720">720p</button>
-                        <button class="preview-resolution-btn" data-resolution="2560x1440">1440p</button>
-                        <button class="preview-resolution-btn" data-resolution="3840x2160">4K</button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Zoom: <span id="zoomValue">50%</span></label>
-                        <input type="range" class="form-input" id="previewZoom" min="0.25" max="1" step="0.05" value="0.5" oninput="document.getElementById('zoomValue').textContent = Math.round(this.value * 100) + '%'">
-                    </div>
-                </div>
-
-                <div class="preview-canvas-wrapper" id="previewCanvasWrapper">
-                    <div class="preview-canvas" id="previewCanvas">
-                        <!-- Preview goals will be rendered here -->
-                    </div>
-                </div>
-
-                <div class="preview-footer">
-                    <div class="preview-info">
-                        💡 Tip: Drag goals to move them, or use the settings panel for precise positioning
-                    </div>
-                </div>
-            </aside>
-        </main>
+        </div>
     </div>
 
-    <script>
-        // ===== GLOBAL STATE =====
-        const socket = io();
-        let goals = {};
-        let templates = [];
-        let hudConfig = {
-            resolution_width: 1920,
-            resolution_height: 1080
-        };
-        let currentView = 'goals-overview';
-        let previewScale = 0.5;
-
-        // ===== SOCKET.IO CONNECTION =====
-        socket.on('connect', () => {
-            console.log('Connected to server');
-            updateConnectionStatus(true);
-            loadAllGoals();
-            loadTemplates();
-            loadHudConfig();
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-            updateConnectionStatus(false);
-        });
-
-        socket.on('goals:update', (data) => {
-            goals[data.goalType] = data;
-            updatePreview();
-        });
-
-        socket.on('goals:template-applied', (data) => {
-            console.log('Template applied:', data);
-            loadAllGoals();
-        });
-
-        socket.on('goals:layout-updated', (data) => {
-            console.log('Layout updated:', data);
-            if (goals[data.goalType]) {
-                Object.assign(goals[data.goalType], data);
-                updatePreview();
-            }
-        });
-
-        // ===== CONNECTION STATUS =====
-        function updateConnectionStatus(connected) {
-            const indicator = document.getElementById('connectionIndicator');
-            const text = document.getElementById('connectionText');
-
-            if (connected) {
-                indicator.className = 'status-indicator connected';
-                text.textContent = 'Connected';
-            } else {
-                indicator.className = 'status-indicator disconnected';
-                text.textContent = 'Disconnected';
-            }
-        }
-
-        // ===== NAVIGATION =====
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', function() {
-                // Remove active class from all nav items
-                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-                // Add active class to clicked item
-                this.classList.add('active');
-
-                // Get view name
-                const view = this.getAttribute('data-view');
-                currentView = view;
-                loadView(view);
-            });
-        });
-
-        // ===== PREVIEW RESOLUTION CONTROLS =====
-        document.querySelectorAll('.preview-resolution-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.preview-resolution-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-
-                const [width, height] = this.getAttribute('data-resolution').split('x').map(Number);
-                hudConfig.resolution_width = width;
-                hudConfig.resolution_height = height;
-                updatePreview();
-            });
-        });
-
-        document.getElementById('previewZoom').addEventListener('input', function() {
-            previewScale = parseFloat(this.value);
-            updatePreview();
-        });
-
-        // ===== DATA LOADING =====
-        async function loadAllGoals() {
-            try {
-                const response = await fetch('/api/goals');
-                const data = await response.json();
-
-                if (data.success && Array.isArray(data.goals)) {
-                    goals = {};
-                    data.goals.forEach(goal => {
-                        goals[goal.goalType] = goal;
-                    });
-                    updatePreview();
-                }
-            } catch (error) {
-                console.error('Error loading goals:', error);
-            }
-        }
-
-        async function loadTemplates() {
-            try {
-                const response = await fetch('/api/goals/templates');
-                const data = await response.json();
-
-                if (data.success) {
-                    templates = data.templates;
-                }
-            } catch (error) {
-                console.error('Error loading templates:', error);
-            }
-        }
-
-        async function loadHudConfig() {
-            try {
-                const response = await fetch('/api/goals/hud/config');
-                const data = await response.json();
-
-                if (data.success) {
-                    hudConfig = data.config;
-                    updatePreview();
-                }
-            } catch (error) {
-                console.error('Error loading HUD config:', error);
-            }
-        }
-
-        // ===== VIEW LOADING =====
-        function loadView(viewName) {
-            const contentDiv = document.getElementById('dynamicContent');
-
-            if (viewName === 'goals-overview') {
-                loadGoalsOverview();
-            } else if (viewName.startsWith('goal-')) {
-                const goalType = viewName.replace('goal-', '');
-                loadGoalSettings(goalType);
-            } else if (viewName === 'templates') {
-                loadTemplatesView();
-            } else if (viewName === 'hud-settings') {
-                loadHudSettingsView();
-            } else if (viewName === 'animations') {
-                loadAnimationsView();
-            }
-        }
-
-        function loadGoalsOverview() {
-            const contentDiv = document.getElementById('dynamicContent');
-            contentDiv.innerHTML = `
-                <div class="settings-section">
-                    <div class="section-title">
-                        <span class="section-title-icon">📊</span>
-                        <span>All Goals</span>
-                    </div>
-                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                        Select a goal from the sidebar to configure its settings, or choose a template to quickly style all goals.
-                    </p>
-                    <div id="goalsOverviewContent">
-                        Loading...
-                    </div>
+    <!-- Create/Edit Modal -->
+    <div id="goal-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Create New Goal</div>
+            <form id="goal-form">
+                <div class="form-group">
+                    <label class="form-label">Goal Name</label>
+                    <input type="text" class="form-input" id="goal-name" placeholder="e.g., Coin Goal" required>
                 </div>
-            `;
 
-            // Render goals overview
-            const overviewDiv = document.getElementById('goalsOverviewContent');
-            const goalsArray = Object.values(goals);
-
-            if (goalsArray.length === 0) {
-                overviewDiv.innerHTML = '<p style="color: var(--text-muted);">No goals configured yet.</p>';
-                return;
-            }
-
-            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">';
-
-            goalsArray.forEach(goal => {
-                const icons = {
-                    coin: '💰',
-                    likes: '❤️',
-                    follower: '👥',
-                    custom: '🎯'
-                };
-
-                html += `
-                    <div style="background: var(--tertiary-bg); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color);">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                            <span style="font-size: 2rem;">${icons[goal.goalType] || '🎯'}</span>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; font-size: 1.125rem;">${goal.name}</div>
-                                <div style="font-size: 0.875rem; color: var(--text-muted);">${goal.goalType}</div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" ${goal.enabled ? 'checked' : ''} onchange="toggleGoal('${goal.goalType}', this.checked)">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div style="margin-bottom: 8px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                <span style="font-size: 0.875rem; color: var(--text-secondary);">Progress</span>
-                                <span style="font-size: 0.875rem; font-weight: 600;">${goal.percent}%</span>
-                            </div>
-                            <div style="height: 8px; background: var(--primary-bg); border-radius: 4px; overflow: hidden;">
-                                <div style="height: 100%; width: ${goal.percent}%; background: var(--accent-blue); transition: width 0.5s;"></div>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--text-secondary);">
-                            <span>${goal.currentValue.toLocaleString()} / ${goal.targetValue.toLocaleString()}</span>
-                            <span>${goal.remaining.toLocaleString()} remaining</span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            overviewDiv.innerHTML = html;
-        }
-
-        function loadGoalSettings(goalType) {
-            const goal = goals[goalType];
-            if (!goal) {
-                document.getElementById('dynamicContent').innerHTML = '<p>Goal not found</p>';
-                return;
-            }
-
-            const icons = {
-                coin: '💰',
-                likes: '❤️',
-                follower: '👥',
-                custom: '🎯'
-            };
-
-            document.getElementById('dynamicContent').innerHTML = `
-                <div class="settings-section">
-                    <div class="section-title">
-                        <span class="section-title-icon">${icons[goalType] || '🎯'}</span>
-                        <span>${goal.name} Settings</span>
-                    </div>
-
-                    <!-- Quick Actions -->
-                    <div style="display: flex; gap: 12px; margin-bottom: 24px; padding: 16px; background: var(--tertiary-bg); border-radius: 8px;">
-                        <button class="btn ${goal.enabled ? 'btn-success' : 'btn-secondary'}" onclick="quickToggleGoal('${goalType}')" style="flex: 1;">
-                            ${goal.enabled ? '✓ Enabled' : '✗ Disabled'}
-                        </button>
-                        <button class="btn btn-secondary" onclick="resetGoal('${goalType}')" style="flex: 1;">
-                            🔄 Reset Progress
-                        </button>
-                        <button class="btn btn-primary" onclick="incrementGoalManually('${goalType}')" style="flex: 1;">
-                            ➕ Add 1
-                        </button>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Goal Type</label>
+                        <select class="form-select" id="goal-type" required>
+                            <option value="coin">🪙 Coins</option>
+                            <option value="likes">❤️ Likes</option>
+                            <option value="follower">👥 Followers</option>
+                            <option value="custom">⭐ Custom</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Goal Name</label>
-                        <input type="text" class="form-input" value="${goal.name}" id="goalName-${goalType}">
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Current Value</label>
-                            <input type="number" class="form-input" value="${goal.currentValue}" id="goalCurrent-${goalType}">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Target Value</label>
-                            <input type="number" class="form-input" value="${goal.targetValue}" id="goalTarget-${goalType}">
-                        </div>
-                    </div>
-
-                    <div style="padding: 12px; background: var(--tertiary-bg); border-radius: 8px; margin-bottom: 16px;">
-                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 4px;">Progress</div>
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-blue);">${goal.percent}%</div>
-                        <div style="font-size: 0.8125rem; color: var(--text-secondary);">${goal.currentValue.toLocaleString()} / ${goal.targetValue.toLocaleString()} (${goal.remaining.toLocaleString()} remaining)</div>
-                    </div>
-
-                    <div class="btn-group">
-                        <button class="btn btn-primary" onclick="saveGoalSettings('${goalType}')">💾 Save All Changes</button>
+                        <label class="form-label">Template</label>
+                        <select class="form-select" id="goal-template">
+                            <option value="compact-bar">Compact Bar</option>
+                            <option value="full-width">Full Width</option>
+                            <option value="minimal-counter">Minimal Counter</option>
+                            <option value="circular-progress">Circular Progress</option>
+                            <option value="floating-pill">Floating Pill</option>
+                            <option value="vertical-meter">Vertical Meter</option>
+                            <option value="neon-glow">🌟 Neon Glow (NEW)</option>
+                            <option value="hexagon-progress">⬡ Hexagon Progress (NEW)</option>
+                            <option value="glassy-card">✨ Glassy Card (NEW)</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="settings-section">
-                    <div class="section-title">
-                        <span class="section-title-icon">📐</span>
-                        <span>Position & Size</span>
-                    </div>
-
-                    <div style="padding: 12px; background: var(--primary-bg); border-radius: 8px; margin-bottom: 16px; border-left: 3px solid var(--accent-blue);">
-                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                            💡 <strong>Tip:</strong> Use the preview panel on the right to drag and position your goal visually.
-                            Or enter exact coordinates below for precise placement.
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">X Position (pixels from left)</label>
-                            <input type="number" class="form-input" value="${goal.position_x || 10}" id="goalPosX-${goalType}" step="10">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Y Position (pixels from top)</label>
-                            <input type="number" class="form-input" value="${goal.position_y || 10}" id="goalPosY-${goalType}" step="10">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Width (pixels)</label>
-                            <input type="number" class="form-input" value="${goal.width || 500}" id="goalWidth-${goalType}" step="10">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Height (pixels)</label>
-                            <input type="number" class="form-input" value="${goal.height || 100}" id="goalHeight-${goalType}" step="10">
-                        </div>
-                    </div>
-
-                    <div class="btn-group">
-                        <button class="btn btn-primary" onclick="saveGoalLayout('${goalType}')">💾 Save Position</button>
-                        <button class="btn btn-secondary" onclick="centerGoal('${goalType}')">⊙ Center on Screen</button>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <div class="section-title">
-                        <span class="section-title-icon">🎨</span>
-                        <span>Colors</span>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Gradient Start Color</label>
-                            <div class="color-picker-wrapper">
-                                <input type="color" class="color-picker" value="${goal.style?.fill_color1 || '#60a5fa'}" id="goalColor1-${goalType}">
-                                <input type="text" class="form-input" value="${goal.style?.fill_color1 || '#60a5fa'}" id="goalColor1Text-${goalType}">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Gradient End Color</label>
-                            <div class="color-picker-wrapper">
-                                <input type="color" class="color-picker" value="${goal.style?.fill_color2 || '#3b82f6'}" id="goalColor2-${goalType}">
-                                <input type="text" class="form-input" value="${goal.style?.fill_color2 || '#3b82f6'}" id="goalColor2Text-${goalType}">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="btn-group">
-                        <button class="btn btn-primary" onclick="saveGoalStyle('${goalType}')">💾 Save Colors</button>
-                    </div>
-                </div>
-            `;
-
-            // Sync color pickers with text inputs
-            ['1', '2'].forEach(num => {
-                const picker = document.getElementById(`goalColor${num}-${goalType}`);
-                const text = document.getElementById(`goalColor${num}Text-${goalType}`);
-
-                if (picker && text) {
-                    picker.addEventListener('input', () => text.value = picker.value);
-                    text.addEventListener('input', () => picker.value = text.value);
-                }
-            });
-        }
-
-        function loadTemplatesView() {
-            document.getElementById('dynamicContent').innerHTML = `
-                <div class="settings-section">
-                    <div class="section-title">
-                        <span class="section-title-icon">🎨</span>
-                        <span>Template Gallery</span>
-                    </div>
-                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                        Choose a pre-designed template to instantly style all your goals
-                    </p>
-                    <div class="template-gallery" id="templateGallery">
-                        Loading templates...
-                    </div>
-                </div>
-            `;
-
-            renderTemplateGallery();
-        }
-
-        function renderTemplateGallery() {
-            const gallery = document.getElementById('templateGallery');
-            if (!gallery) return;
-
-            if (templates.length === 0) {
-                gallery.innerHTML = '<p style="color: var(--text-muted);">No templates available</p>';
-                return;
-            }
-
-            let html = '';
-            templates.forEach(template => {
-                const icons = {
-                    'Minimalist Clean': '✨',
-                    'Gamer RGB': '🎮',
-                    'Neon Glow': '💡',
-                    'Retro Pixel': '👾',
-                    'Modern Glass': '🪟',
-                    'Cyberpunk 2077': '🌃'
-                };
-
-                html += `
-                    <div class="template-card" onclick="applyTemplate(${template.id}, '${template.name}')">
-                        <div class="template-preview">${icons[template.name] || '🎨'}</div>
-                        <div class="template-info">
-                            <div class="template-name">${template.name}</div>
-                            <div class="template-description">${template.description.substring(0, 60)}...</div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            gallery.innerHTML = html;
-        }
-
-        function loadHudSettingsView() {
-            document.getElementById('dynamicContent').innerHTML = `
-                <div class="settings-section">
-                    <div class="section-title">
-                        <span class="section-title-icon">⚙️</span>
-                        <span>HUD Configuration</span>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Resolution Width</label>
-                            <input type="number" class="form-input" value="${hudConfig.resolution_width}" id="hudWidth">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Resolution Height</label>
-                            <input type="number" class="form-input" value="${hudConfig.resolution_height}" id="hudHeight">
-                        </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Start Value</label>
+                        <input type="number" class="form-input" id="goal-start" value="0" min="0">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">
-                            <input type="checkbox" ${hudConfig.enabled ? 'checked' : ''} id="hudEnabled">
-                            Enable HUD Overlay
-                        </label>
-                    </div>
-
-                    <div class="btn-group">
-                        <button class="btn btn-primary" onclick="saveHudConfig()">Save HUD Settings</button>
+                        <label class="form-label">Target Value</label>
+                        <input type="number" class="form-input" id="goal-target" value="1000" min="1" required>
                     </div>
                 </div>
-            `;
-        }
 
-        function loadAnimationsView() {
-            document.getElementById('dynamicContent').innerHTML = `
-                <div class="settings-section">
-                    <div class="section-title">
-                        <span class="section-title-icon">✨</span>
-                        <span>Animation Settings</span>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Animation on Update</label>
+                        <select class="form-select" id="goal-anim-update">
+                            <option value="smooth-progress">Smooth Progress</option>
+                            <option value="bounce">Bounce</option>
+                            <option value="glow">Glow Pulse</option>
+                        </select>
                     </div>
-                    <p style="color: var(--text-secondary);">
-                        Animation settings coming soon...
-                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label">Animation on Reach</label>
+                        <select class="form-select" id="goal-anim-reach">
+                            <option value="celebration">Celebration</option>
+                            <option value="confetti">Confetti Burst</option>
+                            <option value="pulse">Pulse Wave</option>
+                            <option value="flash">Flash</option>
+                            <option value="rainbow">Rainbow</option>
+                        </select>
+                    </div>
                 </div>
-            `;
-        }
 
-        // ===== PREVIEW RENDERING =====
-        function updatePreview() {
-            const canvas = document.getElementById('previewCanvas');
-            const width = hudConfig.resolution_width * previewScale;
-            const height = hudConfig.resolution_height * previewScale;
+                <div class="form-group">
+                    <label class="form-label">When Goal is Reached</label>
+                    <select class="form-select" id="goal-on-reach">
+                        <option value="hide">Hide Goal</option>
+                        <option value="reset">Reset to Start</option>
+                        <option value="double">Double Target</option>
+                        <option value="increment">Increase Target by Amount</option>
+                    </select>
+                </div>
 
-            canvas.style.width = width + 'px';
-            canvas.style.height = height + 'px';
+                <div class="form-group" id="increment-amount-group" style="display: none;">
+                    <label class="form-label">Increment Amount</label>
+                    <input type="number" class="form-input" id="goal-increment" value="100" min="1">
+                </div>
 
-            // Clear canvas
-            canvas.innerHTML = '';
-
-            // Render goals
-            Object.values(goals).forEach(goal => {
-                if (!goal.enabled) return;
-
-                const goalEl = document.createElement('div');
-                goalEl.className = 'preview-goal';
-                goalEl.style.left = (goal.position_x * previewScale) + 'px';
-                goalEl.style.top = (goal.position_y * previewScale) + 'px';
-                goalEl.style.width = (goal.width * previewScale) + 'px';
-                goalEl.style.height = (goal.height * previewScale) + 'px';
-                goalEl.style.zIndex = goal.z_index || 100;
-
-                const color1 = goal.style?.fill_color1 || '#60a5fa';
-                const color2 = goal.style?.fill_color2 || '#3b82f6';
-
-                goalEl.innerHTML = `
-                    <div class="preview-goal-inner">
-                        <div class="preview-goal-header">
-                            <div class="preview-goal-name">${goal.name}</div>
-                            <div class="preview-goal-value">${goal.currentValue} / ${goal.targetValue}</div>
-                        </div>
-                        <div class="preview-progress-bar">
-                            <div class="preview-progress-fill" style="width: ${goal.percent}%; background: linear-gradient(90deg, ${color1}, ${color2});"></div>
-                            <div class="preview-progress-text">${goal.percent}%</div>
-                        </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Overlay Width (px)</label>
+                        <input type="number" class="form-input" id="goal-width" value="500" min="100">
                     </div>
-                `;
 
-                // Make draggable
-                makeDraggable(goalEl, goal.goalType);
+                    <div class="form-group">
+                        <label class="form-label">Overlay Height (px)</label>
+                        <input type="number" class="form-input" id="goal-height" value="100" min="50">
+                    </div>
+                </div>
 
-                canvas.appendChild(goalEl);
-            });
-        }
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Goal</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-goal-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        // ===== DRAG AND DROP =====
-        function makeDraggable(element, goalType) {
-            let isDragging = false;
-            let startX, startY, initialLeft, initialTop;
-
-            element.addEventListener('mousedown', function(e) {
-                isDragging = true;
-                element.classList.add('dragging');
-
-                startX = e.clientX;
-                startY = e.clientY;
-                initialLeft = parseInt(element.style.left);
-                initialTop = parseInt(element.style.top);
-
-                e.preventDefault();
-            });
-
-            document.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-
-                const deltaX = e.clientX - startX;
-                const deltaY = e.clientY - startY;
-
-                element.style.left = (initialLeft + deltaX) + 'px';
-                element.style.top = (initialTop + deltaY) + 'px';
-            });
-
-            document.addEventListener('mouseup', function(e) {
-                if (!isDragging) return;
-
-                isDragging = false;
-                element.classList.remove('dragging');
-
-                // Calculate actual position (unscaled)
-                const newX = Math.round(parseInt(element.style.left) / previewScale);
-                const newY = Math.round(parseInt(element.style.top) / previewScale);
-
-                // Update goal position
-                updateGoalPosition(goalType, newX, newY);
-            });
-        }
-
-        async function updateGoalPosition(goalType, x, y) {
-            try {
-                const response = await fetch(`/api/goals/${goalType}/layout`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ position_x: x, position_y: y })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    console.log(`Updated ${goalType} position to (${x}, ${y})`);
-
-                    // Update local state
-                    if (goals[goalType]) {
-                        goals[goalType].position_x = x;
-                        goals[goalType].position_y = y;
-                    }
-
-                    // Update input fields in settings if visible
-                    const inputX = document.getElementById(`goalPosX-${goalType}`);
-                    const inputY = document.getElementById(`goalPosY-${goalType}`);
-                    if (inputX) inputX.value = x;
-                    if (inputY) inputY.value = y;
-                }
-            } catch (error) {
-                console.error('Error updating position:', error);
-            }
-        }
-
-        // ===== ACTIONS =====
-        async function toggleGoal(goalType, enabled) {
-            try {
-                const response = await fetch(`/api/goals/${goalType}/toggle`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    goals[goalType].enabled = enabled;
-                    updatePreview();
-                }
-            } catch (error) {
-                console.error('Error toggling goal:', error);
-            }
-        }
-
-        async function saveGoalSettings(goalType) {
-            const name = document.getElementById(`goalName-${goalType}`).value;
-            const target = parseInt(document.getElementById(`goalTarget-${goalType}`).value);
-            const current = parseInt(document.getElementById(`goalCurrent-${goalType}`).value);
-
-            try {
-                const response = await fetch(`/api/goals/${goalType}/config`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, target_value: target, current_value: current })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    alert('Goal settings saved successfully!');
-                    loadAllGoals();
-                }
-            } catch (error) {
-                console.error('Error saving goal settings:', error);
-                alert('Error saving settings');
-            }
-        }
-
-        async function saveGoalLayout(goalType) {
-            const position_x = parseInt(document.getElementById(`goalPosX-${goalType}`).value);
-            const position_y = parseInt(document.getElementById(`goalPosY-${goalType}`).value);
-            const width = parseInt(document.getElementById(`goalWidth-${goalType}`).value);
-            const height = parseInt(document.getElementById(`goalHeight-${goalType}`).value);
-
-            try {
-                const response = await fetch(`/api/goals/${goalType}/layout`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ position_x, position_y, width, height })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    console.log(`Layout saved for ${goalType}: (${position_x}, ${position_y})`);
-
-                    // Update local state immediately
-                    if (goals[goalType]) {
-                        goals[goalType].position_x = position_x;
-                        goals[goalType].position_y = position_y;
-                        goals[goalType].width = width;
-                        goals[goalType].height = height;
-                    }
-
-                    // Update preview
-                    updatePreview();
-
-                    // Show success message
-                    const btn = event.target;
-                    const originalText = btn.textContent;
-                    btn.textContent = '✓ Saved!';
-                    btn.style.background = 'var(--accent-green)';
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.style.background = '';
-                    }, 2000);
-                }
-            } catch (error) {
-                console.error('Error saving layout:', error);
-                alert('Error saving layout');
-            }
-        }
-
-        async function saveGoalStyle(goalType) {
-            const fill_color1 = document.getElementById(`goalColor1Text-${goalType}`).value;
-            const fill_color2 = document.getElementById(`goalColor2Text-${goalType}`).value;
-
-            const style = {
-                ...goals[goalType].style,
-                fill_color1,
-                fill_color2
-            };
-
-            try {
-                const response = await fetch(`/api/goals/${goalType}/config`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ style_json: JSON.stringify(style) })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    alert('Style saved successfully!');
-                    loadAllGoals();
-                }
-            } catch (error) {
-                console.error('Error saving style:', error);
-                alert('Error saving style');
-            }
-        }
-
-        async function resetGoal(goalType) {
-            if (!confirm(`Reset progress for ${goals[goalType].name}?`)) return;
-
-            try {
-                const response = await fetch(`/api/goals/${goalType}/reset`, {
-                    method: 'POST'
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    alert('Goal reset successfully!');
-                    loadAllGoals();
-                }
-            } catch (error) {
-                console.error('Error resetting goal:', error);
-                alert('Error resetting goal');
-            }
-        }
-
-        async function applyTemplate(templateId, templateName) {
-            if (!confirm(`Apply template "${templateName}" to all goals?`)) return;
-
-            try {
-                const response = await fetch(`/api/goals/templates/${templateId}/apply`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ goalTypes: 'all' })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    alert(`Template "${templateName}" applied successfully!`);
-                    loadAllGoals();
-                }
-            } catch (error) {
-                console.error('Error applying template:', error);
-                alert('Error applying template');
-            }
-        }
-
-        async function saveHudConfig() {
-            const enabled = document.getElementById('hudEnabled').checked;
-            const resolution_width = parseInt(document.getElementById('hudWidth').value);
-            const resolution_height = parseInt(document.getElementById('hudHeight').value);
-
-            try {
-                const response = await fetch('/api/goals/hud/config', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled, resolution_width, resolution_height })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    alert('HUD configuration saved!');
-                    hudConfig.resolution_width = resolution_width;
-                    hudConfig.resolution_height = resolution_height;
-                    updatePreview();
-                }
-            } catch (error) {
-                console.error('Error saving HUD config:', error);
-                alert('Error saving HUD configuration');
-            }
-        }
-
-        // ===== NEW HELPER FUNCTIONS =====
-
-        // Set overlay URL on page load
-        function setOverlayUrl() {
-            const url = window.location.origin + '/goals/overlay';
-            document.getElementById('overlayUrl').value = url;
-            document.getElementById('overlayLink').href = url;
-        }
-
-        // Copy overlay URL to clipboard
-        function copyOverlayUrl() {
-            const input = document.getElementById('overlayUrl');
-            input.select();
-            document.execCommand('copy');
-
-            // Visual feedback
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.textContent = '✓ Copied!';
-            btn.style.background = 'var(--accent-green)';
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.style.background = '';
-            }, 2000);
-        }
-
-        // Quick toggle goal
-        async function quickToggleGoal(goalType) {
-            try {
-                const newEnabled = !goals[goalType].enabled;
-                const response = await fetch(`/api/goals/${goalType}/toggle`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled: newEnabled })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    goals[goalType].enabled = !goals[goalType].enabled;
-                    loadGoalSettings(goalType); // Reload view
-                    updatePreview();
-                }
-            } catch (error) {
-                console.error('Error toggling goal:', error);
-                alert('Error toggling goal');
-            }
-        }
-
-        // Increment goal manually
-        async function incrementGoalManually(goalType) {
-            try {
-                const response = await fetch(`/api/goals/${goalType}/increment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ delta: 1 })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    loadAllGoals();
-                    loadGoalSettings(goalType); // Reload view
-                }
-            } catch (error) {
-                console.error('Error incrementing goal:', error);
-                alert('Error incrementing goal');
-            }
-        }
-
-        // Center goal on screen
-        async function centerGoal(goalType) {
-            const goal = goals[goalType];
-            if (!goal) return;
-
-            const centerX = Math.round((hudConfig.resolution_width - (goal.width || 500)) / 2);
-            const centerY = Math.round((hudConfig.resolution_height - (goal.height || 100)) / 2);
-
-            // Update input fields
-            document.getElementById(`goalPosX-${goalType}`).value = centerX;
-            document.getElementById(`goalPosY-${goalType}`).value = centerY;
-
-            // Save immediately
-            await saveGoalLayout(goalType);
-        }
-
-        // ===== INITIALIZE =====
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('Live Goals UI loaded');
-            setOverlayUrl();
-        });
-    </script>
+    <script src="/plugins/goals/ui.js"></script>
 </body>
 </html>

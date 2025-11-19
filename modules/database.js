@@ -1,4 +1,5 @@
 const Database = require('better-sqlite3');
+const { safeJsonParse } = require('./error-handler');
 
 class DatabaseManager {
     constructor(dbPath) {
@@ -259,8 +260,11 @@ class DatabaseManager {
         const defaults = {
             'alert_gift_min_coins': '100',
             'theme': 'dark',
-            // Soundboard Einstellungen
+            // Quick Actions Einstellungen
+            'tts_enabled': 'true',
             'soundboard_enabled': 'true',
+            'flows_enabled': 'true',
+            // Soundboard Einstellungen
             'soundboard_play_mode': 'overlap', // overlap or sequential (managed in frontend)
             'soundboard_max_queue_length': '10',
             'soundboard_like_threshold': '0',
@@ -347,8 +351,8 @@ class DatabaseManager {
         const rows = stmt.all();
         return rows.map(row => ({
             ...row,
-            trigger_condition: row.trigger_condition ? JSON.parse(row.trigger_condition) : null,
-            actions: JSON.parse(row.actions),
+            trigger_condition: row.trigger_condition ? safeJsonParse(row.trigger_condition, null) : null,
+            actions: safeJsonParse(row.actions, []),
             enabled: Boolean(row.enabled)
         }));
     }
@@ -359,8 +363,8 @@ class DatabaseManager {
         if (!row) return null;
         return {
             ...row,
-            trigger_condition: row.trigger_condition ? JSON.parse(row.trigger_condition) : null,
-            actions: JSON.parse(row.actions),
+            trigger_condition: row.trigger_condition ? safeJsonParse(row.trigger_condition, null) : null,
+            actions: safeJsonParse(row.actions, []),
             enabled: Boolean(row.enabled)
         };
     }
@@ -370,8 +374,8 @@ class DatabaseManager {
         const rows = stmt.all();
         return rows.map(row => ({
             ...row,
-            trigger_condition: row.trigger_condition ? JSON.parse(row.trigger_condition) : null,
-            actions: JSON.parse(row.actions),
+            trigger_condition: row.trigger_condition ? safeJsonParse(row.trigger_condition, null) : null,
+            actions: safeJsonParse(row.actions, []),
             enabled: Boolean(row.enabled)
         }));
     }
@@ -520,7 +524,7 @@ class DatabaseManager {
         const rows = stmt.all(limit);
         return rows.map(row => ({
             ...row,
-            data: JSON.parse(row.data)
+            data: safeJsonParse(row.data, {})
         }));
     }
 
@@ -535,7 +539,7 @@ class DatabaseManager {
         const rows = stmt.all();
         return rows.map(row => ({
             ...row,
-            config: JSON.parse(row.config)
+            config: safeJsonParse(row.config, {})
         }));
     }
 
@@ -545,7 +549,7 @@ class DatabaseManager {
         if (!row) return null;
         return {
             ...row,
-            config: JSON.parse(row.config)
+            config: safeJsonParse(row.config, {})
         };
     }
 
@@ -702,6 +706,38 @@ class DatabaseManager {
             physics_wind_strength: 0.0005,
             physics_wind_variation: 0.0003,
 
+            // Wind Simulation
+            wind_enabled: false,
+            wind_strength: 50,
+            wind_direction: 'auto',
+
+            // Bounce Physics
+            floor_enabled: true,
+            bounce_enabled: true,
+            bounce_height: 0.6,
+            bounce_damping: 0.1,
+
+            // Color Theme
+            color_mode: 'off',
+            color_intensity: 0.5,
+
+            // Rainbow Mode
+            rainbow_enabled: false,
+            rainbow_speed: 1.0,
+
+            // Pixel Mode
+            pixel_enabled: false,
+            pixel_size: 4,
+
+            // SuperFan Burst
+            superfan_burst_enabled: true,
+            superfan_burst_intensity: 3.0,
+            superfan_burst_duration: 2000,
+
+            // FPS Optimization
+            fps_optimization_enabled: true,
+            fps_sensitivity: 0.8,
+
             // Appearance Settings
             emoji_min_size_px: 40,
             emoji_max_size_px: 80,
@@ -802,7 +838,7 @@ class DatabaseManager {
         console.log('🔍 [DATABASE] row.config_json length:', row.config_json ? row.config_json.length : 0);
 
         // Return flat config object with enabled flag
-        const configData = JSON.parse(row.config_json);
+        const configData = safeJsonParse(row.config_json, {});
         console.log('🔍 [DATABASE] Parsed config_json:', JSON.stringify(configData).substring(0, 200));
         console.log('🔍 [DATABASE] configData.emoji_set:', configData.emoji_set);
         console.log('🔍 [DATABASE] configData.emoji_set type:', typeof configData.emoji_set, Array.isArray(configData.emoji_set));

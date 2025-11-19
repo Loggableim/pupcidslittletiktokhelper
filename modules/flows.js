@@ -60,6 +60,12 @@ class FlowEngine {
 
     async processEvent(eventType, eventData) {
         try {
+            // Check if flows are globally enabled
+            const flowsEnabled = this.db.getSetting('flows_enabled');
+            if (flowsEnabled === 'false') {
+                return; // Flows are globally disabled
+            }
+
             // Alle aktiven Flows abrufen
             const flows = this.db.getEnabledFlows();
 
@@ -96,7 +102,31 @@ class FlowEngine {
         const { operator, field, value } = condition;
 
         // Feld-Wert aus Event-Daten holen
-        const fieldValue = this.getNestedValue(eventData, field);
+        let fieldValue = this.getNestedValue(eventData, field);
+
+        // Special handling for SuperFan level
+        if (field === 'superfan_level' || field === 'superFanLevel') {
+            if (eventData.isSuperFan || eventData.superFan) {
+                fieldValue = eventData.superFanLevel || 1;
+            } else if (eventData.badges && Array.isArray(eventData.badges)) {
+                const superFanBadge = eventData.badges.find(b => 
+                    b.type === 'superfan' || b.name?.toLowerCase().includes('superfan')
+                );
+                fieldValue = superFanBadge ? (superFanBadge.level || 1) : 0;
+            } else {
+                fieldValue = 0;
+            }
+        }
+
+        // Special handling for gift type/name
+        if (field === 'gift_type' || field === 'giftType') {
+            fieldValue = eventData.giftName || eventData.giftType || '';
+        }
+
+        // Special handling for gift value/coins
+        if (field === 'gift_value' || field === 'giftValue') {
+            fieldValue = eventData.coins || eventData.giftValue || 0;
+        }
 
         // Operator auswerten
         switch (operator) {
@@ -579,6 +609,44 @@ class FlowEngine {
 
                     this.oscBridge.triggerAvatarParameter(paramName, value, duration);
                     console.log(`📡 OSC VRChat: Parameter ${paramName}=${value} triggered (Flow)`);
+                    break;
+                }
+
+                // ========== EMOJI RAIN ACTIONS ==========
+                case 'emoji_rain_trigger':
+                case 'trigger_emoji_rain': {
+                    const emoji = action.emoji ? this.replaceVariables(action.emoji, eventData) : null;
+                    const count = action.count || 10;
+                    const duration = action.duration || 0;
+                    const intensity = action.intensity || 1.0;
+                    const burst = action.burst || false;
+
+                    try {
+                        const response = await axios({
+                            method: 'POST',
+                            url: 'http://localhost:3000/api/emoji-rain/trigger',
+                            data: {
+                                emoji: emoji,
+                                count: count,
+                                duration: duration,
+                                intensity: intensity,
+                                username: eventData.username || eventData.uniqueId || null,
+                                burst: burst
+                            },
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            timeout: 5000
+                        });
+
+                        if (this.logger) {
+                            this.logger.info(`🌧️ Emoji Rain triggered: ${count}x ${emoji || 'random'} (Flow)`);
+                        }
+                    } catch (error) {
+                        if (this.logger) {
+                            this.logger.error('Emoji Rain trigger error:', error);
+                        }
+                    }
                     break;
                 }
 

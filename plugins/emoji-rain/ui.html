@@ -513,10 +513,221 @@
                 <label for="image_urls">Manuelle Bild-URLs (eine pro Zeile)</label>
                 <textarea id="image_urls" rows="3" placeholder="/images/coin.png&#10;/images/heart.png&#10;https://example.com/star.png"></textarea>
                 <div class="help-text">Optional: Externe URLs hinzufügen</div>
+            </div>
+        </div>
+
+        <!-- Per-User Emoji Selection -->
+        <div class="config-section">
+            <h2>👤 Benutzerspezifische Emojis</h2>
+            <div class="help-text" style="margin-bottom: 15px;">
+                Weise jedem Benutzer ein individuelles Emoji zu. Falls kein Mapping existiert, wird das Standard-Emoji verwendet.
+            </div>
+            
             <div class="form-group">
-                <label for="image_urls">Bild-URLs (eine pro Zeile)</label>
-                <textarea id="image_urls" rows="5" placeholder="/images/coin.png&#10;/images/heart.png&#10;https://example.com/star.png"></textarea>
-                <div class="help-text">Gib die URLs zu deinen Bildern ein (PNG, GIF, JPG)</div>
+                <label for="user_filter">Benutzer filtern</label>
+                <input type="text" id="user_filter" placeholder="Benutzername eingeben...">
+                <div class="help-text">Tippe, um Benutzer zu filtern</div>
+            </div>
+
+            <div class="form-group">
+                <label>Benutzer-Emoji-Zuordnungen</label>
+                <div id="user-emoji-mappings" style="max-height: 300px; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <div style="text-align: center; color: #9ca3af;">Keine Zuordnungen</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 10px; align-items: end;">
+                    <div>
+                        <label for="new_user_name">Benutzername</label>
+                        <input type="text" id="new_user_name" placeholder="username">
+                    </div>
+                    <div>
+                        <label for="new_user_emoji">Emoji</label>
+                        <input type="text" id="new_user_emoji" placeholder="🌟" maxlength="10">
+                    </div>
+                    <button type="button" id="add-user-mapping-btn" class="secondary">➕ Hinzufügen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wind Simulation -->
+        <div class="config-section">
+            <h2>💨 Wind Simulation</h2>
+            <div class="form-group">
+                <label for="wind_enabled" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="wind_enabled" style="width: auto;">
+                    Wind aktivieren
+                </label>
+                <div class="help-text">Horizontale Bewegung der Emojis</div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="wind_strength">Windstärke</label>
+                    <input type="range" id="wind_strength" min="0" max="100" step="5">
+                    <span class="range-value" id="wind_strength_value">50</span>
+                    <div class="help-text">0 = kein Wind, 100 = Sturm</div>
+                </div>
+                <div class="form-group">
+                    <label for="wind_direction">Windrichtung</label>
+                    <select id="wind_direction">
+                        <option value="auto">Auto (variabel)</option>
+                        <option value="left">Links</option>
+                        <option value="right">Rechts</option>
+                    </select>
+                    <div class="help-text">Auto = natürliche Variation</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Bounce Physics -->
+        <div class="config-section">
+            <h2>🏀 Erweiterte Bounce-Physik</h2>
+            <div class="form-group">
+                <label for="floor_enabled" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="floor_enabled" style="width: auto;" checked>
+                    Boden aktivieren
+                </label>
+                <div class="help-text">Deaktivieren für Free-Flow Mode (Emojis fliegen durch)</div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="bounce_height">Bounce Höhe</label>
+                    <input type="range" id="bounce_height" min="0" max="1" step="0.05">
+                    <span class="range-value" id="bounce_height_value">0.6</span>
+                    <div class="help-text">Wie hoch emojis zurückprallen</div>
+                </div>
+                <div class="form-group">
+                    <label for="bounce_damping">Damping (Dämpfung)</label>
+                    <input type="range" id="bounce_damping" min="0" max="1" step="0.05">
+                    <span class="range-value" id="bounce_damping_value">0.1</span>
+                    <div class="help-text">Energieverlust nach jedem Bounce</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Theme -->
+        <div class="config-section">
+            <h2>🎨 Farbthemen & Effekte</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="color_mode">Farbmodus</label>
+                    <select id="color_mode">
+                        <option value="off">Aus</option>
+                        <option value="warm">Warm</option>
+                        <option value="cool">Cool</option>
+                        <option value="neon">Neon</option>
+                        <option value="pastel">Pastel</option>
+                    </select>
+                    <div class="help-text">Theme-basierte Farbgebung</div>
+                </div>
+                <div class="form-group">
+                    <label for="color_intensity">Farbintensität</label>
+                    <input type="range" id="color_intensity" min="0" max="1" step="0.1">
+                    <span class="range-value" id="color_intensity_value">0.5</span>
+                    <div class="help-text">Stärke des Farbeffekts</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rainbow Mode -->
+        <div class="config-section">
+            <h2>🌈 Rainbow Modus</h2>
+            <div class="form-group">
+                <label for="rainbow_enabled" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="rainbow_enabled" style="width: auto;">
+                    Rainbow Mode aktivieren
+                </label>
+                <div class="help-text">Kontinuierliche Hue-Rotation (Pride-Style)</div>
+            </div>
+
+            <div class="form-group">
+                <label for="rainbow_speed">Rainbow Geschwindigkeit</label>
+                <input type="range" id="rainbow_speed" min="0.1" max="5" step="0.1">
+                <span class="range-value" id="rainbow_speed_value">1.0</span>
+                <div class="help-text">Rotationsgeschwindigkeit des Regenbogens</div>
+            </div>
+        </div>
+
+        <!-- Pixel Mode -->
+        <div class="config-section">
+            <h2>🕹️ Retro Pixel Mode</h2>
+            <div class="form-group">
+                <label for="pixel_enabled" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="pixel_enabled" style="width: auto;">
+                    Pixel Mode aktivieren
+                </label>
+                <div class="help-text">8-Bit Retro Pixelisierung</div>
+            </div>
+
+            <div class="form-group">
+                <label for="pixel_size">Pixel Größe</label>
+                <input type="range" id="pixel_size" min="1" max="10" step="1">
+                <span class="range-value" id="pixel_size_value">4</span>
+                <div class="help-text">Größe der Pixel (höher = gröber)</div>
+            </div>
+        </div>
+
+        <!-- SuperFan Burst -->
+        <div class="config-section">
+            <h2>⭐ SuperFan Burst</h2>
+            <div class="form-group">
+                <label for="superfan_burst_enabled" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="superfan_burst_enabled" style="width: auto;" checked>
+                    SuperFan Burst aktivieren
+                </label>
+                <div class="help-text">Automatischer Burst bei SuperFan-Events</div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="superfan_burst_intensity">Burst Intensität</label>
+                    <input type="range" id="superfan_burst_intensity" min="1" max="10" step="0.5">
+                    <span class="range-value" id="superfan_burst_intensity_value">3.0</span>
+                    <div class="help-text">Multiplikator für Emoji-Anzahl</div>
+                </div>
+                <div class="form-group">
+                    <label for="superfan_burst_duration">Burst Dauer (ms)</label>
+                    <input type="number" id="superfan_burst_duration" min="500" max="10000" step="500" value="2000">
+                    <div class="help-text">Dauer des Burst-Effekts</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FPS Optimization -->
+        <div class="config-section">
+            <h2>⚡ Dynamische FPS-Optimierung</h2>
+            <div class="form-group">
+                <label for="fps_optimization_enabled" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="fps_optimization_enabled" style="width: auto;" checked>
+                    Automatische FPS-Optimierung
+                </label>
+                <div class="help-text">Reduziert automatisch Effekte bei FPS-Drop</div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="fps_sensitivity">Sensitivität</label>
+                    <input type="range" id="fps_sensitivity" min="0" max="1" step="0.1">
+                    <span class="range-value" id="fps_sensitivity_value">0.8</span>
+                    <div class="help-text">0 = träge, 1 = aggressiv</div>
+                </div>
+                <div class="form-group">
+                    <label for="target_fps_optimization">Ziel-FPS</label>
+                    <input type="number" id="target_fps_optimization" min="30" max="120" step="10" value="60">
+                    <div class="help-text">Angestrebte Framerate</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                <strong>📊 Performance Status:</strong><br>
+                <div style="margin-top: 10px; font-family: monospace;">
+                    <div>Aktuelle FPS: <span id="current-fps-display" style="color: #4CAF50; font-weight: bold;">--</span></div>
+                    <div>Aktive Emojis: <span id="active-emojis-display" style="color: #4CAF50; font-weight: bold;">--</span></div>
+                    <div>Performance-Modus: <span id="performance-mode-display" style="color: #4CAF50; font-weight: bold;">Normal</span></div>
+                </div>
             </div>
         </div>
 
@@ -557,16 +768,7 @@
                     <label for="physics_restitution">Elastizität (Bounce)</label>
                     <input type="range" id="physics_restitution" min="0" max="1" step="0.05">
                     <span class="range-value" id="physics_restitution_value">0.6</span>
-                </div>
-                <div class="form-group">
-                    <label for="physics_wind_strength">Windstärke</label>
-                    <input type="range" id="physics_wind_strength" min="0" max="0.01" step="0.0001">
-                    <span class="range-value" id="physics_wind_strength_value">0.0005</span>
-                </div>
-                <div class="form-group">
-                    <label for="physics_wind_variation">Wind-Variation</label>
-                    <input type="range" id="physics_wind_variation" min="0" max="0.01" step="0.0001">
-                    <span class="range-value" id="physics_wind_variation_value">0.0003</span>
+                    <div class="help-text">Grundelastizität (wird von Bounce Height überschrieben)</div>
                 </div>
             </div>
         </div>

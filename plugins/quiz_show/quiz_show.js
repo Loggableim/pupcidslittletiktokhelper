@@ -39,55 +39,79 @@
 
                 // Add active class to selected
                 button.classList.add('active');
-                document.getElementById(tabName).classList.add('active');
+                const tabContent = document.getElementById(tabName);
+                if (tabContent) {
+                    tabContent.classList.add('active');
+                }
             });
         });
     }
 
     // Event Listeners
     function initializeEventListeners() {
+        // Safe event listener helper
+        const addListener = (id, event, handler) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, handler);
+        };
+
         // Dashboard controls
-        document.getElementById('startQuizBtn').addEventListener('click', startQuiz);
-        document.getElementById('nextQuestionBtn').addEventListener('click', nextQuestion);
-        document.getElementById('stopQuizBtn').addEventListener('click', stopQuiz);
+        addListener('startQuizBtn', 'click', startQuiz);
+        addListener('nextQuestionBtn', 'click', nextQuestion);
+        addListener('stopQuizBtn', 'click', stopQuiz);
 
         // Question management
-        document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
-        document.getElementById('updateQuestionBtn').addEventListener('click', updateQuestion);
-        document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
-        document.getElementById('uploadQuestionsBtn').addEventListener('click', uploadQuestions);
-        document.getElementById('exportQuestionsBtn').addEventListener('click', exportQuestions);
+        addListener('addQuestionBtn', 'click', addQuestion);
+        addListener('updateQuestionBtn', 'click', updateQuestion);
+        addListener('cancelEditBtn', 'click', cancelEdit);
+        addListener('uploadQuestionsBtn', 'click', uploadQuestions);
+        addListener('exportQuestionsBtn', 'click', exportQuestions);
 
         // Settings
-        document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+        addListener('saveSettingsBtn', 'click', saveSettings);
 
         // Leaderboard
-        document.getElementById('exportLeaderboardBtn').addEventListener('click', exportLeaderboard);
-        document.getElementById('importLeaderboardBtn').addEventListener('click', () => {
-            document.getElementById('importModal').classList.remove('hidden');
+        addListener('exportLeaderboardBtn', 'click', exportLeaderboard);
+        addListener('importLeaderboardBtn', 'click', () => {
+            const modal = document.getElementById('importModal');
+            if (modal) modal.classList.remove('hidden');
         });
-        document.getElementById('resetLeaderboardBtn').addEventListener('click', resetLeaderboard);
+        addListener('resetLeaderboardBtn', 'click', resetLeaderboard);
+        addListener('newSeasonBtn', 'click', createNewSeason);
+        addListener('seasonSelect', 'change', (e) => loadSeasonLeaderboard(e.target.value));
 
         // Import modal
-        document.getElementById('confirmImportBtn').addEventListener('click', importLeaderboard);
-        document.getElementById('cancelImportBtn').addEventListener('click', () => {
-            document.getElementById('importModal').classList.add('hidden');
+        addListener('confirmImportBtn', 'click', importLeaderboard);
+        addListener('cancelImportBtn', 'click', () => {
+            const modal = document.getElementById('importModal');
+            if (modal) modal.classList.add('hidden');
         });
-        document.querySelector('.modal-close').addEventListener('click', () => {
-            document.getElementById('importModal').classList.add('hidden');
-        });
+
+        const modalClose = document.querySelector('.modal-close');
+        if (modalClose) {
+            modalClose.addEventListener('click', () => {
+                const modal = document.getElementById('importModal');
+                if (modal) modal.classList.add('hidden');
+            });
+        }
     }
 
     // Socket.IO Listeners
     function initializeSocketListeners() {
         socket.on('connect', () => {
-            document.getElementById('connectionStatus').textContent = 'Verbunden';
-            document.getElementById('connectionStatus').className = 'status-badge status-connected';
+            const status = document.getElementById('connectionStatus');
+            if (status) {
+                status.textContent = 'Verbunden';
+                status.className = 'status-badge status-connected';
+            }
         });
 
         socket.on('disconnect', () => {
-            document.getElementById('connectionStatus').textContent = 'Getrennt';
-            document.getElementById('connectionStatus').className = 'status-badge status-error';
+            const status = document.getElementById('connectionStatus');
+            if (status) {
+                status.textContent = 'Getrennt';
+                status.className = 'status-badge status-error';
+            }
         });
 
         socket.on('quiz-show:state-update', handleStateUpdate);
@@ -111,6 +135,8 @@
             if (data.success) {
                 currentState = data;
                 updateUI();
+                loadCategories();
+                loadSeasons();
             }
         } catch (error) {
             console.error('Error loading state:', error);
@@ -143,6 +169,9 @@
             document.getElementById('answerD').value.trim()
         ];
         const correct = parseInt(document.getElementById('correctAnswer').value);
+        const category = document.getElementById('questionCategory').value.trim() || 'Allgemein';
+        const difficulty = parseInt(document.getElementById('questionDifficulty').value);
+        const info = document.getElementById('questionInfo').value.trim() || null;
 
         if (!question || answers.some(a => !a)) {
             alert('Bitte alle Felder ausfüllen');
@@ -153,7 +182,7 @@
             const response = await fetch('/api/quiz-show/questions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question, answers, correct })
+                body: JSON.stringify({ question, answers, correct, category, difficulty, info })
             });
 
             const data = await response.json();
@@ -161,6 +190,7 @@
             if (data.success) {
                 clearQuestionForm();
                 showMessage('Frage hinzugefügt', 'success');
+                loadCategories(); // Refresh categories
             } else {
                 showMessage('Fehler: ' + data.error, 'error');
             }
@@ -181,6 +211,9 @@
             document.getElementById('answerD').value.trim()
         ];
         const correct = parseInt(document.getElementById('correctAnswer').value);
+        const category = document.getElementById('questionCategory').value.trim() || 'Allgemein';
+        const difficulty = parseInt(document.getElementById('questionDifficulty').value);
+        const info = document.getElementById('questionInfo').value.trim() || null;
 
         if (!question || answers.some(a => !a)) {
             alert('Bitte alle Felder ausfüllen');
@@ -191,7 +224,7 @@
             const response = await fetch(`/api/quiz-show/questions/${editingQuestionId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question, answers, correct })
+                body: JSON.stringify({ question, answers, correct, category, difficulty, info })
             });
 
             const data = await response.json();
@@ -200,6 +233,7 @@
                 clearQuestionForm();
                 cancelEdit();
                 showMessage('Frage aktualisiert', 'success');
+                loadCategories(); // Refresh categories
             } else {
                 showMessage('Fehler: ' + data.error, 'error');
             }
@@ -221,6 +255,9 @@
         document.getElementById('answerC').value = question.answers[2];
         document.getElementById('answerD').value = question.answers[3];
         document.getElementById('correctAnswer').value = question.correct;
+        document.getElementById('questionCategory').value = question.category || 'Allgemein';
+        document.getElementById('questionDifficulty').value = question.difficulty || 2;
+        document.getElementById('questionInfo').value = question.info || '';
 
         document.getElementById('addQuestionBtn').classList.add('hidden');
         document.getElementById('updateQuestionBtn').classList.remove('hidden');
@@ -267,6 +304,9 @@
         document.getElementById('answerC').value = '';
         document.getElementById('answerD').value = '';
         document.getElementById('correctAnswer').value = '0';
+        document.getElementById('questionCategory').value = 'Allgemein';
+        document.getElementById('questionDifficulty').value = '2';
+        document.getElementById('questionInfo').value = '';
     }
 
     async function uploadQuestions() {
@@ -334,7 +374,22 @@
             jokerInfoEnabled: document.getElementById('jokerInfoEnabled').checked,
             jokerTimeEnabled: document.getElementById('jokerTimeEnabled').checked,
             jokerTimeBoost: parseInt(document.getElementById('jokerTimeBoost').value),
-            jokersPerRound: parseInt(document.getElementById('jokersPerRound').value)
+            jokersPerRound: parseInt(document.getElementById('jokersPerRound').value),
+            ttsEnabled: document.getElementById('ttsEnabled').checked,
+            ttsVoice: document.getElementById('ttsVoice').value,
+            marathonLength: parseInt(document.getElementById('marathonLength').value),
+            gameMode: document.getElementById('gameModeSelect').value,
+            categoryFilter: document.getElementById('categoryFilter').value,
+            autoMode: document.getElementById('autoMode').checked,
+            autoModeDelay: parseInt(document.getElementById('autoModeDelay').value),
+            // Voter Icons Settings
+            voterIconsEnabled: document.getElementById('voterIconsEnabled').checked,
+            voterIconSize: document.getElementById('voterIconSize').value,
+            voterIconMaxVisible: parseInt(document.getElementById('voterIconMaxVisible').value),
+            voterIconCompactMode: document.getElementById('voterIconCompactMode').checked,
+            voterIconAnimation: document.getElementById('voterIconAnimation').value,
+            voterIconPosition: document.getElementById('voterIconPosition').value,
+            voterIconShowOnScoreboard: document.getElementById('voterIconShowOnScoreboard').checked
         };
 
         try {
@@ -545,6 +600,22 @@
         document.getElementById('jokerTimeEnabled').checked = config.jokerTimeEnabled !== false;
         document.getElementById('jokerTimeBoost').value = config.jokerTimeBoost || 15;
         document.getElementById('jokersPerRound').value = config.jokersPerRound || 3;
+        document.getElementById('ttsEnabled').checked = config.ttsEnabled || false;
+        document.getElementById('ttsVoice').value = config.ttsVoice || 'default';
+        document.getElementById('marathonLength').value = config.marathonLength || 15;
+        document.getElementById('gameModeSelect').value = config.gameMode || 'classic';
+        document.getElementById('categoryFilter').value = config.categoryFilter || 'Alle';
+        document.getElementById('autoMode').checked = config.autoMode || false;
+        document.getElementById('autoModeDelay').value = config.autoModeDelay || 5;
+        
+        // Voter Icons Settings
+        document.getElementById('voterIconsEnabled').checked = config.voterIconsEnabled !== false;
+        document.getElementById('voterIconSize').value = config.voterIconSize || 'medium';
+        document.getElementById('voterIconMaxVisible').value = config.voterIconMaxVisible || 10;
+        document.getElementById('voterIconCompactMode').checked = config.voterIconCompactMode !== false;
+        document.getElementById('voterIconAnimation').value = config.voterIconAnimation || 'fade';
+        document.getElementById('voterIconPosition').value = config.voterIconPosition || 'above';
+        document.getElementById('voterIconShowOnScoreboard').checked = config.voterIconShowOnScoreboard || false;
     }
 
     function updateQuestionsList() {
@@ -559,11 +630,17 @@
             return;
         }
 
+        const difficultyStars = (difficulty) => '⭐'.repeat(difficulty || 2);
+
         container.innerHTML = questions.map((q, index) => `
             <div class="question-item" data-id="${q.id}">
                 <div class="question-number">#${index + 1}</div>
                 <div class="question-content">
                     <div class="question-text">${escapeHtml(q.question)}</div>
+                    <div class="question-meta" style="font-size: 0.9em; color: #888; margin: 5px 0;">
+                        <span>📁 ${escapeHtml(q.category || 'Allgemein')}</span>
+                        <span style="margin-left: 15px;">${difficultyStars(q.difficulty)}</span>
+                    </div>
                     <div class="question-answers">
                         ${q.answers.map((ans, idx) => `
                             <span class="answer-badge ${idx === q.correct ? 'correct' : ''}">
@@ -777,6 +854,311 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ============================================
+    // HUD OVERLAY CONFIGURATION
+    // ============================================
+
+    let hudConfig = {};
+
+    async function loadHUDConfig() {
+        try {
+            const response = await fetch('/api/quiz-show/hud-config');
+            const data = await response.json();
+
+            if (data.success && data.config) {
+                hudConfig = data.config;
+                applyHUDConfigToForm();
+            }
+        } catch (error) {
+            console.error('Error loading HUD config:', error);
+        }
+    }
+
+    function applyHUDConfigToForm() {
+        // Theme & Style
+        document.getElementById('hudTheme').value = hudConfig.theme || 'dark';
+        document.getElementById('answersLayout').value = hudConfig.answersLayout || 'grid';
+        document.getElementById('animationSpeed').value = hudConfig.animationSpeed || 1;
+        document.getElementById('animationSpeedValue').textContent = (hudConfig.animationSpeed || 1).toFixed(1);
+        document.getElementById('glowIntensity').value = hudConfig.glowIntensity || 1;
+        document.getElementById('glowIntensityValue').textContent = (hudConfig.glowIntensity || 1).toFixed(1);
+
+        // Animations
+        document.getElementById('questionAnimation').value = hudConfig.questionAnimation || 'slide-in-bottom';
+        document.getElementById('correctAnimation').value = hudConfig.correctAnimation || 'glow-pulse';
+        document.getElementById('wrongAnimation').value = hudConfig.wrongAnimation || 'shake';
+
+        // Timer
+        document.getElementById('timerVariant').value = hudConfig.timerVariant || 'circular';
+
+        // Colors
+        if (hudConfig.colors) {
+            document.getElementById('colorPrimary').value = hudConfig.colors.primary || '#3b82f6';
+            document.getElementById('colorSecondary').value = hudConfig.colors.secondary || '#8b5cf6';
+            document.getElementById('colorSuccess').value = hudConfig.colors.success || '#10b981';
+            document.getElementById('colorWarning').value = hudConfig.colors.warning || '#f59e0b';
+            document.getElementById('colorDanger').value = hudConfig.colors.danger || '#ef4444';
+        }
+
+        // Fonts
+        if (hudConfig.fonts) {
+            document.getElementById('fontFamily').value = hudConfig.fonts.family || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            document.getElementById('fontSizeQuestion').value = hudConfig.fonts.sizeQuestion || '2.2rem';
+            document.getElementById('fontSizeAnswer').value = hudConfig.fonts.sizeAnswer || '1.1rem';
+        }
+
+        // Custom CSS
+        document.getElementById('customCSS').value = hudConfig.customCSS || '';
+
+        // Stream Resolution
+        const resolution = `${hudConfig.streamWidth || 1920}x${hudConfig.streamHeight || 1080}`;
+        document.getElementById('streamResolution').value = resolution;
+        updatePreviewScale(resolution);
+    }
+
+    function getHUDConfigFromForm() {
+        const resolution = document.getElementById('streamResolution').value.split('x');
+
+        return {
+            theme: document.getElementById('hudTheme').value,
+            questionAnimation: document.getElementById('questionAnimation').value,
+            correctAnimation: document.getElementById('correctAnimation').value,
+            wrongAnimation: document.getElementById('wrongAnimation').value,
+            timerVariant: document.getElementById('timerVariant').value,
+            answersLayout: document.getElementById('answersLayout').value,
+            animationSpeed: parseFloat(document.getElementById('animationSpeed').value),
+            glowIntensity: parseFloat(document.getElementById('glowIntensity').value),
+            customCSS: document.getElementById('customCSS').value,
+            streamWidth: parseInt(resolution[0]),
+            streamHeight: parseInt(resolution[1]),
+            positions: hudConfig.positions || {},
+            colors: {
+                primary: document.getElementById('colorPrimary').value,
+                secondary: document.getElementById('colorSecondary').value,
+                success: document.getElementById('colorSuccess').value,
+                warning: document.getElementById('colorWarning').value,
+                danger: document.getElementById('colorDanger').value
+            },
+            fonts: {
+                family: document.getElementById('fontFamily').value,
+                sizeQuestion: document.getElementById('fontSizeQuestion').value,
+                sizeAnswer: document.getElementById('fontSizeAnswer').value
+            }
+        };
+    }
+
+    async function saveHUDConfig() {
+        try {
+            const config = getHUDConfigFromForm();
+
+            const response = await fetch('/api/quiz-show/hud-config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                hudConfig = data.config;
+                showMessage('hudSaveMessage', 'HUD-Konfiguration erfolgreich gespeichert!', 'success');
+                refreshPreview();
+            } else {
+                showMessage('hudSaveMessage', 'Fehler beim Speichern: ' + data.error, 'error');
+            }
+        } catch (error) {
+            showMessage('hudSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+        }
+    }
+
+    async function resetHUDConfig() {
+        if (!confirm('Möchten Sie die HUD-Konfiguration wirklich auf Standard zurücksetzen? Alle Positionen und Einstellungen gehen verloren.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/quiz-show/hud-config/reset', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                hudConfig = data.config;
+                applyHUDConfigToForm();
+                showMessage('hudSaveMessage', 'HUD-Konfiguration auf Standard zurückgesetzt!', 'success');
+                refreshPreview();
+            } else {
+                showMessage('hudSaveMessage', 'Fehler beim Zurücksetzen: ' + data.error, 'error');
+            }
+        } catch (error) {
+            showMessage('hudSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+        }
+    }
+
+    function refreshPreview() {
+        const iframe = document.getElementById('overlayPreview');
+        iframe.src = iframe.src;
+    }
+
+    function updatePreviewScale(resolution) {
+        const [width, height] = resolution.split('x').map(Number);
+        const wrapper = document.getElementById('previewWrapper');
+        const iframe = document.getElementById('overlayPreview');
+
+        // Calculate scale to fit preview
+        const wrapperWidth = wrapper.clientWidth;
+        const wrapperHeight = 500;
+        const scale = Math.min(wrapperWidth / width, wrapperHeight / height);
+
+        iframe.style.width = width + 'px';
+        iframe.style.height = height + 'px';
+        iframe.style.transform = `scale(${scale})`;
+
+        wrapper.style.height = (height * scale) + 'px';
+    }
+
+    function openOverlay() {
+        window.open('/quiz-show/overlay', 'QuizShowOverlay', 'width=1920,height=1080');
+    }
+
+    // HUD Tab Event Listeners
+    if (document.getElementById('saveHUDConfigBtn')) {
+        document.getElementById('saveHUDConfigBtn').addEventListener('click', saveHUDConfig);
+        document.getElementById('resetHUDConfigBtn').addEventListener('click', resetHUDConfig);
+        document.getElementById('openOverlayBtn').addEventListener('click', openOverlay);
+        document.getElementById('refreshPreviewBtn').addEventListener('click', refreshPreview);
+
+        // Range sliders
+        document.getElementById('animationSpeed').addEventListener('input', (e) => {
+            document.getElementById('animationSpeedValue').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        document.getElementById('glowIntensity').addEventListener('input', (e) => {
+            document.getElementById('glowIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        document.getElementById('streamResolution').addEventListener('change', (e) => {
+            updatePreviewScale(e.target.value);
+        });
+
+        // Load HUD config when HUD tab is opened
+        const hudTab = document.querySelector('[data-tab="hud"]');
+        if (hudTab) {
+            hudTab.addEventListener('click', () => {
+                setTimeout(() => {
+                    loadHUDConfig();
+                }, 100);
+            });
+        }
+    }
+
+    // ============================================
+    // CATEGORIES AND SEASONS
+    // ============================================
+    
+    async function loadCategories() {
+        try {
+            const response = await fetch('/api/quiz-show/categories');
+            const data = await response.json();
+            
+            if (data.success) {
+                const categoryList = document.getElementById('categoryList');
+                const categoryFilter = document.getElementById('categoryFilter');
+                
+                // Update datalist for question editor
+                categoryList.innerHTML = data.categories.map(cat => 
+                    `<option value="${escapeHtml(cat)}"></option>`
+                ).join('');
+                
+                // Update category filter dropdown
+                const currentFilter = categoryFilter.value;
+                categoryFilter.innerHTML = '<option value="Alle">Alle Kategorien</option>' + 
+                    data.categories.map(cat => 
+                        `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`
+                    ).join('');
+                categoryFilter.value = currentFilter || 'Alle';
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+    
+    async function loadSeasons() {
+        try {
+            const response = await fetch('/api/quiz-show/seasons');
+            const data = await response.json();
+            
+            if (data.success) {
+                const seasonSelect = document.getElementById('seasonSelect');
+                const currentSeason = seasonSelect.value;
+                
+                seasonSelect.innerHTML = '<option value="active">Aktuelle Saison</option>' +
+                    data.seasons.filter(s => !s.is_active).map(season =>
+                        `<option value="${season.id}">${escapeHtml(season.season_name)} (${new Date(season.start_date).toLocaleDateString()})</option>`
+                    ).join('');
+                    
+                if (currentSeason !== 'active') {
+                    seasonSelect.value = currentSeason;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading seasons:', error);
+        }
+    }
+    
+    async function createNewSeason() {
+        const seasonName = prompt('Name der neuen Saison:', `Saison ${new Date().getFullYear()}`);
+        if (!seasonName) return;
+        
+        if (!confirm(`Neue Saison "${seasonName}" erstellen? Die aktuelle Saison wird archiviert.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/quiz-show/seasons', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seasonName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage(`Neue Saison "${seasonName}" erstellt`, 'success');
+                loadSeasons();
+                loadInitialState(); // Reload leaderboard
+            } else {
+                showMessage('Fehler: ' + data.error, 'error');
+            }
+        } catch (error) {
+            console.error('Error creating season:', error);
+            showMessage('Fehler beim Erstellen der Saison', 'error');
+        }
+    }
+    
+    async function loadSeasonLeaderboard(seasonId) {
+        if (seasonId === 'active') {
+            await loadInitialState();
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/quiz-show/seasons/${seasonId}/leaderboard`);
+            const data = await response.json();
+            
+            if (data.success) {
+                currentState.leaderboard = data.leaderboard;
+                updateLeaderboardTable();
+            }
+        } catch (error) {
+            console.error('Error loading season leaderboard:', error);
+            showMessage('Fehler beim Laden des Leaderboards', 'error');
+        }
     }
 
     // Expose functions to window for onclick handlers

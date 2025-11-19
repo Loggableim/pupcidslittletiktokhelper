@@ -118,6 +118,33 @@ class Launcher {
     }
 
     /**
+     * Prüft ob kritische Dependencies installiert sind
+     */
+    verifyCriticalDependencies() {
+        const criticalDeps = [
+            'dotenv',
+            'express',
+            'socket.io',
+            'better-sqlite3',
+            'winston'
+        ];
+
+        const missingDeps = [];
+        
+        for (const dep of criticalDeps) {
+            const depPath = path.join(this.projectRoot, 'node_modules', dep);
+            if (!fs.existsSync(depPath)) {
+                missingDeps.push(dep);
+            }
+        }
+
+        return {
+            valid: missingDeps.length === 0,
+            missing: missingDeps
+        };
+    }
+
+    /**
      * Prüft und installiert Dependencies
      */
     async checkDependencies() {
@@ -133,24 +160,39 @@ class Launcher {
 
             this.log.newLine();
             this.log.success('Dependencies erfolgreich installiert!');
+            return;
+        }
+
+        // Prüfe ob kritische Dependencies vorhanden sind
+        const verification = this.verifyCriticalDependencies();
+        if (!verification.valid) {
+            this.log.warn(`Fehlende Dependencies erkannt: ${verification.missing.join(', ')}`);
+            this.log.warn('Reinstalliere Dependencies...');
+            this.log.newLine();
+
+            await this.installDependencies();
+
+            this.log.newLine();
+            this.log.success('Dependencies erfolgreich installiert!');
+            return;
+        }
+
+        // Prüfe ob package-lock.json neuer ist als node_modules
+        const nodeModulesStat = fs.statSync(nodeModulesPath);
+        const packageLockStat = fs.existsSync(packageLockPath)
+            ? fs.statSync(packageLockPath)
+            : null;
+
+        if (packageLockStat && packageLockStat.mtimeMs > nodeModulesStat.mtimeMs) {
+            this.log.warn('package-lock.json wurde aktualisiert. Reinstalliere Dependencies...');
+            this.log.newLine();
+
+            await this.installDependencies();
+
+            this.log.newLine();
+            this.log.success('Dependencies aktualisiert!');
         } else {
-            // Prüfe ob package-lock.json neuer ist als node_modules
-            const nodeModulesStat = fs.statSync(nodeModulesPath);
-            const packageLockStat = fs.existsSync(packageLockPath)
-                ? fs.statSync(packageLockPath)
-                : null;
-
-            if (packageLockStat && packageLockStat.mtimeMs > nodeModulesStat.mtimeMs) {
-                this.log.warn('package-lock.json wurde aktualisiert. Reinstalliere Dependencies...');
-                this.log.newLine();
-
-                await this.installDependencies();
-
-                this.log.newLine();
-                this.log.success('Dependencies aktualisiert!');
-            } else {
-                this.log.success('Dependencies bereits installiert');
-            }
+            this.log.success('Dependencies bereits installiert');
         }
     }
 
@@ -168,10 +210,17 @@ class Launcher {
             // Spinner starten (nur bei TTY)
             const spinner = this.log.spinner('Installiere Dependencies...');
 
+            // Umgebungsvariablen setzen, um Puppeteer-Downloads zu überspringen
+            // Dies verhindert Netzwerkfehler bei der Installation
+            const env = Object.assign({}, process.env, {
+                PUPPETEER_SKIP_DOWNLOAD: 'true'
+            });
+
             execSync(command, {
                 cwd: this.projectRoot,
                 stdio: ['pipe', 'pipe', 'pipe'],
-                encoding: 'utf8'
+                encoding: 'utf8',
+                env: env
             });
 
             spinner.stop();
@@ -205,8 +254,14 @@ class Launcher {
             }
         } catch (error) {
             // Update-Manager nicht verfügbar oder Fehler
-            this.log.warn('Update-Check übersprungen (Update-Manager nicht verfügbar)');
-            this.log.debug(`Grund: ${error.message}`);
+            // Dies ist nicht kritisch - der Server kann trotzdem starten
+            if (error.code === 'MODULE_NOT_FOUND') {
+                this.log.warn('Update-Manager nicht verfügbar (fehlende Dependencies)');
+                this.log.info('Bitte stelle sicher, dass alle Dependencies installiert sind: npm install');
+            } else {
+                this.log.warn('Update-Check übersprungen (temporärer Fehler)');
+            }
+            this.log.debug(`Details: ${error.message}`);
         }
     }
 
@@ -215,24 +270,13 @@ class Launcher {
      */
     async startServer() {
         this.log.newLine();
-        this.log.header(`${this.log.symbols.rocket} TikTok Stream Tool läuft!`);
-
-        this.log.box('Wichtige URLs', [
-            `Dashboard: http://localhost:3000/dashboard.html`,
-            `Overlay:   http://localhost:3000/overlay.html`,
-            '',
-            `${this.log.symbols.warning} WICHTIG: Öffne das Overlay und klicke '${this.log.symbols.success} Audio aktivieren'!`
-        ]);
+        this.log.header(`${this.log.symbols.rocket} Pup Cids little TikTok Helper wird gestartet...`);
 
         this.log.newLine();
-        this.log.info('Zum Beenden: Strg+C drücken');
+        this.log.info('Server wird initialisiert...');
+        this.log.info('Bitte warten...');
         this.log.separator();
         this.log.newLine();
-
-        // Browser öffnen (nach 2 Sekunden)
-        setTimeout(() => {
-            this.openBrowser('http://localhost:3000/dashboard.html');
-        }, 2000);
 
         // Server starten (blockierend)
         const serverPath = path.join(this.projectRoot, 'server.js');
@@ -272,34 +316,6 @@ class Launcher {
         } catch (error) {
             this.log.error(`Server konnte nicht gestartet werden: ${error.message}`);
             throw error;
-        }
-    }
-
-    /**
-     * Öffnet Browser (platform-spezifisch)
-     */
-    openBrowser(url) {
-        try {
-            const platform = process.platform;
-            let command;
-
-            if (platform === 'win32') {
-                command = `start ${url}`;
-            } else if (platform === 'darwin') {
-                command = `open "${url}"`;
-            } else {
-                command = `xdg-open "${url}"`;
-            }
-
-            execSync(command, {
-                stdio: 'ignore',
-                windowsHide: true
-            });
-
-            this.log.info(`Browser geöffnet: ${url}`);
-        } catch (error) {
-            // Ignoriere Fehler (Browser könnte nicht verfügbar sein)
-            this.log.debug(`Browser konnte nicht geöffnet werden: ${error.message}`);
         }
     }
 

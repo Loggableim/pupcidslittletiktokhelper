@@ -48,6 +48,7 @@
         let socket;
         let emojis = []; // Track emoji bodies and DOM elements
         let particlePool = []; // Pool of reusable particle elements
+        let userEmojiMap = {}; // User-specific emoji mappings
         let windForce = 0;
         let perfHudVisible = false;
         let resolutionIndicatorVisible = false;
@@ -163,11 +164,16 @@
             // Add temporary glow
             if (config.enable_glow) {
                 emoji.element.classList.add('glowing');
-                setTimeout(() => {
+                // Clear existing timeout if any
+                if (emoji.glowTimeout) {
+                    clearTimeout(emoji.glowTimeout);
+                }
+                emoji.glowTimeout = setTimeout(() => {
                     // Check if element still exists before removing class
-                    if (emoji.element) {
+                    if (emoji.element && !emoji.removed) {
                         emoji.element.classList.remove('glowing');
                     }
+                    emoji.glowTimeout = null;
                 }, 300);
             }
 
@@ -176,11 +182,16 @@
                 spawnImpactParticles(emoji.body.position.x, emoji.body.position.y, 8);
             }
 
-            setTimeout(() => {
+            // Clear existing timeout if any
+            if (emoji.bounceTimeout) {
+                clearTimeout(emoji.bounceTimeout);
+            }
+            emoji.bounceTimeout = setTimeout(() => {
                 // Check if element still exists before removing class
-                if (emoji.element) {
+                if (emoji.element && !emoji.removed) {
                     emoji.element.classList.remove('bouncing');
                 }
+                emoji.bounceTimeout = null;
             }, 500);
         }
 
@@ -260,6 +271,16 @@
             // Update all emojis
             emojis.forEach(emoji => {
                 if (emoji.body) {
+                    // Check if emoji has escaped the world bounds
+                    const pos = emoji.body.position;
+                    const margin = 200; // Extra margin outside canvas
+                    if (pos.x < -margin || pos.x > canvasWidth + margin || 
+                        pos.y < -margin || pos.y > canvasHeight + margin) {
+                        // Emoji escaped, remove it
+                        removeEmoji(emoji);
+                        return;
+                    }
+
                     // Apply wind
                     Body.applyForce(emoji.body, emoji.body.position, {
                         x: windForce,
@@ -312,7 +333,26 @@
         }
 
         // Spawn emoji with enhanced effects
-        function spawnEmoji(emoji, x, y, size) {
+        function spawnEmoji(emoji, x, y, size, username = null, color = null) {
+            // Check for user-specific emoji (try multiple username formats)
+            if (username) {
+                // Try exact match first
+                if (userEmojiMap[username]) {
+                    emoji = userEmojiMap[username];
+                    console.log(`👤 [USER MAPPING] Found emoji for ${username}: ${emoji}`);
+                } else {
+                    // Try case-insensitive match
+                    const lowerUsername = username.toLowerCase();
+                    const mappedUser = Object.keys(userEmojiMap).find(key => 
+                        key.toLowerCase() === lowerUsername
+                    );
+                    if (mappedUser) {
+                        emoji = userEmojiMap[mappedUser];
+                        console.log(`👤 [USER MAPPING] Found emoji for ${username} (case-insensitive): ${emoji}`);
+                    }
+                }
+            }
+
             // Normalize x position (0-1 to px)
             if (x >= 0 && x <= 1) {
                 x = x * canvasWidth;
@@ -352,10 +392,11 @@
                 element.style.fontSize = size + 'px';
             }
 
-            // Use transform3d for better performance
-            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+            // Set initial position with explicit position style to prevent top-left corner freeze
+            element.style.position = 'absolute';
             element.style.left = '0';
             element.style.top = '0';
+            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
 
             document.getElementById('canvas-container').appendChild(element);
 
@@ -379,13 +420,21 @@
 
         // Fade out emoji
         function fadeOutEmoji(emoji) {
-            if (emoji.fading) return;
+            if (emoji.fading || emoji.removed) return;
 
             emoji.fading = true;
-            emoji.element.classList.add('fading');
+            if (emoji.element) {
+                emoji.element.classList.add('fading');
+            }
 
-            setTimeout(() => {
+            // Clear any pending timeout before setting a new one
+            if (emoji.fadeTimeout) {
+                clearTimeout(emoji.fadeTimeout);
+            }
+            
+            emoji.fadeTimeout = setTimeout(() => {
                 removeEmoji(emoji);
+                emoji.fadeTimeout = null;
             }, config.emoji_fade_duration_ms);
         }
 
@@ -394,6 +443,20 @@
             if (emoji.removed) return;
 
             emoji.removed = true;
+
+            // Clean up all pending timeouts to prevent memory leaks
+            if (emoji.fadeTimeout) {
+                clearTimeout(emoji.fadeTimeout);
+                emoji.fadeTimeout = null;
+            }
+            if (emoji.bounceTimeout) {
+                clearTimeout(emoji.bounceTimeout);
+                emoji.bounceTimeout = null;
+            }
+            if (emoji.glowTimeout) {
+                clearTimeout(emoji.glowTimeout);
+                emoji.glowTimeout = null;
+            }
 
             // Remove from physics world
             if (emoji.body) {
@@ -416,16 +479,20 @@
             const emoji = data.emoji || getRandomEmoji();
             const x = data.x !== undefined ? data.x : Math.random();
             const y = data.y !== undefined ? data.y : 0;
+            const username = data.username || null;
+            const color = data.color || null;
+
+            console.log(`🌧️ [OBS HUD SPAWN] count=${count}, emoji=${emoji}, username=${username}, color=${color}`);
 
             for (let i = 0; i < count; i++) {
                 const size = config.emoji_min_size_px + Math.random() * (config.emoji_max_size_px - config.emoji_min_size_px);
                 const offsetX = x + (Math.random() - 0.5) * 0.2;
                 const offsetY = y - i * 5;
 
-                spawnEmoji(emoji, offsetX, offsetY, size);
+                spawnEmoji(emoji, offsetX, offsetY, size, username, color);
             }
 
-            console.log(`🌧️ Spawned ${count}x ${emoji} at (${x.toFixed(2)}, ${y})`);
+            console.log(`🌧️ Spawned ${count}x ${emoji} at (${x.toFixed(2)}, ${y})${username ? ' for ' + username : ''}`);
         }
 
         // Get random emoji from config
@@ -491,6 +558,23 @@
                 }
             } catch (error) {
                 console.error('❌ Failed to load config:', error);
+            }
+        }
+
+        // Load user emoji mappings
+        async function loadUserEmojiMappings() {
+            try {
+                const response = await fetch('/api/emoji-rain/user-mappings');
+                const data = await response.json();
+
+                if (data.success && data.mappings) {
+                    userEmojiMap = data.mappings;
+                    console.log('✅ [OBS HUD] User emoji mappings loaded:', userEmojiMap);
+                    console.log('👤 [USER MAPPINGS] Total mappings:', Object.keys(userEmojiMap).length);
+                    console.log('👤 [USER MAPPINGS] Users:', Object.keys(userEmojiMap).join(', '));
+                }
+            } catch (error) {
+                console.error('❌ Failed to load user emoji mappings:', error);
             }
         }
 
@@ -562,6 +646,15 @@
                 config.enabled = data.enabled;
                 console.log('🔄 Emoji rain ' + (data.enabled ? 'enabled' : 'disabled'));
             });
+
+            socket.on('emoji-rain:user-mappings-update', (data) => {
+                if (data.mappings) {
+                    userEmojiMap = data.mappings;
+                    console.log('🔄 [OBS HUD] User emoji mappings updated', userEmojiMap);
+                    console.log('👤 [USER MAPPINGS UPDATE] Total mappings:', Object.keys(userEmojiMap).length);
+                    console.log('👤 [USER MAPPINGS UPDATE] Users:', Object.keys(userEmojiMap).join(', '));
+                }
+            });
         }
 
         // Initialize everything
@@ -569,6 +662,7 @@
             console.log('🌧️ Initializing OBS HUD Emoji Rain Overlay...');
 
             await loadConfig();
+            await loadUserEmojiMappings();
             initPhysics();
             initSocket();
 

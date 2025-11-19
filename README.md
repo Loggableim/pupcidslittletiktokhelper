@@ -83,21 +83,33 @@ cd pupcidslittletiktokhelper
 # Dependencies installieren
 npm install
 
+# Eulerstream API Key konfigurieren (ERFORDERLICH)
+# Option 1: .env Datei erstellen
+echo "EULER_API_KEY=dein_api_key_hier" > .env
+
+# Option 2: Oder über Dashboard Settings nach dem Start
+
 # Server starten
 npm start
 ```
 
 Dashboard öffnet sich automatisch unter `http://localhost:3000`
 
+**WICHTIG:** Ein Eulerstream API Key ist erforderlich, um sich mit TikTok LIVE zu verbinden.
+- API Key erhalten: [https://www.eulerstream.com](https://www.eulerstream.com)
+- Detaillierte Anleitung: Siehe `EULERSTREAM_API_GUIDE.md`
+- API Key testen: `node validate-euler-api-key.js`
+
 ---
 
 ## Schnellstart
 
 ### 1. Mit TikTok verbinden
-1. Dashboard öffnen: `http://localhost:3000`
-2. TikTok-Username eingeben (ohne @)
-3. "Connect" klicken
-4. **Wichtig:** Du musst LIVE sein auf TikTok!
+1. **API Key konfigurieren** (siehe Installation oben)
+2. Dashboard öffnen: `http://localhost:3000`
+3. TikTok-Username eingeben (ohne @)
+4. "Connect" klicken
+5. **Wichtig:** Du musst LIVE sein auf TikTok!
 
 ### 2. OBS einrichten
 
@@ -232,7 +244,7 @@ MIT License - siehe [LICENSE](LICENSE)
 
 ## Credits
 
-- [TikTok Live Connector](https://github.com/zerodytrash/TikTok-Live-Connector) by @zerodytrash
+- [Eulerstream](https://www.eulerstream.com/) - TikTok LIVE WebSocket API and connection service
 - [TikTok TTS API](https://github.com/oscie57/tiktok-voice) by @oscie57
 - [MyInstants](https://www.myinstants.com/) für Sounds
 - [Tailwind CSS](https://tailwindcss.com/), [Socket.IO](https://socket.io/), [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3)

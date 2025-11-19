@@ -6,7 +6,7 @@ const { extract } = require('zip-lib');
 /**
  * Plugin Routes - Verwaltet Plugin-Upload, Aktivierung, Deaktivierung, etc.
  */
-function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger) {
+function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger, io = null) {
     // Multer für ZIP-Upload konfigurieren
     const pluginUploadDir = path.join(__dirname, '..', 'plugins', '_uploads');
     if (!fs.existsSync(pluginUploadDir)) {
@@ -289,6 +289,11 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger)
             const success = await pluginLoader.enablePlugin(id);
 
             if (success) {
+                // Notify all clients that plugins have changed
+                if (io) {
+                    io.emit('plugins:changed', { action: 'enabled', pluginId: id });
+                }
+                
                 res.json({
                     success: true,
                     message: `Plugin ${id} aktiviert`
@@ -317,6 +322,11 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger)
             const success = await pluginLoader.disablePlugin(id);
 
             if (success) {
+                // Notify all clients that plugins have changed
+                if (io) {
+                    io.emit('plugins:changed', { action: 'disabled', pluginId: id });
+                }
+                
                 res.json({
                     success: true,
                     message: `Plugin ${id} deaktiviert`
