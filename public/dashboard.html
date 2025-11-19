@@ -1040,6 +1040,232 @@
                     </section>
                 </div>
 
+                <!-- View: Weather Control -->
+                <div id="view-weather-control" class="content-view" data-plugin="weather-control">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="cloud-rain"></i>
+                                Weather Control System
+                            </h2>
+                            <a href="/weather-control/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/weather-control/ui" title="Weather Control"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: LastEvent Spotlight -->
+                <div id="view-lastevent-spotlight" class="content-view" data-plugin="lastevent-spotlight">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="eye"></i>
+                                LastEvent Spotlight
+                            </h2>
+                            <a href="/lastevent-spotlight/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/lastevent-spotlight/ui" title="LastEvent Spotlight"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: ClarityHUD -->
+                <div id="view-clarityhud" class="content-view" data-plugin="clarityhud">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="layout"></i>
+                                ClarityHUD
+                            </h2>
+                            <a href="/clarityhud/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/clarityhud/ui" title="ClarityHUD Configuration"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: Plugin Manager -->
+                <div id="view-plugins" class="content-view">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="package"></i>
+                                Plugin Manager
+                            </h2>
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-6">
+                            <div class="text-center py-12">
+                                <i data-lucide="package" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #60a5fa;"></i>
+                                <h3 class="text-xl mb-4">Plugin Manager</h3>
+                                <p class="text-gray-400 mb-6">Manage your installed plugins and discover new ones.</p>
+                                <div id="plugin-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                                    <!-- Plugin list will be populated by plugin-manager.js -->
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: Wiki -->
+                <div id="view-wiki" class="content-view">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="book-open"></i>
+                                Wiki & Documentation
+                            </h2>
+                        </div>
+                        <div class="wiki-container">
+                            <!-- Wiki content will be loaded by wiki.js -->
+                            <div id="wiki-content" class="bg-gray-800 rounded-lg p-6">
+                                <div class="text-center py-12">
+                                    <i data-lucide="book-open" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #60a5fa;"></i>
+                                    <h3 class="text-xl mb-4">Welcome to the Wiki</h3>
+                                    <p class="text-gray-400">Loading documentation...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: Settings -->
+                <div id="view-settings" class="content-view">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="settings"></i>
+                                Settings
+                            </h2>
+                        </div>
+                        <div class="settings-content">
+                            <!-- General Settings -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="sliders"></i>
+                                    General Settings
+                                </h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="auto-connect-enabled">
+                                            <span>Auto-connect to last TikTok user on startup</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="auto-update-check" checked>
+                                            <span>Check for updates on startup</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="update-notifications" checked>
+                                            <span>Show update notifications</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Auto-Start Settings -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="power"></i>
+                                    Auto-Start on System Boot
+                                </h3>
+                                <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                                        <div>
+                                            <span class="text-gray-400">Platform:</span>
+                                            <span id="autostart-platform-name" class="ml-2">-</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-400">Status:</span>
+                                            <span id="autostart-status" class="ml-2">Checking...</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="autostart-enabled">
+                                            <span>Enable Auto-Start</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TikTok API Credentials -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="key"></i>
+                                    TikTok API Credentials (Optional)
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4">
+                                    Enhanced TikTok features via official API. Required for: Room entry effects, extended gift info, advanced analytics.
+                                </p>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label>Client Key</label>
+                                        <input type="text" id="tiktok-client-key" class="form-input" placeholder="Optional">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Client Secret</label>
+                                        <input type="password" id="tiktok-client-secret" class="form-input" placeholder="Optional">
+                                    </div>
+                                </div>
+                                <button id="save-tiktok-credentials" class="btn btn-primary">
+                                    <i data-lucide="save"></i>
+                                    Save API Credentials
+                                </button>
+                            </div>
+
+                            <!-- User Profiles -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="users"></i>
+                                    User Profiles
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4">
+                                    Switch between different configurations for different streaming setups.
+                                </p>
+                                <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <span style="font-weight: 600;">Active Profile:</span>
+                                        <span id="active-profile-display" style="color: #60a5fa;">default</span>
+                                    </div>
+                                    <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 8px;">
+                                        ⚠️ Profile changes require application restart
+                                    </p>
+                                </div>
+                                <div id="profile-list" class="space-y-2 mb-4">
+                                    <!-- Profiles will be loaded dynamically -->
+                                </div>
+                                <div class="form-group">
+                                    <label>Create New Profile</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" id="new-profile-username" placeholder="Profile Name" class="form-input">
+                                        <button id="create-profile-btn" class="btn btn-primary">
+                                            <i data-lucide="plus"></i>
+                                            Create
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
 
     <!-- Modal: Create Flow -->
     <div id="flow-modal" class="modal">
