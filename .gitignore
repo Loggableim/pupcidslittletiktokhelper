@@ -46,3 +46,4 @@ temp/
 plugins/*/data/
 plugins/plugins_state.json
 test-viewer-xp.js
+*.backup*

@@ -232,7 +232,7 @@ MIT License - siehe [LICENSE](LICENSE)
 
 ## Credits
 
-- [TikTok Live Connector](https://github.com/zerodytrash/TikTok-Live-Connector) by @zerodytrash
+- [Eulerstream](https://www.eulerstream.com/) - TikTok LIVE WebSocket API and connection service
 - [TikTok TTS API](https://github.com/oscie57/tiktok-voice) by @oscie57
 - [MyInstants](https://www.myinstants.com/) für Sounds
 - [Tailwind CSS](https://tailwindcss.com/), [Socket.IO](https://socket.io/), [Better-SQLite3](https://github.com/WiseLibs/better-sqlite3)

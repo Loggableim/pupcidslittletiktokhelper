@@ -48,7 +48,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "systeminformation": "^5.27.11",
-    "tiktok-live-connector": "^2.1.0",
+    "@eulerstream/euler-websocket-sdk": "^0.0.6",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
     "ws": "^8.18.3",

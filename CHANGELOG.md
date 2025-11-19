@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING: Migration to Eulerstream WebSocket SDK** - Complete replacement of tiktok-live-connector
+  - Removed dependency on `tiktok-live-connector` library (https://github.com/zerodytrash/TikTok-Live-Connector)
+  - Integrated Eulerstream WebSocket SDK (`@eulerstream/euler-websocket-sdk`) as the exclusive connection method
+  - Direct WebSocket connection to Eulerstream API (https://www.eulerstream.com/docs)
+  - Eulerstream API key is now REQUIRED (set via EULER_API_KEY or SIGN_API_KEY environment variable)
+  - All TikTok LIVE event handling now uses Eulerstream's WebSocket protocol
+  - Maintained backward compatibility with existing event handlers and plugins
+  - Updated configuration options to use Eulerstream-specific settings
+  - Files modified: `modules/tiktok.js`, `package.json`, `.env.example`, `README.md`, `test-connection.js`
+  - See https://www.eulerstream.com for API key registration and documentation
+
 ### Fixed
 - **CRITICAL: TikTok Connection 504 Timeout** - Fixed Euler Stream timeout issues
   - **Root Cause:** `fetchRoomInfoOnConnect: true` was causing excessive Euler Stream API calls
