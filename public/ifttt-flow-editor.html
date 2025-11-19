@@ -110,6 +110,12 @@
             min-width: 200px;
             cursor: move;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .flow-node:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
         }
 
         .flow-node.selected {
@@ -121,6 +127,10 @@
             border-color: #10b981;
         }
 
+        .flow-node.trigger:hover {
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
         .flow-node.trigger .connection-point.input {
             display: none;
         }
@@ -128,6 +138,10 @@
         .flow-node.condition {
             border-color: #f59e0b;
             position: relative;
+        }
+
+        .flow-node.condition:hover {
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2), 0 8px 20px rgba(0, 0, 0, 0.4);
         }
 
         .flow-node.condition .output-true::before {
@@ -158,6 +172,10 @@
 
         .flow-node.action {
             border-color: #8b5cf6;
+        }
+
+        .flow-node.action:hover {
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), 0 8px 20px rgba(0, 0, 0, 0.4);
         }
 
         .node-header {
@@ -425,6 +443,74 @@
             background: rgba(139, 92, 246, 0.2);
             color: #8b5cf6;
         }
+
+        .help-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 320px;
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 16px 20px;
+            max-width: 400px;
+            font-size: 13px;
+            line-height: 1.6;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .help-panel.hidden {
+            transform: translateY(calc(100% + 20px));
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .help-panel h3 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .help-panel ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #cbd5e1;
+        }
+
+        .help-panel li {
+            margin: 6px 0;
+        }
+
+        .help-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 320px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            z-index: 999;
+            transition: all 0.2s ease;
+        }
+
+        .help-toggle:hover {
+            background: #2563eb;
+            transform: scale(1.1);
+        }
+
+        .help-toggle.panel-visible {
+            bottom: calc(100% - 400px);
+        }
     </style>
 </head>
 <body>
@@ -526,6 +612,20 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Help Panel -->
+    <button class="help-toggle" id="help-toggle">?</button>
+    <div class="help-panel hidden" id="help-panel">
+        <h3>💡 How to Build Flows</h3>
+        <ul>
+            <li><strong>Drag & Drop:</strong> Drag components from the left sidebar onto the canvas</li>
+            <li><strong>Connect Nodes:</strong> Click on an output port (circle on the right), then click on an input port to create a connection</li>
+            <li><strong>Delete Connection:</strong> Click on a connection line to remove it</li>
+            <li><strong>Move Nodes:</strong> Click and drag nodes to reposition them (snaps to grid)</li>
+            <li><strong>Configure:</strong> Click on a node to view and edit its properties</li>
+            <li><strong>Color Coding:</strong> Green = TRUE path, Red = FALSE path, Blue = Default</li>
+        </ul>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

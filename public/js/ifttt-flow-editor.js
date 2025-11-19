@@ -1199,4 +1199,21 @@
         init();
     }
 
+    // Help panel toggle
+    const helpToggle = document.getElementById('help-toggle');
+    const helpPanel = document.getElementById('help-panel');
+    
+    if (helpToggle && helpPanel) {
+        helpToggle.addEventListener('click', function() {
+            helpPanel.classList.toggle('hidden');
+            helpToggle.classList.toggle('panel-visible');
+            
+            if (helpPanel.classList.contains('hidden')) {
+                helpToggle.textContent = '?';
+            } else {
+                helpToggle.textContent = '×';
+            }
+        });
+    }
+
 })();
