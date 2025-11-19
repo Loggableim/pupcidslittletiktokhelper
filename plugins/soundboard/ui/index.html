@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soundboard Configuration</title>
+    <link rel="stylesheet" href="/css/tailwind.output.css">
+    <link rel="stylesheet" href="/css/navigation.css">
+    <script src="/js/lucide.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            background: #0f172a;
+            padding: 20px;
+        }
+        .standalone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 8px;
+            border: 1px solid #3b82f6;
+        }
+        .standalone-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            color: #60a5fa;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .back-link:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateX(-2px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Standalone Header -->
+    <div class="standalone-header">
+        <div class="standalone-title">
+            <i data-lucide="music"></i>
+            Soundboard Configuration
+        </div>
+        <a href="/dashboard.html#soundboard" class="back-link">
+            <i data-lucide="arrow-left"></i>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Soundboard Content (same as dashboard view) -->
+    <div class="soundboard-content">
+        <!-- Playback Settings -->
+        <div class="settings-card">
+            <h3 class="card-title">
+                <i data-lucide="settings"></i>
+                Playback Settings
+            </h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Play Mode</label>
+                    <select id="soundboard-play-mode" class="form-select">
+                        <option value="overlap">Overlap (play immediately)</option>
+                        <option value="sequential">Sequential (queue)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Max Queue Length</label>
+                    <input type="number" id="soundboard-max-queue" min="1" max="50" value="10" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="soundboard-enabled" checked>
+                        <span>Enable Soundboard</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Sounds -->
+        <div class="settings-card">
+            <h3 class="card-title">
+                <i data-lucide="volume-2"></i>
+                Event Sounds
+            </h3>
+            <div class="event-sounds-grid">
+                <div class="event-sound-item">
+                    <div class="event-sound-header">
+                        <i data-lucide="star"></i>
+                        <span>Follow Sound</span>
+                        <button data-test-sound="follow" class="btn btn-xs btn-ghost">
+                            <i data-lucide="play"></i>
+                        </button>
+                    </div>
+                    <input type="text" id="soundboard-follow-url" placeholder="Sound URL" class="form-input">
+                    <input type="number" id="soundboard-follow-volume" min="0" max="1" step="0.1" value="1.0" placeholder="Volume" class="form-input">
+                </div>
+
+                <div class="event-sound-item">
+                    <div class="event-sound-header">
+                        <i data-lucide="users"></i>
+                        <span>Subscribe Sound</span>
+                        <button data-test-sound="subscribe" class="btn btn-xs btn-ghost">
+                            <i data-lucide="play"></i>
+                        </button>
+                    </div>
+                    <input type="text" id="soundboard-subscribe-url" placeholder="Sound URL" class="form-input">
+                    <input type="number" id="soundboard-subscribe-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                </div>
+
+                <div class="event-sound-item">
+                    <div class="event-sound-header">
+                        <i data-lucide="share-2"></i>
+                        <span>Share Sound</span>
+                        <button data-test-sound="share" class="btn btn-xs btn-ghost">
+                            <i data-lucide="play"></i>
+                        </button>
+                    </div>
+                    <input type="text" id="soundboard-share-url" placeholder="Sound URL" class="form-input">
+                    <input type="number" id="soundboard-share-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                </div>
+
+                <div class="event-sound-item">
+                    <div class="event-sound-header">
+                        <i data-lucide="gift"></i>
+                        <span>Default Gift Sound</span>
+                        <button data-test-sound="gift" class="btn btn-xs btn-ghost">
+                            <i data-lucide="play"></i>
+                        </button>
+                    </div>
+                    <input type="text" id="soundboard-gift-url" placeholder="Sound URL" class="form-input">
+                    <input type="number" id="soundboard-gift-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                </div>
+
+                <div class="event-sound-item">
+                    <div class="event-sound-header">
+                        <i data-lucide="heart"></i>
+                        <span>Like Threshold Sound</span>
+                        <button data-test-sound="like" class="btn btn-xs btn-ghost">
+                            <i data-lucide="play"></i>
+                        </button>
+                    </div>
+                    <input type="text" id="soundboard-like-url" placeholder="Sound URL" class="form-input">
+                    <input type="number" id="soundboard-like-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                    <div class="form-grid">
+                        <input type="number" id="soundboard-like-threshold" min="0" value="0" placeholder="Threshold" class="form-input">
+                        <input type="number" id="soundboard-like-window" min="1" value="10" placeholder="Window (s)" class="form-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gift-Specific Sounds -->
+        <div class="settings-card">
+            <h3 class="card-title">
+                <i data-lucide="gift"></i>
+                Gift-Specific Sounds
+            </h3>
+
+            <!-- Gift Catalog Browser -->
+            <div class="gift-catalog">
+                <div class="gift-catalog-header">
+                    <h4>Available Gifts from Stream</h4>
+                    <button id="refresh-catalog-btn" class="btn btn-sm btn-primary">
+                        <i data-lucide="refresh-cw" id="refresh-icon"></i>
+                        Refresh Catalog
+                    </button>
+                </div>
+                <div id="gift-catalog-info" class="gift-catalog-info"></div>
+                <div id="gift-catalog-list" class="gift-catalog-grid"></div>
+            </div>
+
+            <!-- MyInstants Search -->
+            <div class="myinstants-search">
+                <h4>Search MyInstants</h4>
+                <div class="search-box">
+                    <input type="text" id="myinstants-search-input" placeholder="Search sounds..." class="form-input">
+                    <button id="myinstants-search-btn" class="btn btn-primary">
+                        <i data-lucide="search"></i>
+                        Search
+                    </button>
+                </div>
+                <div id="myinstants-results" class="myinstants-results"></div>
+            </div>
+
+            <!-- Add Gift Sound -->
+            <div class="add-gift-sound">
+                <h4>Add/Edit Gift Sound</h4>
+                <div class="form-grid">
+                    <input type="number" id="new-gift-id" placeholder="Gift ID" readonly class="form-input">
+                    <input type="text" id="new-gift-label" placeholder="Label" readonly class="form-input">
+                    <input type="text" id="new-gift-url" placeholder="MP3 URL" class="form-input">
+                    <input type="number" id="new-gift-volume" min="0" max="1" step="0.1" value="1.0" placeholder="Volume" class="form-input">
+                </div>
+                <div class="form-grid">
+                    <input type="text" id="new-gift-animation-url" placeholder="Animation URL (optional)" class="form-input">
+                    <select id="new-gift-animation-type" class="form-select">
+                        <option value="none">No Animation</option>
+                        <option value="image">Image</option>
+                        <option value="video">Video</option>
+                        <option value="gif">GIF</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button id="add-gift-sound-btn" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Add/Update Gift Sound
+                    </button>
+                    <button id="clear-gift-form-btn" class="btn btn-ghost">Clear</button>
+                </div>
+            </div>
+
+            <!-- Gift Sounds List -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Gift ID</th>
+                            <th>Label</th>
+                            <th>Sound</th>
+                            <th>Volume</th>
+                            <th>Animation</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gift-sounds-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button id="save-soundboard-btn" class="btn btn-primary btn-lg">
+                <i data-lucide="save"></i>
+                Save Soundboard Settings
+            </button>
+        </div>
+    </div>
+    
+    <!-- Audio Testing & Permissions -->
+    <div id="audio-test-card" class="settings-card" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #3b82f6; margin-top: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 class="card-title" style="color: #60a5fa; margin: 0;">
+                <i data-lucide="volume-2"></i>
+                Audio System Test & Permissions
+            </h3>
+            <button id="minimize-audio-test-btn" class="btn btn-sm btn-ghost" style="padding: 4px 8px;" title="Minimize">
+                <i data-lucide="minimize-2" style="width: 16px; height: 16px;"></i>
+            </button>
+        </div>
+        <div id="audio-test-content">
+            <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <i data-lucide="info" style="color: #3b82f6; width: 20px; height: 20px;"></i>
+                    <span style="font-size: 0.9rem;">Browsers require user interaction before playing audio. Click the button below to enable audio permissions.</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+                <button id="enable-audio-btn" class="btn btn-primary" style="min-width: 200px;">
+                    <i data-lucide="unlock"></i>
+                    Enable Audio Permissions
+                </button>
+                <button id="test-audio-btn" class="btn btn-ghost">
+                    <i data-lucide="play-circle"></i>
+                    Test Audio Playback
+                </button>
+                <button id="clear-audio-log-btn" class="btn btn-ghost">
+                    <i data-lucide="trash-2"></i>
+                    Clear Log
+                </button>
+            </div>
+            
+            <!-- Audio Player for Testing -->
+            <div id="audio-test-player" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <div style="margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8;">Test Audio:</div>
+                <audio id="test-audio-element" controls style="width: 100%; max-width: 500px;">
+                    <source src="https://www.myinstants.com/media/sounds/wow.mp3" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+            
+            <!-- Audio Status -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Audio Context:</div>
+                    <div id="audio-context-status" style="font-weight: 600;">Checking...</div>
+                </div>
+                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Autoplay:</div>
+                    <div id="autoplay-status" style="font-weight: 600;">Checking...</div>
+                </div>
+                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Active Sounds:</div>
+                    <div id="active-sounds-count" style="font-weight: 600;">0</div>
+                </div>
+            </div>
+            
+            <!-- Debug Log -->
+            <div style="margin-top: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.9rem; font-weight: 600;">Audio Debug Log:</span>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                        <input type="checkbox" id="verbose-logging" checked>
+                        <span>Verbose Logging</span>
+                    </label>
+                </div>
+                <div id="audio-debug-log" style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
+                    <div style="color: #60a5fa;">🎵 Audio system ready. Waiting for events...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+        lucide.createIcons();
+    </script>
+
+    <!-- Soundboard JavaScript (same as dashboard) -->
+    <script src="/js/dashboard-soundboard.js"></script>
+</body>
+</html>

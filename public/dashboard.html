@@ -27,35 +27,6 @@
                 </button>
             </div>
 
-        <!-- Tabs -->
-        <div class="mb-6">
-            <div class="border-b border-gray-700 flex gap-2">
-                <button class="tab-btn active" data-tab="events">📋 Events</button>
-                <button class="tab-btn" data-tab="tts" data-plugin="tts">🎤 TTS v2.0</button>
-                <button class="tab-btn" data-tab="flows">⚡ Flows</button>
-                <button class="tab-btn" data-tab="soundboard" data-plugin="soundboard">🔊 Soundboard</button>
-                <!-- PATCH: VDO.Ninja Multi-Guest Tab -->
-                <button class="tab-btn" data-tab="multiGuest" data-plugin="vdoninja">👥 Multi-Guest</button>
-                <!-- Emoji Rain Tab -->
-                <button class="tab-btn" data-tab="emojiRain" data-plugin="emoji-rain">🌧️ Emoji Rain</button>
-                <!-- Gift Milestone Tab -->
-                <button class="tab-btn" data-tab="giftMilestone" data-plugin="gift-milestone">🎁 Gift Milestone</button>
-                <!-- Multi-Cam Switcher Tab -->
-                <button class="tab-btn" data-tab="multicam" data-plugin="multicam">🎥 Multi-Cam</button>
-                <!-- OSC-Bridge Tab -->
-                <button class="tab-btn" data-tab="oscBridge" data-plugin="osc-bridge">🎮 OSC-Bridge</button>
-                <!-- HybridShock Integration Tab -->
-                <button class="tab-btn" data-tab="hybridshock" data-plugin="hybridshock">⚡ HybridShock</button>
-                <!-- Live Goals Tab -->
-                <button class="tab-btn" data-tab="liveGoals" data-plugin="goals">🎯 Live Goals</button>
-                <!-- Quiz Show Tab -->
-                <button class="tab-btn" data-tab="quizShow" data-plugin="quiz-show">🎲 Quiz Show</button>
-                <!-- Resource Monitor Tab -->
-                <button class="tab-btn" data-tab="resourceMonitor" data-plugin="resource-monitor">🖥️ Resources</button>
-                <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
-                <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
-            </div>
-        </div>
             <nav class="sidebar-nav">
                 <!-- Dashboard -->
                 <a href="#" class="sidebar-item active" data-view="dashboard">
@@ -623,7 +594,15 @@
                                 <i data-lucide="music"></i>
                                 Soundboard Configuration
                             </h2>
+                            <div class="view-header-actions">
+                                <a href="/soundboard/ui" target="_blank" class="btn btn-primary" title="Soundboard in separatem Tab öffnen für besseres Debugging">
+                                    <i data-lucide="external-link"></i>
+                                    Open in New Tab
+                                </a>
+                            </div>
                         </div>
+                        
+                        
                         <div class="soundboard-content">
                             <!-- Playback Settings -->
                             <div class="settings-card">
@@ -808,6 +787,80 @@
                                     <i data-lucide="save"></i>
                                     Save Soundboard Settings
                                 </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Audio Testing & Permissions -->
+                        <div id="audio-test-card" class="settings-card" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #3b82f6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 class="card-title" style="color: #60a5fa; margin: 0;">
+                                    <i data-lucide="volume-2"></i>
+                                    Audio System Test & Permissions
+                                </h3>
+                                <button id="minimize-audio-test-btn" class="btn btn-sm btn-ghost" style="padding: 4px 8px;" title="Minimize">
+                                    <i data-lucide="minimize-2" style="width: 16px; height: 16px;"></i>
+                                </button>
+                            </div>
+                            <div id="audio-test-content">
+                            <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                    <i data-lucide="info" style="color: #3b82f6; width: 20px; height: 20px;"></i>
+                                    <span style="font-size: 0.9rem;">Browsers require user interaction before playing audio. Click the button below to enable audio permissions.</span>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+                                <button id="enable-audio-btn" class="btn btn-primary" style="min-width: 200px;">
+                                    <i data-lucide="unlock"></i>
+                                    Enable Audio Permissions
+                                </button>
+                                <button id="test-audio-btn" class="btn btn-ghost">
+                                    <i data-lucide="play-circle"></i>
+                                    Test Audio Playback
+                                </button>
+                                <button id="clear-audio-log-btn" class="btn btn-ghost">
+                                    <i data-lucide="trash-2"></i>
+                                    Clear Log
+                                </button>
+                            </div>
+                            
+                            <!-- Audio Player for Testing -->
+                            <div id="audio-test-player" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                <div style="margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8;">Test Audio:</div>
+                                <audio id="test-audio-element" controls style="width: 100%; max-width: 500px;">
+                                    <source src="https://www.myinstants.com/media/sounds/wow.mp3" type="audio/mpeg">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                            
+                            <!-- Audio Status -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Audio Context:</div>
+                                    <div id="audio-context-status" style="font-weight: 600;">Checking...</div>
+                                </div>
+                                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Autoplay:</div>
+                                    <div id="autoplay-status" style="font-weight: 600;">Checking...</div>
+                                </div>
+                                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Active Sounds:</div>
+                                    <div id="active-sounds-count" style="font-weight: 600;">0</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Debug Log -->
+                            <div style="margin-top: 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 0.9rem; font-weight: 600;">Audio Debug Log:</span>
+                                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                                        <input type="checkbox" id="verbose-logging" checked>
+                                        <span>Verbose Logging</span>
+                                    </label>
+                                </div>
+                                <div id="audio-debug-log" style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
+                                    <div style="color: #60a5fa;">🎵 Audio system ready. Waiting for events...</div>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -1000,44 +1053,6 @@
                     </section>
                 </div>
 
-        <!-- Tab: Quiz Show -->
-        <div id="tab-quizShow" class="tab-content" data-plugin="quiz-show">
-            <!-- Quiz Show Header -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">🎲 Quiz Show - Wer wird Millionär Style</h2>
-                    <a href="/quiz-show/ui" target="_blank"
-                       class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                        🔗 Open in New Tab
-                    </a>
-                </div>
-                <div class="text-sm text-gray-400 mb-4">
-                    Interactive quiz show with TikTok chat integration, jokers, and leaderboard
-                </div>
-                <div class="flex gap-4 text-sm">
-                    <div class="bg-gray-700 px-3 py-2 rounded">
-                        <span class="text-gray-400">Overlay URL:</span>
-                        <a href="/quiz-show/overlay" target="_blank" class="text-blue-400 hover:text-blue-300 ml-2">
-                            /quiz-show/overlay
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quiz Show UI Iframe -->
-            <div class="bg-gray-800 rounded-lg overflow-hidden" style="height: calc(100vh - 300px);">
-                <iframe
-                    src="/quiz-show/ui"
-                    style="width: 100%; height: 100%; border: none;"
-                    title="Quiz Show Configuration">
-                </iframe>
-            </div>
-        </div>
-
-        <!-- Tab: Settings -->
-        <div id="tab-settings" class="tab-content">
-            <div class="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 class="text-xl mb-6 font-semibold">⚙️ General Settings</h2>
                 <!-- View: Weather Control -->
                 <div id="view-weather-control" class="content-view" data-plugin="weather-control">
                     <section class="view-section">
@@ -1071,7 +1086,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/lastevent-spotlight/ui" title="LastEvent Spotlight Configuration"></iframe>
+                            <iframe src="/lastevent-spotlight/ui" title="LastEvent Spotlight"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1082,7 +1097,7 @@
                         <div class="view-header">
                             <h2 class="view-title">
                                 <i data-lucide="layout"></i>
-                                ClarityHUD - VR-Optimized Overlays
+                                ClarityHUD
                             </h2>
                             <a href="/clarityhud/ui" target="_blank" class="btn btn-sm btn-ghost">
                                 <i data-lucide="external-link"></i>
@@ -1095,504 +1110,175 @@
                     </section>
                 </div>
 
-                <!-- View: Plugins -->
+                <!-- View: Plugin Manager -->
                 <div id="view-plugins" class="content-view">
                     <section class="view-section">
                         <div class="view-header">
                             <h2 class="view-title">
-                                <i data-lucide="plug"></i>
+                                <i data-lucide="package"></i>
                                 Plugin Manager
                             </h2>
-                            <div class="view-actions">
-                                <button id="reload-plugins-btn" class="btn btn-sm btn-ghost">
-                                    <i data-lucide="refresh-cw"></i>
-                                    Reload All
-                                </button>
-                                <button id="upload-plugin-btn" class="btn btn-sm btn-primary">
-                                    <i data-lucide="upload"></i>
-                                    Upload Plugin (ZIP)
-                                </button>
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-6">
+                            <div class="text-center py-12">
+                                <i data-lucide="package" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #60a5fa;"></i>
+                                <h3 class="text-xl mb-4">Plugin Manager</h3>
+                                <p class="text-gray-400 mb-6">Manage your installed plugins and discover new ones.</p>
+                                <div id="plugin-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                                    <!-- Plugin list will be populated by plugin-manager.js -->
+                                </div>
                             </div>
                         </div>
-                        <input type="file" id="plugin-file-input" accept=".zip" style="display: none">
-                        <div class="info-banner">
-                            <i data-lucide="info"></i>
-                            <p>Plugins erweitern die Funktionalität des Tools. Du kannst ZIP-Dateien hochladen, die ein plugin.json und eine main.js enthalten.</p>
-                        </div>
-                        <div id="plugins-container" class="plugins-grid"></div>
                     </section>
                 </div>
 
                 <!-- View: Wiki -->
                 <div id="view-wiki" class="content-view">
-                    <div class="wiki-container">
-                        <!-- Wiki Sidebar -->
-                        <aside class="wiki-sidebar">
-                            <div class="wiki-search-container">
-                                <div class="wiki-search-input-wrapper">
-                                    <i data-lucide="search"></i>
-                                    <input type="text" id="wiki-search" placeholder="Search documentation..." class="wiki-search-input">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="book-open"></i>
+                                Wiki & Documentation
+                            </h2>
+                        </div>
+                        <div class="wiki-container">
+                            <!-- Wiki content will be loaded by wiki.js -->
+                            <div id="wiki-content" class="bg-gray-800 rounded-lg p-6">
+                                <div class="text-center py-12">
+                                    <i data-lucide="book-open" style="width: 64px; height: 64px; margin: 0 auto 1rem; color: #60a5fa;"></i>
+                                    <h3 class="text-xl mb-4">Welcome to the Wiki</h3>
+                                    <p class="text-gray-400">Loading documentation...</p>
                                 </div>
                             </div>
-                            <nav class="wiki-nav" id="wiki-nav">
-                                <!-- Will be dynamically populated -->
-                            </nav>
-                        </aside>
-                        
-                        <!-- Wiki Content -->
-                        <main class="wiki-content">
-                            <div class="wiki-article" id="wiki-article">
-                                <div class="wiki-loading">
-                                    <i data-lucide="loader"></i>
-                                    <span>Loading documentation...</span>
-                                </div>
-                            </div>
-                        </main>
-                    </div>
+                        </div>
+                    </section>
                 </div>
 
                 <!-- View: Settings -->
                 <div id="view-settings" class="content-view">
                     <section class="view-section">
-                        <h2 class="view-title">
-                            <i data-lucide="settings"></i>
-                            Global Settings
-                        </h2>
-
-                        <!-- Audio Engine Settings -->
-                        <div class="settings-card">
-                            <h3 class="card-title">
-                                <i data-lucide="volume-2"></i>
-                                Audio Engine Settings
-                            </h3>
-                            <div class="form-group">
-                                <label for="master-volume">Master Volume: <span id="master-volume-label">100</span>%</label>
-                                <input type="range" min="0" max="100" value="100" id="master-volume" class="form-range">
-                            </div>
-                            <div class="form-group">
-                                <label for="audio-output-device">Audio Output Device</label>
-                                <select id="audio-output-device" class="form-select">
-                                    <option value="default">Standard-Ausgabegerät</option>
-                                </select>
-                                <p class="form-help">⚠️ Die Auswahl des Audio-Geräts funktioniert nur in Chromium-basierten Browsern und OBS.</p>
-                            </div>
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="settings"></i>
+                                Settings
+                            </h2>
                         </div>
-
-                        <!-- Auto-Start Settings -->
-                        <div class="settings-card">
-                            <h3 class="card-title">
-                                <i data-lucide="power"></i>
-                                Auto-Start Settings
-                            </h3>
-                            <div class="settings-info-grid">
-                                <div class="info-item">
-                                    <span class="info-label">Platform:</span>
-                                    <span id="autostart-platform-name" class="info-value">-</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Supported:</span>
-                                    <span id="autostart-supported" class="info-value">-</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Status:</span>
-                                    <span id="autostart-status" class="info-value">Checking...</span>
+                        <div class="settings-content">
+                            <!-- General Settings -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="sliders"></i>
+                                    General Settings
+                                </h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="auto-connect-enabled">
+                                            <span>Auto-connect to last TikTok user on startup</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="auto-update-check" checked>
+                                            <span>Check for updates on startup</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="update-notifications" checked>
+                                            <span>Show update notifications</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="autostart-enabled">
-                                    <span>Enable Auto-Start on System Boot</span>
-                                </label>
-                            </div>
-                        </div>
 
-                        <!-- TikTok Connection Settings -->
-                        <div class="settings-card">
-                            <h3 class="card-title">
-                                <i data-lucide="radio"></i>
-                                TikTok Connection Settings
-                            </h3>
-                            <p class="form-help">
-                                Konfiguriere erweiterte Verbindungsoptionen für TikTok LIVE. 
-                                Diese Einstellungen können helfen, Verbindungsprobleme zu beheben.
-                            </p>
-                            
-                            <!-- Euler Stream API Key -->
-                            <div class="form-group">
-                                <label for="tiktok-euler-api-key">
-                                    Euler Stream API Key (Optional)
-                                    <a href="https://www.eulerstream.com" target="_blank" rel="noopener noreferrer" style="margin-left: 0.5rem; font-size: 0.875rem;">
-                                        <i data-lucide="external-link" style="width: 14px; height: 14px; vertical-align: middle;"></i>
-                                        API Key erhalten
-                                    </a>
-                                </label>
-                                <input 
-                                    type="password" 
-                                    id="tiktok-euler-api-key" 
-                                    placeholder="Dein Euler Stream API Key" 
-                                    class="form-input"
-                                    autocomplete="off"
-                                >
-                                <p class="form-help">
-                                    📌 Ein eigener Euler Stream API Key kann die Verbindungsstabilität weiter verbessern. 
-                                    Kostenlos bei <a href="https://www.eulerstream.com" target="_blank" rel="noopener noreferrer">eulerstream.com</a> registrieren.
-                                    <br>
-                                    ℹ️ <strong>Falls kein API Key konfiguriert ist, wird automatisch ein Backup-Key verwendet.</strong>
-                                    Ein eigener Key ist empfohlen für optimale Leistung.
+                            <!-- Auto-Start Settings -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="power"></i>
+                                    Auto-Start on System Boot
+                                </h3>
+                                <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                                    <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                                        <div>
+                                            <span class="text-gray-400">Platform:</span>
+                                            <span id="autostart-platform-name" class="ml-2">-</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-400">Status:</span>
+                                            <span id="autostart-status" class="ml-2">Checking...</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="autostart-enabled">
+                                            <span>Enable Auto-Start</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TikTok API Credentials -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="key"></i>
+                                    TikTok API Credentials (Optional)
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4">
+                                    Enhanced TikTok features via official API. Required for: Room entry effects, extended gift info, advanced analytics.
                                 </p>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label>Client Key</label>
+                                        <input type="text" id="tiktok-client-key" class="form-input" placeholder="Optional">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Client Secret</label>
+                                        <input type="password" id="tiktok-client-secret" class="form-input" placeholder="Optional">
+                                    </div>
+                                </div>
+                                <button id="save-tiktok-credentials" class="btn btn-primary">
+                                    <i data-lucide="save"></i>
+                                    Save API Credentials
+                                </button>
                             </div>
 
-                            <!-- Enable Euler Fallbacks -->
-                            <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="tiktok-enable-euler-fallbacks">
-                                    <span>Euler Stream Fallbacks aktivieren</span>
-                                </label>
-                                <p class="form-help">
-                                    Verwendet Euler Stream als Fallback-Methode wenn normale Verbindungsmethoden fehlschlagen. 
-                                    Erfordert einen API Key.
+                            <!-- User Profiles -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="users"></i>
+                                    User Profiles
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4">
+                                    Switch between different configurations for different streaming setups.
                                 </p>
-                            </div>
-
-                            <!-- Connect with Unique ID -->
-                            <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="tiktok-connect-with-unique-id">
-                                    <span>ConnectWithUniqueId verwenden</span>
-                                </label>
-                                <p class="form-help">
-                                    Ermöglicht es dem externen Service, die Room ID automatisch zu ermitteln. 
-                                    Kann helfen, Captchas zu umgehen, besonders bei problematischen IP-Adressen.
-                                </p>
-                            </div>
-
-                            <button id="save-tiktok-settings-btn" class="btn btn-primary">
-                                <i data-lucide="save"></i>
-                                TikTok Einstellungen speichern
-                            </button>
-                        </div>
-
-                        <!-- Session Extractor -->
-                        <div class="settings-card">
-                            <h3 class="card-title">
-                                <i data-lucide="key"></i>
-                                TikTok Session-ID Extraktion
-                            </h3>
-                            <p class="form-help">
-                                Extrahiere eine Session-ID von TikTok, um die Verbindungsstabilität zu verbessern. 
-                                Dies ist besonders hilfreich bei 504-Fehlern vom Sign-Server.
-                            </p>
-
-                            <!-- Session Status -->
-                            <div id="session-status-container" class="alert alert-info" style="margin-bottom: 1rem;">
-                                <i data-lucide="info"></i>
-                                <span id="session-status-text">Lade Session-Status...</span>
-                            </div>
-
-                            <!-- Extraction Buttons -->
-                            <div class="form-grid" style="margin-bottom: 1rem;">
-                                <button id="extract-session-btn" class="btn btn-primary">
-                                    <i data-lucide="download"></i>
-                                    Session-ID extrahieren (Automatisch)
-                                </button>
-                                <button id="extract-session-manual-btn" class="btn btn-secondary">
-                                    <i data-lucide="user"></i>
-                                    Session-ID extrahieren (Manuell)
-                                </button>
-                            </div>
-
-                            <div class="form-group">
-                                <button id="clear-session-btn" class="btn btn-danger">
-                                    <i data-lucide="trash-2"></i>
-                                    Session-ID löschen
-                                </button>
-                                <button id="test-browser-btn" class="btn btn-secondary">
-                                    <i data-lucide="check-circle"></i>
-                                    Browser-Verfügbarkeit testen
-                                </button>
-                            </div>
-
-                            <div class="alert alert-warning">
-                                <i data-lucide="alert-triangle"></i>
-                                <span>
-                                    <strong>Hinweis:</strong> Die automatische Extraktion funktioniert nur, wenn du bereits in TikTok eingeloggt bist.
-                                    Verwende "Manuell" wenn du dich erst einloggen musst.
-                                </span>
-                            </div>
-
-                            <div class="form-help" style="margin-top: 1rem;">
-                                <h4>So funktioniert's:</h4>
-                                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                                    <li><strong>Automatisch:</strong> Startet einen unsichtbaren Browser, navigiert zu TikTok und extrahiert die Session-ID aus deinen Cookies.</li>
-                                    <li><strong>Manuell:</strong> Öffnet einen sichtbaren Browser. Du kannst dich einloggen und die Session-ID wird nach 60 Sekunden automatisch extrahiert.</li>
-                                    <li>Die extrahierte Session-ID wird automatisch bei der nächsten Verbindung verwendet.</li>
-                                </ol>
-                            </div>
-                        </div>
-
-                        <!-- Cloud Sync Settings -->
-                        <div class="settings-card">
-                            <h3 class="card-title">
-                                <i data-lucide="cloud"></i>
-                                Cloud Sync (Optional)
-                            </h3>
-                            <p class="form-help">
-                                Synchronisiere deine Konfigurationen automatisch mit OneDrive, Google Drive oder Dropbox.
-                                Alle User-Settings, Plugin-Konfigurationen, TTS-Profile, Flows, HUD-Layouts und Custom-Assets werden automatisch gesichert.
-                            </p>
-
-                            <!-- Sync Status -->
-                            <div id="cloud-sync-status-container" class="alert alert-info" style="margin-bottom: 1rem;">
-                                <i data-lucide="info"></i>
-                                <span id="cloud-sync-status-text">Lade Cloud-Sync-Status...</span>
-                            </div>
-
-                            <!-- Sync Statistics -->
-                            <div id="cloud-sync-stats" style="display: none; margin-bottom: 1rem;">
-                                <div class="settings-info-grid">
-                                    <div class="info-item">
-                                        <span class="info-label">Status:</span>
-                                        <span id="cloud-sync-enabled-status" class="info-value badge badge-secondary">Deaktiviert</span>
+                                <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <span style="font-weight: 600;">Active Profile:</span>
+                                        <span id="active-profile-display" style="color: #60a5fa;">default</span>
                                     </div>
-                                    <div class="info-item">
-                                        <span class="info-label">Letzte Synchronisation:</span>
-                                        <span id="cloud-sync-last-sync" class="info-value">Nie</span>
-                                    </div>
-                                    <div class="info-item">
-                                        <span class="info-label">Dateien hochgeladen:</span>
-                                        <span id="cloud-sync-uploaded" class="info-value">0</span>
-                                    </div>
-                                    <div class="info-item">
-                                        <span class="info-label">Dateien heruntergeladen:</span>
-                                        <span id="cloud-sync-downloaded" class="info-value">0</span>
-                                    </div>
-                                    <div class="info-item">
-                                        <span class="info-label">Konflikte gelöst:</span>
-                                        <span id="cloud-sync-conflicts" class="info-value">0</span>
-                                    </div>
-                                    <div class="info-item">
-                                        <span class="info-label">Erfolgreiche Syncs:</span>
-                                        <span id="cloud-sync-successful" class="info-value">0</span>
-                                    </div>
+                                    <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 8px;">
+                                        ⚠️ Profile changes require application restart
+                                    </p>
                                 </div>
-                            </div>
-
-                            <!-- Cloud Path Configuration -->
-                            <div class="form-group">
-                                <label for="cloud-sync-path">Cloud-Sync Ordner:</label>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <input 
-                                        type="text" 
-                                        id="cloud-sync-path" 
-                                        placeholder="z.B. C:\Users\DeinName\OneDrive\TikTokHelper" 
-                                        class="form-input"
-                                        style="flex: 1;"
-                                        readonly
-                                    >
-                                    <button id="choose-cloud-path-btn" class="btn btn-secondary">
-                                        <i data-lucide="folder"></i>
-                                        Auswählen
-                                    </button>
-                                </div>
-                                <p class="form-help">
-                                    💡 <strong>Unterstützte Cloud-Anbieter:</strong> OneDrive, Google Drive, Dropbox<br>
-                                    Wähle einen Ordner innerhalb deines Cloud-Speicher-Verzeichnisses.<br>
-                                    Die Synchronisation erfolgt automatisch über lokale Ordner-Überwachung.
-                                </p>
-                            </div>
-
-                            <!-- Current Cloud Path Display -->
-                            <div id="cloud-sync-current-path" style="display: none; margin-bottom: 1rem;">
-                                <strong>Aktueller Cloud-Pfad:</strong>
-                                <div style="background: #f5f5f5; padding: 0.5rem; border-radius: 4px; margin-top: 0.25rem; word-break: break-all;">
-                                    <code id="cloud-sync-path-display"></code>
-                                </div>
-                            </div>
-
-                            <!-- Action Buttons -->
-                            <div class="form-grid" style="margin-bottom: 1rem;">
-                                <button id="enable-cloud-sync-btn" class="btn btn-success" disabled>
-                                    <i data-lucide="cloud"></i>
-                                    Cloud Sync aktivieren
-                                </button>
-                                <button id="disable-cloud-sync-btn" class="btn btn-danger" style="display: none;">
-                                    <i data-lucide="cloud-off"></i>
-                                    Cloud Sync deaktivieren
-                                </button>
-                                <button id="manual-cloud-sync-btn" class="btn btn-primary" style="display: none;">
-                                    <i data-lucide="refresh-cw"></i>
-                                    Manueller Sync
-                                </button>
-                            </div>
-
-                            <div class="alert alert-warning">
-                                <i data-lucide="alert-triangle"></i>
-                                <span>
-                                    <strong>Wichtig:</strong> Der Cloud-Sync ist standardmäßig deaktiviert.
-                                    Stelle sicher, dass der ausgewählte Ordner in deinem Cloud-Speicher liegt (OneDrive, Google Drive, Dropbox).
-                                    Das Tool macht keine direkten API-Aufrufe an die Cloud-Anbieter, sondern nutzt die lokale Synchronisation.
-                                </span>
-                            </div>
-
-                            <div class="form-help" style="margin-top: 1rem;">
-                                <h4>So funktioniert Cloud Sync:</h4>
-                                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                                    <li><strong>Ordner wählen:</strong> Wähle einen Ordner in deinem OneDrive/Google Drive/Dropbox Verzeichnis.</li>
-                                    <li><strong>Sync aktivieren:</strong> Das Tool synchronisiert automatisch alle Konfigurationen beim Start.</li>
-                                    <li><strong>Bidirektionale Sync:</strong> Änderungen werden in beide Richtungen synchronisiert (lokal ↔ Cloud).</li>
-                                    <li><strong>Konfliktlösung:</strong> Bei Konflikten wird die neuere Datei (basierend auf Zeitstempel) verwendet.</li>
-                                    <li><strong>Sicherheit:</strong> Alle Schreibvorgänge nutzen atomare Operationen, um Datenverlust zu vermeiden.</li>
-                                </ol>
-                            </div>
-                        </div>
-
-                        <!-- Import/Export Presets -->
-                        <div class="settings-card">
-                            <h3 class="card-title">
-                                <i data-lucide="package"></i>
-                                Import/Export Configuration Presets
-                            </h3>
-
-                            <!-- Export Section -->
-                            <div class="preset-section">
-                                <h4>Export Configuration</h4>
-                                <div class="checkbox-grid">
-                                    <label class="checkbox-label"><input type="checkbox" id="export-settings" checked> Settings</label>
-                                    <label class="checkbox-label"><input type="checkbox" id="export-flows" checked> Flows</label>
-                                    <label class="checkbox-label"><input type="checkbox" id="export-alerts" checked> Alerts</label>
-                                    <label class="checkbox-label"><input type="checkbox" id="export-gift-sounds" checked> Gift Sounds</label>
-                                    <label class="checkbox-label"><input type="checkbox" id="export-voice-mappings" checked> Voice Mappings</label>
-                                    <label class="checkbox-label"><input type="checkbox" id="export-plugin-configs" checked> Plugin Configs</label>
+                                <div id="profile-list" class="space-y-2 mb-4">
+                                    <!-- Profiles will be loaded dynamically -->
                                 </div>
                                 <div class="form-group">
-                                    <label for="preset-name">Preset Name:</label>
-                                    <input type="text" id="preset-name" placeholder="My Awesome Config" class="form-input">
-                                </div>
-                                <div class="form-group">
-                                    <label for="preset-description">Description (optional):</label>
-                                    <textarea id="preset-description" placeholder="Describe your configuration..." rows="2" class="form-textarea"></textarea>
-                                </div>
-                                <button id="export-preset-btn" class="btn btn-primary">
-                                    <i data-lucide="download"></i>
-                                    Export Configuration
-                                </button>
-                            </div>
-
-                            <!-- Import Section -->
-                            <div class="preset-section">
-                                <h4>Import Configuration</h4>
-                                <div class="checkbox-grid">
-                                    <label class="checkbox-label"><input type="checkbox" id="import-overwrite"> Overwrite existing</label>
-                                    <label class="checkbox-label"><input type="checkbox" id="import-backup" checked> Create backup first</label>
-                                </div>
-                                <div class="form-group">
-                                    <label for="preset-file-input">Select Preset File:</label>
-                                    <input type="file" id="preset-file-input" accept=".json" class="form-file">
-                                </div>
-                                <button id="import-preset-btn" class="btn btn-primary">
-                                    <i data-lucide="upload"></i>
-                                    Import Configuration
-                                </button>
-                                <div class="alert alert-warning">
-                                    <i data-lucide="alert-triangle"></i>
-                                    <span>Importing may overwrite your current settings. A backup will be created if enabled.</span>
+                                    <label>Create New Profile</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" id="new-profile-username" placeholder="Profile Name" class="form-input">
+                                        <button id="create-profile-btn" class="btn btn-primary">
+                                            <i data-lucide="plus"></i>
+                                            Create
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Resource Monitor Settings -->
-                        <div class="settings-card">
-                            <h3 class="card-title">
-                                <i data-lucide="cpu"></i>
-                                Resource Monitor Settings
-                            </h3>
-                            <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="resource-monitor-enabled">
-                                    <span>Enable Resource Monitor</span>
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label for="resource-monitor-interval">Update Interval: <span id="resource-monitor-interval-label">1.0s</span></label>
-                                <input type="range" id="resource-monitor-interval" min="500" max="5000" step="100" value="1000" class="form-range">
-                            </div>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="cpu-warning-yellow">CPU Yellow Warning (%)</label>
-                                    <input type="number" id="cpu-warning-yellow" value="5" min="1" max="100" class="form-input">
-                                </div>
-                                <div class="form-group">
-                                    <label for="cpu-warning-red">CPU Red Warning (%)</label>
-                                    <input type="number" id="cpu-warning-red" value="8" min="1" max="100" class="form-input">
-                                </div>
-                            </div>
-                            <button id="save-resource-monitor-settings" class="btn btn-primary">
-                                <i data-lucide="save"></i>
-                                Save Resource Monitor Settings
-                            </button>
-                        </div>
-
-                        <!-- OSC-Bridge Settings -->
-                        <div class="settings-card" data-plugin="osc-bridge">
-                            <h3 class="card-title">
-                                <i data-lucide="gamepad-2"></i>
-                                OSC-Bridge Settings
-                            </h3>
-                            <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="osc-bridge-enabled">
-                                    <span>Enable OSC-Bridge</span>
-                                </label>
-                                <p class="form-help">Aktiviert die OSC-Bridge für VRChat-Integration. Wenn aktiviert, startet die Bridge automatisch beim Verbindungsaufbau.</p>
-                            </div>
-                            <div class="info-banner">
-                                <i data-lucide="info"></i>
-                                <p>Die vollständigen OSC-Bridge Einstellungen (Ports, Verbose-Modus, etc.) finden Sie im OSC-Bridge Tab in der Seitenleiste.</p>
-                            </div>
-                        </div>
-
                     </section>
                 </div>
 
-            </div>
-        </main>
-    </div>
-
-    <!-- Modal: User Profiles -->
-    <div id="profile-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">
-                    <i data-lucide="user"></i>
-                    User Profile Management
-                </h3>
-                <button id="profile-modal-close" class="modal-close">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="active-profile-banner">
-                    <div class="banner-label">Aktives Profil:</div>
-                    <div class="banner-value" id="active-profile-display">default</div>
-                    <div class="banner-hint">⚠️ Ein Profilwechsel erfordert einen Neustart der Anwendung</div>
-                </div>
-                <div class="profile-list-container">
-                    <h4>Verfügbare Profile</h4>
-                    <div id="profile-list" class="profile-list"></div>
-                </div>
-                <div class="create-profile-container">
-                    <h4>Neues Profil erstellen</h4>
-                    <div class="create-profile-form">
-                        <input type="text" id="new-profile-username" placeholder="Profile Name" class="form-input">
-                        <button id="create-profile-btn" class="btn btn-primary">
-                            <i data-lucide="plus"></i>
-                            Erstellen
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Modal: Create Flow -->
     <div id="flow-modal" class="modal">

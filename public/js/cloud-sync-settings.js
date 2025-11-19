@@ -19,6 +19,12 @@
     const manualSyncBtn = document.getElementById('manual-cloud-sync-btn');
     const currentPathContainer = document.getElementById('cloud-sync-current-path');
     const pathDisplay = document.getElementById('cloud-sync-path-display');
+    
+    // Check if elements exist before proceeding
+    if (!choosePathBtn) {
+        console.warn('[Cloud Sync] Cloud sync UI elements not found in current view');
+        return;
+    }
 
     // Status elements
     const enabledStatus = document.getElementById('cloud-sync-enabled-status');

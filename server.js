@@ -121,7 +121,7 @@ app.use((req, res, next) => {
     if (isDashboard || isPluginUI) {
         res.header('X-Frame-Options', 'SAMEORIGIN');
         // Dashboard & Plugin UI CSP: Strict policy - no inline scripts allowed
-        // NOTE: All HTML files (dashboard.html, soundboard.html, etc.) use EXTERNAL scripts
+        // NOTE: All HTML files (dashboard.html, plugin UIs, etc.) use EXTERNAL scripts
         // via <script src="..."> tags, NOT inline scripts. This ensures CSP compliance.
         // The script-src 'self' directive only allows scripts from the same origin,
         // which prevents XSS attacks via inline script injection.

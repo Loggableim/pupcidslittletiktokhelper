@@ -130,6 +130,16 @@
             });
         }
 
+        // Check for hash-based navigation first (e.g., #soundboard)
+        const hash = window.location.hash.substring(1); // Remove the #
+        if (hash) {
+            const viewElement = document.getElementById(`view-${hash}`);
+            if (viewElement) {
+                switchView(hash);
+                return;
+            }
+        }
+        
         // Restore last view or default to dashboard
         const savedView = localStorage.getItem('active-view');
         if (savedView) {

@@ -128,7 +128,7 @@ http://localhost:3000/goal/coins
 ```
 
 ### 3. Soundboard konfigurieren
-1. Dashboard → Soundboard (`http://localhost:3000/soundboard.html`)
+1. Dashboard → Soundboard (`http://localhost:3000/soundboard/`)
 2. Gift auswählen → "Set Sound"
 3. Sound-Picker durchsuchen (Browser, Search, Favorites)
 4. Sound zuweisen → Auto-Save
@@ -213,7 +213,7 @@ pupcidslittletiktokhelper/
 │   └── user-profiles.js
 ├── public/                       # Frontend
 │   ├── dashboard.html
-│   ├── soundboard.html
+│   ├── soundboard/           # Plugin-based soundboard UI
 │   ├── overlay.html
 │   └── hud-config.html
 └── user_configs/                 # Profile-Datenbanken (gitignored)
