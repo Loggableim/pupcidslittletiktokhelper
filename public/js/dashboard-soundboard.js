@@ -319,11 +319,15 @@ async function deleteGiftSound(giftId) {
 
 async function testGiftSound(url, volume) {
     try {
+        // Ensure audio is unlocked first
+        await ensureAudioUnlocked();
+        
         logAudioEvent('info', `Testing sound: ${url}`, { volume });
-        await fetch('/api/soundboard/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, volume })
+        // Play the sound directly using the same playback method
+        playDashboardSoundboard({
+            url: url,
+            volume: parseFloat(volume) || 1.0,
+            label: 'Test Sound'
         });
     } catch (error) {
         console.error('Error testing sound:', error);
@@ -363,11 +367,15 @@ async function testEventSound(eventType) {
     }
     
     try {
+        // Ensure audio is unlocked first
+        await ensureAudioUnlocked();
+        
         logAudioEvent('info', `Testing ${eventType} sound: ${url}`, { volume });
-        await fetch('/api/soundboard/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, volume: parseFloat(volume) })
+        // Play the sound directly using the same playback method
+        playDashboardSoundboard({
+            url: url,
+            volume: parseFloat(volume) || 1.0,
+            label: `Test Sound (${eventType})`
         });
     } catch (error) {
         console.error('Error testing sound:', error);
@@ -592,6 +600,42 @@ function useMyInstantsSound(name, url) {
 
 // ========== AUDIO TESTING & PERMISSIONS ==========
 let audioTestMinimized = false;
+let audioUnlocked = false; // Track if audio has been unlocked
+
+async function ensureAudioUnlocked() {
+    if (audioUnlocked) {
+        return true;
+    }
+    
+    try {
+        // Try to create and resume AudioContext
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            const audioContext = new AudioContext();
+            
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            
+            updateAudioContextStatus(audioContext.state);
+            
+            // Test with a silent audio to unlock
+            const audio = document.createElement('audio');
+            audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+            audio.volume = 0.01;
+            
+            await audio.play();
+            audioUnlocked = true;
+            updateAutoplayStatus('Allowed');
+            logAudioEvent('success', 'Audio permissions unlocked', null);
+            return true;
+        }
+    } catch (error) {
+        logAudioEvent('warning', `Auto-unlock failed: ${error.message}. Click "Enable Audio Permissions" button.`, null);
+        return false;
+    }
+    return false;
+}
 
 function toggleAudioTestCard() {
     audioTestMinimized = !audioTestMinimized;
@@ -637,6 +681,7 @@ async function enableAudioPermissions() {
             
             try {
                 await audio.play();
+                audioUnlocked = true;
                 updateAutoplayStatus('Allowed');
                 logAudioEvent('success', 'Audio autoplay test passed', null);
             } catch (err) {
