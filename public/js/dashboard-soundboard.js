@@ -319,45 +319,13 @@ async function deleteGiftSound(giftId) {
 
 async function testGiftSound(url, volume) {
     try {
-        // Ensure audio is unlocked first
-        await ensureAudioUnlocked();
-        
-        logAudioEvent('info', `Testing sound: ${url}`, { volume });
-        // Play the sound directly using the same playback method
-        playDashboardSoundboard({
-            url: url,
-            volume: parseFloat(volume) || 1.0,
-            label: 'Test Sound'
         logAudioEvent('info', `Testing sound: ${url}`, { volume }, true);
-        
-        // Play audio directly in browser for immediate feedback
-        const audio = document.createElement('audio');
-        audio.src = url;
-        audio.volume = volume || 1.0;
-        
-        // Add to pool for tracking
-        audioPool.push(audio);
-        updateActiveSoundsCount();
-        
-        audio.play().then(() => {
-            logAudioEvent('success', `Test sound playing: ${url}`, null, true);
-        }).catch(err => {
-            logAudioEvent('error', `Test sound failed: ${err.message}`, { url, error: err.message }, true);
+        await fetch('/api/soundboard/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, volume: parseFloat(volume) || 1.0 })
         });
-        
-        // Clean up when done
-        audio.onended = () => {
-            const index = audioPool.indexOf(audio);
-            if (index > -1) audioPool.splice(index, 1);
-            updateActiveSoundsCount();
-        };
-        
-        audio.onerror = (e) => {
-            logAudioEvent('error', `Audio error: ${e.type}`, { url }, true);
-            const index = audioPool.indexOf(audio);
-            if (index > -1) audioPool.splice(index, 1);
-            updateActiveSoundsCount();
-        };
+        logAudioEvent('success', `Test sound request sent: ${url}`, null, true);
     } catch (error) {
         console.error('Error testing sound:', error);
         logAudioEvent('error', `Failed to test sound: ${error.message}`, null, true);
@@ -396,16 +364,13 @@ async function testEventSound(eventType) {
     }
     
     try {
-        // Ensure audio is unlocked first
-        await ensureAudioUnlocked();
-        
         logAudioEvent('info', `Testing ${eventType} sound: ${url}`, { volume });
-        // Play the sound directly using the same playback method
-        playDashboardSoundboard({
-            url: url,
-            volume: parseFloat(volume) || 1.0,
-            label: `Test Sound (${eventType})`
+        await fetch('/api/soundboard/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, volume: parseFloat(volume) || 1.0 })
         });
+        logAudioEvent('success', `Test ${eventType} sound request sent`, null);
     } catch (error) {
         console.error('Error testing sound:', error);
         logAudioEvent('error', `Failed to test sound: ${error.message}`, null);
