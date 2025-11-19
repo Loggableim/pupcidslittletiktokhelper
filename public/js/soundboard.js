@@ -1050,32 +1050,26 @@ function renderSoundResults(items, targetElement, showPagination = false) {
   }
 
   const resultsHTML = items.map(item => {
-    // Properly escape for HTML attributes (both single and double quotes)
-    const escapeHtml = (str) => String(str || '')
+    // For URLs: only escape quotes to prevent breaking out of attributes
+    // For display text: escape HTML entities to prevent XSS
+    const escapeForAttribute = (str) => String(str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const escapeForDisplay = (str) => String(str || '')
       .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
     
-    const mp3 = escapeHtml(item.url || '');
-    const title = escapeHtml(item.name || 'Unbenannt');
-    const description = escapeHtml(item.description || '');
+    // URLs should NOT have & escaped (breaks query parameters), only quotes
+    const mp3 = escapeForAttribute(item.url || '');
+    const title = escapeForDisplay(item.name || 'Unbenannt');
+    const description = escapeForDisplay(item.description || '');
     const itemTags = (item.tags || []).slice(0, 4);
     const isFavorite = favorites.some(f => f.url === item.url);
 
     // Generate clickable tag pills
     const tagPills = itemTags.map(tag => {
-      const safeTag = escapeHtml(tag);
-    const mp3 = String(item.url || '').replace(/'/g, "&#39;");
-    const title = String(item.name || 'Unbenannt').replace(/'/g, "&#39;");
-    const description = String(item.description || '').replace(/'/g, "&#39;");
-    const itemTags = (item.tags || []).slice(0, 4);
-    const isFavorite = favorites.some(f => f.url === mp3);
-
-    // Generate clickable tag pills
-    const tagPills = itemTags.map(tag => {
-      const safeTag = String(tag).replace(/'/g, "&#39;");
+      const safeTag = escapeForDisplay(tag);
       return `<button class="inline-block px-2 py-0.5 rounded-full bg-slate-700 hover:bg-sky-600 text-xs transition-colors"
                       data-action="filter-category" data-category="${safeTag}" title="Nach '${safeTag}' filtern">${safeTag}</button>`;
     }).join(' ');
@@ -1093,10 +1087,7 @@ function renderSoundResults(items, targetElement, showPagination = false) {
                   data-url="${mp3}"
                   data-name="${title}"
                   data-description="${description}"
-                  data-tags="${escapeHtml(JSON.stringify(itemTags))}"
-                  data-name="${title.replace(/"/g, '&quot;')}"
-                  data-description="${(description || '').replace(/"/g, '&quot;')}"
-                  data-tags="${JSON.stringify(itemTags).replace(/"/g, '&quot;')}"
+                  data-tags="${escapeForAttribute(JSON.stringify(itemTags))}"
                   title="${isFavorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}">⭐</button>
           <button class="rounded-lg bg-amber-600 hover:bg-amber-500 px-2 py-1 text-sm"
                   data-action="play-sound" data-url="${mp3}" data-title="${title}" title="Vorschau">▶</button>
