@@ -1,4 +1,4 @@
-const { WebcastEventEmitter, createWebSocketUrl, ClientCloseCode } = require('@eulerstream/euler-websocket-sdk');
+const { WebcastEventEmitter, createWebSocketUrl, ClientCloseCode, deserializeWebSocketMessage, SchemaVersion } = require('@eulerstream/euler-websocket-sdk');
 const EventEmitter = require('events');
 const WebSocket = require('ws');
 
@@ -331,6 +331,29 @@ class TikTokConnector extends EventEmitter {
                 module: 'eulerstream-websocket',
                 timestamp: new Date().toISOString()
             });
+        });
+
+        // Handle incoming WebSocket messages
+        this.ws.on('message', (data) => {
+            try {
+                // Deserialize the protobuf message
+                const frame = deserializeWebSocketMessage(
+                    new Uint8Array(data),
+                    SchemaVersion.V2 // Use V2 schema
+                );
+
+                // Process messages in the frame
+                if (frame.messages && Array.isArray(frame.messages)) {
+                    for (const message of frame.messages) {
+                        if (message.type && message.data) {
+                            // Emit the parsed event to our event emitter
+                            this.eventEmitter.emit(message.type, message.data);
+                        }
+                    }
+                }
+            } catch (error) {
+                this.logger.error('Error processing WebSocket message:', error.message);
+            }
         });
 
         // Setup Eulerstream event handlers
