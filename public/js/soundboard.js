@@ -1162,11 +1162,17 @@ function renderFavorites() {
 
 async function performSearch(query, page = 1) {
   if (!query) {
-    document.getElementById('searchResults').innerHTML = '';
+    const resultsEl = document.getElementById('myinstants-results') || document.getElementById('searchResults');
+    if (resultsEl) resultsEl.innerHTML = '';
     return;
   }
 
-  const resultsEl = document.getElementById('searchResults');
+  const resultsEl = document.getElementById('myinstants-results') || document.getElementById('searchResults');
+  
+  if (!resultsEl) {
+    console.error('[Soundboard] Search results element not found');
+    return;
+  }
 
   // Only show skeleton on first page
   if (page === 1) {
@@ -1227,29 +1233,71 @@ const debouncedSearch = debounce((query) => {
   performSearch(query, 1);
 }, 500);
 
-document.getElementById('searchQuery').oninput = (e) => {
-  const query = e.target.value.trim();
-  if (query.length >= 2) {
-    debouncedSearch(query);
-  } else if (query.length === 0) {
-    document.getElementById('searchResults').innerHTML = '';
-  }
-};
+// MyInstants Search - Use correct element IDs
+const searchInput = document.getElementById('myinstants-search-input');
+const searchBtn = document.getElementById('myinstants-search-btn');
+const searchResults = document.getElementById('myinstants-results');
 
-// Manual search button
-document.getElementById('btnSearch').onclick = () => {
-  const query = document.getElementById('searchQuery').value.trim();
-  if (!query) return showToast('⚠️ Bitte Suchbegriff eingeben');
-  performSearch(query, 1);
-};
-
-// Enter key for manual search
-document.getElementById('searchQuery').onkeypress = (e) => {
-  if (e.key === 'Enter') {
+if (searchInput && searchBtn && searchResults) {
+  searchInput.oninput = (e) => {
     const query = e.target.value.trim();
-    if (query) performSearch(query, 1);
-  }
-};
+    if (query.length >= 2) {
+      debouncedSearch(query);
+    } else if (query.length === 0) {
+      searchResults.innerHTML = '';
+    }
+  };
+
+  // Manual search button
+  searchBtn.onclick = () => {
+    const query = searchInput.value.trim();
+    if (!query) return showToast('⚠️ Bitte Suchbegriff eingeben');
+    performSearch(query, 1);
+  };
+
+  // Enter key for manual search
+  searchInput.onkeypress = (e) => {
+    if (e.key === 'Enter') {
+      const query = e.target.value.trim();
+      if (query) performSearch(query, 1);
+    }
+  };
+} else {
+  console.warn('[Soundboard] MyInstants search elements not found');
+}
+
+// Legacy support for old element IDs (if they exist)
+const legacySearchQuery = document.getElementById('searchQuery');
+const legacyBtnSearch = document.getElementById('btnSearch');
+const legacySearchResults = document.getElementById('searchResults');
+
+if (legacySearchQuery) {
+  legacySearchQuery.oninput = (e) => {
+    const query = e.target.value.trim();
+    if (query.length >= 2) {
+      debouncedSearch(query);
+    } else if (query.length === 0 && legacySearchResults) {
+      legacySearchResults.innerHTML = '';
+    }
+  };
+}
+
+if (legacyBtnSearch) {
+  legacyBtnSearch.onclick = () => {
+    const query = legacySearchQuery?.value.trim();
+    if (!query) return showToast('⚠️ Bitte Suchbegriff eingeben');
+    performSearch(query, 1);
+  };
+}
+
+if (legacySearchQuery) {
+  legacySearchQuery.onkeypress = (e) => {
+    if (e.key === 'Enter') {
+      const query = e.target.value.trim();
+      if (query) performSearch(query, 1);
+    }
+  };
+}
 
 // Clear cache button
 document.getElementById('btnClearCache').onclick = () => {
@@ -1262,8 +1310,11 @@ function filterByCategory(category) {
   // Switch to search tab if not already there
   switchTab('search');
 
-  // Set search query to the category
-  document.getElementById('searchQuery').value = category;
+  // Set search query to the category - try both element IDs
+  const searchInput = document.getElementById('myinstants-search-input') || document.getElementById('searchQuery');
+  if (searchInput) {
+    searchInput.value = category;
+  }
 
   // Perform search
   performSearch(category, 1);
