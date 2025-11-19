@@ -92,6 +92,27 @@ function showToast(message) {
   pushLog(message);
 }
 
+// ========== Audio Proxy Helper ==========
+/**
+ * Convert MyInstants URLs to use the server proxy with caching
+ * @param {string} url - Original audio URL
+ * @returns {string} Proxied URL or original if not MyInstants
+ */
+function getProxiedUrl(url) {
+  if (!url) return url;
+  
+  // Check if URL is from MyInstants
+  const isMyInstants = url.includes('myinstants.com');
+  
+  if (isMyInstants) {
+    // Use server proxy endpoint
+    return `/api/myinstants/proxy-audio?url=${encodeURIComponent(url)}`;
+  }
+  
+  // Return original URL for other sources
+  return url;
+}
+
 // ========== Audio Playback ==========
 let audioQueue = [];
 let activeAudio = [];
@@ -200,6 +221,13 @@ function playSound(url, vol, label) {
   pushLog(`🎮 PLAY Versuch ▶ ${label || 'Unbenannt'} | ${url}`);
   console.log('🎮 [Soundboard] Play attempt:', { url, vol, label });
   
+  // ========== NEW: Use proxy for MyInstants URLs ==========
+  const proxyUrl = getProxiedUrl(url);
+  if (proxyUrl !== url) {
+    pushLog(`🔄 Using audio proxy for MyInstants URL`);
+    console.log('🔄 [Soundboard] Using proxy:', proxyUrl);
+  }
+  
   // Check if audio is unlocked before attempting playback
   if (!isAudioUnlocked()) {
     console.warn('⚠️ [Soundboard] Audio not yet unlocked, triggering unlock...');
@@ -212,15 +240,15 @@ function playSound(url, vol, label) {
   const maxLen = Number(document.getElementById('queue_length')?.value || 10);
 
   if (mode === 'sequential') {
-    audioQueue.push({ url, vol: Number(vol), label });
+    audioQueue.push({ url: proxyUrl, vol: Number(vol), label });
     while (audioQueue.length > maxLen) audioQueue.shift();
     processQueue();
   } else {
     // Overlap mode
-    const duplicateActive = activeAudio.some(a => a.src === url && !a.paused);
+    const duplicateActive = activeAudio.some(a => a.src === proxyUrl && !a.paused);
     if (duplicateActive) {
       pushLog(`⚠️ Sound bereits aktiv, in Queue: ${label}`);
-      audioQueue.push({ url, vol: Number(vol), label });
+      audioQueue.push({ url: proxyUrl, vol: Number(vol), label });
       while (audioQueue.length > maxLen) audioQueue.shift();
       processQueue();
       return;
@@ -228,7 +256,7 @@ function playSound(url, vol, label) {
 
     // Create audio element and add to DOM
     const a = document.createElement('audio');
-    a.src = url;
+    a.src = proxyUrl; // Use proxied URL
     // DO NOT set crossOrigin - it prevents playback from many sources including MyInstants
     // Only set it if we explicitly need it for audio analysis (e.g., Web Audio API)
     // a.crossOrigin = 'anonymous'; // REMOVED: Causes CORS issues with MyInstants
@@ -255,7 +283,7 @@ function playSound(url, vol, label) {
     // Add detailed event listeners for debugging
     a.addEventListener('loadstart', () => {
       pushLog(`📡 Lade Audio: ${label}`);
-      console.log('📡 [Soundboard] Loading started:', url);
+      console.log('📡 [Soundboard] Loading started:', proxyUrl);
     });
     
     a.addEventListener('loadedmetadata', () => {
@@ -277,6 +305,7 @@ function playSound(url, vol, label) {
       pushLog(`⏸️ Pause: ${label}`);
       console.log('⏸️ [Soundboard] Paused:', label);
     });
+
 
     // Enhanced error handling with fallback
     a.play().then(() => {
