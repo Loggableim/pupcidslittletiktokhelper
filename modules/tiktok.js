@@ -241,6 +241,30 @@ class TikTokConnector extends EventEmitter {
     }
 
     /**
+     * Map EulerStream event types to internal event names
+     * EulerStream uses names like "WebcastChatMessage", we need "chat"
+     * @private
+     */
+    _mapEulerStreamEventType(eulerType) {
+        const mapping = {
+            'WebcastChatMessage': 'chat',
+            'WebcastGiftMessage': 'gift',
+            'WebcastSocialMessage': 'social',
+            'WebcastLikeMessage': 'like',
+            'WebcastMemberMessage': 'member',
+            'WebcastRoomUserSeqMessage': 'roomUser',
+            'WebcastSubscribeMessage': 'subscribe',
+            'WebcastShareMessage': 'share',
+            'WebcastQuestionNewMessage': 'question',
+            'WebcastLinkMicBattle': 'linkMicBattle',
+            'WebcastLinkMicArmies': 'linkMicArmies',
+            'WebcastEmoteChatMessage': 'emote'
+        };
+        
+        return mapping[eulerType] || null;
+    }
+
+    /**
      * Setup WebSocket event handlers
      * @private
      */
@@ -370,9 +394,17 @@ class TikTokConnector extends EventEmitter {
                     this.logger.info(`🎉 Processing ${parsedData.messages.length} messages from WebSocket`);
                     for (const message of parsedData.messages) {
                         if (message.type && message.data) {
-                            this.logger.info(`✅ Emitting event: ${message.type}`);
-                            // Emit the parsed event to our event emitter
-                            this.eventEmitter.emit(message.type, message.data);
+                            // Map EulerStream event types to our internal event names
+                            // EulerStream uses names like "WebcastChatMessage", we need "chat"
+                            const eventType = this._mapEulerStreamEventType(message.type);
+                            
+                            if (eventType) {
+                                this.logger.info(`✅ Emitting event: ${eventType} (from ${message.type})`);
+                                // Emit the parsed event to our event emitter
+                                this.eventEmitter.emit(eventType, message.data);
+                            } else {
+                                this.logger.warn(`⚠️ Unknown event type: ${message.type} - skipping`);
+                            }
                         } else {
                             this.logger.warn(`Message missing type or data: ${JSON.stringify(message).substring(0, 100)}`);
                         }
