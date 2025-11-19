@@ -8,7 +8,6 @@ console.log(`Testing connection to @${username}...`);
 const connection = new TikTokLiveConnection(username, {
     processInitialData: true,
     enableExtendedGiftInfo: true,
-    enableWebsocketUpgrade: true,
     requestPollingIntervalMs: 1000
 });
 

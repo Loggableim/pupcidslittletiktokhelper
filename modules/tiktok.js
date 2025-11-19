@@ -96,9 +96,6 @@ class TikTokConnector extends EventEmitter {
                 // Enable extended gift information (images, prices, etc.)
                 enableExtendedGiftInfo: true,
                 
-                // Enable WebSocket upgrade for better performance
-                enableWebsocketUpgrade: true,
-                
                 // Polling interval for events (1 second)
                 requestPollingIntervalMs: 1000,
                 
@@ -1320,7 +1317,6 @@ class TikTokConnector extends EventEmitter {
                 tempClient = new TikTokLiveConnection(targetUsername, {
                     processInitialData: true,
                     enableExtendedGiftInfo: true,
-                    enableWebsocketUpgrade: false,
                     requestPollingIntervalMs: 1000
                 });
 
