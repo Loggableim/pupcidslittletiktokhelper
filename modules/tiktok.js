@@ -19,10 +19,11 @@ const WebSocket = require('ws');
  * timer from showing software start time instead of real stream duration.
  */
 class TikTokConnector extends EventEmitter {
-    constructor(io, db) {
+    constructor(io, db, logger = console) {
         super();
         this.io = io;
         this.db = db;
+        this.logger = logger;
         this.ws = null;
         this.isConnected = false;
         this.currentUsername = null;
@@ -86,9 +87,9 @@ class TikTokConnector extends EventEmitter {
                 throw new Error('Eulerstream API key is required. Please set EULER_API_KEY in environment or tiktok_euler_api_key in settings.');
             }
 
-            console.log(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
-            console.log(`⚙️  Connection Mode: Eulerstream WebSocket API`);
-            console.log('🔑 Eulerstream API Key configured');
+            this.logger.info(`🔄 Verbinde mit TikTok LIVE: @${username}...`);
+            this.logger.info(`⚙️  Connection Mode: Eulerstream WebSocket API`);
+            this.logger.info('🔑 Eulerstream API Key configured');
 
             // Create WebSocket URL using Eulerstream SDK
             const wsUrl = createWebSocketUrl({
@@ -96,7 +97,7 @@ class TikTokConnector extends EventEmitter {
                 apiKey: apiKey
             });
 
-            console.log(`🔧 Connecting to Eulerstream WebSocket...`);
+            this.logger.info(`🔧 Connecting to Eulerstream WebSocket...`);
 
             // Create WebSocket connection
             this.ws = new WebSocket(wsUrl);
@@ -129,7 +130,7 @@ class TikTokConnector extends EventEmitter {
             // Initialize stream start time
             if (this._persistedStreamStart && this.currentUsername === username) {
                 this.streamStartTime = this._persistedStreamStart;
-                console.log(`♻️  Restored persisted stream start time: ${new Date(this.streamStartTime).toISOString()}`);
+                this.logger.info(`♻️  Restored persisted stream start time: ${new Date(this.streamStartTime).toISOString()}`);
             } else {
                 this.streamStartTime = Date.now();
                 this._persistedStreamStart = this.streamStartTime;
@@ -158,7 +159,7 @@ class TikTokConnector extends EventEmitter {
             }
             this.autoReconnectResetTimeout = setTimeout(() => {
                 this.autoReconnectCount = 0;
-                console.log('✅ Auto-reconnect counter reset');
+                this.logger.info('✅ Auto-reconnect counter reset');
             }, 5 * 60 * 1000);
 
             // Broadcast success
@@ -176,7 +177,7 @@ class TikTokConnector extends EventEmitter {
             // Save last connected username
             this.db.setSetting('last_connected_username', username);
 
-            console.log(`✅ Connected to TikTok LIVE: @${username} via Eulerstream`);
+            this.logger.info(`✅ Connected to TikTok LIVE: @${username} via Eulerstream`);
             
             // Log success
             this._logConnectionAttempt(username, true, null, null);
@@ -187,10 +188,10 @@ class TikTokConnector extends EventEmitter {
             // Analyze and format error
             const errorInfo = this._analyzeError(error);
 
-            console.error(`❌ Connection error:`, errorInfo.message);
+            this.logger.error(`❌ Connection error:`, errorInfo.message);
             
             if (errorInfo.suggestion) {
-                console.log(`💡 Suggestion:`, errorInfo.suggestion);
+                this.logger.info(`💡 Suggestion:`, errorInfo.suggestion);
             }
 
             // Log failure
@@ -216,11 +217,11 @@ class TikTokConnector extends EventEmitter {
 
         // WebSocket connection events
         this.ws.on('open', () => {
-            console.log('🟢 Eulerstream WebSocket connected');
+            this.logger.info('🟢 Eulerstream WebSocket connected');
         });
 
         this.ws.on('close', (code, reason) => {
-            console.log(`🔴 Eulerstream WebSocket disconnected: ${code} - ${ClientCloseCode[code] || reason}`);
+            this.logger.info(`🔴 Eulerstream WebSocket disconnected: ${code} - ${ClientCloseCode[code] || reason}`);
             this.isConnected = false;
             this.broadcastStatus('disconnected');
             
@@ -236,11 +237,11 @@ class TikTokConnector extends EventEmitter {
                 this.autoReconnectCount++;
                 const delay = 5000;
 
-                console.log(`🔄 Attempting auto-reconnect ${this.autoReconnectCount}/${this.maxAutoReconnects} in ${delay/1000}s...`);
+                this.logger.info(`🔄 Attempting auto-reconnect ${this.autoReconnectCount}/${this.maxAutoReconnects} in ${delay/1000}s...`);
 
                 setTimeout(() => {
                     this.connect(this.currentUsername).catch(err => {
-                        console.error(`Auto-reconnect ${this.autoReconnectCount}/${this.maxAutoReconnects} failed:`, err.message);
+                        this.logger.error(`Auto-reconnect ${this.autoReconnectCount}/${this.maxAutoReconnects} failed:`, err.message);
                     });
                 }, delay);
 
@@ -249,7 +250,7 @@ class TikTokConnector extends EventEmitter {
                     clearTimeout(this.autoReconnectResetTimeout);
                 }
             } else if (this.autoReconnectCount >= this.maxAutoReconnects) {
-                console.warn(`⚠️ Max auto-reconnect attempts (${this.maxAutoReconnects}) reached. Manual reconnect required.`);
+                this.logger.warn(`⚠️ Max auto-reconnect attempts (${this.maxAutoReconnects}) reached. Manual reconnect required.`);
                 this.broadcastStatus('max_reconnects_reached', {
                     maxReconnects: this.maxAutoReconnects,
                     message: 'Bitte manuell neu verbinden'
@@ -258,7 +259,7 @@ class TikTokConnector extends EventEmitter {
         });
 
         this.ws.on('error', (err) => {
-            console.error('❌ WebSocket error:', err);
+            this.logger.error('❌ WebSocket error:', err);
             
             // Emit error event for IFTTT engine
             this.emit('error', {
@@ -296,14 +297,14 @@ class TikTokConnector extends EventEmitter {
                 if (timestamp > minTime && timestamp <= now) {
                     if (!this._earliestEventTime || timestamp < this._earliestEventTime) {
                         this._earliestEventTime = timestamp;
-                        console.log(`🕐 Updated earliest event time: ${new Date(timestamp).toISOString()}`);
+                        this.logger.info(`🕐 Updated earliest event time: ${new Date(timestamp).toISOString()}`);
                         
                         // If we don't have a stream start time yet, use earliest event
                         if (!this.streamStartTime) {
                             this.streamStartTime = this._earliestEventTime;
                             this._persistedStreamStart = this.streamStartTime;
                             this._streamTimeDetectionMethod = 'First Event Timestamp';
-                            console.log(`📅 Set stream start time from earliest event`);
+                            this.logger.info(`📅 Set stream start time from earliest event`);
                             
                             // Broadcast updated stream time info
                             this.io.emit('tiktok:streamTimeInfo', {
@@ -382,7 +383,7 @@ class TikTokConnector extends EventEmitter {
                 coins = diamondCount * 2 * repeatCount;
             }
 
-            console.log(`🎁 [GIFT] ${giftData.giftName}: diamondCount=${diamondCount}, repeatCount=${repeatCount}, coins=${coins}, giftType=${giftData.giftType}, repeatEnd=${giftData.repeatEnd}`);
+            this.logger.info(`🎁 [GIFT] ${giftData.giftName}: diamondCount=${diamondCount}, repeatCount=${repeatCount}, coins=${coins}, giftType=${giftData.giftType}, repeatEnd=${giftData.repeatEnd}`);
 
             // Check if streak ended
             const isStreakEnd = giftData.repeatEnd;
@@ -410,13 +411,13 @@ class TikTokConnector extends EventEmitter {
                     timestamp: new Date().toISOString()
                 };
 
-                console.log(`✅ [GIFT COUNTED] Total coins now: ${this.stats.totalCoins}`);
+                this.logger.info(`✅ [GIFT COUNTED] Total coins now: ${this.stats.totalCoins}`);
 
                 this.handleEvent('gift', eventData);
                 this.db.logEvent('gift', eventData.username, eventData);
                 this.broadcastStats();
             } else {
-                console.log(`⏳ [STREAK RUNNING] ${giftData.giftName || 'Unknown Gift'} x${repeatCount} (${coins} coins, not counted yet)`);
+                this.logger.info(`⏳ [STREAK RUNNING] ${giftData.giftName || 'Unknown Gift'} x${repeatCount} (${coins} coins, not counted yet)`);
             }
         });
 
@@ -485,7 +486,7 @@ class TikTokConnector extends EventEmitter {
 
             const likeCount = data.likeCount || data.count || data.like_count || 1;
 
-            console.log(`💗 [LIKE EVENT] likeCount=${likeCount}, totalLikes=${totalLikes}`);
+            this.logger.info(`💗 [LIKE EVENT] likeCount=${likeCount}, totalLikes=${totalLikes}`);
 
             // If totalLikes found, use it directly
             if (totalLikes !== null) {
@@ -542,7 +543,7 @@ class TikTokConnector extends EventEmitter {
             trackEarliestEventTime(data);
             
             const userData = this.extractUserData(data);
-            console.log(`👋 User joined: ${userData.username || userData.nickname}`);
+            this.logger.info(`👋 User joined: ${userData.username || userData.nickname}`);
         });
     }
 
@@ -561,7 +562,7 @@ class TikTokConnector extends EventEmitter {
         };
 
         if (!extractedData.username && !extractedData.nickname) {
-            console.warn('⚠️ No user data found in event. Event structure:', {
+            this.logger.warn('⚠️ No user data found in event. Event structure:', {
                 hasUser: !!data.user,
                 hasUniqueId: !!data.uniqueId,
                 hasUsername: !!data.username,
@@ -591,7 +592,7 @@ class TikTokConnector extends EventEmitter {
         };
 
         if (!extractedData.giftName && !extractedData.giftId) {
-            console.warn('⚠️ No gift data found in event. Event structure:', {
+            this.logger.warn('⚠️ No gift data found in event. Event structure:', {
                 hasGift: !!data.gift,
                 hasGiftName: !!(data.giftName || data.name),
                 hasGiftId: !!(data.giftId || data.id),
@@ -713,7 +714,7 @@ class TikTokConnector extends EventEmitter {
         }
         
         if (previousUsername) {
-            console.log(`🔄 Disconnected but preserving stream start time for potential reconnection to @${previousUsername}`);
+            this.logger.info(`🔄 Disconnected but preserving stream start time for potential reconnection to @${previousUsername}`);
         } else {
             this.streamStartTime = null;
             this._persistedStreamStart = null;
@@ -722,11 +723,11 @@ class TikTokConnector extends EventEmitter {
 
         // Clear event deduplication cache on disconnect
         this.processedEvents.clear();
-        console.log('🧹 Event deduplication cache cleared');
+        this.logger.info('🧹 Event deduplication cache cleared');
 
         this.resetStats();
         this.broadcastStatus('disconnected');
-        console.log('⚫ Disconnected from TikTok LIVE');
+        this.logger.info('⚫ Disconnected from TikTok LIVE');
     }
 
     /**
@@ -783,7 +784,7 @@ class TikTokConnector extends EventEmitter {
         }
         
         if (this.processedEvents.has(eventHash)) {
-            console.log(`🔄 [DUPLICATE BLOCKED] ${eventType} event already processed: ${eventHash}`);
+            this.logger.info(`🔄 [DUPLICATE BLOCKED] ${eventType} event already processed: ${eventHash}`);
             return true;
         }
         
@@ -800,7 +801,7 @@ class TikTokConnector extends EventEmitter {
     handleEvent(eventType, data) {
         // Check for duplicate events
         if (this._isDuplicateEvent(eventType, data)) {
-            console.log(`⚠️  Duplicate ${eventType} event ignored`);
+            this.logger.info(`⚠️  Duplicate ${eventType} event ignored`);
             return;
         }
 
@@ -862,7 +863,7 @@ class TikTokConnector extends EventEmitter {
 
     clearDeduplicationCache() {
         this.processedEvents.clear();
-        console.log('🧹 Event deduplication cache manually cleared');
+        this.logger.info('🧹 Event deduplication cache manually cleared');
     }
 
     isActive() {
@@ -872,7 +873,7 @@ class TikTokConnector extends EventEmitter {
     async updateGiftCatalog(options = {}) {
         // Gift catalog update is not directly supported via Eulerstream WebSocket
         // This would require a separate API call to fetch gift data
-        console.warn('⚠️ Gift catalog update not implemented for Eulerstream WebSocket connection');
+        this.logger.warn('⚠️ Gift catalog update not implemented for Eulerstream WebSocket connection');
         return { ok: false, message: 'Gift catalog update not available via WebSocket', count: 0 };
     }
 
