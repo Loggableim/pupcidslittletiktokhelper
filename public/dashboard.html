@@ -878,78 +878,88 @@
                                     Save Soundboard Settings
                                 </button>
                             </div>
-                        </div>
-                        
-                        <!-- Audio Testing & Permissions -->
-                        <div id="audio-test-card" class="settings-card" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #3b82f6;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                <h3 class="card-title" style="color: #60a5fa; margin: 0;">
-                                    <i data-lucide="volume-2"></i>
-                                    Audio System Test & Permissions
-                                </h3>
-                                <button id="minimize-audio-test-btn" class="btn btn-sm btn-ghost" style="padding: 4px 8px;" title="Minimize">
-                                    <i data-lucide="minimize-2" style="width: 16px; height: 16px;"></i>
-                                </button>
-                            </div>
-                            <div id="audio-test-content">
-                            <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
-                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                    <i data-lucide="info" style="color: #3b82f6; width: 20px; height: 20px;"></i>
-                                    <span style="font-size: 0.9rem;">Browsers require user interaction before playing audio. Click the button below to enable audio permissions.</span>
-                                </div>
-                            </div>
                             
-                            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
-                                <button id="enable-audio-btn" class="btn btn-primary" style="min-width: 200px;">
-                                    <i data-lucide="unlock"></i>
-                                    Enable Audio Permissions
-                                </button>
-                                <button id="test-audio-btn" class="btn btn-ghost">
-                                    <i data-lucide="play-circle"></i>
-                                    Test Audio Playback
-                                </button>
-                                <button id="clear-audio-log-btn" class="btn btn-ghost">
-                                    <i data-lucide="trash-2"></i>
-                                    Clear Log
-                                </button>
-                            </div>
-                            
-                            <!-- Audio Player for Testing -->
-                            <div id="audio-test-player" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                                <div style="margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8;">Test Audio:</div>
-                                <audio id="test-audio-element" controls style="width: 100%; max-width: 500px;">
-                                    <source src="https://www.myinstants.com/media/sounds/wow.mp3" type="audio/mpeg">
-                                    Your browser does not support the audio element.
-                                </audio>
-                            </div>
-                            
-                            <!-- Audio Status -->
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Audio Context:</div>
-                                    <div id="audio-context-status" style="font-weight: 600;">Checking...</div>
+                            <!-- Audio Testing & Permissions -->
+                            <div id="audio-test-card" class="settings-card" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #3b82f6; margin-top: 24px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <h3 class="card-title" style="color: #60a5fa; margin: 0;">
+                                        <i data-lucide="volume-2"></i>
+                                        Audio System Test & Permissions
+                                    </h3>
+                                    <button id="minimize-audio-test-btn" class="btn btn-sm btn-ghost" style="padding: 4px 8px;" title="Collapse section" aria-label="Toggle audio test section">
+                                        <i data-lucide="chevron-up" style="width: 16px; height: 16px;"></i>
+                                    </button>
                                 </div>
-                                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Autoplay:</div>
-                                    <div id="autoplay-status" style="font-weight: 600;">Checking...</div>
-                                </div>
-                                <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Active Sounds:</div>
-                                    <div id="active-sounds-count" style="font-weight: 600;">0</div>
-                                </div>
-                            </div>
-                            
-                            <!-- Debug Log -->
-                            <div style="margin-top: 16px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-size: 0.9rem; font-weight: 600;">Audio Debug Log:</span>
-                                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
-                                        <input type="checkbox" id="verbose-logging" checked>
-                                        <span>Verbose Logging</span>
-                                    </label>
-                                </div>
-                                <div id="audio-debug-log" style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
-                                    <div style="color: #60a5fa;">🎵 Audio system ready. Waiting for events...</div>
+                                <div id="audio-test-content">
+                                    <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <i data-lucide="info" style="color: #3b82f6; width: 20px; height: 20px; flex-shrink: 0;"></i>
+                                            <span style="font-size: 0.9rem; line-height: 1.5;">
+                                                <strong>Important:</strong> Browsers require user interaction before playing audio. 
+                                                Click "Enable Audio Permissions" below before testing sounds.
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+                                        <button id="enable-audio-btn" class="btn btn-primary" style="min-width: 200px;">
+                                            <i data-lucide="unlock"></i>
+                                            Enable Audio Permissions
+                                        </button>
+                                        <button id="test-audio-btn" class="btn btn-ghost">
+                                            <i data-lucide="play-circle"></i>
+                                            Test Audio Playback
+                                        </button>
+                                        <button id="clear-audio-log-btn" class="btn btn-ghost">
+                                            <i data-lucide="trash-2"></i>
+                                            Clear Log
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Audio Player for Testing -->
+                                    <div id="audio-test-player" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px;">
+                                        <div style="margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8; font-weight: 600;">Test Audio:</div>
+                                        <audio id="test-audio-element" controls style="width: 100%; max-width: 500px;">
+                                            <source src="https://www.myinstants.com/media/sounds/wow.mp3" type="audio/mpeg">
+                                            Your browser does not support the audio element.
+                                        </audio>
+                                    </div>
+                                    
+                                    <!-- Audio Status -->
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                        <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
+                                            <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Audio Context:</div>
+                                            <div id="audio-context-status" style="font-weight: 600; font-size: 0.95rem;">Checking...</div>
+                                        </div>
+                                        <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
+                                            <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Autoplay:</div>
+                                            <div id="autoplay-status" style="font-weight: 600; font-size: 0.95rem;">Checking...</div>
+                                        </div>
+                                        <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
+                                            <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Active Sounds:</div>
+                                            <div id="active-sounds-count" style="font-weight: 600; font-size: 0.95rem; color: #60a5fa;">0</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Debug Log -->
+                                    <div style="margin-top: 16px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <span style="font-size: 0.9rem; font-weight: 600; color: #e2e8f0;">Audio Debug Log</span>
+                                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                                                <input type="checkbox" id="verbose-logging" checked style="cursor: pointer;">
+                                                <span style="color: #cbd5e1;">Show Verbose Logs</span>
+                                            </label>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px; margin-bottom: 8px; padding: 8px 12px;">
+                                            <div style="font-size: 0.8rem; color: #94a3b8;">
+                                                <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
+                                                Critical events (play, error) are always logged. Verbose mode shows additional diagnostic information.
+                                            </div>
+                                        </div>
+                                        <div id="audio-debug-log" style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
+                                            <div style="color: #60a5fa;">🎵 Audio system ready. Waiting for events...</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
