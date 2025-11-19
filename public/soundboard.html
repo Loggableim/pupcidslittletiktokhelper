@@ -347,7 +347,13 @@
 
   <script src="/js/soundboard.js"></script>
 
+  <!-- Dashboard Preview Client for audio preview system -->
+  <script src="/dashboard_preview.js"></script>
+
   <!-- Hidden Audio Pool for reliable playback -->
   <div id="soundboard-audio-pool" style="display: none;"></div>
+
+  <!-- Preview Audio Player (hidden by default, shown when preview is active) -->
+  <audio id="preview-audio" controls style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: rgba(0,0,0,0.8); border-radius: 8px; padding: 8px;"></audio>
 </body>
 </html>

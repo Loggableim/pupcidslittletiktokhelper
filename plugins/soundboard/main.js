@@ -1,6 +1,10 @@
 const EventEmitter = require('events');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const path = require('path');
+const SoundboardFetcher = require('./fetcher');
+const SoundboardWebSocketTransport = require('./transport-ws');
+const SoundboardApiRoutes = require('./api-routes');
 
 /**
  * Soundboard Manager Class
@@ -723,6 +727,9 @@ class SoundboardPlugin {
             debug: (msg) => this.api.log(msg, 'debug')
         });
 
+        // Initialize preview system components
+        this.initPreviewSystem();
+
         // Register routes
         this.registerRoutes();
 
@@ -730,6 +737,46 @@ class SoundboardPlugin {
         this.registerTikTokEventHandlers();
 
         this.api.log('✅ Soundboard Plugin initialized', 'info');
+    }
+
+    /**
+     * Initialize the client-side preview system
+     */
+    initPreviewSystem() {
+        const io = this.api.getSocketIO();
+        const app = this.api.getApp();
+        const apiLimiter = require('../../modules/rate-limiter').apiLimiter;
+        
+        // Get sounds directory path
+        const soundsDir = path.join(__dirname, '../../public/sounds');
+        
+        // Initialize fetcher (path validation & URL whitelist)
+        this.fetcher = new SoundboardFetcher();
+        
+        // Initialize WebSocket transport (dashboard client tracking & broadcasting)
+        this.transport = new SoundboardWebSocketTransport(io);
+        
+        // Initialize API routes (preview endpoint with auth & validation)
+        this.apiRoutes = new SoundboardApiRoutes(
+            app,
+            apiLimiter,
+            this.fetcher,
+            this.transport,
+            {
+                info: (msg) => this.api.log(msg, 'info'),
+                warn: (msg) => this.api.log(msg, 'warn'),
+                error: (msg) => this.api.log(msg, 'error')
+            },
+            soundsDir
+        );
+        
+        this.api.log('✅ Soundboard preview system initialized (client-side mode)', 'info');
+        
+        // Check environment configuration
+        const previewMode = process.env.SOUNDBOARD_PREVIEW_MODE || 'client';
+        if (previewMode !== 'client') {
+            this.api.log(`⚠️ SOUNDBOARD_PREVIEW_MODE is set to "${previewMode}" but only "client" mode is supported`, 'warn');
+        }
     }
 
     registerRoutes() {
