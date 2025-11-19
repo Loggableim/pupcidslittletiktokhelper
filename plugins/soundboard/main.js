@@ -354,8 +354,10 @@ class SoundboardPlugin {
             error: (msg) => this.api.log(msg, 'error')
         });
         
-        // Start cleanup job
-        this.cleanupJob.start();
+        // Run cleanup on startup (async, non-blocking)
+        this.cleanupJob.runOnStartup().catch(err => {
+            this.api.log(`Cache cleanup on startup failed: ${err.message}`, 'warn');
+        });
 
         // Initialize preview system components
         this.initPreviewSystem();
@@ -753,10 +755,7 @@ class SoundboardPlugin {
     }
 
     async destroy() {
-        // Stop cleanup job
-        if (this.cleanupJob) {
-            this.cleanupJob.stop();
-        }
+        // Cleanup job runs only on startup, nothing to stop
         this.api.log('🎵 Soundboard Plugin destroyed', 'info');
     }
 }
