@@ -1,44 +1,61 @@
-const { TikTokLiveConnection } = require('tiktok-live-connector');
+const { WebcastEventEmitter, createWebSocketUrl } = require('@eulerstream/euler-websocket-sdk');
+const WebSocket = require('ws');
 
 // Test connection to a known live user
 const username = 'pupcid'; // or another username you know is live
+const apiKey = process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
 
-console.log(`Testing connection to @${username}...`);
+if (!apiKey) {
+    console.error('❌ No API key found. Set EULER_API_KEY or SIGN_API_KEY environment variable.');
+    process.exit(1);
+}
 
-const connection = new TikTokLiveConnection(username, {
-    processInitialData: true,
-    enableExtendedGiftInfo: true,
-    requestPollingIntervalMs: 1000
+console.log(`Testing Eulerstream connection to @${username}...`);
+
+// Create WebSocket URL
+const wsUrl = createWebSocketUrl({
+    uniqueId: username,
+    apiKey: apiKey
 });
 
-connection.connect()
-    .then(state => {
-        console.log('✅ Connected successfully!');
-        console.log('Room ID:', state.roomId);
-        console.log('Room Info keys:', Object.keys(state.roomInfo || {}));
-        
-        // Disconnect after 5 seconds
-        setTimeout(() => {
-            connection.disconnect();
-            console.log('Disconnected');
-            process.exit(0);
-        }, 5000);
-    })
-    .catch(err => {
-        console.error('❌ Connection failed:', err.message);
-        console.error('Full error:', err);
-        process.exit(1);
-    });
+console.log('Connecting to Eulerstream WebSocket...');
 
-connection.on('connected', () => {
-    console.log('Event: connected');
+// Create WebSocket connection
+const ws = new WebSocket(wsUrl);
+
+ws.on('open', () => {
+    console.log('✅ WebSocket connected successfully!');
 });
 
-connection.on('disconnected', () => {
-    console.log('Event: disconnected');
+ws.on('close', (code, reason) => {
+    console.log(`WebSocket closed: ${code} - ${reason}`);
+    process.exit(0);
 });
 
-connection.on('error', (err) => {
-    console.error('Event: error', err);
+ws.on('error', (err) => {
+    console.error('❌ WebSocket error:', err.message);
+    console.error('Full error:', err);
+    process.exit(1);
 });
+
+// Create event emitter
+const eventEmitter = new WebcastEventEmitter(ws);
+
+eventEmitter.on('chat', (data) => {
+    console.log('💬 Chat:', data.user?.uniqueId || 'unknown', '-', data.comment);
+});
+
+eventEmitter.on('gift', (data) => {
+    console.log('🎁 Gift:', data.user?.uniqueId || 'unknown', '-', data.gift?.name || 'unknown gift');
+});
+
+eventEmitter.on('member', (data) => {
+    console.log('👋 Member joined:', data.user?.uniqueId || 'unknown');
+});
+
+// Disconnect after 30 seconds
+setTimeout(() => {
+    console.log('Test complete, disconnecting...');
+    ws.close();
+}, 30000);
 
