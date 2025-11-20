@@ -306,6 +306,11 @@ function initializeSocketListeners() {
         showFallbackKeyWarning(data);
     });
 
+    // Euler Backup Key Warning (non-dismissible, blocks connection for 10 seconds)
+    socket.on('euler-backup-key-warning', (data) => {
+        showEulerBackupKeyWarning(data);
+    });
+
     // ========== AUDIO PLAYBACK (Dashboard) ==========
     // TTS Playback im Dashboard
     socket.on('tts:play', (data) => {
@@ -2969,6 +2974,137 @@ function showFallbackKeyWarning(data) {
                     overlay.parentNode.removeChild(overlay);
                 }
             }, 300);
+        }
+    }, data.duration || 10000);
+}
+
+// ========== EULER BACKUP KEY WARNING ==========
+function showEulerBackupKeyWarning(data) {
+    // Create overlay element - non-dismissible
+    const overlay = document.createElement('div');
+    overlay.id = 'euler-backup-key-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        backdrop-filter: blur(10px);
+        user-select: none;
+    `;
+
+    // Prevent any clicks from dismissing the overlay
+    overlay.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    // Create warning box
+    const warningBox = document.createElement('div');
+    warningBox.style.cssText = `
+        background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%);
+        border: 3px solid #dc2626;
+        border-radius: 16px;
+        padding: 50px;
+        max-width: 700px;
+        box-shadow: 0 25px 80px rgba(220, 38, 38, 0.6);
+        animation: slideInBounce 0.5s ease-out;
+    `;
+
+    // Create countdown element
+    const countdownSeconds = Math.floor((data.duration || 10000) / 1000);
+    let remainingSeconds = countdownSeconds;
+
+    warningBox.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 80px; margin-bottom: 30px; animation: pulse 2s infinite;">🚨</div>
+            <h2 style="color: #fca5a5; font-size: 32px; margin-bottom: 25px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">
+                Euler Backup Key Erkannt
+            </h2>
+            <p style="color: #fecaca; font-size: 20px; line-height: 1.8; margin-bottom: 25px; font-weight: 600;">
+                Du verwendest den Euler Backup Key!
+            </p>
+            <p style="color: #fca5a5; font-size: 18px; line-height: 1.7; margin-bottom: 30px;">
+                Dieser Key ist <strong>nur als Notfall-Backup</strong> gedacht und sollte <strong>nicht regulär verwendet werden</strong>.
+            </p>
+            <div style="background: rgba(220, 38, 38, 0.2); border: 2px solid #dc2626; border-radius: 10px; padding: 20px; margin-bottom: 25px;">
+                <p style="color: #fef2f2; font-size: 16px; margin: 0; line-height: 1.6;">
+                    <strong>⚠️ WICHTIG:</strong> Bitte hole dir deinen eigenen <strong>kostenlosen</strong> API Key von 
+                    <a href="https://www.eulerstream.com" target="_blank" style="color: #fbbf24; text-decoration: underline; font-weight: bold;">eulerstream.com</a>
+                    und speichere ihn in den Einstellungen.
+                </p>
+            </div>
+            <div style="background: rgba(0, 0, 0, 0.3); border-radius: 12px; padding: 25px; margin-bottom: 20px;">
+                <p style="color: #f87171; font-size: 16px; margin: 0 0 15px 0; font-weight: 600;">
+                    Verbindung wird in <span style="font-size: 48px; color: #dc2626; font-weight: bold; display: block; margin-top: 10px;" id="euler-countdown-timer">${remainingSeconds}</span> Sekunden hergestellt...
+                </p>
+            </div>
+            <p style="color: #dc2626; font-size: 15px; margin-top: 15px; font-weight: 700; text-transform: uppercase;">
+                ⚠️ Dieses Fenster kann nicht geschlossen werden ⚠️
+            </p>
+        </div>
+    `;
+
+    overlay.appendChild(warningBox);
+    document.body.appendChild(overlay);
+
+    // Add animation keyframes
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInBounce {
+            0% {
+                opacity: 0;
+                transform: scale(0.7) translateY(-50px);
+            }
+            60% {
+                opacity: 1;
+                transform: scale(1.05) translateY(0);
+            }
+            100% {
+                transform: scale(1) translateY(0);
+            }
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Countdown timer
+    const countdownTimer = document.getElementById('euler-countdown-timer');
+    const countdownInterval = setInterval(() => {
+        remainingSeconds--;
+        if (countdownTimer) {
+            countdownTimer.textContent = remainingSeconds;
+        }
+        if (remainingSeconds <= 0) {
+            clearInterval(countdownInterval);
+        }
+    }, 1000);
+
+    // Auto-remove after duration (non-dismissible during countdown)
+    setTimeout(() => {
+        clearInterval(countdownInterval);
+        if (overlay && overlay.parentNode) {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.5s ease-out';
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 500);
         }
     }, data.duration || 10000);
 }

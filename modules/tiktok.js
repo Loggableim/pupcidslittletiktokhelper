@@ -5,6 +5,9 @@ const WebSocket = require('ws');
 // Fallback API key for users who don't have their own
 const FALLBACK_API_KEY = 'euler_MmE2OWM1ZTY1NWFkNmIxZmEwOThjNjU5ZmU1NmNjOTlkMWJiOGY5MzkzNWVlOTBjODY2NGVh';
 
+// Euler backup key - requires special warning before connection
+const EULER_BACKUP_KEY = 'euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2';
+
 /**
  * TikTok Live Connector - Eulerstream WebSocket API
  * 
@@ -124,6 +127,27 @@ class TikTokConnector extends EventEmitter {
             } else {
                 this.logger.warn(`   Key Type: Unknown format - connection may fail`);
             }
+
+            // Check if user is using the Euler backup key
+            // Show non-dismissible warning and delay connection by 10 seconds
+            if (apiKey === EULER_BACKUP_KEY) {
+                this.logger.warn('⚠️  EULER BACKUP KEY DETECTED - Connection will be delayed by 10 seconds');
+                this.logger.warn('⚠️  Please get your own free API key at https://www.eulerstream.com');
+                
+                // Emit event to show blocking warning overlay to user
+                if (this.io) {
+                    this.io.emit('euler-backup-key-warning', {
+                        message: 'Euler Backup Key wird verwendet',
+                        duration: 10000 // 10 seconds
+                    });
+                }
+                
+                // Wait 10 seconds before proceeding with connection
+                this.logger.info('⏳ Waiting 10 seconds before establishing connection...');
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                this.logger.info('✅ Delay complete, proceeding with connection');
+            }
+
             // Create WebSocket URL using Eulerstream SDK
             // Note: useEnterpriseApi requires Enterprise plan upgrade
             // Community plan users should NOT enable this feature
