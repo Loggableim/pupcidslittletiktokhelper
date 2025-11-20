@@ -263,7 +263,7 @@ class DatabaseManager {
             // Quick Actions Einstellungen
             'tts_enabled': 'true',
             'soundboard_enabled': 'true',
-            'flows_enabled': 'true',
+            'flows_enabled': 'false',
             // Soundboard Einstellungen
             'soundboard_play_mode': 'overlap', // overlap or sequential (managed in frontend)
             'soundboard_max_queue_length': '10',
