@@ -195,7 +195,7 @@
                 </a>
                 <a href="#" class="sidebar-item" data-view="clarityhud" data-plugin="clarityhud">
                     <i data-lucide="layout"></i>
-                    <span class="sidebar-item-text">ClarityHUD</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.clarityhud">ClarityHUD</span>
                 </a>
 
                 <!-- Category: Interaktive Effekte -->
@@ -204,7 +204,7 @@
                 </div>
                 <a href="#" class="sidebar-item" data-view="tts">
                     <i data-lucide="mic"></i>
-                    <span class="sidebar-item-text">TTS</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.tts">TTS</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="soundboard">
                     <i data-lucide="music"></i>
@@ -221,19 +221,20 @@
                 </div>
                 <a href="#" class="sidebar-item" data-view="multi-guest" data-plugin="vdoninja">
                     <i data-lucide="users"></i>
+                    <span class="sidebar-item-text" data-i18n="navigation.multi_guest">Multi-Guest</span>
                     <span class="sidebar-item-text" data-i18n="navigation.vdoninja">VDO.Ninja</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="gift-milestone" data-plugin="gift-milestone">
                     <i data-lucide="gift"></i>
-                    <span class="sidebar-item-text">Gift Milestone</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.gift_milestone">Gift Milestone</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="multicam" data-plugin="multicam">
                     <i data-lucide="video"></i>
-                    <span class="sidebar-item-text">Multi-Cam</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.multi_cam">Multi-Cam</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="osc-bridge" data-plugin="osc-bridge">
                     <i data-lucide="gamepad-2"></i>
-                    <span class="sidebar-item-text">OSC-Bridge</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.osc_bridge">OSC-Bridge</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="hybridshock" data-plugin="hybridshock">
                     <i data-lucide="zap"></i>
@@ -262,6 +263,7 @@
 
                 <a href="#" class="sidebar-item" data-view="plugins">
                     <i data-lucide="plug"></i>
+                    <span class="sidebar-item-text" data-i18n="navigation.plugin_manager">Plugin Manager</span>
                     <span class="sidebar-item-text" data-i18n="navigation.plugins">Plugin Manager</span>
                 </a>
 
@@ -293,6 +295,29 @@
                             <span data-i18n="dashboard.disconnected">Disconnected</span>
                         </span>
                     </div>
+                    <!-- Language Switcher -->
+                    <div class="language-switcher">
+                        <button id="language-btn" class="topbar-icon-btn" title="Change Language">
+                            <span class="flag-icon" id="current-flag">🇬🇧</span>
+                        </button>
+                        <div id="language-dropdown" class="language-dropdown" style="display: none;">
+                            <button class="language-option" data-locale="en">
+                                <span class="flag-icon">🇬🇧</span>
+                                <span>English</span>
+                            </button>
+                            <button class="language-option" data-locale="de">
+                                <span class="flag-icon">🇩🇪</span>
+                                <span>Deutsch</span>
+                            </button>
+                            <button class="language-option" data-locale="es">
+                                <span class="flag-icon">🇪🇸</span>
+                                <span>Español</span>
+                            </button>
+                            <button class="language-option" data-locale="fr">
+                                <span class="flag-icon">🇫🇷</span>
+                                <span>Français</span>
+                            </button>
+                        </div>
                     <!-- Language Switcher with Flags -->
                     <div class="topbar-language-switcher">
                         <select id="topbar-language-selector" class="topbar-language-select" aria-label="Select Language">
@@ -325,6 +350,7 @@
                             <span data-i18n="dashboard.tiktok_live_connection">TikTok Live Connection</span>
                         </h2>
                         <div class="connection-controls">
+                            <input type="text" id="username-input" placeholder="TikTok Username (ohne @)" data-i18n="dashboard.username_placeholder"
                             <input type="text" id="username-input" data-i18n-placeholder="dashboard.username_placeholder" placeholder="TikTok Username (without @)"
                                    class="connection-input">
                             <button id="connect-btn" class="btn btn-primary">
@@ -908,7 +934,7 @@
                                             <i data-lucide="plus"></i>
                                             Add/Update Gift Sound
                                         </button>
-                                        <button id="clear-gift-form-btn" class="btn btn-ghost">Clear</button>
+                                        <button id="clear-gift-form-btn" class="btn btn-ghost"data-i18n="dashboard.clear_events">Clear</button>
                                     </div>
                                 </div>
 
@@ -1429,19 +1455,19 @@
                                     <div class="form-group">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="auto-connect-enabled">
-                                            <span>Auto-connect to last TikTok user on startup</span>
+                                            <spandata-i18n="settings.auto_connect">Auto-connect to last TikTok user on startup</span>
                                         </label>
                                     </div>
                                     <div class="form-group">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="auto-update-check" checked>
-                                            <span>Check for updates on startup</span>
+                                            <spandata-i18n="settings.auto_update_check">Check for updates on startup</span>
                                         </label>
                                     </div>
                                     <div class="form-group">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="update-notifications" checked>
-                                            <span>Show update notifications</span>
+                                            <spandata-i18n="settings.show_update_notifications">Show update notifications</span>
                                         </label>
                                     </div>
                                 </div>
@@ -1491,7 +1517,7 @@
                                     <div class="form-group">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="autostart-enabled">
-                                            <span>Enable Auto-Start</span>
+                                            <spandata-i18n="settings.enable_auto_start">Enable Auto-Start</span>
                                         </label>
                                     </div>
                                 </div>
@@ -1617,12 +1643,15 @@
     <!-- Scripts -->
     <!-- Theme manager must load early to prevent flash of unstyled content -->
     <script src="/js/theme-manager.js"></script>
+    <!-- i18n client must load early for translations -->
+    <script src="/js/i18n-client.js"></script>
     <!-- Audio unlock must load first to handle autoplay restrictions -->
     <script src="/js/audio-unlock.js"></script>
     <!-- Initialization helper to prevent race conditions -->
     <script src="/js/init-helper.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/navigation.js"></script>
+    <script src="/js/language-switcher.js"></script>
     <script src="/js/dashboard-enhancements.js"></script>
     <script src="/js/vdoninja-dashboard.js"></script>
     <script src="/js/plugin-manager.js"></script>

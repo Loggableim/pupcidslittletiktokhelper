@@ -1016,6 +1016,54 @@ app.get('/api/init-state', (req, res) => {
     res.json(initState.getState());
 });
 
+// ========== I18N ROUTES ==========
+
+// Get available locales
+app.get('/api/i18n/locales', (req, res) => {
+    const locales = i18n.getAvailableLocales();
+    res.json(locales);
+});
+
+// Get translations for a specific locale
+app.get('/api/i18n/translations/:locale', (req, res) => {
+    const locale = req.params.locale;
+    const translations = i18n.getAllTranslations(locale);
+    
+    if (!translations || Object.keys(translations).length === 0) {
+        return res.status(404).json({ error: 'Locale not found' });
+    }
+    
+    res.json(translations);
+});
+
+// Get current locale (from settings or default)
+app.get('/api/i18n/current', (req, res) => {
+    const locale = db.getSetting('language') || 'en';
+    res.json({ locale });
+});
+
+// Set current locale
+app.post('/api/i18n/current', apiLimiter, (req, res) => {
+    const { locale } = req.body;
+    
+    if (!locale) {
+        return res.status(400).json({ error: 'Locale is required' });
+    }
+    
+    const availableLocales = i18n.getAvailableLocales();
+    if (!availableLocales.includes(locale)) {
+        return res.status(400).json({ error: 'Invalid locale' });
+    }
+    
+    db.setSetting('language', locale);
+    i18n.setLocale(locale);
+    
+    // Notify all connected clients
+    io.emit('locale-changed', { locale });
+    
+    res.json({ success: true, locale });
+});
+
 // ========== SETTINGS ROUTES ==========
 
 app.get('/api/settings', apiLimiter, (req, res) => {
