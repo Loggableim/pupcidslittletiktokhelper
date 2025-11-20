@@ -10,8 +10,6 @@
  * - Language switching with event emission
  * - LocalStorage persistence
  * - Automatic UI re-rendering
- * Client-side i18n Module
- * Provides translation functionality for browser-based UI
  */
 
 class I18nClient {
@@ -21,52 +19,13 @@ class I18nClient {
         this.translations = {};
         this.listeners = [];
         this.initialized = false;
+        this.onLanguageChangeCallbacks = [];
         
         // Load locale from localStorage
         const savedLocale = localStorage.getItem('app_locale');
         if (savedLocale) {
             this.currentLocale = savedLocale;
         }
-    }
-
-    /**
-     * Initialize i18n - load translations from server
-     */
-    async init(locale = null) {
-        const targetLocale = locale || this.currentLocale;
-        
-        try {
-            // Load translations for the current locale
-            const response = await fetch(`/api/i18n/translations/${targetLocale}`);
-            if (!response.ok) {
-                throw new Error(`Failed to load translations for ${targetLocale}`);
-            }
-            
-            const data = await response.json();
-            this.translations[targetLocale] = data;
-            this.currentLocale = targetLocale;
-            this.initialized = true;
-            
-            // Save to localStorage
-            localStorage.setItem('app_locale', targetLocale);
-            
-            // Update HTML lang attribute
-            document.documentElement.lang = targetLocale;
-            
-            console.log(`✅ i18n initialized with locale: ${targetLocale}`);
-            
-            return true;
-        } catch (error) {
-            console.error('Failed to initialize i18n:', error);
-            
-            // Fallback to default locale if not already trying it
-            if (targetLocale !== this.defaultLocale) {
-                console.log(`Falling back to ${this.defaultLocale}...`);
-                return this.init(this.defaultLocale);
-            }
-            
-        this.initialized = false;
-        this.onLanguageChangeCallbacks = [];
     }
 
     /**
@@ -88,13 +47,13 @@ class I18nClient {
      */
     async loadTranslations(locale) {
         try {
-            const response = await fetch(`/api/i18n/translations?locale=${locale}`);
+            const response = await fetch(`/api/i18n/translations/${locale}`);
             if (!response.ok) {
                 throw new Error(`Failed to load translations: ${response.statusText}`);
             }
             
             const data = await response.json();
-            this.translations[locale] = data.translations;
+            this.translations[locale] = data;
             this.currentLocale = locale;
             
             // Save to localStorage
@@ -165,7 +124,6 @@ class I18nClient {
      * @returns {string} Translated string
      */
     t(key, params = {}) {
-        if (!this.translations[this.currentLocale]) {
         if (!this.initialized) {
             console.warn('[i18n] Not initialized yet, returning key');
             return key;
@@ -196,24 +154,6 @@ class I18nClient {
         }
 
         // If translation is still an object, return the key
-                translation = this.translations[this.defaultLocale];
-                if (!translation) {
-                    return key;
-                }
-                
-                for (const fallbackKey of keys) {
-                    if (translation && typeof translation === 'object' && fallbackKey in translation) {
-                        translation = translation[fallbackKey];
-                    } else {
-                        // Return key if not found in fallback either
-                        return key;
-                    }
-                }
-                break;
-            }
-        }
-
-        // If translation is still an object, something went wrong
         if (typeof translation !== 'string') {
             return key;
         }
@@ -224,10 +164,6 @@ class I18nClient {
 
     /**
      * Interpolate parameters into translation string
-     * Example: "Hello {name}" + {name: "John"} => "Hello John"
-     */
-    interpolate(str, params) {
-        return str.replace(/\{(\w+)\}/g, (match, key) => {
      * Supports both {param} and {{param}} syntax
      */
     interpolate(str, params) {
@@ -246,7 +182,7 @@ class I18nClient {
 
         // Load translations if not already loaded
         if (!this.translations[locale]) {
-            const success = await this.init(locale);
+            const success = await this.loadTranslations(locale);
             if (!success) {
                 return false;
             }
@@ -272,7 +208,6 @@ class I18nClient {
     }
 
     /**
-     * Get available locales
      * Get all available locales
      */
     async getAvailableLocales() {
@@ -281,11 +216,8 @@ class I18nClient {
             if (!response.ok) {
                 throw new Error('Failed to fetch available locales');
             }
-            return await response.json();
-        } catch (error) {
-            console.error('Failed to get available locales:', error);
             const data = await response.json();
-            return data.locales || ['en', 'de', 'es', 'fr'];
+            return data || ['en', 'de', 'es', 'fr'];
         } catch (error) {
             console.error('[i18n] Failed to fetch available locales:', error);
             return ['en', 'de', 'es', 'fr'];
@@ -377,70 +309,6 @@ class I18nClient {
             element.innerHTML = this.t(key, paramsObj);
         });
     }
-}
-
-// Create global instance
-const i18n = new I18nClient();
-
-// Auto-initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', async () => {
-        await i18n.init();
-        i18n.updateDOM();
-    });
-} else {
-    // DOM already loaded
-    i18n.init().then(() => i18n.updateDOM());
-}
-
-// Make available globally
-window.i18n = i18n;
-     * Update all elements with data-i18n attribute
-     */
-    updateDOM() {
-        // Update elements with data-i18n attribute for text content
-        document.querySelectorAll('[data-i18n]').forEach(element => {
-            const key = element.getAttribute('data-i18n');
-            if (key) {
-                element.textContent = this.t(key);
-            }
-        });
-
-        // Update elements with data-i18n-html for innerHTML
-        document.querySelectorAll('[data-i18n-html]').forEach(element => {
-            const key = element.getAttribute('data-i18n-html');
-            if (key) {
-                element.innerHTML = this.t(key);
-            }
-        });
-
-        // Update placeholders
-        document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-            const key = element.getAttribute('data-i18n-placeholder');
-            if (key) {
-                element.placeholder = this.t(key);
-            }
-        });
-
-        // Update title attributes (tooltips)
-        document.querySelectorAll('[data-i18n-title]').forEach(element => {
-            const key = element.getAttribute('data-i18n-title');
-            if (key) {
-                element.title = this.t(key);
-            }
-        });
-
-        // Update aria-label attributes
-        document.querySelectorAll('[data-i18n-aria]').forEach(element => {
-            const key = element.getAttribute('data-i18n-aria');
-            if (key) {
-                element.setAttribute('aria-label', this.t(key));
-            }
-        });
-
-        // Update page title
-        document.title = this.t('app.name');
-    }
 
     /**
      * Setup language switcher for a select element
@@ -503,20 +371,19 @@ window.i18n = i18n;
     }
 }
 
-// Create global instance and expose it
+// Create global instance
 const i18n = new I18nClient();
-window.i18n = i18n; // Make it globally accessible
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        i18n.init().then(() => {
-            i18n.updateDOM();
-        });
+    document.addEventListener('DOMContentLoaded', async () => {
+        await i18n.init();
+        i18n.updateDOM();
     });
 } else {
     // DOM already loaded
-    i18n.init().then(() => {
-        i18n.updateDOM();
-    });
+    i18n.init().then(() => i18n.updateDOM());
 }
+
+// Make available globally
+window.i18n = i18n;

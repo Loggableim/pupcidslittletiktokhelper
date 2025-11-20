@@ -115,7 +115,7 @@
     "chat": "{username}: {message}",
     "like": "{username} liked! (Total: {likeCount})",
     "no_events": "No events yet. Connect to see live events!",
-    "clear_all": "Clear All Events"
+    "clear_all": "Clear All Events",
     "clear_events": "Clear Events"
   },
   "flows": {
@@ -161,7 +161,7 @@
     "playback_settings": "Playback Settings",
     "save_settings": "Save Soundboard Settings",
     "advanced_settings": "Advanced Settings",
-    "test_sound": "Test Sound"
+    "test_sound": "Test Sound",
     "enable_soundboard": "Enable Soundboard",
     "default_gift_sound": "Default Gift Sound",
     "follow_sound": "Follow Sound",
@@ -353,7 +353,7 @@
     "back": "Back",
     "next": "Next",
     "previous": "Previous",
-    "finish": "Finish"
+    "finish": "Finish",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "active": "Active",
@@ -432,7 +432,7 @@
     "viewers": "Viewers",
     "likes": "Likes",
     "coins": "Coins",
-    "followers": "Followers"
+    "followers": "Followers",
     "plugin_load_failed": "Error loading plugins",
     "plugin_enable_failed": "Error enabling plugin",
     "plugin_disable_failed": "Error disabling plugin",

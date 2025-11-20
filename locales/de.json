@@ -119,7 +119,7 @@
     "chat": "{username}: {message}",
     "like": "{username} hat geliked! (Gesamt: {likeCount})",
     "no_events": "Noch keine Ereignisse. Verbinde dich, um Live-Events zu sehen!",
-    "clear_all": "Alle Ereignisse löschen"
+    "clear_all": "Alle Ereignisse löschen",
     "clear_events": "Ereignisse löschen"
   },
   "flows": {
@@ -165,7 +165,7 @@
     "playback_settings": "Wiedergabe-Einstellungen",
     "save_settings": "Soundboard-Einstellungen speichern",
     "advanced_settings": "Erweiterte Einstellungen",
-    "test_sound": "Sound testen"
+    "test_sound": "Sound testen",
     "enable_soundboard": "Soundboard aktivieren",
     "default_gift_sound": "Standard-Geschenkton",
     "follow_sound": "Follow-Sound",
@@ -357,7 +357,7 @@
     "back": "Zurück",
     "next": "Weiter",
     "previous": "Vorherige",
-    "finish": "Fertig"
+    "finish": "Fertig",
     "enabled": "Aktiviert",
     "disabled": "Deaktiviert",
     "active": "Aktiv",
@@ -436,7 +436,7 @@
     "viewers": "Zuschauer",
     "likes": "Likes",
     "coins": "Münzen",
-    "followers": "Follower"
+    "followers": "Follower",
     "plugin_load_failed": "Fehler beim Laden der Plugins",
     "plugin_enable_failed": "Fehler beim Aktivieren des Plugins",
     "plugin_disable_failed": "Fehler beim Deaktivieren des Plugins",
