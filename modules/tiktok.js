@@ -1452,7 +1452,14 @@ class TikTokConnector extends EventEmitter {
                 catalog: this.db.getGiftCatalog()
             };
         } catch (error) {
-            this.logger.error('Error updating gift catalog from EulerStream:', error);
+            // Safely log error without circular references
+            const errorInfo = {
+                message: error.message,
+                code: error.code,
+                status: error.response?.status,
+                statusText: error.response?.statusText
+            };
+            this.logger.error('Error updating gift catalog from EulerStream:', errorInfo);
             
             // Fallback to current catalog
             const catalog = this.db.getGiftCatalog();
