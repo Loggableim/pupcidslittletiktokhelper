@@ -618,11 +618,6 @@ class ClarityHUDBackend {
         username: data.nickname || data.username || 'Anonymous',
         raw: data
       };
-        // Include old format fields for backward compatibility
-        uniqueId: data.uniqueId || 'unknown',
-        username: data.nickname || data.uniqueId || 'Anonymous',
-        raw: data
-      };
 
       // Add to join queue (with type and timestamp for internal storage)
       this.addToQueue('join', {
