@@ -998,6 +998,30 @@ class TikTokConnector extends EventEmitter {
             }
         }
 
+        // Try to extract total coins/gifts count
+        const coinFields = ['totalCoins', 'total_coins', 'coins', 'giftCoins', 'gift_coins'];
+        for (const field of coinFields) {
+            const value = roomInfo[field] || roomInfo.room?.[field] || roomInfo.stats?.[field];
+            if (typeof value === 'number' && value >= 0) {
+                this.stats.totalCoins = value;
+                this.logger.info(`📊 Extracted coin count from roomInfo.${field}: ${value}`);
+                statsUpdated = true;
+                break;
+            }
+        }
+
+        // Try to extract gift count
+        const giftFields = ['giftCount', 'gift_count', 'totalGifts', 'total_gifts', 'gifts'];
+        for (const field of giftFields) {
+            const value = roomInfo[field] || roomInfo.room?.[field] || roomInfo.stats?.[field];
+            if (typeof value === 'number' && value >= 0) {
+                this.stats.gifts = value;
+                this.logger.info(`📊 Extracted gift count from roomInfo.${field}: ${value}`);
+                statsUpdated = true;
+                break;
+            }
+        }
+
         // Log roomInfo structure for debugging if no stats were found
         if (!statsUpdated) {
             this.logger.info(`📊 No initial stats found in roomInfo. Available top-level keys: ${JSON.stringify(Object.keys(roomInfo))}`);
