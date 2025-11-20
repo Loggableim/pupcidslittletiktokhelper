@@ -456,13 +456,19 @@
             case 'connected':
                 statusBadge.classList.add('status-connected');
                 if (statusIcon) statusIcon.setAttribute('data-lucide', 'check-circle');
-                if (statusText) statusText.textContent = getTranslation('dashboard.connected', 'Connected');
+                if (statusText) {
+                    statusText.setAttribute('data-i18n', 'dashboard.connected');
+                    statusText.textContent = getTranslation('dashboard.connected', 'Connected');
+                }
                 break;
 
             case 'disconnected':
                 statusBadge.classList.add('status-disconnected');
                 if (statusIcon) statusIcon.setAttribute('data-lucide', 'circle');
-                if (statusText) statusText.textContent = getTranslation('dashboard.disconnected', 'Disconnected');
+                if (statusText) {
+                    statusText.setAttribute('data-i18n', 'dashboard.disconnected');
+                    statusText.textContent = getTranslation('dashboard.disconnected', 'Disconnected');
+                }
                 break;
 
             case 'error':
@@ -471,8 +477,10 @@
                 if (statusIcon) statusIcon.setAttribute('data-lucide', 'alert-circle');
                 if (statusText) {
                     if (status === 'retrying') {
+                        statusText.setAttribute('data-i18n', 'dashboard.retrying');
                         statusText.textContent = `${getTranslation('dashboard.retrying', 'Retrying')} (${data.attempt}/${data.maxRetries})`;
                     } else {
+                        statusText.setAttribute('data-i18n', 'common.error');
                         statusText.textContent = getTranslation('common.error', 'Error');
                     }
                 }
