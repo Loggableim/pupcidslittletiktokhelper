@@ -61,13 +61,18 @@ class I18nClient {
      * Change language and reload translations
      */
     async changeLanguage(locale) {
+        console.log(`[i18n] changeLanguage called: ${this.currentLocale} -> ${locale}`);
+        
         if (this.currentLocale === locale) {
+            console.log(`[i18n] Already using locale: ${locale}`);
             return true; // Already using this locale
         }
 
         const success = await this.loadTranslations(locale);
         
         if (success) {
+            console.log(`[i18n] Translations loaded successfully for: ${locale}`);
+            
             // Trigger language change callbacks
             this.onLanguageChangeCallbacks.forEach(callback => {
                 try {
@@ -79,6 +84,9 @@ class I18nClient {
             
             // Update HTML lang attribute
             document.documentElement.lang = locale;
+            console.log(`[i18n] Updated document.documentElement.lang to: ${locale}`);
+        } else {
+            console.error(`[i18n] Failed to load translations for: ${locale}`);
         }
         
         return success;
@@ -226,17 +234,26 @@ class I18nClient {
      * Setup language switcher for a select element
      */
     setupLanguageSwitcher(selectElement) {
-        if (!selectElement) return;
+        if (!selectElement) {
+            console.warn('[i18n] setupLanguageSwitcher called with null/undefined element');
+            return;
+        }
 
+        console.log(`[i18n] Setting up language switcher for element ID: ${selectElement.id}`);
+        
         // Set current value
         selectElement.value = this.currentLocale;
+        console.log(`[i18n] Set ${selectElement.id} value to: ${this.currentLocale}`);
 
         // Listen for changes
         selectElement.addEventListener('change', async (e) => {
             const newLocale = e.target.value;
+            console.log(`[i18n] Language change triggered to: ${newLocale}`);
+            
             const success = await this.changeLanguage(newLocale);
             
             if (success) {
+                console.log(`[i18n] Language change successful, updating DOM...`);
                 this.updateDOM();
                 
                 // Sync all language selectors
@@ -253,6 +270,8 @@ class I18nClient {
                 selectElement.value = this.currentLocale; // Revert
             }
         });
+        
+        console.log(`[i18n] Event listener registered for ${selectElement.id}`);
     }
 
     /**
