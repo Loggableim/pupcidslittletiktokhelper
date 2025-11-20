@@ -73,6 +73,39 @@ class TikTokConnector extends EventEmitter {
 
         // Eulerstream WebSocket event emitter
         this.eventEmitter = null;
+        
+        // Room ID for API calls
+        this.roomId = null;
+        
+        // TikTok Webcast API configuration
+        this.webcastApiConfig = {
+            baseUrl: 'https://webcast.tiktok.com/webcast',
+            params: {
+                aid: '1988',
+                app_language: 'en-US',
+                app_name: 'tiktok_web',
+                browser_language: 'en',
+                browser_name: 'Mozilla',
+                browser_online: 'true',
+                browser_platform: 'Win32',
+                browser_version: '5.0',
+                cookie_enabled: 'true',
+                device_platform: 'web',
+                focus_state: 'true',
+                from_page: 'user',
+                history_len: '2',
+                is_fullscreen: 'false',
+                is_page_visible: 'true',
+                os: 'windows',
+                priority_region: '',
+                referer: 'https://www.tiktok.com/',
+                root_referer: 'https://www.tiktok.com/',
+                screen_height: '1080',
+                screen_width: '1920',
+                tz_name: 'Europe/Berlin',
+                webcast_language: 'en'
+            }
+        };
     }
 
     /**
@@ -248,6 +281,15 @@ class TikTokConnector extends EventEmitter {
             this.db.setSetting('last_connected_username', username);
 
             this.logger.info(`✅ Connected to TikTok LIVE: @${username} via Eulerstream`);
+            
+            // Fetch room info from TikTok API to get accurate stream start time
+            setTimeout(async () => {
+                try {
+                    await this.fetchRoomInfo();
+                } catch (error) {
+                    this.logger.warn('Could not fetch room info from TikTok API:', error.message);
+                }
+            }, 2000); // Wait 2 seconds after connection to fetch room info
             
             // Log success
             this._logConnectionAttempt(username, true, null, null);
@@ -1397,80 +1439,218 @@ class TikTokConnector extends EventEmitter {
         this.logger.info('🧹 Event deduplication cache manually cleared');
     }
 
+    /**
+     * Fetch Room ID from TikTok's HTML page
+     * This is required to make API calls to TikTok's Webcast API
+     */
+    async fetchRoomId(username) {
+        const targetUsername = username || this.currentUsername;
+        if (!targetUsername) {
+            throw new Error('Username is required to fetch room ID');
+        }
+        
+        try {
+            this.logger.info(`📡 Fetching room ID for @${targetUsername}...`);
+            
+            const response = await axios.get(`https://www.tiktok.com/@${targetUsername}/live`, {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9'
+                }
+            });
+            
+            const html = response.data;
+            
+            // Try to extract room_id from SIGI_STATE or other embedded data
+            const roomIdMatch = html.match(/"roomId":"(\d+)"/);
+            if (roomIdMatch && roomIdMatch[1]) {
+                this.roomId = roomIdMatch[1];
+                this.logger.info(`✅ Found room ID: ${this.roomId}`);
+                return this.roomId;
+            }
+            
+            // Alternative pattern
+            const altMatch = html.match(/room_id=(\d+)/);
+            if (altMatch && altMatch[1]) {
+                this.roomId = altMatch[1];
+                this.logger.info(`✅ Found room ID: ${this.roomId}`);
+                return this.roomId;
+            }
+            
+            this.logger.warn('⚠️  Could not extract room ID from page - user may not be live');
+            return null;
+            
+        } catch (error) {
+            this.logger.error('Error fetching room ID:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Fetch room info from TikTok's Webcast API
+     * This includes stream start time, viewer count, and other metadata
+     */
+    async fetchRoomInfo() {
+        if (!this.roomId) {
+            this.logger.warn('⚠️  Room ID not available, attempting to fetch...');
+            await this.fetchRoomId();
+            if (!this.roomId) {
+                return null;
+            }
+        }
+        
+        try {
+            this.logger.info('📋 Fetching room info from TikTok Webcast API...');
+            
+            const params = new URLSearchParams({
+                ...this.webcastApiConfig.params,
+                room_id: this.roomId
+            });
+            
+            const url = `${this.webcastApiConfig.baseUrl}/room/info/?${params}`;
+            
+            const response = await axios.get(url, {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'https://www.tiktok.com/',
+                    'Origin': 'https://www.tiktok.com'
+                }
+            });
+            
+            if (response.data && response.data.data) {
+                const roomData = response.data.data;
+                this.logger.info('✅ Room info fetched successfully');
+                
+                // Extract and set stream start time
+                if (roomData.create_time || roomData.start_time) {
+                    const timestamp = (roomData.start_time || roomData.create_time) * 1000; // Convert to milliseconds
+                    
+                    if (!this.streamStartTime || timestamp < this.streamStartTime) {
+                        this.streamStartTime = timestamp;
+                        this._persistedStreamStart = timestamp;
+                        this._streamTimeDetectionMethod = 'TikTok Webcast API (room/info)';
+                        
+                        this.logger.info(`✅ Stream start time from API: ${new Date(this.streamStartTime).toISOString()}`);
+                        
+                        // Broadcast updated stream time info
+                        if (this.io) {
+                            this.io.emit('tiktok:streamTimeInfo', {
+                                streamStartTime: this.streamStartTime,
+                                streamStartISO: new Date(this.streamStartTime).toISOString(),
+                                detectionMethod: this._streamTimeDetectionMethod,
+                                currentDuration: Math.floor((Date.now() - this.streamStartTime) / 1000)
+                            });
+                        }
+                    }
+                }
+                
+                return roomData;
+            }
+            
+            return null;
+            
+        } catch (error) {
+            this.logger.error('Error fetching room info:', error.message);
+            return null;
+        }
+    }
+
     isActive() {
         return this.isConnected;
     }
 
     async updateGiftCatalog(options = {}) {
-        // Fetch gift catalog from EulerStream REST API
-        // This provides the complete TikTok gift catalog with names, icons, and values
-        try {
-            this.logger.info('🎁 Fetching gift catalog from EulerStream...');
+        // Fetch gift catalog from TikTok's Webcast API
+        // This is the same API that TikTok-Live-Connector uses
+        
+        // Try to get room ID if we don't have it
+        if (!this.roomId && this.currentUsername) {
+            await this.fetchRoomId(this.currentUsername);
+        }
+        
+        if (!this.roomId) {
+            this.logger.info('ℹ️  Room ID not available. Gift catalog will be built from stream events.');
             
-            // Fetch gift catalog from EulerStream API
-            const response = await axios.get('https://tiktok.eulerstream.com/webcast/gift_info', {
+            const catalog = this.db.getGiftCatalog();
+            return {
+                success: true,
+                message: catalog.length > 0 
+                    ? `Using existing catalog with ${catalog.length} gifts (automatically updated from stream)`
+                    : 'Gift catalog will be built automatically as gifts are received from the stream',
+                count: catalog.length,
+                catalog: catalog
+            };
+        }
+        
+        try {
+            this.logger.info('🎁 Fetching gift catalog from TikTok Webcast API...');
+            
+            const params = new URLSearchParams({
+                ...this.webcastApiConfig.params,
+                room_id: this.roomId
+            });
+            
+            const url = `${this.webcastApiConfig.baseUrl}/gift/list/?${params}`;
+            
+            const response = await axios.get(url, {
                 timeout: 10000,
                 headers: {
-                    'User-Agent': 'PupCidsTikTokHelper/1.0'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'https://www.tiktok.com/',
+                    'Origin': 'https://www.tiktok.com'
                 }
             });
             
-            if (!response.data || !response.data.gifts) {
-                this.logger.warn('⚠️  No gifts data in API response');
+            if (response.data && response.data.data && response.data.data.gifts) {
+                const gifts = response.data.data.gifts;
                 
-                // Fallback to current catalog
+                // Transform gifts to database format
+                const giftsToSave = gifts.map(gift => ({
+                    id: gift.id,
+                    name: gift.name || `Gift ${gift.id}`,
+                    image_url: gift.image?.url_list?.[0] || gift.icon?.url_list?.[0] || null,
+                    diamond_count: gift.diamond_count || 0
+                }));
+                
+                // Save to database
+                const savedCount = this.db.updateGiftCatalog(giftsToSave);
+                
+                this.logger.info(`✅ Gift catalog updated with ${savedCount} gifts from TikTok API`);
+                
+                return {
+                    success: true,
+                    message: `Gift catalog updated with ${savedCount} gifts from TikTok Webcast API`,
+                    count: savedCount,
+                    catalog: this.db.getGiftCatalog()
+                };
+            } else {
+                this.logger.warn('⚠️  No gifts data in API response, using existing catalog');
+                
                 const catalog = this.db.getGiftCatalog();
-                return { 
-                    success: catalog.length > 0, 
+                return {
+                    success: catalog.length > 0,
                     message: catalog.length > 0 
-                        ? `Using existing catalog with ${catalog.length} gifts` 
-                        : 'No gifts in catalog. Gifts will be added automatically when received from stream.',
+                        ? `Using existing catalog with ${catalog.length} gifts`
+                        : 'No gifts available. Gifts will be added automatically from stream.',
                     count: catalog.length,
                     catalog: catalog
                 };
             }
             
-            const gifts = response.data.gifts;
-            
-            // Transform gifts to database format
-            const giftsToSave = gifts.map(gift => ({
-                id: gift.id,
-                name: gift.name || `Gift ${gift.id}`,
-                image_url: gift.image?.url_list?.[0] || gift.icon_url || gift.iconUrl || null,
-                diamond_count: gift.diamond_count || gift.price || 0
-            }));
-            
-            // Save to database
-            const savedCount = this.db.updateGiftCatalog(giftsToSave);
-            
-            this.logger.info(`✅ Gift catalog updated with ${savedCount} gifts from EulerStream`);
-            
-            return { 
-                success: true, 
-                message: `Gift catalog updated with ${savedCount} gifts from EulerStream`,
-                count: savedCount,
-                catalog: this.db.getGiftCatalog()
-            };
         } catch (error) {
-            // Safely log error without circular references
-            const errorInfo = {
-                message: error.message,
-                code: error.code,
-                status: error.response?.status,
-                statusText: error.response?.statusText
-            };
-            this.logger.error('Error updating gift catalog from EulerStream:', errorInfo);
+            this.logger.error('Error fetching gift catalog from TikTok API:', error.message);
             
             // Fallback to current catalog
             const catalog = this.db.getGiftCatalog();
-            const count = catalog.length;
-            
-            return { 
-                success: count > 0, 
-                message: count > 0 
-                    ? `API fetch failed. Using existing catalog with ${count} gifts` 
-                    : `API fetch failed: ${error.message}. Gifts will be added automatically when received from stream.`,
-                count: count,
+            return {
+                success: catalog.length > 0,
+                message: catalog.length > 0 
+                    ? `API fetch failed. Using existing catalog with ${catalog.length} gifts`
+                    : `API fetch failed: ${error.message}. Gifts will be added automatically from stream.`,
+                count: catalog.length,
                 catalog: catalog
             };
         }
