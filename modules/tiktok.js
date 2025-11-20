@@ -67,6 +67,9 @@ class TikTokConnector extends EventEmitter {
         this.maxProcessedEvents = 1000;
         this.eventExpirationMs = 60000;
 
+        // Gift catalog tracking - gifts seen in current stream session
+        this.sessionGifts = new Map(); // Map<giftId, giftData>
+
         // Eulerstream WebSocket event emitter
         this.eventEmitter = null;
     }
@@ -586,6 +589,32 @@ class TikTokConnector extends EventEmitter {
             
             // Extract gift data
             const giftData = this.extractGiftData(data);
+
+            // Auto-update gift catalog with received gift data
+            if (giftData.giftId && giftData.giftName) {
+                // Track this gift in session
+                if (!this.sessionGifts.has(giftData.giftId)) {
+                    this.sessionGifts.set(giftData.giftId, {
+                        id: giftData.giftId,
+                        name: giftData.giftName,
+                        image_url: giftData.giftPictureUrl,
+                        diamond_count: giftData.diamondCount
+                    });
+                    
+                    // Save to database immediately
+                    try {
+                        this.db.updateGiftCatalog([{
+                            id: giftData.giftId,
+                            name: giftData.giftName,
+                            image_url: giftData.giftPictureUrl,
+                            diamond_count: giftData.diamondCount
+                        }]);
+                        this.logger.info(`✅ [GIFT CATALOG] Added gift to catalog: ${giftData.giftName} (ID: ${giftData.giftId})`);
+                    } catch (error) {
+                        this.logger.error('Error saving gift to catalog:', error);
+                    }
+                }
+            }
 
             // If no gift name, try to load from catalog
             if (!giftData.giftName && giftData.giftId) {
@@ -1372,10 +1401,35 @@ class TikTokConnector extends EventEmitter {
     }
 
     async updateGiftCatalog(options = {}) {
-        // Gift catalog update is not directly supported via Eulerstream WebSocket
-        // This would require a separate API call to fetch gift data
-        this.logger.warn('⚠️ Gift catalog update not implemented for Eulerstream WebSocket connection');
-        return { ok: false, message: 'Gift catalog update not available via WebSocket', count: 0 };
+        // Return current gift catalog from database
+        // Gifts are automatically added to catalog when received from stream
+        try {
+            const catalog = this.db.getGiftCatalog();
+            const count = catalog.length;
+            
+            if (count === 0 && !this.isConnected) {
+                return { 
+                    success: false, 
+                    message: 'No gifts in catalog. Connect to a stream to automatically populate the gift catalog.',
+                    count: 0 
+                };
+            }
+            
+            this.logger.info(`🎁 Gift catalog contains ${count} gifts`);
+            return { 
+                success: true, 
+                message: `Gift catalog updated with ${count} gifts`,
+                count: count,
+                catalog: catalog
+            };
+        } catch (error) {
+            this.logger.error('Error updating gift catalog:', error);
+            return { 
+                success: false, 
+                message: error.message,
+                count: 0 
+            };
+        }
     }
 
     getGiftCatalog() {
