@@ -362,17 +362,20 @@ class ClarityHUDBackend {
    */
   async handleChatEvent(data) {
     try {
+      // Extract message with fallback (data.message is the standard field from TikTok module)
+      const messageText = data.message || data.comment || '';
+      
       const chatEvent = {
         user: {
-          uniqueId: data.uniqueId || 'unknown',
-          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          uniqueId: data.uniqueId || data.username || 'unknown',
+          nickname: data.nickname || data.username || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
-        message: data.comment || '',
+        message: messageText,
         // Also include old format fields for backward compatibility with chat overlay
-        uniqueId: data.uniqueId || 'unknown',
-        comment: data.comment || '',
+        uniqueId: data.uniqueId || data.username || 'unknown',
+        comment: messageText,
         raw: data
       };
 
@@ -405,14 +408,14 @@ class ClarityHUDBackend {
 
       const followEvent = {
         user: {
-          uniqueId: data.uniqueId || 'unknown',
-          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          uniqueId: data.username || data.uniqueId || 'unknown',
+          nickname: data.nickname || data.username || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
         // Include old format fields for backward compatibility
-        uniqueId: data.uniqueId || 'unknown',
-        username: data.nickname || data.uniqueId || 'Anonymous',
+        uniqueId: data.username || data.uniqueId || 'unknown',
+        username: data.nickname || data.username || 'Anonymous',
         raw: data
       };
 
@@ -445,14 +448,14 @@ class ClarityHUDBackend {
 
       const shareEvent = {
         user: {
-          uniqueId: data.uniqueId || 'unknown',
-          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          uniqueId: data.username || data.uniqueId || 'unknown',
+          nickname: data.nickname || data.username || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
         // Include old format fields for backward compatibility
-        uniqueId: data.uniqueId || 'unknown',
-        username: data.nickname || data.uniqueId || 'Anonymous',
+        uniqueId: data.username || data.uniqueId || 'unknown',
+        username: data.nickname || data.username || 'Anonymous',
         raw: data
       };
 
@@ -483,8 +486,28 @@ class ClarityHUDBackend {
         return;
       }
 
+      // Resolve gift name with fallback chain: data.giftName → database catalog → 'Gift'
+      let giftName = data.giftName || null;
+      
+      // If no gift name but we have a giftId, try to get it from the database catalog
+      if (!giftName && data.giftId) {
+        try {
+          const db = this.api.getDatabase();
+          const catalogGift = db.getGift(data.giftId);
+          if (catalogGift && catalogGift.name) {
+            giftName = catalogGift.name;
+            this.api.log(`Gift name resolved from catalog: ${giftName} (ID: ${data.giftId})`, 'debug');
+          }
+        } catch (error) {
+          this.api.log(`Error looking up gift in catalog: ${error.message}`, 'warn');
+        }
+      }
+      
+      // Final fallback to just 'Gift' (not 'Unknown Gift' which sounds like an error)
+      giftName = giftName || 'Gift';
+
       // Check if this is a treasure chest (special case)
-      const isTreasureChest = data.giftType === 1 || data.giftName?.toLowerCase().includes('treasure');
+      const isTreasureChest = data.giftType === 1 || giftName.toLowerCase().includes('treasure');
 
       // Skip treasure chests if disabled
       if (isTreasureChest && !this.settings.full.showTreasureChests) {
@@ -495,22 +518,22 @@ class ClarityHUDBackend {
       // instead of data.diamondCount (which is just the raw diamond value per gift)
       const giftEvent = {
         user: {
-          uniqueId: data.uniqueId || 'unknown',
-          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          uniqueId: data.username || data.uniqueId || 'unknown',
+          nickname: data.nickname || data.username || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
         gift: {
-          name: data.giftName || 'Unknown Gift',
+          name: giftName,
           count: data.repeatCount || 1,
           coins: data.coins || 0,
           image: data.giftPictureUrl || null,
           isTreasureChest: isTreasureChest
         },
         // Include old format fields for backward compatibility
-        uniqueId: data.uniqueId || 'unknown',
-        username: data.nickname || data.uniqueId || 'Anonymous',
-        giftName: data.giftName || 'Unknown Gift',
+        uniqueId: data.username || data.uniqueId || 'unknown',
+        username: data.nickname || data.username || 'Anonymous',
+        giftName: giftName,
         coins: data.coins || 0,
         raw: data
       };
@@ -544,15 +567,15 @@ class ClarityHUDBackend {
 
       const subscribeEvent = {
         user: {
-          uniqueId: data.uniqueId || 'unknown',
-          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          uniqueId: data.username || data.uniqueId || 'unknown',
+          nickname: data.nickname || data.username || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
         subscribeType: data.subscribeType || 'subscribe',
         // Include old format fields for backward compatibility
-        uniqueId: data.uniqueId || 'unknown',
-        username: data.nickname || data.uniqueId || 'Anonymous',
+        uniqueId: data.username || data.uniqueId || 'unknown',
+        username: data.nickname || data.username || 'Anonymous',
         raw: data
       };
 
@@ -585,14 +608,14 @@ class ClarityHUDBackend {
 
       const joinEvent = {
         user: {
-          uniqueId: data.uniqueId || 'unknown',
-          nickname: data.nickname || data.uniqueId || 'Anonymous',
+          uniqueId: data.username || data.uniqueId || 'unknown',
+          nickname: data.nickname || data.username || 'Anonymous',
           profilePictureUrl: data.profilePictureUrl || null,
           badge: data.badge || null
         },
         // Include old format fields for backward compatibility
-        uniqueId: data.uniqueId || 'unknown',
-        username: data.nickname || data.uniqueId || 'Anonymous',
+        uniqueId: data.username || data.uniqueId || 'unknown',
+        username: data.nickname || data.username || 'Anonymous',
         raw: data
       };
 
