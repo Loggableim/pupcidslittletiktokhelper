@@ -347,6 +347,87 @@ app.use('/api/wiki', wikiRoutes);
 
 // ========== UPDATE ROUTES ==========
 
+// ========== I18N API ROUTES ==========
+
+/**
+ * GET /api/i18n/translations - Get translations for a locale
+ */
+app.get('/api/i18n/translations', (req, res) => {
+    try {
+        const locale = req.query.locale || 'en';
+        const translations = i18n.getAllTranslations(locale);
+        
+        res.json({
+            success: true,
+            locale,
+            translations
+        });
+    } catch (error) {
+        logger.error('Error getting translations:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/i18n/locales - Get available locales
+ */
+app.get('/api/i18n/locales', (req, res) => {
+    try {
+        const locales = i18n.getAvailableLocales();
+        res.json({
+            success: true,
+            locales
+        });
+    } catch (error) {
+        logger.error('Error getting locales:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/i18n/locale - Set current locale
+ */
+app.post('/api/i18n/locale', (req, res) => {
+    try {
+        const { locale } = req.body;
+        
+        if (!locale) {
+            return res.status(400).json({
+                success: false,
+                error: 'Locale is required'
+            });
+        }
+        
+        const success = i18n.setLocale(locale);
+        
+        if (success) {
+            res.json({
+                success: true,
+                locale: i18n.getLocale()
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                error: 'Locale not found'
+            });
+        }
+    } catch (error) {
+        logger.error('Error setting locale:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ========== UPDATE API ROUTES ==========
+
 /**
  * GET /api/update/check - Prüft auf neue Versionen
  */
