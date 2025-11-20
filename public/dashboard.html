@@ -1649,26 +1649,31 @@
                 });
             }
 
-            // Setup language switcher (both in settings and topbar)
-            // Wait for i18n to be fully initialized
-            const setupLanguageSwitchers = () => {
+            // Setup language switchers after i18n is ready
+            // Use a promise-based approach with explicit checks
+            const initLanguageSwitchers = async () => {
+                // Wait for i18n to exist and be initialized
+                while (!window.i18n || !window.i18n.initialized) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                
+                console.log('[Dashboard] Setting up language switchers...');
+                
                 const languageSelector = document.getElementById('language-selector');
                 const topbarLanguageSelector = document.getElementById('topbar-language-selector');
                 
-                if (typeof i18n !== 'undefined' && i18n.initialized) {
-                    if (languageSelector) {
-                        i18n.setupLanguageSwitcher(languageSelector);
-                    }
-                    if (topbarLanguageSelector) {
-                        i18n.setupLanguageSwitcher(topbarLanguageSelector);
-                    }
-                } else {
-                    // Retry if i18n not ready yet
-                    setTimeout(setupLanguageSwitchers, 100);
+                if (languageSelector && window.i18n) {
+                    window.i18n.setupLanguageSwitcher(languageSelector);
+                    console.log('[Dashboard] Settings language selector initialized');
+                }
+                
+                if (topbarLanguageSelector && window.i18n) {
+                    window.i18n.setupLanguageSwitcher(topbarLanguageSelector);
+                    console.log('[Dashboard] Topbar language selector initialized');
                 }
             };
             
-            setupLanguageSwitchers();
+            initLanguageSwitchers();
         });
     </script>
     <script src="/js/cloud-sync-settings.js"></script>
