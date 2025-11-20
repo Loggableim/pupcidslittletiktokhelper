@@ -62,6 +62,16 @@ class TriggerRegistry {
     }
 
     /**
+     * Get all triggers for frontend (without validator functions)
+     */
+    getAllForFrontend() {
+        return Array.from(this.triggers.values()).map(trigger => {
+            const { validator, ...triggerWithoutValidator } = trigger;
+            return triggerWithoutValidator;
+        });
+    }
+
+    /**
      * Get triggers by category
      */
     getByCategory(category) {
