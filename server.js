@@ -1610,7 +1610,13 @@ app.post('/api/gift-catalog/update', apiLimiter, async (req, res) => {
         logger.info('🎁 Gift catalog updated');
         res.json({ success: true, ...result });
     } catch (error) {
-        logger.error('Error updating gift catalog:', error);
+        // Safely log error without circular references
+        const errorInfo = {
+            message: error.message,
+            code: error.code,
+            stack: error.stack
+        };
+        logger.error('Error updating gift catalog:', errorInfo);
         res.status(500).json({ success: false, error: error.message });
     }
 });
