@@ -238,6 +238,10 @@ class I18nClient {
             
             if (success) {
                 this.updateDOM();
+                
+                // Sync all language selectors
+                this.syncAllLanguageSelectors(newLocale);
+                
                 console.log(`✅ [i18n] Language changed to: ${newLocale}`);
                 
                 // Show notification (if available)
@@ -247,6 +251,22 @@ class I18nClient {
             } else {
                 console.error(`❌ [i18n] Failed to change language to: ${newLocale}`);
                 selectElement.value = this.currentLocale; // Revert
+            }
+        });
+    }
+
+    /**
+     * Sync all language selectors to the current locale
+     */
+    syncAllLanguageSelectors(locale) {
+        const selectors = [
+            document.getElementById('language-selector'),
+            document.getElementById('topbar-language-selector')
+        ];
+
+        selectors.forEach(selector => {
+            if (selector && selector.value !== locale) {
+                selector.value = locale;
             }
         });
     }

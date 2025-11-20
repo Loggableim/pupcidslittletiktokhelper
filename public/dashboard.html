@@ -97,6 +97,52 @@
             box-shadow: var(--shadow-lg);
             border-color: var(--color-accent-primary);
         }
+
+        /* Topbar Language Switcher - Theme-Aware */
+        .topbar-language-switcher {
+            position: relative;
+        }
+
+        .topbar-language-select {
+            appearance: none;
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            color: var(--color-text-primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 6px 32px 6px 12px;
+            transition: all 0.2s ease;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+        }
+
+        .topbar-language-select:hover {
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
+        }
+
+        .topbar-language-select:focus {
+            outline: none;
+            border-color: var(--color-accent-primary);
+            box-shadow: 0 0 0 3px var(--color-active-bg);
+        }
+
+        .topbar-language-select option {
+            background: var(--color-bg-secondary);
+            color: var(--color-text-primary);
+            padding: 8px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .topbar-language-select {
+                padding: 6px 24px 6px 8px;
+                font-size: 0.8rem;
+            }
+        }
     </style>
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
@@ -246,6 +292,15 @@
                             <i data-lucide="circle"></i>
                             <span data-i18n="dashboard.disconnected">Disconnected</span>
                         </span>
+                    </div>
+                    <!-- Language Switcher with Flags -->
+                    <div class="topbar-language-switcher">
+                        <select id="topbar-language-selector" class="topbar-language-select" aria-label="Select Language">
+                            <option value="en">🇬🇧 EN</option>
+                            <option value="de">🇩🇪 DE</option>
+                            <option value="es">🇪🇸 ES</option>
+                            <option value="fr">🇫🇷 FR</option>
+                        </select>
                     </div>
                     <button id="profile-btn" class="topbar-profile-btn">
                         <i data-lucide="user"></i>
@@ -1594,10 +1649,17 @@
                 });
             }
 
-            // Setup language switcher
+            // Setup language switcher (both in settings and topbar)
             const languageSelector = document.getElementById('language-selector');
-            if (languageSelector && typeof i18n !== 'undefined') {
-                i18n.setupLanguageSwitcher(languageSelector);
+            const topbarLanguageSelector = document.getElementById('topbar-language-selector');
+            
+            if (typeof i18n !== 'undefined') {
+                if (languageSelector) {
+                    i18n.setupLanguageSwitcher(languageSelector);
+                }
+                if (topbarLanguageSelector) {
+                    i18n.setupLanguageSwitcher(topbarLanguageSelector);
+                }
             }
         });
     </script>

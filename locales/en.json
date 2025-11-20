@@ -32,6 +32,7 @@
     "connected": "Connected",
     "disconnected": "Disconnected",
     "connecting": "Connecting",
+    "retrying": "Retrying",
     "username_placeholder": "TikTok Username (without @)",
     "tiktok_live_connection": "TikTok Live Connection",
     "quick_actions": "Quick Actions",
