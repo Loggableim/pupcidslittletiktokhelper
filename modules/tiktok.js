@@ -2,6 +2,9 @@ const { WebcastEventEmitter, createWebSocketUrl, ClientCloseCode, deserializeWeb
 const EventEmitter = require('events');
 const WebSocket = require('ws');
 
+// Fallback API key for users who don't have their own
+const FALLBACK_API_KEY = 'euler_MmE2OWM1ZTY1NWFkNmIxZmEwOThjNjU5ZmU1NmNjOTlkMWJiOGY5MzkzNWVlOTBjODY2NGVh';
+
 /**
  * TikTok Live Connector - Eulerstream WebSocket API
  * 
@@ -79,23 +82,26 @@ class TikTokConnector extends EventEmitter {
             this.currentUsername = username;
 
             // Read Eulerstream WebSocket authentication key from configuration
-            // Priority: Database setting > Environment variables
+            // Priority: Database setting > Environment variables > Fallback key
             // NOTE: This can be either the Webhook Secret OR the euler_ API key
             // Try Webhook Secret first if euler_ key doesn't work
-            const apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
+            let apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
+            let usingFallback = false;
             
             if (!apiKey) {
-                const errorMsg = 'Eulerstream authentication key is required for WebSocket connections.\n' +
-                    'Please configure it in one of the following ways:\n' +
-                    '1. Dashboard Settings: Set "tiktok_euler_api_key" to your key\n' +
-                    '2. Environment Variable: Set EULER_API_KEY=your_key\n' +
-                    '3. Environment Variable: Set SIGN_API_KEY=your_key\n\n' +
-                    'Where to find your key:\n' +
-                    '- Go to https://www.eulerstream.com → Dashboard → Account Details\n' +
-                    '- Try "Webhook Secret" first (64-character hexadecimal string)\n' +
-                    '- If that doesn\'t work, try the REST API key (starts with "euler_")';
-                this.logger.error('❌ ' + errorMsg);
-                throw new Error(errorMsg);
+                // Use fallback key if no user key is configured
+                apiKey = FALLBACK_API_KEY;
+                usingFallback = true;
+                this.logger.warn('⚠️  No personal API key configured - using fallback key');
+                this.logger.warn('⚠️  This is a temporary solution. Please get your own free API key at https://www.eulerstream.com');
+                
+                // Emit event to show warning overlay to user
+                if (this.io) {
+                    this.io.emit('fallback-key-warning', {
+                        message: 'Fallback API Key wird verwendet',
+                        duration: 10000 // 10 seconds
+                    });
+                }
             }
             
             // Validate key format
