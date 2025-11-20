@@ -96,6 +96,11 @@
       "flows": "Automation Flows",
       "emoji_rain": "Emoji Rain",
       "osc_bridge": "OSC-Bridge"
+    },
+    "plugin_notice": {
+      "title": "Plugin Notice",
+      "message": "All enabled plugins should work without bugs. You are welcome to test inactive plugins, but please expect bugs.",
+      "dismiss": "Got it"
     }
   },
   "tabs": {

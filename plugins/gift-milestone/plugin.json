@@ -5,7 +5,7 @@
   "description": "Celebrate coin milestones with custom animations (GIF, MP4) and audio. Triggers special celebrations when cumulative gift coins reach configured thresholds.",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": true,
+  "enabled": false,
   "permissions": [
     "socket.io",
     "routes",

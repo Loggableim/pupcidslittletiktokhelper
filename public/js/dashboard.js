@@ -268,6 +268,36 @@ function initializeButtons() {
             }
         });
     }
+
+    // Plugin Notice Dismissal
+    initializePluginNotice();
+}
+
+// ========== PLUGIN NOTICE ==========
+function initializePluginNotice() {
+    const pluginNotice = document.getElementById('plugin-notice');
+    const dismissBtn = document.getElementById('dismiss-plugin-notice');
+    
+    if (!pluginNotice || !dismissBtn) return;
+
+    // Check if user has dismissed the notice before
+    const isDismissed = localStorage.getItem('plugin-notice-dismissed');
+    
+    if (!isDismissed) {
+        // Show the notice
+        pluginNotice.style.display = 'block';
+    }
+
+    // Handle dismiss button click
+    dismissBtn.addEventListener('click', () => {
+        pluginNotice.style.opacity = '0';
+        pluginNotice.style.transform = 'translateY(-20px)';
+        
+        setTimeout(() => {
+            pluginNotice.style.display = 'none';
+            localStorage.setItem('plugin-notice-dismissed', 'true');
+        }, 300);
+    });
 }
 
 // ========== SOCKET.IO LISTENERS ==========
