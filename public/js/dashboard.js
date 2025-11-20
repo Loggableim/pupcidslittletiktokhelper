@@ -201,6 +201,12 @@ function initializeButtons() {
         });
     }
 
+    // TikTok/Eulerstream API Key save button
+    const saveTikTokCredentialsBtn = document.getElementById('save-tiktok-credentials');
+    if (saveTikTokCredentialsBtn) {
+        saveTikTokCredentialsBtn.addEventListener('click', saveTikTokCredentials);
+    }
+
     // Preset management buttons
     const exportBtn = document.getElementById('export-preset-btn');
     if (exportBtn) {
@@ -293,6 +299,11 @@ function initializeSocketListeners() {
 
     socket.on('disconnect', () => {
         console.log('❌ Disconnected from server');
+    });
+
+    // Fallback API Key Warning
+    socket.on('fallback-key-warning', (data) => {
+        showFallbackKeyWarning(data);
     });
 
     // ========== AUDIO PLAYBACK (Dashboard) ==========
@@ -575,6 +586,12 @@ async function loadSettings() {
         // Settings in UI laden (falls Elemente existieren)
         // TTS-Settings werden nun vom tts_core_v2 Plugin verwaltet
 
+        // Load TikTok/Eulerstream API Key
+        const tiktokApiKeyInput = document.getElementById('tiktok-euler-api-key');
+        if (tiktokApiKeyInput && settings.tiktok_euler_api_key) {
+            tiktokApiKeyInput.value = settings.tiktok_euler_api_key;
+        }
+
     } catch (error) {
         console.error('Error loading settings:', error);
     }
@@ -600,6 +617,46 @@ async function saveSettings() {
     } catch (error) {
         console.error('Error saving settings:', error);
         alert('❌ Error saving settings!');
+    }
+}
+
+// Save TikTok/Eulerstream API credentials
+async function saveTikTokCredentials() {
+    const apiKeyInput = document.getElementById('tiktok-euler-api-key');
+    if (!apiKeyInput) return;
+
+    const apiKey = apiKeyInput.value.trim();
+    
+    if (!apiKey) {
+        alert('❌ Please enter an API key');
+        return;
+    }
+
+    // Validate key format (basic validation)
+    if (apiKey.length < 32) {
+        alert('❌ Invalid API key format. Key must be at least 32 characters long.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                tiktok_euler_api_key: apiKey 
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ Eulerstream API Key saved successfully!');
+            settings.tiktok_euler_api_key = apiKey;
+        } else {
+            alert('❌ Error saving API key: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving TikTok credentials:', error);
+        alert('❌ Error saving API key!');
     }
 }
 
@@ -2804,4 +2861,113 @@ async function loadConnectionHealth() {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(loadConnectionHealth, 1000);
 });
+
+// ========== FALLBACK API KEY WARNING ==========
+function showFallbackKeyWarning(data) {
+    // Create overlay element
+    const overlay = document.createElement('div');
+    overlay.id = 'fallback-key-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(5px);
+    `;
+
+    // Create warning box
+    const warningBox = document.createElement('div');
+    warningBox.style.cssText = `
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border: 2px solid #f59e0b;
+        border-radius: 12px;
+        padding: 40px;
+        max-width: 600px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        animation: slideIn 0.3s ease-out;
+    `;
+
+    // Create countdown element
+    const countdownSeconds = Math.floor((data.duration || 10000) / 1000);
+    let remainingSeconds = countdownSeconds;
+
+    warningBox.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+            <h2 style="color: #f59e0b; font-size: 28px; margin-bottom: 20px; font-weight: bold;">
+                Fallback API Key wird verwendet
+            </h2>
+            <p style="color: #d1d5db; font-size: 18px; line-height: 1.6; margin-bottom: 20px;">
+                Du verwendest einen gemeinsamen Fallback-Key. Dies ist nur eine Notlösung!
+            </p>
+            <p style="color: #9ca3af; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                Bitte hole dir deinen eigenen <strong>kostenlosen</strong> API Key von 
+                <a href="https://www.eulerstream.com" target="_blank" style="color: #60a5fa; text-decoration: underline;">eulerstream.com</a>
+                und speichere ihn in den Einstellungen.
+            </p>
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                <p style="color: #fbbf24; font-size: 14px; margin: 0;">
+                    <strong>Hinweis:</strong> Dieser Fallback-Key wird von allen Nutzern geteilt und könnte jederzeit deaktiviert werden.
+                </p>
+            </div>
+            <div style="font-size: 36px; color: #f59e0b; font-weight: bold; margin-top: 20px;" id="countdown-timer">
+                ${remainingSeconds}
+            </div>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 10px;">
+                Dieses Fenster schließt sich automatisch...
+            </p>
+        </div>
+    `;
+
+    overlay.appendChild(warningBox);
+    document.body.appendChild(overlay);
+
+    // Add animation keyframe
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Countdown timer
+    const countdownTimer = document.getElementById('countdown-timer');
+    const countdownInterval = setInterval(() => {
+        remainingSeconds--;
+        if (countdownTimer) {
+            countdownTimer.textContent = remainingSeconds;
+        }
+        if (remainingSeconds <= 0) {
+            clearInterval(countdownInterval);
+        }
+    }, 1000);
+
+    // Auto-remove after duration
+    setTimeout(() => {
+        clearInterval(countdownInterval);
+        if (overlay && overlay.parentNode) {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.3s ease-out';
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+    }, data.duration || 10000);
+}
 

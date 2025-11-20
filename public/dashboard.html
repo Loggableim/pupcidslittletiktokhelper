@@ -1419,24 +1419,19 @@
                             <div class="settings-card">
                                 <h3 class="card-title">
                                     <i data-lucide="key"></i>
-                                    EulerStream API Credentials (Optional)
+                                    EulerStream API Key
                                 </h3>
                                 <p class="text-sm text-gray-400 mb-4">
-                                    EulerStream API key for enhanced TikTok connection. Required for: Room entry effects, extended gift info, advanced analytics.
+                                    EulerStream API key for TikTok connection. Get your free API key at <a href="https://www.eulerstream.com" target="_blank" class="text-blue-400 hover:text-blue-300">eulerstream.com</a>.
                                 </p>
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <label>Client Key</label>
-                                        <input type="text" id="tiktok-client-key" class="form-input" placeholder="Optional">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Client Secret</label>
-                                        <input type="password" id="tiktok-client-secret" class="form-input" placeholder="Optional">
-                                    </div>
+                                <div class="form-group">
+                                    <label>API Key</label>
+                                    <input type="text" id="tiktok-euler-api-key" class="form-input" placeholder="euler_... or Webhook Secret (64-char hex)">
+                                    <p class="text-xs text-gray-500 mt-1">Starts with "euler_" or 64-character hexadecimal Webhook Secret</p>
                                 </div>
                                 <button id="save-tiktok-credentials" class="btn btn-primary">
                                     <i data-lucide="save"></i>
-                                    Save API Credentials
+                                    Save API Key
                                 </button>
                             </div>
 
