@@ -272,8 +272,9 @@ class I18nClient {
     }
 }
 
-// Create global instance
+// Create global instance and expose it
 const i18n = new I18nClient();
+window.i18n = i18n; // Make it globally accessible
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {

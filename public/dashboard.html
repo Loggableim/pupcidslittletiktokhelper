@@ -1650,17 +1650,25 @@
             }
 
             // Setup language switcher (both in settings and topbar)
-            const languageSelector = document.getElementById('language-selector');
-            const topbarLanguageSelector = document.getElementById('topbar-language-selector');
+            // Wait for i18n to be fully initialized
+            const setupLanguageSwitchers = () => {
+                const languageSelector = document.getElementById('language-selector');
+                const topbarLanguageSelector = document.getElementById('topbar-language-selector');
+                
+                if (typeof i18n !== 'undefined' && i18n.initialized) {
+                    if (languageSelector) {
+                        i18n.setupLanguageSwitcher(languageSelector);
+                    }
+                    if (topbarLanguageSelector) {
+                        i18n.setupLanguageSwitcher(topbarLanguageSelector);
+                    }
+                } else {
+                    // Retry if i18n not ready yet
+                    setTimeout(setupLanguageSwitchers, 100);
+                }
+            };
             
-            if (typeof i18n !== 'undefined') {
-                if (languageSelector) {
-                    i18n.setupLanguageSwitcher(languageSelector);
-                }
-                if (topbarLanguageSelector) {
-                    i18n.setupLanguageSwitcher(topbarLanguageSelector);
-                }
-            }
+            setupLanguageSwitchers();
         });
     </script>
     <script src="/js/cloud-sync-settings.js"></script>
