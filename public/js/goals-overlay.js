@@ -1,10 +1,10 @@
 // Goals HUD Overlay - Real-time goals display for OBS
 const goalsState = {
-    coins: { value: 0, goal: 1000, label: 'Coins', show: true },
-    followers: { value: 0, goal: 10, label: 'Followers', show: true },
-    likes: { value: 0, goal: 500, label: 'Likes', show: true },
-    subs: { value: 0, goal: 50, label: 'Subs', show: true },
-    custom: { value: 0, goal: 100, label: 'Custom', show: false }
+    coins: { value: 0, goal: 1000, labelKey: 'hud.coins', show: true },
+    followers: { value: 0, goal: 10, labelKey: 'hud.followers', show: true },
+    likes: { value: 0, goal: 500, labelKey: 'hud.likes', show: true },
+    subs: { value: 0, goal: 50, labelKey: 'dashboard.stats.followers', show: true },
+    custom: { value: 0, goal: 100, labelKey: 'hud.goals', show: false }
 };
 
 let socket = null;
@@ -67,6 +67,15 @@ function initSocket() {
     socket.on('connect_error', (error) => {
         debugLog('Connection error', { error: error.message });
     });
+    
+    // Listen for language changes from server
+    socket.on('locale-changed', async (data) => {
+        debugLog('Server locale changed', { locale: data.locale });
+        if (window.i18n) {
+            await window.i18n.setLocale(data.locale);
+            renderGoals();
+        }
+    });
 }
 
 // Update all goals from snapshot
@@ -127,13 +136,16 @@ function renderGoals() {
 
         visibleCount++;
         const percent = Math.min(100, Math.max(0, (goal.value / goal.goal) * 100));
+        
+        // Get translated label
+        const label = window.i18n ? window.i18n.t(goal.labelKey) : goal.labelKey;
 
         const goalItem = document.createElement('div');
         goalItem.className = 'goal-item';
         goalItem.setAttribute('data-goal-id', id);
 
         goalItem.innerHTML = `
-            <div class="goal-label">${goal.label}</div>
+            <div class="goal-label">${label}</div>
             <div class="goal-bar">
                 <div class="goal-fill" style="width: ${percent}%"></div>
                 <div class="goal-text">${goal.value} / ${goal.goal}</div>
@@ -147,8 +159,20 @@ function renderGoals() {
 }
 
 // Initialize on page load
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     debugLog('Page loaded, initializing...');
+    
+    // Initialize i18n first
+    if (window.i18n) {
+        await window.i18n.init();
+        
+        // Listen for language changes and re-render
+        window.i18n.onChange(() => {
+            debugLog('Language changed, re-rendering goals');
+            renderGoals();
+        });
+    }
+    
     initSocket();
     renderGoals(); // Initial render with default values
 });
