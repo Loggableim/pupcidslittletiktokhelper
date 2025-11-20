@@ -1402,86 +1402,30 @@ class TikTokConnector extends EventEmitter {
     }
 
     async updateGiftCatalog(options = {}) {
-        // Fetch gift catalog from EulerStream REST API
-        // This provides the complete TikTok gift catalog with names, icons, and values
-        try {
-            this.logger.info('🎁 Fetching gift catalog from EulerStream...');
-            
-            // Get API key (same priority as connect method)
-            // Priority: Database setting > Environment variables > Fallback key
-            let apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
-            
-            if (!apiKey) {
-                apiKey = FALLBACK_API_KEY;
-                this.logger.info('Using fallback API key for gift catalog fetch');
-            }
-            
-            // Fetch gift catalog from EulerStream API with authentication
-            const response = await axios.get('https://tiktok.eulerstream.com/webcast/gift_info', {
-                timeout: 10000,
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'User-Agent': 'PupCidsTikTokHelper/1.0'
-                }
-            });
-            
-            if (!response.data || !response.data.gifts) {
-                this.logger.warn('⚠️  No gifts data in API response');
-                
-                // Fallback to current catalog
-                const catalog = this.db.getGiftCatalog();
-                return { 
-                    success: catalog.length > 0, 
-                    message: catalog.length > 0 
-                        ? `Using existing catalog with ${catalog.length} gifts` 
-                        : 'No gifts in catalog. Gifts will be added automatically when received from stream.',
-                    count: catalog.length,
-                    catalog: catalog
-                };
-            }
-            
-            const gifts = response.data.gifts;
-            
-            // Transform gifts to database format
-            const giftsToSave = gifts.map(gift => ({
-                id: gift.id,
-                name: gift.name || `Gift ${gift.id}`,
-                image_url: gift.image?.url_list?.[0] || gift.icon_url || gift.iconUrl || null,
-                diamond_count: gift.diamond_count || gift.price || 0
-            }));
-            
-            // Save to database
-            const savedCount = this.db.updateGiftCatalog(giftsToSave);
-            
-            this.logger.info(`✅ Gift catalog updated with ${savedCount} gifts from EulerStream`);
-            
-            return { 
-                success: true, 
-                message: `Gift catalog updated with ${savedCount} gifts from EulerStream`,
-                count: savedCount,
-                catalog: this.db.getGiftCatalog()
-            };
-        } catch (error) {
-            // Safely log error without circular references
-            const errorInfo = {
-                message: error.message,
-                code: error.code,
-                status: error.response?.status,
-                statusText: error.response?.statusText
-            };
-            this.logger.error('Error updating gift catalog from EulerStream:', errorInfo);
-            
-            // Fallback to current catalog
-            const catalog = this.db.getGiftCatalog();
-            const count = catalog.length;
-            
-            return { 
-                success: count > 0, 
-                message: count > 0 
-                    ? `API fetch failed. Using existing catalog with ${count} gifts` 
-                    : `API fetch failed: ${error.message}. Gifts will be added automatically when received from stream.`,
+        // NOTE: EulerStream free plan does not provide a REST API for gift catalogs
+        // The gift catalog is automatically built from gifts received in the stream
+        // This method returns the current catalog from the database
+        
+        this.logger.info('🎁 Retrieving gift catalog from database...');
+        
+        const catalog = this.db.getGiftCatalog();
+        const count = catalog.length;
+        
+        if (count > 0) {
+            this.logger.info(`✅ Gift catalog contains ${count} gifts (auto-updated from stream)`);
+            return {
+                success: true,
+                message: `Gift catalog contains ${count} gifts (automatically updated from stream events)`,
                 count: count,
                 catalog: catalog
+            };
+        } else {
+            this.logger.info('ℹ️  Gift catalog is empty. Gifts will be added automatically when received from stream.');
+            return {
+                success: true,
+                message: 'Gift catalog is empty. Gifts will be added automatically when they are received from the stream.',
+                count: 0,
+                catalog: []
             };
         }
     }
