@@ -2881,6 +2881,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ========== FALLBACK API KEY WARNING ==========
 function showFallbackKeyWarning(data) {
+    // Check if warning is already displayed
+    if (document.getElementById('fallback-key-overlay')) {
+        console.log('Fallback key warning already displayed, skipping duplicate');
+        return;
+    }
+
     // Create overlay element
     const overlay = document.createElement('div');
     overlay.id = 'fallback-key-overlay';
@@ -2990,6 +2996,12 @@ function showFallbackKeyWarning(data) {
 
 // ========== EULER BACKUP KEY WARNING ==========
 function showEulerBackupKeyWarning(data) {
+    // Check if warning is already displayed
+    if (document.getElementById('euler-backup-key-overlay')) {
+        console.log('Euler backup key warning already displayed, skipping duplicate');
+        return;
+    }
+
     // Create overlay element - non-dismissible
     const overlay = document.createElement('div');
     overlay.id = 'euler-backup-key-overlay';

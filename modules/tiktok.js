@@ -430,8 +430,10 @@ class TikTokConnector extends EventEmitter {
                         if (message.type && message.data) {
                             // Special handling for roomInfo event to extract stream start time
                             if (message.type === 'roomInfo') {
-                                this.logger.info('📋 Received roomInfo event - extracting stream start time');
+                                this.logger.info('📋 Received roomInfo event - extracting stream start time and stats');
                                 this.logger.info(`📋 roomInfo keys: ${JSON.stringify(Object.keys(message.data || {}))}`);
+                                
+                                // Extract stream start time
                                 const extractedTime = this._extractStreamStartTime(message.data);
                                 
                                 // Update stream start time if not already set or if extracted time is earlier
@@ -450,6 +452,10 @@ class TikTokConnector extends EventEmitter {
                                         currentDuration: Math.floor((Date.now() - this.streamStartTime) / 1000)
                                     });
                                 }
+                                
+                                // Extract initial statistics (likes, followers, viewers, etc.)
+                                this._extractStatsFromRoomInfo(message.data);
+                                
                                 // Don't emit roomInfo as a regular event, just process it
                                 continue;
                             }
@@ -943,6 +949,92 @@ class TikTokConnector extends EventEmitter {
 
         this.logger.info(`✅ Extracted stream start time from ${detectionMethod}: ${new Date(timestamp).toISOString()}`);
         return timestamp;
+    }
+
+    /**
+     * Extract initial statistics from roomInfo data
+     * Updates stats with current counts (likes, followers, etc.) when available
+     * @private
+     * @param {object} roomInfo - Room information data from TikTok
+     */
+    _extractStatsFromRoomInfo(roomInfo) {
+        if (!roomInfo) return;
+
+        let statsUpdated = false;
+
+        // Try to extract viewer count
+        const viewerFields = ['viewerCount', 'viewer_count', 'userCount', 'user_count'];
+        for (const field of viewerFields) {
+            const value = roomInfo[field] || roomInfo.room?.[field] || roomInfo.stats?.[field];
+            if (typeof value === 'number' && value >= 0) {
+                this.stats.viewers = value;
+                this.logger.info(`📊 Extracted viewer count from roomInfo.${field}: ${value}`);
+                statsUpdated = true;
+                break;
+            }
+        }
+
+        // Try to extract like count
+        const likeFields = ['likeCount', 'like_count', 'totalLikeCount', 'total_like_count', 'likes'];
+        for (const field of likeFields) {
+            const value = roomInfo[field] || roomInfo.room?.[field] || roomInfo.stats?.[field];
+            if (typeof value === 'number' && value >= 0) {
+                this.stats.likes = value;
+                this.logger.info(`📊 Extracted like count from roomInfo.${field}: ${value}`);
+                statsUpdated = true;
+                break;
+            }
+        }
+
+        // Try to extract follower count
+        const followerFields = ['followerCount', 'follower_count', 'totalFollowerCount', 'total_follower_count', 'followers'];
+        for (const field of followerFields) {
+            const value = roomInfo[field] || roomInfo.owner?.[field] || roomInfo.room?.owner?.[field] || roomInfo.stats?.[field];
+            if (typeof value === 'number' && value >= 0) {
+                this.stats.followers = value;
+                this.logger.info(`📊 Extracted follower count from roomInfo.${field}: ${value}`);
+                statsUpdated = true;
+                break;
+            }
+        }
+
+        // Try to extract total coins/gifts count
+        const coinFields = ['totalCoins', 'total_coins', 'coins', 'giftCoins', 'gift_coins'];
+        for (const field of coinFields) {
+            const value = roomInfo[field] || roomInfo.room?.[field] || roomInfo.stats?.[field];
+            if (typeof value === 'number' && value >= 0) {
+                this.stats.totalCoins = value;
+                this.logger.info(`📊 Extracted coin count from roomInfo.${field}: ${value}`);
+                statsUpdated = true;
+                break;
+            }
+        }
+
+        // Try to extract gift count
+        const giftFields = ['giftCount', 'gift_count', 'totalGifts', 'total_gifts', 'gifts'];
+        for (const field of giftFields) {
+            const value = roomInfo[field] || roomInfo.room?.[field] || roomInfo.stats?.[field];
+            if (typeof value === 'number' && value >= 0) {
+                this.stats.gifts = value;
+                this.logger.info(`📊 Extracted gift count from roomInfo.${field}: ${value}`);
+                statsUpdated = true;
+                break;
+            }
+        }
+
+        // Log roomInfo structure for debugging if no stats were found
+        if (!statsUpdated) {
+            this.logger.info(`📊 No initial stats found in roomInfo. Available top-level keys: ${JSON.stringify(Object.keys(roomInfo))}`);
+            if (roomInfo.room) {
+                this.logger.info(`📊 Available room keys: ${JSON.stringify(Object.keys(roomInfo.room))}`);
+            }
+            if (roomInfo.stats) {
+                this.logger.info(`📊 Available stats keys: ${JSON.stringify(Object.keys(roomInfo.stats))}`);
+            }
+        } else {
+            // Broadcast updated stats
+            this.broadcastStats();
+        }
     }
 
     /**
