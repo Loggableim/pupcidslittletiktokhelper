@@ -1407,10 +1407,20 @@ class TikTokConnector extends EventEmitter {
         try {
             this.logger.info('🎁 Fetching gift catalog from EulerStream...');
             
-            // Fetch gift catalog from EulerStream API
+            // Get API key (same priority as connect method)
+            // Priority: Database setting > Environment variables > Fallback key
+            let apiKey = this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
+            
+            if (!apiKey) {
+                apiKey = FALLBACK_API_KEY;
+                this.logger.info('Using fallback API key for gift catalog fetch');
+            }
+            
+            // Fetch gift catalog from EulerStream API with authentication
             const response = await axios.get('https://tiktok.eulerstream.com/webcast/gift_info', {
                 timeout: 10000,
                 headers: {
+                    'Authorization': `Bearer ${apiKey}`,
                     'User-Agent': 'PupCidsTikTokHelper/1.0'
                 }
             });
