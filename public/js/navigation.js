@@ -22,6 +22,24 @@
             lucide.createIcons();
         }
 
+        // Register i18n language change listener to update connection status
+        if (window.i18n) {
+            window.i18n.onLanguageChange((newLocale) => {
+                // Get current connection status from the badge
+                const statusBadge = document.getElementById('connection-status');
+                if (statusBadge) {
+                    let currentStatus = 'disconnected';
+                    if (statusBadge.classList.contains('status-connected')) {
+                        currentStatus = 'connected';
+                    } else if (statusBadge.classList.contains('status-error')) {
+                        currentStatus = 'error';
+                    }
+                    // Re-update the status with new language
+                    updateConnectionStatus(currentStatus);
+                }
+            });
+        }
+
         // Load plugin visibility asynchronously (non-blocking)
         // This prevents the dashboard from appearing unresponsive
         initializePluginVisibilityAsync();
@@ -429,17 +447,22 @@
         // Remove all status classes
         statusBadge.classList.remove('status-connected', 'status-disconnected', 'status-error');
 
+        // Helper function to get translated text
+        const getTranslation = (key, fallback) => {
+            return (window.i18n && window.i18n.initialized) ? window.i18n.t(key) : fallback;
+        };
+
         switch (status) {
             case 'connected':
                 statusBadge.classList.add('status-connected');
                 if (statusIcon) statusIcon.setAttribute('data-lucide', 'check-circle');
-                if (statusText) statusText.textContent = 'Connected';
+                if (statusText) statusText.textContent = getTranslation('dashboard.connected', 'Connected');
                 break;
 
             case 'disconnected':
                 statusBadge.classList.add('status-disconnected');
                 if (statusIcon) statusIcon.setAttribute('data-lucide', 'circle');
-                if (statusText) statusText.textContent = 'Disconnected';
+                if (statusText) statusText.textContent = getTranslation('dashboard.disconnected', 'Disconnected');
                 break;
 
             case 'error':
@@ -447,9 +470,11 @@
                 statusBadge.classList.add('status-error');
                 if (statusIcon) statusIcon.setAttribute('data-lucide', 'alert-circle');
                 if (statusText) {
-                    statusText.textContent = status === 'retrying'
-                        ? `Retrying (${data.attempt}/${data.maxRetries})`
-                        : 'Error';
+                    if (status === 'retrying') {
+                        statusText.textContent = `${getTranslation('dashboard.retrying', 'Retrying')} (${data.attempt}/${data.maxRetries})`;
+                    } else {
+                        statusText.textContent = getTranslation('common.error', 'Error');
+                    }
                 }
                 break;
         }

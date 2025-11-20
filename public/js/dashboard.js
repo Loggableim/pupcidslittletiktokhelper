@@ -327,7 +327,8 @@ function initializeSocketListeners() {
 async function connect() {
     const username = document.getElementById('username-input').value.trim();
     if (!username) {
-        alert('Bitte gib einen TikTok-Usernamen ein!');
+        const msg = window.i18n ? window.i18n.t('errors.invalid_username') : 'Please enter a TikTok username!';
+        alert(msg);
         return;
     }
 
@@ -342,11 +343,17 @@ async function connect() {
         if (result.success) {
             console.log('✅ Connected to TikTok:', username);
         } else {
-            alert('Connection failed: ' + result.error);
+            const errorMsg = window.i18n 
+                ? window.i18n.t('errors.connection_failed') + ': ' + result.error
+                : 'Connection failed: ' + result.error;
+            alert(errorMsg);
         }
     } catch (error) {
         console.error('Connection error:', error);
-        alert('Connection error: ' + error.message);
+        const errorMsg = window.i18n 
+            ? window.i18n.t('errors.network_error') + ': ' + error.message
+            : 'Connection error: ' + error.message;
+        alert(errorMsg);
     }
 }
 
@@ -380,7 +387,10 @@ function updateConnectionStatus(status, data = {}) {
 
     switch (status) {
         case 'connected':
-            infoEl.innerHTML = `<div class="text-green-400 text-sm">Connected to @${data.username}</div>`;
+            const connectedMsg = window.i18n 
+                ? window.i18n.t('dashboard.connected') + ' @' + data.username 
+                : 'Connected to @' + data.username;
+            infoEl.innerHTML = `<div class="text-green-400 text-sm">${connectedMsg}</div>`;
             connectBtn.disabled = true;
             disconnectBtn.disabled = false;
             break;

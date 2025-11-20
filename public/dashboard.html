@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pup Cid's Little TikTok Helper</title>
+    <title data-i18n="app.name">Pup Cid's Little TikTok Helper</title>
     <link rel="stylesheet" href="/css/tailwind.output.css">
     <link rel="stylesheet" href="/css/navigation.css">
     <link rel="stylesheet" href="/css/wiki.css">
@@ -97,9 +97,57 @@
             box-shadow: var(--shadow-lg);
             border-color: var(--color-accent-primary);
         }
+
+        /* Topbar Language Switcher - Theme-Aware */
+        .topbar-language-switcher {
+            position: relative;
+        }
+
+        .topbar-language-select {
+            appearance: none;
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            color: var(--color-text-primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 6px 32px 6px 12px;
+            transition: all 0.2s ease;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+        }
+
+        .topbar-language-select:hover {
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
+        }
+
+        .topbar-language-select:focus {
+            outline: none;
+            border-color: var(--color-accent-primary);
+            box-shadow: 0 0 0 3px var(--color-active-bg);
+        }
+
+        .topbar-language-select option {
+            background: var(--color-bg-secondary);
+            color: var(--color-text-primary);
+            padding: 8px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .topbar-language-select {
+                padding: 6px 24px 6px 8px;
+                font-size: 0.8rem;
+            }
+        }
     </style>
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <!-- i18n Client (load early) -->
+    <script src="/js/i18n-client.js"></script>
 </head>
 <body class="bg-gray-900 text-white">
 
@@ -127,7 +175,7 @@
 
                 <!-- Category: Automations -->
                 <div class="sidebar-category">
-                    <span class="sidebar-category-label">Automations</span>
+                    <span class="sidebar-category-label" data-i18n="navigation.automations">Automations</span>
                 </div>
                 <a href="#" class="sidebar-item" data-view="events">
                     <i data-lucide="activity"></i>
@@ -152,7 +200,7 @@
 
                 <!-- Category: Interaktive Effekte -->
                 <div class="sidebar-category">
-                    <span class="sidebar-category-label">Interaktive Effekte</span>
+                    <span class="sidebar-category-label" data-i18n="navigation.effects">Interactive Effects</span>
                 </div>
                 <a href="#" class="sidebar-item" data-view="tts">
                     <i data-lucide="mic"></i>
@@ -174,6 +222,7 @@
                 <a href="#" class="sidebar-item" data-view="multi-guest" data-plugin="vdoninja">
                     <i data-lucide="users"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.multi_guest">Multi-Guest</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.vdoninja">VDO.Ninja</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="gift-milestone" data-plugin="gift-milestone">
                     <i data-lucide="gift"></i>
@@ -215,6 +264,7 @@
                 <a href="#" class="sidebar-item" data-view="plugins">
                     <i data-lucide="plug"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.plugin_manager">Plugin Manager</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.plugins">Plugin Manager</span>
                 </a>
 
                 <!-- Settings (Fixed at bottom) -->
@@ -236,7 +286,7 @@
             <!-- Topbar (Reduced) -->
             <header class="topbar">
                 <div class="topbar-left">
-                    <h1 class="topbar-title">Pup Cid's Little TikTok Helper</h1>
+                    <h1 class="topbar-title" data-i18n="app.name">Pup Cid's Little TikTok Helper</h1>
                 </div>
                 <div class="topbar-right">
                     <div class="topbar-status">
@@ -268,12 +318,20 @@
                                 <span>Français</span>
                             </button>
                         </div>
+                    <!-- Language Switcher with Flags -->
+                    <div class="topbar-language-switcher">
+                        <select id="topbar-language-selector" class="topbar-language-select" aria-label="Select Language">
+                            <option value="en">🇬🇧 EN</option>
+                            <option value="de">🇩🇪 DE</option>
+                            <option value="es">🇪🇸 ES</option>
+                            <option value="fr">🇫🇷 FR</option>
+                        </select>
                     </div>
                     <button id="profile-btn" class="topbar-profile-btn">
                         <i data-lucide="user"></i>
                         <span id="current-profile-name">default</span>
                     </button>
-                    <button id="topbar-settings-btn" class="topbar-icon-btn" title="Global Settings">
+                    <button id="topbar-settings-btn" class="topbar-icon-btn" data-i18n-title="settings.global_settings" title="Global Settings">
                         <i data-lucide="settings"></i>
                     </button>
                 </div>
@@ -289,18 +347,19 @@
                     <section class="dashboard-section connection-section">
                         <h2 class="section-title">
                             <i data-lucide="wifi"></i>
-                            TikTok Live Connection
+                            <span data-i18n="dashboard.tiktok_live_connection">TikTok Live Connection</span>
                         </h2>
                         <div class="connection-controls">
                             <input type="text" id="username-input" placeholder="TikTok Username (ohne @)" data-i18n="dashboard.username_placeholder"
+                            <input type="text" id="username-input" data-i18n-placeholder="dashboard.username_placeholder" placeholder="TikTok Username (without @)"
                                    class="connection-input">
                             <button id="connect-btn" class="btn btn-primary">
                                 <i data-lucide="link"></i>
-                                Connect
+                                <span data-i18n="dashboard.connect">Connect</span>
                             </button>
                             <button id="disconnect-btn" class="btn btn-danger" disabled>
                                 <i data-lucide="link-2-off"></i>
-                                Disconnect
+                                <span data-i18n="dashboard.disconnect">Disconnect</span>
                             </button>
                         </div>
                         <div id="connection-info" class="connection-info"></div>
@@ -309,12 +368,12 @@
                         <div id="stream-time-debug" style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; display: none;">
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                                 <i data-lucide="clock" style="width: 16px; height: 16px; color: #3b82f6;"></i>
-                                <span style="font-weight: 600; color: #60a5fa;">Stream Time Debug Info</span>
+                                <span style="font-weight: 600; color: #60a5fa;" data-i18n="dashboard.stream_time_debug_info">Stream Time Debug Info</span>
                             </div>
                             <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-                                <div><strong>Stream Start Time:</strong> <span id="debug-stream-start">--</span></div>
-                                <div><strong>Current Duration:</strong> <span id="debug-stream-duration">--</span></div>
-                                <div><strong>Detection Method:</strong> <span id="debug-detection-method">--</span></div>
+                                <div><strong data-i18n="dashboard.stream_start_time">Stream Start Time:</strong> <span id="debug-stream-start">--</span></div>
+                                <div><strong data-i18n="dashboard.current_duration">Current Duration:</strong> <span id="debug-stream-duration">--</span></div>
+                                <div><strong data-i18n="dashboard.detection_method">Detection Method:</strong> <span id="debug-detection-method">--</span></div>
                                 <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
                                     <em>This panel shows how the stream start time was detected. If it shows "Connection Time" instead of a roomInfo field, the API may not be providing stream start time.</em>
                                 </div>
@@ -325,11 +384,11 @@
                         <div class="connection-diagnostics" style="margin-top: 1rem;">
                             <button id="run-diagnostics-btn" class="btn btn-secondary" style="width: 100%;">
                                 <i data-lucide="activity"></i>
-                                Verbindungsdiagnose ausführen
+                                <span data-i18n="dashboard.run_diagnostics">Run Connection Diagnostics</span>
                             </button>
                             <div id="diagnostics-result" style="margin-top: 1rem; display: none;">
-                                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">
-                                    Diagnose-Ergebnis
+                                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);" data-i18n="dashboard.diagnostics_result">
+                                    Diagnostics Result
                                 </h3>
                                 <div id="diagnostics-content" style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; font-size: 0.85rem;"></div>
                             </div>
@@ -347,28 +406,28 @@
                     <section class="dashboard-section actions-section">
                         <h2 class="section-title">
                             <i data-lucide="zap"></i>
-                            Quick Actions
+                            <span data-i18n="dashboard.quick_actions">Quick Actions</span>
                         </h2>
                         <div class="quick-actions-button-grid">
                             <button class="quick-action-btn" id="quick-tts-btn" data-action="tts" data-state="on">
                                 <i data-lucide="mic"></i>
-                                <span>Text-to-Speech</span>
+                                <span data-i18n="dashboard.quick_action.tts">Text-to-Speech</span>
                             </button>
                             <button class="quick-action-btn" id="quick-soundboard-btn" data-action="soundboard" data-state="on">
                                 <i data-lucide="music"></i>
-                                <span>Soundboard</span>
+                                <span data-i18n="dashboard.quick_action.soundboard">Soundboard</span>
                             </button>
                             <button class="quick-action-btn" id="quick-flows-btn" data-action="flows" data-state="on">
                                 <i data-lucide="git-branch"></i>
-                                <span>Automation Flows</span>
+                                <span data-i18n="dashboard.quick_action.flows">Automation Flows</span>
                             </button>
                             <button class="quick-action-btn" id="quick-emoji-rain-btn" data-action="emoji-rain" data-state="on">
                                 <i data-lucide="cloud-rain"></i>
-                                <span>Emoji Rain</span>
+                                <span data-i18n="dashboard.quick_action.emoji_rain">Emoji Rain</span>
                             </button>
                             <button class="quick-action-btn" id="quick-osc-bridge-btn" data-action="osc-bridge" data-state="off" data-plugin="osc-bridge">
                                 <i data-lucide="gamepad-2"></i>
-                                <span>OSC-Bridge</span>
+                                <span data-i18n="dashboard.quick_action.osc_bridge">OSC-Bridge</span>
                             </button>
                         </div>
                     </section>
@@ -377,7 +436,7 @@
                     <section class="dashboard-section stats-section">
                         <h2 class="section-title">
                             <i data-lucide="trending-up"></i>
-                            Live Statistics
+                            <span data-i18n="dashboard.live_statistics">Live Statistics</span>
                         </h2>
                         <div class="stats-grid">
                             <div class="stat-card stat-card-runtime">
@@ -385,7 +444,7 @@
                                     <i data-lucide="clock"></i>
                                 </div>
                                 <div class="stat-content">
-                                    <div class="stat-label">Stream Runtime</div>
+                                    <div class="stat-label" data-i18n="dashboard.stats.runtime">Stream Runtime</div>
                                     <div class="stat-value" id="stat-runtime">--:--:--</div>
                                 </div>
                                 <canvas id="runtime-sparkline" class="stat-sparkline" width="150" height="40"></canvas>
@@ -395,7 +454,7 @@
                                     <i data-lucide="users"></i>
                                 </div>
                                 <div class="stat-content">
-                                    <div class="stat-label">Viewers</div>
+                                    <div class="stat-label" data-i18n="dashboard.stats.viewers">Viewers</div>
                                     <div class="stat-value" id="stat-viewers">0</div>
                                 </div>
                             </div>
@@ -404,7 +463,7 @@
                                     <i data-lucide="heart"></i>
                                 </div>
                                 <div class="stat-content">
-                                    <div class="stat-label">Likes</div>
+                                    <div class="stat-label" data-i18n="dashboard.stats.likes">Likes</div>
                                     <div class="stat-value" id="stat-likes">0</div>
                                 </div>
                             </div>
@@ -413,7 +472,7 @@
                                     <i data-lucide="coins"></i>
                                 </div>
                                 <div class="stat-content">
-                                    <div class="stat-label">Coins</div>
+                                    <div class="stat-label" data-i18n="dashboard.stats.coins">Coins</div>
                                     <div class="stat-value" id="stat-coins">0</div>
                                 </div>
                             </div>
@@ -1390,7 +1449,7 @@
                             <div class="settings-card">
                                 <h3 class="card-title">
                                     <i data-lucide="sliders"></i>
-                                    General Settings
+                                    <span data-i18n="settings.general">General Settings</span>
                                 </h3>
                                 <div class="form-grid">
                                     <div class="form-group">
@@ -1411,6 +1470,30 @@
                                             <spandata-i18n="settings.show_update_notifications">Show update notifications</span>
                                         </label>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Language Settings -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="globe"></i>
+                                    <span data-i18n="settings.language">Language</span>
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4" data-i18n="settings.select_language">
+                                    Select your preferred language
+                                </p>
+                                <div class="form-group">
+                                    <label data-i18n="settings.language">Language</label>
+                                    <select id="language-selector" class="form-input">
+                                        <option value="en">English</option>
+                                        <option value="de">Deutsch</option>
+                                        <option value="es">Español</option>
+                                        <option value="fr">Français</option>
+                                    </select>
+                                </div>
+                                <div class="mt-2 text-sm text-gray-400">
+                                    <i data-lucide="info" class="inline-block w-4 h-4 mr-1"></i>
+                                    <span>Language changes apply immediately</span>
                                 </div>
                             </div>
 
@@ -1594,6 +1677,54 @@
                     window.open(wikiUrl, '_blank', 'noopener,noreferrer');
                 });
             }
+
+            // Setup language switchers after i18n is ready
+            // Use a promise-based approach with explicit checks
+            const initLanguageSwitchers = async () => {
+                console.log('[Dashboard] Waiting for i18n initialization...');
+                
+                // Wait for i18n to exist and be initialized
+                let attempts = 0;
+                while ((!window.i18n || !window.i18n.initialized) && attempts < 100) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    attempts++;
+                }
+                
+                if (!window.i18n || !window.i18n.initialized) {
+                    console.error('[Dashboard] Failed to initialize i18n after 5 seconds');
+                    return;
+                }
+                
+                console.log('[Dashboard] i18n initialized, setting up language switchers...');
+                console.log('[Dashboard] Current locale:', window.i18n.getLocale());
+                
+                const languageSelector = document.getElementById('language-selector');
+                const topbarLanguageSelector = document.getElementById('topbar-language-selector');
+                
+                if (!languageSelector) {
+                    console.error('[Dashboard] Settings language selector not found!');
+                } else if (window.i18n) {
+                    window.i18n.setupLanguageSwitcher(languageSelector);
+                    console.log('[Dashboard] Settings language selector initialized');
+                }
+                
+                if (!topbarLanguageSelector) {
+                    console.error('[Dashboard] Topbar language selector not found!');
+                } else if (window.i18n) {
+                    window.i18n.setupLanguageSwitcher(topbarLanguageSelector);
+                    console.log('[Dashboard] Topbar language selector initialized');
+                }
+                
+                // Manual test - add click event to verify
+                if (topbarLanguageSelector) {
+                    console.log('[Dashboard] Topbar selector value:', topbarLanguageSelector.value);
+                }
+                if (languageSelector) {
+                    console.log('[Dashboard] Settings selector value:', languageSelector.value);
+                }
+            };
+            
+            initLanguageSwitchers();
         });
     </script>
     <script src="/js/cloud-sync-settings.js"></script>
