@@ -1368,7 +1368,7 @@
                             <div class="settings-card">
                                 <h3 class="card-title">
                                     <i data-lucide="sliders"></i>
-                                    General Settings
+                                    <span data-i18n="settings.general">General Settings</span>
                                 </h3>
                                 <div class="form-grid">
                                     <div class="form-group">
@@ -1389,6 +1389,30 @@
                                             <span>Show update notifications</span>
                                         </label>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Language Settings -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="globe"></i>
+                                    <span data-i18n="settings.language">Language</span>
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4" data-i18n="settings.select_language">
+                                    Select your preferred language
+                                </p>
+                                <div class="form-group">
+                                    <label data-i18n="settings.language">Language</label>
+                                    <select id="language-selector" class="form-input">
+                                        <option value="en">English</option>
+                                        <option value="de">Deutsch</option>
+                                        <option value="es">Español</option>
+                                        <option value="fr">Français</option>
+                                    </select>
+                                </div>
+                                <div class="mt-2 text-sm text-gray-400">
+                                    <i data-lucide="info" class="inline-block w-4 h-4 mr-1"></i>
+                                    <span>Language changes apply immediately</span>
                                 </div>
                             </div>
 
@@ -1568,6 +1592,12 @@
                     // Open in new window/tab
                     window.open(wikiUrl, '_blank', 'noopener,noreferrer');
                 });
+            }
+
+            // Setup language switcher
+            const languageSelector = document.getElementById('language-selector');
+            if (languageSelector && typeof i18n !== 'undefined') {
+                i18n.setupLanguageSwitcher(languageSelector);
             }
         });
     </script>

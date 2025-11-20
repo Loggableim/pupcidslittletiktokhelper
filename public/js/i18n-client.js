@@ -217,6 +217,38 @@ class I18nClient {
                 element.setAttribute('aria-label', this.t(key));
             }
         });
+
+        // Update page title
+        document.title = this.t('app.name');
+    }
+
+    /**
+     * Setup language switcher for a select element
+     */
+    setupLanguageSwitcher(selectElement) {
+        if (!selectElement) return;
+
+        // Set current value
+        selectElement.value = this.currentLocale;
+
+        // Listen for changes
+        selectElement.addEventListener('change', async (e) => {
+            const newLocale = e.target.value;
+            const success = await this.changeLanguage(newLocale);
+            
+            if (success) {
+                this.updateDOM();
+                console.log(`✅ [i18n] Language changed to: ${newLocale}`);
+                
+                // Show notification (if available)
+                if (typeof showNotification === 'function') {
+                    showNotification(`Language changed to ${newLocale}`, 'success');
+                }
+            } else {
+                console.error(`❌ [i18n] Failed to change language to: ${newLocale}`);
+                selectElement.value = this.currentLocale; // Revert
+            }
+        });
     }
 }
 
