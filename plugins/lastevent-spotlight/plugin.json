@@ -5,7 +5,7 @@
   "description": "Live overlays showing the last active user for each event type (follower, like, chatter, share, gifter, subscriber)",
   "author": "Plugin System",
   "entry": "main.js",
-  "enabled": true,
+  "enabled": false,
   "permissions": [
     "socket.io",
     "routes",

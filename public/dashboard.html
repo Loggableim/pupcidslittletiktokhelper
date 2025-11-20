@@ -143,6 +143,118 @@
                 font-size: 0.8rem;
             }
         }
+
+        /* Plugin Notice Styles */
+        .plugin-notice {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            animation: slideInDown 0.4s ease-out;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .plugin-notice-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .plugin-notice-icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            color: #60a5fa;
+        }
+
+        .plugin-notice-icon i {
+            width: 24px;
+            height: 24px;
+        }
+
+        .plugin-notice-text {
+            flex: 1;
+        }
+
+        .plugin-notice-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #60a5fa;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .plugin-notice-message {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .plugin-notice-dismiss {
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--color-text-secondary);
+        }
+
+        .plugin-notice-dismiss:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--color-text-primary);
+            transform: scale(1.1);
+        }
+
+        .plugin-notice-dismiss i {
+            width: 18px;
+            height: 18px;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .plugin-notice {
+                padding: 0.875rem;
+            }
+
+            .plugin-notice-content {
+                gap: 0.75rem;
+            }
+
+            .plugin-notice-icon {
+                width: 36px;
+                height: 36px;
+            }
+
+            .plugin-notice-title {
+                font-size: 0.9rem;
+            }
+
+            .plugin-notice-message {
+                font-size: 0.8125rem;
+            }
+        }
     </style>
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
@@ -319,6 +431,22 @@
 
                 <!-- View: Dashboard -->
                 <div id="view-dashboard" class="content-view active">
+
+                    <!-- Plugin Notice - Dismissible Info -->
+                    <div id="plugin-notice" class="plugin-notice" style="display: none;">
+                        <div class="plugin-notice-content">
+                            <div class="plugin-notice-icon">
+                                <i data-lucide="info"></i>
+                            </div>
+                            <div class="plugin-notice-text">
+                                <h3 class="plugin-notice-title" data-i18n="dashboard.plugin_notice.title">Plugin Notice</h3>
+                                <p class="plugin-notice-message" data-i18n="dashboard.plugin_notice.message">All enabled plugins should work without bugs. You are welcome to test inactive plugins, but please expect bugs.</p>
+                            </div>
+                            <button id="dismiss-plugin-notice" class="plugin-notice-dismiss" aria-label="Dismiss notice">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                    </div>
 
                     <!-- 1. TikTok Live Connection Section -->
                     <section class="dashboard-section connection-section">

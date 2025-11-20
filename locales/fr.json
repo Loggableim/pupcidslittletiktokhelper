@@ -11,7 +11,12 @@
     "connected": "Connecté",
     "disconnected": "Déconnecté",
     "connecting": "Connexion",
-    "username_placeholder": "Entrez le nom d'utilisateur TikTok"
+    "username_placeholder": "Entrez le nom d'utilisateur TikTok",
+    "plugin_notice": {
+      "title": "Avis sur les Plugins",
+      "message": "Tous les plugins activés devraient fonctionner sans bugs. Vous pouvez tester les plugins inactifs, mais attendez-vous à des bugs.",
+      "dismiss": "Compris"
+    }
   },
   "tabs": {
     "events": "Événements",

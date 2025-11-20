@@ -5,7 +5,7 @@
   "description": "Enhanced physics-based emoji rain with OBS HUD support, Game-Quality graphics, and 60 FPS performance",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": true,
+  "enabled": false,
   "permissions": [
     "socket.io",
     "routes",
