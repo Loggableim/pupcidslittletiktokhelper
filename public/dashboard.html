@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/tailwind.output.css">
     <link rel="stylesheet" href="/css/navigation.css">
     <link rel="stylesheet" href="/css/wiki.css">
+    <link rel="stylesheet" href="/css/themes.css">
     <style>
         /* Plugin Manager Modern Styles */
         .plugin-card {
@@ -1533,6 +1534,8 @@
     <div id="dashboard-soundboard-pool"></div>
 
     <!-- Scripts -->
+    <!-- Theme manager must load early to prevent flash of unstyled content -->
+    <script src="/js/theme-manager.js"></script>
     <!-- Audio unlock must load first to handle autoplay restrictions -->
     <script src="/js/audio-unlock.js"></script>
     <!-- Initialization helper to prevent race conditions -->
