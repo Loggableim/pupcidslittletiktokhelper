@@ -431,6 +431,7 @@ class TikTokConnector extends EventEmitter {
                             // Special handling for roomInfo event to extract stream start time
                             if (message.type === 'roomInfo') {
                                 this.logger.info('📋 Received roomInfo event - extracting stream start time');
+                                this.logger.info(`📋 roomInfo keys: ${JSON.stringify(Object.keys(message.data || {}))}`);
                                 const extractedTime = this._extractStreamStartTime(message.data);
                                 
                                 // Update stream start time if not already set or if extracted time is earlier
@@ -838,23 +839,72 @@ class TikTokConnector extends EventEmitter {
             return Date.now();
         }
 
-        // Try different possible field names for stream start time
-        // Priority order: start_time > createTime > startTime
         let timestamp = null;
+        let detectionMethod = '';
         
+        // Strategy 1: Try to find timestamp in various direct fields
+        // Priority order: start_time > createTime > startTime > create_time > finish_time
         if (roomInfo.start_time !== undefined) {
             timestamp = roomInfo.start_time;
+            detectionMethod = 'start_time';
         } else if (roomInfo.createTime !== undefined) {
             timestamp = roomInfo.createTime;
+            detectionMethod = 'createTime';
         } else if (roomInfo.startTime !== undefined) {
             timestamp = roomInfo.startTime;
+            detectionMethod = 'startTime';
+        } else if (roomInfo.create_time !== undefined) {
+            timestamp = roomInfo.create_time;
+            detectionMethod = 'create_time';
+        } else if (roomInfo.finish_time !== undefined) {
+            // If we only have finish_time, we can't use it reliably
+            timestamp = null;
+        }
+        
+        // Strategy 2: Try nested room object (some Eulerstream responses nest data)
+        if ((timestamp === null || timestamp === undefined) && roomInfo.room) {
+            if (roomInfo.room.start_time !== undefined) {
+                timestamp = roomInfo.room.start_time;
+                detectionMethod = 'room.start_time';
+            } else if (roomInfo.room.createTime !== undefined) {
+                timestamp = roomInfo.room.createTime;
+                detectionMethod = 'room.createTime';
+            } else if (roomInfo.room.startTime !== undefined) {
+                timestamp = roomInfo.room.startTime;
+                detectionMethod = 'room.startTime';
+            } else if (roomInfo.room.create_time !== undefined) {
+                timestamp = roomInfo.room.create_time;
+                detectionMethod = 'room.create_time';
+            }
+        }
+        
+        // Strategy 3: Calculate from duration field (duration in seconds since stream started)
+        if ((timestamp === null || timestamp === undefined) && roomInfo.duration !== undefined) {
+            const duration = typeof roomInfo.duration === 'string' ? parseInt(roomInfo.duration, 10) : roomInfo.duration;
+            if (!isNaN(duration) && duration > 0) {
+                timestamp = Date.now() - (duration * 1000);
+                detectionMethod = 'duration (calculated)';
+                this.logger.info(`📊 Calculated stream start from duration: ${duration}s ago`);
+            }
+        }
+        
+        // Strategy 4: Try streamStartTime or stream_start_time (explicit field)
+        if ((timestamp === null || timestamp === undefined) && roomInfo.streamStartTime !== undefined) {
+            timestamp = roomInfo.streamStartTime;
+            detectionMethod = 'streamStartTime';
+        } else if ((timestamp === null || timestamp === undefined) && roomInfo.stream_start_time !== undefined) {
+            timestamp = roomInfo.stream_start_time;
+            detectionMethod = 'stream_start_time';
         }
 
         // If no timestamp found, try earliest event time or fallback to now
         if (timestamp === null || timestamp === undefined) {
+            this.logger.warn(`⚠️ No stream start time found in roomInfo. Available keys: ${JSON.stringify(Object.keys(roomInfo))}`);
             if (this._earliestEventTime) {
+                this.logger.info(`📅 Using earliest event time as fallback: ${new Date(this._earliestEventTime).toISOString()}`);
                 return this._earliestEventTime;
             }
+            this.logger.warn(`⚠️ No earliest event time available. Using current time as fallback.`);
             return Date.now();
         }
 
@@ -865,6 +915,7 @@ class TikTokConnector extends EventEmitter {
 
         // Validate timestamp is a number
         if (isNaN(timestamp) || timestamp <= 0) {
+            this.logger.warn(`⚠️ Invalid timestamp value: ${timestamp} (from ${detectionMethod})`);
             if (this._earliestEventTime) {
                 return this._earliestEventTime;
             }
@@ -883,13 +934,14 @@ class TikTokConnector extends EventEmitter {
         const minTime = new Date('2020-01-01').getTime();
         
         if (timestamp > now || timestamp < minTime) {
-            this.logger.warn(`⚠️ Invalid timestamp detected: ${timestamp} (${new Date(timestamp).toISOString()}). Using fallback.`);
+            this.logger.warn(`⚠️ Invalid timestamp detected: ${timestamp} (${new Date(timestamp).toISOString()}) from ${detectionMethod}. Using fallback.`);
             if (this._earliestEventTime) {
                 return this._earliestEventTime;
             }
             return Date.now();
         }
 
+        this.logger.info(`✅ Extracted stream start time from ${detectionMethod}: ${new Date(timestamp).toISOString()}`);
         return timestamp;
     }
 
