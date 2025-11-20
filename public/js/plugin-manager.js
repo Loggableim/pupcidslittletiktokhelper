@@ -58,15 +58,12 @@ class PluginManager {
             btn.addEventListener('click', (e) => {
                 filterBtns.forEach(b => {
                     b.classList.remove('active');
-                    b.style.background = 'rgba(255, 255, 255, 0.05)';
-                    b.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                    b.style.color = '#9ca3af';
+                    b.style.removeProperty('background');
+                    b.style.removeProperty('border-color');
+                    b.style.removeProperty('color');
                 });
                 
                 btn.classList.add('active');
-                btn.style.background = 'rgba(59, 130, 246, 0.2)';
-                btn.style.borderColor = 'rgba(59, 130, 246, 0.3)';
-                btn.style.color = '#60a5fa';
                 
                 this.currentFilter = btn.getAttribute('data-filter');
                 this.applyFiltersAndSort();

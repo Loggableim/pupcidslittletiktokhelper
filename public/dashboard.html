@@ -9,15 +9,15 @@
     <link rel="stylesheet" href="/css/wiki.css">
     <link rel="stylesheet" href="/css/themes.css">
     <style>
-        /* Plugin Manager Modern Styles */
+        /* Plugin Manager Modern Styles - Theme-Aware */
         .plugin-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
         }
         
         .plugin-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.2);
-            border-color: rgba(59, 130, 246, 0.3) !important;
+            box-shadow: var(--shadow-lg), 0 0 0 1px var(--color-active-border);
+            border-color: var(--color-active-border) !important;
         }
 
         .plugin-action-btn {
@@ -37,7 +37,7 @@
 
         .plugin-action-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--shadow-md);
             filter: brightness(1.1);
         }
 
@@ -46,27 +46,27 @@
         }
 
         .plugin-filter-btn:hover {
-            background: rgba(59, 130, 246, 0.15) !important;
-            border-color: rgba(59, 130, 246, 0.2) !important;
-            color: #93c5fd !important;
+            background: var(--color-active-bg) !important;
+            border-color: var(--color-active-border) !important;
+            color: var(--color-accent-primary) !important;
         }
 
         .plugin-filter-btn.active {
-            background: rgba(59, 130, 246, 0.2) !important;
-            border-color: rgba(59, 130, 246, 0.3) !important;
-            color: #60a5fa !important;
+            background: var(--color-active-bg) !important;
+            border-color: var(--color-active-border) !important;
+            color: var(--color-accent-primary) !important;
         }
 
         #plugin-search:focus {
             outline: none;
-            border-color: rgba(59, 130, 246, 0.5);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: var(--color-input-focus);
+            box-shadow: 0 0 0 3px var(--color-active-bg);
         }
 
         #plugin-sort:focus {
             outline: none;
-            border-color: rgba(59, 130, 246, 0.5);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: var(--color-input-focus);
+            box-shadow: 0 0 0 3px var(--color-active-bg);
         }
 
         /* Smooth animations for filter transitions */
@@ -85,17 +85,17 @@
             }
         }
 
-        /* Stats card improvements */
+        /* Stats card improvements - Theme-Aware */
         .stat-card {
-            background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
             transition: all 0.3s ease;
         }
 
         .stat-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--color-accent-primary);
         }
     </style>
     <script src="/js/lucide.min.js"></script>

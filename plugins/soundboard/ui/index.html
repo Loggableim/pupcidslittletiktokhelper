@@ -10,7 +10,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
-            background: #0f172a;
+            background: var(--color-bg-primary);
             padding: 20px;
             overflow-y: auto;
             min-height: 100vh;
@@ -21,9 +21,9 @@
             align-items: center;
             margin-bottom: 24px;
             padding: 16px;
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            background: var(--gradient-primary);
             border-radius: 8px;
-            border: 1px solid #3b82f6;
+            border: 1px solid var(--color-accent-primary);
         }
         .standalone-title {
             display: flex;
@@ -31,22 +31,22 @@
             gap: 12px;
             font-size: 24px;
             font-weight: 600;
-            color: #60a5fa;
+            color: var(--color-accent-primary);
         }
         .back-link {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             padding: 8px 16px;
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid #3b82f6;
+            background: var(--color-active-bg);
+            border: 1px solid var(--color-accent-primary);
             border-radius: 6px;
-            color: #60a5fa;
+            color: var(--color-accent-primary);
             text-decoration: none;
             transition: all 0.2s;
         }
         .back-link:hover {
-            background: rgba(59, 130, 246, 0.2);
+            background: var(--color-active-bg);
             transform: translateX(-2px);
         }
         
@@ -54,13 +54,13 @@
         .myinstants-search {
             margin-top: 24px;
             padding: 16px;
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(71, 85, 105, 0.5);
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
         }
         
         .myinstants-search h4 {
-            color: #e2e8f0;
+            color: var(--color-text-primary);
             font-size: 1.1rem;
             font-weight: 600;
             margin-bottom: 12px;
@@ -85,19 +85,19 @@
         }
         
         .myinstants-result-item {
-            background: rgba(71, 85, 105, 0.3);
+            background: var(--color-bg-tertiary);
             padding: 12px;
             border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border: 1px solid rgba(71, 85, 105, 0.5);
+            border: 1px solid var(--color-border);
             transition: all 0.2s;
         }
         
         .myinstants-result-item:hover {
-            background: rgba(71, 85, 105, 0.4);
-            border-color: rgba(96, 165, 250, 0.5);
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
         }
         
         .myinstants-result-info {
@@ -107,7 +107,7 @@
         
         .myinstants-result-name {
             font-weight: 600;
-            color: #e2e8f0;
+            color: var(--color-text-primary);
             margin-bottom: 4px;
         }
         
@@ -128,13 +128,13 @@
         .add-gift-sound {
             margin-top: 24px;
             padding: 16px;
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(71, 85, 105, 0.5);
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
         }
         
         .add-gift-sound h4 {
-            color: #e2e8f0;
+            color: var(--color-text-primary);
             font-size: 1.1rem;
             font-weight: 600;
             margin-bottom: 12px;
@@ -143,8 +143,8 @@
         .gift-catalog {
             margin-bottom: 24px;
             padding: 16px;
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(71, 85, 105, 0.5);
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
         }
         
@@ -156,7 +156,7 @@
         }
         
         .gift-catalog-header h4 {
-            color: #e2e8f0;
+            color: var(--color-text-primary);
             font-size: 1.1rem;
             font-weight: 600;
             margin: 0;
@@ -370,9 +370,9 @@
         </div>
         
         <!-- Audio Testing & Permissions -->
-        <div id="audio-test-card" class="settings-card" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #3b82f6; margin-top: 24px;">
+        <div id="audio-test-card" class="settings-card" style="background: var(--gradient-primary); border: 1px solid var(--color-accent-primary); margin-top: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 class="card-title" style="color: #60a5fa; margin: 0;">
+            <h3 class="card-title" style="color: var(--color-accent-primary); margin: 0;">
                 <i data-lucide="volume-2"></i>
                 Audio System Test & Permissions
             </h3>
@@ -417,37 +417,37 @@
             
             <!-- Audio Status -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
+                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--color-border); border-radius: 8px;">
                     <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Audio Context:</div>
                     <div id="audio-context-status" style="font-weight: 600; font-size: 0.95rem;">Checking...</div>
                 </div>
-                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
+                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--color-border); border-radius: 8px;">
                     <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Autoplay:</div>
                     <div id="autoplay-status" style="font-weight: 600; font-size: 0.95rem;">Checking...</div>
                 </div>
-                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px;">
+                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--color-border); border-radius: 8px;">
                     <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Active Sounds:</div>
-                    <div id="active-sounds-count" style="font-weight: 600; font-size: 0.95rem; color: #60a5fa;">0</div>
+                    <div id="active-sounds-count" style="font-weight: 600; font-size: 0.95rem; color: var(--color-accent-primary);">0</div>
                 </div>
             </div>
             
             <!-- Debug Log -->
             <div style="margin-top: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 0.9rem; font-weight: 600; color: #e2e8f0;">Audio Debug Log</span>
+                    <span style="font-size: 0.9rem; font-weight: 600; color: var(--color-text-primary);">Audio Debug Log</span>
                     <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
                         <input type="checkbox" id="verbose-logging" checked style="cursor: pointer;">
                         <span style="color: #cbd5e1;">Show Verbose Logs</span>
                     </label>
                 </div>
-                <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(71, 85, 105, 0.5); border-radius: 8px; margin-bottom: 8px; padding: 8px 12px;">
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 8px; padding: 8px 12px;">
                     <div style="font-size: 0.8rem; color: #94a3b8;">
                         <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
                         Critical events (play, error) are always logged. Verbose mode shows additional diagnostic information.
                     </div>
                 </div>
-                <div id="audio-debug-log" style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
-                    <div style="color: #60a5fa;">🎵 Audio system ready. Waiting for events...</div>
+                <div id="audio-debug-log" style="background: var(--color-bg-primary); border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
+                    <div style="color: var(--color-accent-primary);">🎵 Audio system ready. Waiting for events...</div>
                 </div>
             </div>
         </div>
