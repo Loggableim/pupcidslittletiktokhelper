@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emoji Rain Konfiguration - TikTok Stream Tool</title>
+    <link rel="stylesheet" href="/css/themes.css">
     <style>
         * {
             margin: 0;
@@ -13,10 +14,10 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: var(--gradient-primary);
             min-height: 100vh;
             padding: 20px;
-            color: #fff;
+            color: var(--color-text-primary);
         }
 
         .container {
@@ -44,9 +45,9 @@
         }
 
         .nav-button {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
-            color: white;
+            background: var(--color-bg-secondary);
+            border: 2px solid var(--color-border);
+            color: var(--color-text-primary);
             padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
@@ -58,12 +59,12 @@
         }
 
         .nav-button:hover {
-            background: rgba(255,255,255,0.3);
+            background: var(--color-bg-hover);
             transform: translateY(-2px);
         }
 
         .toggle-section {
-            background: rgba(255,255,255,0.1);
+            background: var(--color-bg-card);
             backdrop-filter: blur(10px);
             border-radius: 12px;
             padding: 25px;
@@ -110,7 +111,7 @@
             width: 26px;
             left: 4px;
             bottom: 4px;
-            background-color: white;
+            background-color: var(--color-text-primary);
             transition: .4s;
             border-radius: 50%;
         }
@@ -124,7 +125,7 @@
         }
 
         .config-section {
-            background: rgba(255,255,255,0.1);
+            background: var(--color-bg-card);
             backdrop-filter: blur(10px);
             border-radius: 12px;
             padding: 25px;
@@ -161,10 +162,10 @@
         .form-group textarea {
             width: 100%;
             padding: 12px;
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 2px solid var(--color-border);
             border-radius: 8px;
             background: rgba(255,255,255,0.15);
-            color: #fff;
+            color: var(--color-text-primary);
             font-size: 1em;
             font-family: inherit;
         }
@@ -234,7 +235,7 @@
         button {
             background: rgba(76,175,80,0.8);
             border: 2px solid rgba(76,175,80,1);
-            color: white;
+            color: var(--color-text-primary);
             padding: 15px 30px;
             border-radius: 8px;
             cursor: pointer;
@@ -276,7 +277,7 @@
             padding: 15px 25px;
             border-radius: 8px;
             background: rgba(76,175,80,0.95);
-            color: white;
+            color: var(--color-text-primary);
             font-weight: bold;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             transform: translateX(400px);
@@ -299,7 +300,7 @@
             height: 80px;
             border-radius: 8px;
             overflow: hidden;
-            background: rgba(255,255,255,0.1);
+            background: var(--color-bg-card);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -322,7 +323,7 @@
             top: 4px;
             right: 4px;
             background: rgba(244,67,54,0.9);
-            color: white;
+            color: var(--color-text-primary);
             border: none;
             border-radius: 50%;
             width: 24px;

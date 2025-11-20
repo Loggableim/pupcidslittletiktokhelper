@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gift Milestone Celebration - TikTok Stream Tool</title>
+    <link rel="stylesheet" href="/css/themes.css">
     <style>
         * {
             margin: 0;
@@ -13,10 +14,10 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--gradient-primary);
             min-height: 100vh;
             padding: 20px;
-            color: #fff;
+            color: var(--color-text-primary);
         }
 
         .container {
@@ -44,9 +45,9 @@
         }
 
         .nav-button {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
-            color: white;
+            background: var(--color-bg-secondary);
+            border: 2px solid var(--color-border);
+            color: var(--color-text-primary);
             padding: 12px 24px;
             border-radius: 8px;
             cursor: pointer;
@@ -58,12 +59,12 @@
         }
 
         .nav-button:hover {
-            background: rgba(255,255,255,0.3);
+            background: var(--color-bg-hover);
             transform: translateY(-2px);
         }
 
         .section {
-            background: rgba(255,255,255,0.1);
+            background: var(--color-bg-card);
             backdrop-filter: blur(10px);
             border-radius: 12px;
             padding: 25px;
@@ -74,7 +75,7 @@
         .section h2 {
             margin-bottom: 20px;
             font-size: 1.5em;
-            border-bottom: 2px solid rgba(255,255,255,0.3);
+            border-bottom: 2px solid var(--color-border);
             padding-bottom: 10px;
         }
 
@@ -118,7 +119,7 @@
             width: 26px;
             left: 4px;
             bottom: 4px;
-            background-color: white;
+            background-color: var(--color-text-primary);
             transition: .4s;
             border-radius: 50%;
         }
@@ -146,9 +147,9 @@
         .form-group select {
             width: 100%;
             padding: 12px;
-            border: 2px solid rgba(255,255,255,0.3);
+            border: 2px solid var(--color-border);
             background: rgba(255,255,255,0.15);
-            color: white;
+            color: var(--color-text-primary);
             border-radius: 8px;
             font-size: 1em;
             transition: all 0.3s ease;
@@ -158,12 +159,12 @@
         .form-group select:focus {
             outline: none;
             border-color: rgba(255,255,255,0.6);
-            background: rgba(255,255,255,0.2);
+            background: var(--color-bg-secondary);
         }
 
         .form-group select option {
             background: #764ba2;
-            color: white;
+            color: var(--color-text-primary);
         }
 
         .form-row {
@@ -197,7 +198,7 @@
 
         .upload-button {
             background: rgba(76,175,80,0.8);
-            color: white;
+            color: var(--color-text-primary);
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
@@ -214,7 +215,7 @@
 
         .delete-button {
             background: rgba(244,67,54,0.8);
-            color: white;
+            color: var(--color-text-primary);
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
@@ -239,7 +240,7 @@
 
         .save-button {
             background: rgba(33,150,243,0.8);
-            color: white;
+            color: var(--color-text-primary);
             padding: 15px 30px;
             border: none;
             border-radius: 8px;
@@ -257,7 +258,7 @@
 
         .test-button {
             background: rgba(255,193,7,0.8);
-            color: white;
+            color: var(--color-text-primary);
             padding: 12px 24px;
             border: none;
             border-radius: 8px;
@@ -274,7 +275,7 @@
 
         .reset-button {
             background: rgba(156,39,176,0.8);
-            color: white;
+            color: var(--color-text-primary);
             padding: 12px 24px;
             border: none;
             border-radius: 8px;
@@ -319,7 +320,7 @@
             top: 20px;
             right: 20px;
             background: rgba(76,175,80,0.95);
-            color: white;
+            color: var(--color-text-primary);
             padding: 15px 25px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
