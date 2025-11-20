@@ -2426,3 +2426,59 @@ input:checked + .toggle-slider:before {
 .alert-danger svg {
     color: #ef4444;
 }
+
+/* ============================================
+   Language Switcher
+   ============================================ */
+
+.language-switcher {
+    position: relative;
+    margin-right: 0.5rem;
+}
+
+.flag-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.language-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    min-width: 160px;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.language-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    text-align: left;
+}
+
+.language-option:hover {
+    background-color: var(--color-bg-hover);
+}
+
+.language-option.active {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--color-accent-primary);
+}
+
+.language-option .flag-icon {
+    font-size: 1.25rem;
+}
+

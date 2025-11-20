@@ -242,8 +242,32 @@
                     <div class="topbar-status">
                         <span id="connection-status" class="status-badge status-disconnected">
                             <i data-lucide="circle"></i>
-                            <span>Disconnected</span>
+                            <span data-i18n="dashboard.disconnected">Disconnected</span>
                         </span>
+                    </div>
+                    <!-- Language Switcher -->
+                    <div class="language-switcher">
+                        <button id="language-btn" class="topbar-icon-btn" title="Change Language">
+                            <span class="flag-icon" id="current-flag">🇬🇧</span>
+                        </button>
+                        <div id="language-dropdown" class="language-dropdown" style="display: none;">
+                            <button class="language-option" data-locale="en">
+                                <span class="flag-icon">🇬🇧</span>
+                                <span>English</span>
+                            </button>
+                            <button class="language-option" data-locale="de">
+                                <span class="flag-icon">🇩🇪</span>
+                                <span>Deutsch</span>
+                            </button>
+                            <button class="language-option" data-locale="es">
+                                <span class="flag-icon">🇪🇸</span>
+                                <span>Español</span>
+                            </button>
+                            <button class="language-option" data-locale="fr">
+                                <span class="flag-icon">🇫🇷</span>
+                                <span>Français</span>
+                            </button>
+                        </div>
                     </div>
                     <button id="profile-btn" class="topbar-profile-btn">
                         <i data-lucide="user"></i>
@@ -1536,12 +1560,15 @@
     <!-- Scripts -->
     <!-- Theme manager must load early to prevent flash of unstyled content -->
     <script src="/js/theme-manager.js"></script>
+    <!-- i18n client must load early for translations -->
+    <script src="/js/i18n-client.js"></script>
     <!-- Audio unlock must load first to handle autoplay restrictions -->
     <script src="/js/audio-unlock.js"></script>
     <!-- Initialization helper to prevent race conditions -->
     <script src="/js/init-helper.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/navigation.js"></script>
+    <script src="/js/language-switcher.js"></script>
     <script src="/js/dashboard-enhancements.js"></script>
     <script src="/js/vdoninja-dashboard.js"></script>
     <script src="/js/plugin-manager.js"></script>

@@ -3,6 +3,30 @@
     "name": "Pup Cid's Little TikTok Helper",
     "tagline": "Kostenlose Open-Source-Alternative zu Tikfinity und Tiktory"
   },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "events": "Ereignisse",
+    "flows": "Flows",
+    "goals": "Ziele",
+    "lastevent": "Letztes Event",
+    "clarityhud": "ClarityHUD",
+    "tts": "TTS",
+    "soundboard": "Soundboard",
+    "emoji_rain": "Emoji-Regen",
+    "multi_guest": "Multi-Gast",
+    "gift_milestone": "Geschenk-Meilenstein",
+    "multi_cam": "Multi-Cam",
+    "osc_bridge": "OSC-Brücke",
+    "hybridshock": "HybridShock",
+    "openshock": "OpenShock",
+    "quiz_show": "Quiz-Show",
+    "viewer_xp": "Zuschauer XP",
+    "resources": "Ressourcen",
+    "weather_control": "Wetterkontrolle",
+    "plugin_manager": "Plugin-Manager",
+    "wiki": "Wiki",
+    "settings": "Einstellungen"
+  },
   "dashboard": {
     "title": "Dashboard",
     "connect": "Verbinden",
@@ -11,7 +35,31 @@
     "connected": "Verbunden",
     "disconnected": "Getrennt",
     "connecting": "Verbinde",
-    "username_placeholder": "TikTok-Benutzername eingeben",
+    "username_placeholder": "TikTok-Benutzername (ohne @)",
+    "tiktok_live_connection": "TikTok Live Verbindung",
+    "connection_info": "Verbindungsinformationen",
+    "stream_time_debug_info": "Stream-Zeit Debug-Info",
+    "stream_start_time": "Stream-Startzeit",
+    "current_duration": "Aktuelle Dauer",
+    "detection_method": "Erkennungsmethode",
+    "connection_diagnostics": "Verbindungsdiagnose",
+    "run_diagnostics": "Diagnose ausführen",
+    "quick_actions": "Schnellaktionen",
+    "tts_action": "TTS",
+    "soundboard_action": "Soundboard",
+    "flows_action": "Flows",
+    "emoji_rain_action": "Emoji-Regen",
+    "osc_bridge_action": "OSC-Brücke",
+    "live_stats": "Live-Statistiken",
+    "updates_available": "Updates verfügbar",
+    "dismiss_updates": "Ausblenden",
+    "show_more_changelog": "Mehr anzeigen",
+    "show_less_changelog": "Weniger anzeigen",
+    "init_status": "Initialisierungsstatus",
+    "recent_events": "Aktuelle Ereignisse",
+    "clear_events": "Löschen",
+    "profile": "Profil",
+    "global_settings": "Globale Einstellungen",
     "stats": {
       "viewers": "Zuschauer",
       "likes": "Likes",
@@ -35,7 +83,8 @@
     "share": "{username} hat den Stream geteilt!",
     "chat": "{username}: {message}",
     "like": "{username} hat geliked! (Gesamt: {likeCount})",
-    "no_events": "Noch keine Ereignisse. Verbinde dich, um Live-Events zu sehen!"
+    "no_events": "Noch keine Ereignisse. Verbinde dich, um Live-Events zu sehen!",
+    "clear_all": "Alle Ereignisse löschen"
   },
   "flows": {
     "title": "Event-Automatisierung (Flows)",
@@ -51,6 +100,9 @@
     "actions": "Aktionen",
     "add_action": "Aktion hinzufügen",
     "drag_to_reorder": "Ziehen, um Aktionen neu zu ordnen",
+    "open_editor": "Erweiterten Flow-Editor öffnen",
+    "add_new_flow": "Neuen Flow hinzufügen",
+    "no_flows": "Noch keine Flows. Erstelle deine erste Automatisierung!",
     "action_types": {
       "alert": "Alert anzeigen",
       "sound": "Sound abspielen",
@@ -69,7 +121,11 @@
     "play_mode": "Abspiel-Modus",
     "overlap": "Überlappend",
     "sequential": "Sequenziell",
-    "clear_queue": "Warteschlange leeren"
+    "clear_queue": "Warteschlange leeren",
+    "playback_settings": "Wiedergabe-Einstellungen",
+    "save_settings": "Soundboard-Einstellungen speichern",
+    "advanced_settings": "Erweiterte Einstellungen",
+    "test_sound": "Sound testen"
   },
   "leaderboard": {
     "title": "Bestenliste",
@@ -114,7 +170,21 @@
     "theme": "Theme",
     "language": "Sprache",
     "save": "Einstellungen speichern",
-    "saved": "Einstellungen erfolgreich gespeichert!"
+    "saved": "Einstellungen erfolgreich gespeichert!",
+    "auto_connect": "Automatisch mit letztem TikTok-Benutzer beim Start verbinden",
+    "auto_update_check": "Beim Start nach Updates suchen",
+    "show_debug_info": "Debug-Informationen anzeigen",
+    "enable_notifications": "Desktop-Benachrichtigungen aktivieren",
+    "notification_volume": "Benachrichtigungslautstärke",
+    "ui_settings": "UI-Einstellungen",
+    "advanced_settings": "Erweiterte Einstellungen",
+    "apply_changes": "Änderungen übernehmen",
+    "reset_to_defaults": "Auf Standardwerte zurücksetzen",
+    "export_settings": "Einstellungen exportieren",
+    "import_settings": "Einstellungen importieren",
+    "auto_start_title": "Autostart-Einstellungen",
+    "language_settings": "Spracheinstellungen",
+    "select_language": "Sprache auswählen"
   },
   "obs": {
     "title": "OBS-WebSocket-Integration",
@@ -137,9 +207,10 @@
     }
   },
   "theme": {
-    "light": "Hell-Modus",
-    "dark": "Dunkel-Modus",
-    "auto": "Auto (System)"
+    "light": "Tag-Modus",
+    "dark": "Nacht-Modus",
+    "auto": "Auto (System)",
+    "high_contrast": "Hoher Kontrast"
   },
   "common": {
     "loading": "Laden...",
@@ -160,7 +231,15 @@
     "copy": "Kopieren",
     "paste": "Einfügen",
     "undo": "Rückgängig",
-    "redo": "Wiederholen"
+    "redo": "Wiederholen",
+    "yes": "Ja",
+    "no": "Nein",
+    "ok": "OK",
+    "apply": "Anwenden",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Vorherige",
+    "finish": "Fertig"
   },
   "errors": {
     "connection_failed": "Verbindung fehlgeschlagen. Stelle sicher, dass du LIVE auf TikTok bist!",
@@ -169,6 +248,55 @@
     "server_error": "Serverfehler. Bitte versuche es später erneut.",
     "not_found": "Nicht gefunden",
     "unauthorized": "Nicht autorisiert",
-    "rate_limit": "Zu viele Anfragen. Bitte warte einen Moment."
+    "rate_limit": "Zu viele Anfragen. Bitte warte einen Moment.",
+    "unknown_error": "Ein unbekannter Fehler ist aufgetreten"
+  },
+  "goals": {
+    "title": "Ziele",
+    "create_goal": "Ziel erstellen",
+    "edit_goal": "Ziel bearbeiten",
+    "delete_goal": "Ziel löschen",
+    "goal_name": "Zielname",
+    "target_value": "Zielwert",
+    "current_value": "Aktueller Wert",
+    "reset_goal": "Ziel zurücksetzen"
+  },
+  "tts": {
+    "title": "Text-zu-Sprache",
+    "enable": "TTS aktivieren",
+    "voice": "Stimme",
+    "speed": "Geschwindigkeit",
+    "volume": "Lautstärke",
+    "test": "Testen",
+    "settings": "TTS-Einstellungen"
+  },
+  "plugins": {
+    "title": "Plugin-Manager",
+    "installed": "Installiert",
+    "available": "Verfügbar",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert",
+    "install": "Installieren",
+    "uninstall": "Deinstallieren",
+    "enable": "Aktivieren",
+    "disable": "Deaktivieren",
+    "configure": "Konfigurieren",
+    "update_available": "Update verfügbar",
+    "update": "Aktualisieren",
+    "search_plugins": "Plugins suchen",
+    "filter_all": "Alle",
+    "filter_enabled": "Aktiviert",
+    "filter_disabled": "Deaktiviert",
+    "sort_by": "Sortieren nach",
+    "sort_name": "Name",
+    "sort_type": "Typ",
+    "sort_author": "Autor"
+  },
+  "hud": {
+    "goals": "Ziele",
+    "viewers": "Zuschauer",
+    "likes": "Likes",
+    "coins": "Münzen",
+    "followers": "Follower"
   }
 }

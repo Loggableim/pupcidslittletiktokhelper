@@ -3,6 +3,30 @@
     "name": "Pup Cid's Little TikTok Helper",
     "tagline": "Free Open-Source Alternative to Tikfinity and Tiktory"
   },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "events": "Events",
+    "flows": "Flows",
+    "goals": "Goals",
+    "lastevent": "LastEvent",
+    "clarityhud": "ClarityHUD",
+    "tts": "TTS",
+    "soundboard": "Soundboard",
+    "emoji_rain": "Emoji Rain",
+    "multi_guest": "Multi-Guest",
+    "gift_milestone": "Gift Milestone",
+    "multi_cam": "Multi-Cam",
+    "osc_bridge": "OSC-Bridge",
+    "hybridshock": "HybridShock",
+    "openshock": "OpenShock",
+    "quiz_show": "Quiz Show",
+    "viewer_xp": "Viewer XP",
+    "resources": "Resources",
+    "weather_control": "Weather Control",
+    "plugin_manager": "Plugin Manager",
+    "wiki": "Wiki",
+    "settings": "Settings"
+  },
   "dashboard": {
     "title": "Dashboard",
     "connect": "Connect",
@@ -11,7 +35,31 @@
     "connected": "Connected",
     "disconnected": "Disconnected",
     "connecting": "Connecting",
-    "username_placeholder": "Enter TikTok username",
+    "username_placeholder": "TikTok Username (without @)",
+    "tiktok_live_connection": "TikTok Live Connection",
+    "connection_info": "Connection Information",
+    "stream_time_debug_info": "Stream Time Debug Info",
+    "stream_start_time": "Stream Start Time",
+    "current_duration": "Current Duration",
+    "detection_method": "Detection Method",
+    "connection_diagnostics": "Connection Diagnostics",
+    "run_diagnostics": "Run Diagnostics",
+    "quick_actions": "Quick Actions",
+    "tts_action": "TTS",
+    "soundboard_action": "Soundboard",
+    "flows_action": "Flows",
+    "emoji_rain_action": "Emoji Rain",
+    "osc_bridge_action": "OSC-Bridge",
+    "live_stats": "Live Statistics",
+    "updates_available": "Updates Available",
+    "dismiss_updates": "Dismiss",
+    "show_more_changelog": "Show More",
+    "show_less_changelog": "Show Less",
+    "init_status": "Initialization Status",
+    "recent_events": "Recent Events",
+    "clear_events": "Clear",
+    "profile": "Profile",
+    "global_settings": "Global Settings",
     "stats": {
       "viewers": "Viewers",
       "likes": "Likes",
@@ -35,7 +83,8 @@
     "share": "{username} shared the stream!",
     "chat": "{username}: {message}",
     "like": "{username} liked! (Total: {likeCount})",
-    "no_events": "No events yet. Connect to see live events!"
+    "no_events": "No events yet. Connect to see live events!",
+    "clear_all": "Clear All Events"
   },
   "flows": {
     "title": "Event Automation (Flows)",
@@ -51,6 +100,9 @@
     "actions": "Actions",
     "add_action": "Add Action",
     "drag_to_reorder": "Drag to reorder actions",
+    "open_editor": "Open Advanced Flow Editor",
+    "add_new_flow": "Add New Flow",
+    "no_flows": "No flows yet. Create your first automation!",
     "action_types": {
       "alert": "Show Alert",
       "sound": "Play Sound",
@@ -69,7 +121,11 @@
     "play_mode": "Play Mode",
     "overlap": "Overlap",
     "sequential": "Sequential",
-    "clear_queue": "Clear Queue"
+    "clear_queue": "Clear Queue",
+    "playback_settings": "Playback Settings",
+    "save_settings": "Save Soundboard Settings",
+    "advanced_settings": "Advanced Settings",
+    "test_sound": "Test Sound"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -114,7 +170,21 @@
     "theme": "Theme",
     "language": "Language",
     "save": "Save Settings",
-    "saved": "Settings saved successfully!"
+    "saved": "Settings saved successfully!",
+    "auto_connect": "Auto-connect to last TikTok user on startup",
+    "auto_update_check": "Check for updates on startup",
+    "show_debug_info": "Show debug information",
+    "enable_notifications": "Enable desktop notifications",
+    "notification_volume": "Notification Volume",
+    "ui_settings": "UI Settings",
+    "advanced_settings": "Advanced Settings",
+    "apply_changes": "Apply Changes",
+    "reset_to_defaults": "Reset to Defaults",
+    "export_settings": "Export Settings",
+    "import_settings": "Import Settings",
+    "auto_start_title": "Auto-Start Settings",
+    "language_settings": "Language Settings",
+    "select_language": "Select Language"
   },
   "obs": {
     "title": "OBS WebSocket Integration",
@@ -137,9 +207,10 @@
     }
   },
   "theme": {
-    "light": "Light Mode",
-    "dark": "Dark Mode",
-    "auto": "Auto (System)"
+    "light": "Day Mode",
+    "dark": "Night Mode",
+    "auto": "Auto (System)",
+    "high_contrast": "High Contrast"
   },
   "common": {
     "loading": "Loading...",
@@ -160,7 +231,15 @@
     "copy": "Copy",
     "paste": "Paste",
     "undo": "Undo",
-    "redo": "Redo"
+    "redo": "Redo",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "apply": "Apply",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "finish": "Finish"
   },
   "errors": {
     "connection_failed": "Connection failed. Make sure you are LIVE on TikTok!",
@@ -169,6 +248,55 @@
     "server_error": "Server error. Please try again later.",
     "not_found": "Not found",
     "unauthorized": "Unauthorized",
-    "rate_limit": "Too many requests. Please wait a moment."
+    "rate_limit": "Too many requests. Please wait a moment.",
+    "unknown_error": "An unknown error occurred"
+  },
+  "goals": {
+    "title": "Goals",
+    "create_goal": "Create Goal",
+    "edit_goal": "Edit Goal",
+    "delete_goal": "Delete Goal",
+    "goal_name": "Goal Name",
+    "target_value": "Target Value",
+    "current_value": "Current Value",
+    "reset_goal": "Reset Goal"
+  },
+  "tts": {
+    "title": "Text-to-Speech",
+    "enable": "Enable TTS",
+    "voice": "Voice",
+    "speed": "Speed",
+    "volume": "Volume",
+    "test": "Test",
+    "settings": "TTS Settings"
+  },
+  "plugins": {
+    "title": "Plugin Manager",
+    "installed": "Installed",
+    "available": "Available",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "install": "Install",
+    "uninstall": "Uninstall",
+    "enable": "Enable",
+    "disable": "Disable",
+    "configure": "Configure",
+    "update_available": "Update Available",
+    "update": "Update",
+    "search_plugins": "Search Plugins",
+    "filter_all": "All",
+    "filter_enabled": "Enabled",
+    "filter_disabled": "Disabled",
+    "sort_by": "Sort By",
+    "sort_name": "Name",
+    "sort_type": "Type",
+    "sort_author": "Author"
+  },
+  "hud": {
+    "goals": "Goals",
+    "viewers": "Viewers",
+    "likes": "Likes",
+    "coins": "Coins",
+    "followers": "Followers"
   }
 }
