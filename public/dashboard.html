@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pup Cid's Little TikTok Helper</title>
+    <title data-i18n="app.name">Pup Cid's Little TikTok Helper</title>
     <link rel="stylesheet" href="/css/tailwind.output.css">
     <link rel="stylesheet" href="/css/navigation.css">
     <link rel="stylesheet" href="/css/wiki.css">
@@ -100,6 +100,8 @@
     </style>
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <!-- i18n Client (load early) -->
+    <script src="/js/i18n-client.js"></script>
 </head>
 <body class="bg-gray-900 text-white">
 
@@ -122,28 +124,28 @@
                 <!-- Dashboard -->
                 <a href="#" class="sidebar-item active" data-view="dashboard">
                     <i data-lucide="layout-dashboard"></i>
-                    <span class="sidebar-item-text">Dashboard</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.dashboard">Dashboard</span>
                 </a>
 
                 <!-- Category: Automations -->
                 <div class="sidebar-category">
-                    <span class="sidebar-category-label">Automations</span>
+                    <span class="sidebar-category-label" data-i18n="navigation.automations">Automations</span>
                 </div>
                 <a href="#" class="sidebar-item" data-view="events">
                     <i data-lucide="activity"></i>
-                    <span class="sidebar-item-text">Events</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.events">Events</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="flows">
                     <i data-lucide="git-branch"></i>
-                    <span class="sidebar-item-text">Flows</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.flows">Flows</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="goals">
                     <i data-lucide="target"></i>
-                    <span class="sidebar-item-text">Goals</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.goals">Goals</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="lastevent-spotlight" data-plugin="lastevent-spotlight">
                     <i data-lucide="eye"></i>
-                    <span class="sidebar-item-text">LastEvent</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.lastevent">LastEvent</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="clarityhud" data-plugin="clarityhud">
                     <i data-lucide="layout"></i>
@@ -152,7 +154,7 @@
 
                 <!-- Category: Interaktive Effekte -->
                 <div class="sidebar-category">
-                    <span class="sidebar-category-label">Interaktive Effekte</span>
+                    <span class="sidebar-category-label" data-i18n="navigation.effects">Interactive Effects</span>
                 </div>
                 <a href="#" class="sidebar-item" data-view="tts">
                     <i data-lucide="mic"></i>
@@ -160,11 +162,11 @@
                 </a>
                 <a href="#" class="sidebar-item" data-view="soundboard">
                     <i data-lucide="music"></i>
-                    <span class="sidebar-item-text">Soundboard</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.soundboard">Soundboard</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="emoji-rain">
                     <i data-lucide="cloud-rain"></i>
-                    <span class="sidebar-item-text">Emoji Rain</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.emoji_rain">Emoji Rain</span>
                 </a>
 
                 <!-- Category: Plugins & Tools -->
@@ -173,7 +175,7 @@
                 </div>
                 <a href="#" class="sidebar-item" data-view="multi-guest" data-plugin="vdoninja">
                     <i data-lucide="users"></i>
-                    <span class="sidebar-item-text">Multi-Guest</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.vdoninja">VDO.Ninja</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="gift-milestone" data-plugin="gift-milestone">
                     <i data-lucide="gift"></i>
@@ -189,43 +191,43 @@
                 </a>
                 <a href="#" class="sidebar-item" data-view="hybridshock" data-plugin="hybridshock">
                     <i data-lucide="zap"></i>
-                    <span class="sidebar-item-text">HybridShock</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.hybridshock">HybridShock</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="openshock" data-plugin="openshock">
                     <i data-lucide="zap"></i>
-                    <span class="sidebar-item-text">OpenShock</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.openshock">OpenShock</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="quiz-show" data-plugin="quiz-show">
                     <i data-lucide="help-circle"></i>
-                    <span class="sidebar-item-text">Quiz Show</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.quiz_show">Quiz Show</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="viewer-xp" data-plugin="viewer-xp">
                     <i data-lucide="award"></i>
-                    <span class="sidebar-item-text">Viewer XP</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.viewer_xp">Viewer XP</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="resource-monitor" data-plugin="resource-monitor">
                     <i data-lucide="cpu"></i>
-                    <span class="sidebar-item-text">Resources</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.resources">Resources</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="weather-control" data-plugin="weather-control">
                     <i data-lucide="cloud-rain"></i>
-                    <span class="sidebar-item-text">Weather Control</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.weather_control">Weather Control</span>
                 </a>
 
                 <a href="#" class="sidebar-item" data-view="plugins">
                     <i data-lucide="plug"></i>
-                    <span class="sidebar-item-text">Plugin Manager</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.plugins">Plugin Manager</span>
                 </a>
 
                 <!-- Settings (Fixed at bottom) -->
                 <div class="sidebar-spacer"></div>
                 <a href="#" class="sidebar-item" data-view="wiki">
                     <i data-lucide="book-open"></i>
-                    <span class="sidebar-item-text">Wiki</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.wiki">Wiki</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="settings">
                     <i data-lucide="settings"></i>
-                    <span class="sidebar-item-text">Settings</span>
+                    <span class="sidebar-item-text" data-i18n="navigation.settings">Settings</span>
                 </a>
             </nav>
         </aside>
@@ -236,20 +238,20 @@
             <!-- Topbar (Reduced) -->
             <header class="topbar">
                 <div class="topbar-left">
-                    <h1 class="topbar-title">Pup Cid's Little TikTok Helper</h1>
+                    <h1 class="topbar-title" data-i18n="app.name">Pup Cid's Little TikTok Helper</h1>
                 </div>
                 <div class="topbar-right">
                     <div class="topbar-status">
                         <span id="connection-status" class="status-badge status-disconnected">
                             <i data-lucide="circle"></i>
-                            <span>Disconnected</span>
+                            <span data-i18n="dashboard.disconnected">Disconnected</span>
                         </span>
                     </div>
                     <button id="profile-btn" class="topbar-profile-btn">
                         <i data-lucide="user"></i>
                         <span id="current-profile-name">default</span>
                     </button>
-                    <button id="topbar-settings-btn" class="topbar-icon-btn" title="Global Settings">
+                    <button id="topbar-settings-btn" class="topbar-icon-btn" data-i18n-title="settings.global_settings" title="Global Settings">
                         <i data-lucide="settings"></i>
                     </button>
                 </div>
@@ -265,18 +267,18 @@
                     <section class="dashboard-section connection-section">
                         <h2 class="section-title">
                             <i data-lucide="wifi"></i>
-                            TikTok Live Connection
+                            <span data-i18n="dashboard.tiktok_live_connection">TikTok Live Connection</span>
                         </h2>
                         <div class="connection-controls">
-                            <input type="text" id="username-input" placeholder="TikTok Username (ohne @)"
+                            <input type="text" id="username-input" data-i18n-placeholder="dashboard.username_placeholder" placeholder="TikTok Username (without @)"
                                    class="connection-input">
                             <button id="connect-btn" class="btn btn-primary">
                                 <i data-lucide="link"></i>
-                                Connect
+                                <span data-i18n="dashboard.connect">Connect</span>
                             </button>
                             <button id="disconnect-btn" class="btn btn-danger" disabled>
                                 <i data-lucide="link-2-off"></i>
-                                Disconnect
+                                <span data-i18n="dashboard.disconnect">Disconnect</span>
                             </button>
                         </div>
                         <div id="connection-info" class="connection-info"></div>
@@ -285,12 +287,12 @@
                         <div id="stream-time-debug" style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; display: none;">
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                                 <i data-lucide="clock" style="width: 16px; height: 16px; color: #3b82f6;"></i>
-                                <span style="font-weight: 600; color: #60a5fa;">Stream Time Debug Info</span>
+                                <span style="font-weight: 600; color: #60a5fa;" data-i18n="dashboard.stream_time_debug_info">Stream Time Debug Info</span>
                             </div>
                             <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-                                <div><strong>Stream Start Time:</strong> <span id="debug-stream-start">--</span></div>
-                                <div><strong>Current Duration:</strong> <span id="debug-stream-duration">--</span></div>
-                                <div><strong>Detection Method:</strong> <span id="debug-detection-method">--</span></div>
+                                <div><strong data-i18n="dashboard.stream_start_time">Stream Start Time:</strong> <span id="debug-stream-start">--</span></div>
+                                <div><strong data-i18n="dashboard.current_duration">Current Duration:</strong> <span id="debug-stream-duration">--</span></div>
+                                <div><strong data-i18n="dashboard.detection_method">Detection Method:</strong> <span id="debug-detection-method">--</span></div>
                                 <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
                                     <em>This panel shows how the stream start time was detected. If it shows "Connection Time" instead of a roomInfo field, the API may not be providing stream start time.</em>
                                 </div>
@@ -301,11 +303,11 @@
                         <div class="connection-diagnostics" style="margin-top: 1rem;">
                             <button id="run-diagnostics-btn" class="btn btn-secondary" style="width: 100%;">
                                 <i data-lucide="activity"></i>
-                                Verbindungsdiagnose ausführen
+                                <span data-i18n="dashboard.run_diagnostics">Run Connection Diagnostics</span>
                             </button>
                             <div id="diagnostics-result" style="margin-top: 1rem; display: none;">
-                                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">
-                                    Diagnose-Ergebnis
+                                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);" data-i18n="dashboard.diagnostics_result">
+                                    Diagnostics Result
                                 </h3>
                                 <div id="diagnostics-content" style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; font-size: 0.85rem;"></div>
                             </div>
@@ -323,28 +325,28 @@
                     <section class="dashboard-section actions-section">
                         <h2 class="section-title">
                             <i data-lucide="zap"></i>
-                            Quick Actions
+                            <span data-i18n="dashboard.quick_actions">Quick Actions</span>
                         </h2>
                         <div class="quick-actions-button-grid">
                             <button class="quick-action-btn" id="quick-tts-btn" data-action="tts" data-state="on">
                                 <i data-lucide="mic"></i>
-                                <span>Text-to-Speech</span>
+                                <span data-i18n="dashboard.quick_action.tts">Text-to-Speech</span>
                             </button>
                             <button class="quick-action-btn" id="quick-soundboard-btn" data-action="soundboard" data-state="on">
                                 <i data-lucide="music"></i>
-                                <span>Soundboard</span>
+                                <span data-i18n="dashboard.quick_action.soundboard">Soundboard</span>
                             </button>
                             <button class="quick-action-btn" id="quick-flows-btn" data-action="flows" data-state="on">
                                 <i data-lucide="git-branch"></i>
-                                <span>Automation Flows</span>
+                                <span data-i18n="dashboard.quick_action.flows">Automation Flows</span>
                             </button>
                             <button class="quick-action-btn" id="quick-emoji-rain-btn" data-action="emoji-rain" data-state="on">
                                 <i data-lucide="cloud-rain"></i>
-                                <span>Emoji Rain</span>
+                                <span data-i18n="dashboard.quick_action.emoji_rain">Emoji Rain</span>
                             </button>
                             <button class="quick-action-btn" id="quick-osc-bridge-btn" data-action="osc-bridge" data-state="off" data-plugin="osc-bridge">
                                 <i data-lucide="gamepad-2"></i>
-                                <span>OSC-Bridge</span>
+                                <span data-i18n="dashboard.quick_action.osc_bridge">OSC-Bridge</span>
                             </button>
                         </div>
                     </section>
@@ -353,7 +355,7 @@
                     <section class="dashboard-section stats-section">
                         <h2 class="section-title">
                             <i data-lucide="trending-up"></i>
-                            Live Statistics
+                            <span data-i18n="dashboard.live_statistics">Live Statistics</span>
                         </h2>
                         <div class="stats-grid">
                             <div class="stat-card stat-card-runtime">
@@ -361,7 +363,7 @@
                                     <i data-lucide="clock"></i>
                                 </div>
                                 <div class="stat-content">
-                                    <div class="stat-label">Stream Runtime</div>
+                                    <div class="stat-label" data-i18n="dashboard.stats.runtime">Stream Runtime</div>
                                     <div class="stat-value" id="stat-runtime">--:--:--</div>
                                 </div>
                                 <canvas id="runtime-sparkline" class="stat-sparkline" width="150" height="40"></canvas>
@@ -371,7 +373,7 @@
                                     <i data-lucide="users"></i>
                                 </div>
                                 <div class="stat-content">
-                                    <div class="stat-label">Viewers</div>
+                                    <div class="stat-label" data-i18n="dashboard.stats.viewers">Viewers</div>
                                     <div class="stat-value" id="stat-viewers">0</div>
                                 </div>
                             </div>
@@ -380,7 +382,7 @@
                                     <i data-lucide="heart"></i>
                                 </div>
                                 <div class="stat-content">
-                                    <div class="stat-label">Likes</div>
+                                    <div class="stat-label" data-i18n="dashboard.stats.likes">Likes</div>
                                     <div class="stat-value" id="stat-likes">0</div>
                                 </div>
                             </div>
@@ -389,7 +391,7 @@
                                     <i data-lucide="coins"></i>
                                 </div>
                                 <div class="stat-content">
-                                    <div class="stat-label">Coins</div>
+                                    <div class="stat-label" data-i18n="dashboard.stats.coins">Coins</div>
                                     <div class="stat-value" id="stat-coins">0</div>
                                 </div>
                             </div>
