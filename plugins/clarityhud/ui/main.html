@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ClarityHUD Dashboard</title>
+  <link rel="stylesheet" href="/css/themes.css">
   <style>
     * {
       box-sizing: border-box;
@@ -13,7 +14,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--gradient-primary);
       min-height: 100vh;
       padding: 20px;
     }
@@ -25,7 +26,7 @@
 
     .header {
       text-align: center;
-      color: white;
+      color: var(--color-text-primary);
       margin-bottom: 40px;
     }
 
@@ -33,7 +34,7 @@
       font-size: 42px;
       font-weight: 700;
       margin-bottom: 10px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      text-shadow: var(--shadow-sm);
     }
 
     .header p {
@@ -55,20 +56,20 @@
     }
 
     .hud-section {
-      background: white;
+      background: var(--color-bg-card);
       border-radius: 16px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-lg);
       overflow: hidden;
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
     .hud-section:hover {
       transform: translateY(-5px);
-      box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+      box-shadow: var(--shadow-lg);
     }
 
     .hud-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--gradient-primary);
       color: white;
       padding: 25px 30px;
     }
@@ -89,11 +90,11 @@
     }
 
     .preview-container {
-      background: #000;
+      background: var(--color-bg-primary);
       border-radius: 12px;
       overflow: hidden;
       margin-bottom: 25px;
-      border: 3px solid #e0e0e0;
+      border: 3px solid var(--color-border);
       position: relative;
     }
 
@@ -102,7 +103,7 @@
       position: absolute;
       top: 10px;
       right: 10px;
-      background: #ff4757;
+      background: var(--color-accent-danger);
       color: white;
       padding: 4px 12px;
       border-radius: 20px;
@@ -126,7 +127,7 @@
     }
 
     .url-section {
-      background: #f8f9fa;
+      background: var(--color-bg-secondary);
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 20px;
@@ -135,7 +136,7 @@
     .url-label {
       font-size: 13px;
       font-weight: 600;
-      color: #666;
+      color: var(--color-text-muted);
       margin-bottom: 10px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -152,10 +153,10 @@
       font-family: 'Monaco', 'Menlo', monospace;
       font-size: 13px;
       padding: 12px 16px;
-      background: white;
-      border: 2px solid #e0e0e0;
+      background: var(--color-bg-card);
+      border: 2px solid var(--color-border);
       border-radius: 8px;
-      color: #333;
+      color: var(--color-text-primary);
       word-break: break-all;
     }
 
@@ -194,23 +195,23 @@
     }
 
     .btn-secondary {
-      background: #6c757d;
+      background: var(--color-btn-secondary-bg);
       color: white;
     }
 
     .btn-success {
-      background: #28a745;
+      background: var(--color-accent-success);
       color: white;
     }
 
     .btn-info {
-      background: #17a2b8;
+      background: var(--color-accent-primary);
       color: white;
     }
 
     .btn-warning {
-      background: #ffc107;
-      color: #333;
+      background: var(--color-accent-warning);
+      color: var(--color-text-primary);
     }
 
     .btn-icon {
@@ -232,7 +233,7 @@
       top: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.6);
+      background: var(--color-modal-backdrop);
       backdrop-filter: blur(4px);
       overflow: auto;
       animation: fadeIn 0.2s ease;
@@ -251,7 +252,7 @@
     }
 
     .modal-content {
-      background: white;
+      background: var(--color-bg-card);
       border-radius: 16px;
       max-width: 1000px;
       width: 100%;
@@ -316,7 +317,7 @@
       display: flex;
       justify-content: space-between;
       gap: 10px;
-      background: #f8f9fa;
+      background: var(--color-bg-secondary);
       border-radius: 0 0 16px 16px;
     }
 
@@ -324,7 +325,7 @@
     .tabs {
       display: flex;
       border-bottom: 2px solid #e0e0e0;
-      background: #f8f9fa;
+      background: var(--color-bg-secondary);
       overflow-x: auto;
       flex-shrink: 0;
     }
@@ -334,21 +335,21 @@
       cursor: pointer;
       font-weight: 600;
       font-size: 14px;
-      color: #666;
+      color: var(--color-text-muted);
       border-bottom: 3px solid transparent;
       transition: all 0.2s;
       white-space: nowrap;
     }
 
     .tab:hover {
-      background: rgba(102, 126, 234, 0.1);
-      color: #667eea;
+      background: var(--color-active-bg);
+      color: var(--color-accent-primary);
     }
 
     .tab.active {
-      color: #667eea;
-      border-bottom-color: #667eea;
-      background: white;
+      color: var(--color-accent-primary);
+      border-bottom-color: var(--color-accent-primary);
+      background: var(--color-bg-card);
     }
 
     #tab-contents {
@@ -374,7 +375,7 @@
     .settings-group h3 {
       font-size: 18px;
       font-weight: 600;
-      color: #333;
+      color: var(--color-text-primary);
       margin-bottom: 20px;
       padding-bottom: 10px;
       border-bottom: 2px solid #667eea;
@@ -395,7 +396,7 @@
     .form-group label {
       font-size: 13px;
       font-weight: 600;
-      color: #555;
+      color: var(--color-text-secondary);
       margin-bottom: 8px;
     }
 
@@ -403,7 +404,7 @@
     .form-group input[type="number"],
     .form-group select {
       padding: 10px 14px;
-      border: 2px solid #e0e0e0;
+      border: 2px solid var(--color-border);
       border-radius: 8px;
       font-size: 14px;
       transition: all 0.2s;
@@ -413,7 +414,7 @@
     .form-group input[type="number"]:focus,
     .form-group select:focus {
       outline: none;
-      border-color: #667eea;
+      border-color: var(--color-accent-primary);
       box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
@@ -437,7 +438,7 @@
     .range-value span {
       font-size: 14px;
       font-weight: 700;
-      color: #667eea;
+      color: var(--color-accent-primary);
     }
 
     .checkbox-group {
@@ -445,13 +446,13 @@
       align-items: center;
       margin-bottom: 15px;
       padding: 12px;
-      background: #f8f9fa;
+      background: var(--color-bg-secondary);
       border-radius: 8px;
       transition: background 0.2s;
     }
 
     .checkbox-group:hover {
-      background: #e9ecef;
+      background: var(--color-bg-tertiary);
     }
 
     .checkbox-group input[type="checkbox"] {
@@ -466,7 +467,7 @@
       cursor: pointer;
       font-size: 14px;
       font-weight: 500;
-      color: #333;
+      color: var(--color-text-primary);
     }
 
     .color-input-wrapper {
@@ -478,10 +479,10 @@
     .color-input-wrapper input[type="color"] {
       width: 60px;
       height: 42px;
-      border: 2px solid #e0e0e0;
+      border: 2px solid var(--color-border);
       border-radius: 8px;
       cursor: pointer;
-      background: white;
+      background: var(--color-bg-card);
       padding: 2px;
     }
 
@@ -499,9 +500,9 @@
 
     .preset-btn {
       padding: 16px;
-      border: 2px solid #e0e0e0;
+      border: 2px solid var(--color-border);
       border-radius: 8px;
-      background: white;
+      background: var(--color-bg-card);
       cursor: pointer;
       transition: all 0.2s;
       text-align: center;
@@ -510,13 +511,13 @@
     }
 
     .preset-btn:hover {
-      border-color: #667eea;
-      background: #f8f9fa;
+      border-color: var(--color-accent-primary);
+      background: var(--color-bg-secondary);
       transform: translateY(-2px);
     }
 
     .preset-btn.active {
-      border-color: #667eea;
+      border-color: var(--color-accent-primary);
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
     }
@@ -526,8 +527,8 @@
       position: fixed;
       bottom: 30px;
       right: 30px;
-      background: white;
-      color: #333;
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
       padding: 16px 24px;
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.2);
