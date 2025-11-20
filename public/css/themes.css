@@ -1,0 +1,298 @@
+/* ============================================
+   Pup Cid's Little TikTok Helper - Theme System
+   Day / Night / High Contrast (Vision Impaired) Modes
+   Corporate Branding Color: #12a116 (Green)
+   ============================================ */
+
+/* Default Theme (Night Mode - Current) */
+:root {
+    /* Branding Color */
+    --brand-primary: #12a116;
+    --brand-primary-hover: #0f8712;
+    --brand-primary-light: rgba(18, 161, 22, 0.2);
+    
+    /* Background Colors */
+    --color-bg-primary: #0f172a;
+    --color-bg-secondary: #1e293b;
+    --color-bg-tertiary: #334155;
+    --color-bg-card: #1e293b;
+    --color-bg-hover: #334155;
+    
+    /* Accent Colors */
+    --color-accent-primary: #3b82f6;
+    --color-accent-secondary: #8b5cf6;
+    --color-accent-success: #10b981;
+    --color-accent-warning: #f59e0b;
+    --color-accent-danger: #ef4444;
+    
+    /* Text Colors */
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #cbd5e1;
+    --color-text-muted: #94a3b8;
+    
+    /* Borders & Dividers */
+    --color-border: #334155;
+    --color-divider: #1e293b;
+    
+    /* Shadows & Glows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --glow-primary: 0 0 20px rgba(59, 130, 246, 0.3);
+    --glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
+    --glow-brand: 0 0 20px rgba(18, 161, 22, 0.3);
+}
+
+/* Day Mode Theme */
+[data-theme="day"] {
+    /* Branding Color remains the same */
+    --brand-primary: #12a116;
+    --brand-primary-hover: #0f8712;
+    --brand-primary-light: rgba(18, 161, 22, 0.15);
+    
+    /* Background Colors - Light */
+    --color-bg-primary: #f8fafc;
+    --color-bg-secondary: #ffffff;
+    --color-bg-tertiary: #e2e8f0;
+    --color-bg-card: #ffffff;
+    --color-bg-hover: #f1f5f9;
+    
+    /* Accent Colors - Adjusted for light background */
+    --color-accent-primary: #2563eb;
+    --color-accent-secondary: #7c3aed;
+    --color-accent-success: #059669;
+    --color-accent-warning: #d97706;
+    --color-accent-danger: #dc2626;
+    
+    /* Text Colors - Dark text for light background */
+    --color-text-primary: #0f172a;
+    --color-text-secondary: #475569;
+    --color-text-muted: #64748b;
+    
+    /* Borders & Dividers - Subtle */
+    --color-border: #e2e8f0;
+    --color-divider: #f1f5f9;
+    
+    /* Shadows & Glows - Softer for light mode */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --glow-primary: 0 0 15px rgba(37, 99, 235, 0.2);
+    --glow-success: 0 0 15px rgba(5, 150, 105, 0.2);
+    --glow-brand: 0 0 15px rgba(18, 161, 22, 0.25);
+}
+
+/* High Contrast Mode (Vision Impaired) */
+[data-theme="contrast"] {
+    /* Branding Color - Higher contrast version */
+    --brand-primary: #14c91f;
+    --brand-primary-hover: #10a018;
+    --brand-primary-light: rgba(20, 201, 31, 0.25);
+    
+    /* Background Colors - Maximum contrast */
+    --color-bg-primary: #000000;
+    --color-bg-secondary: #1a1a1a;
+    --color-bg-tertiary: #2d2d2d;
+    --color-bg-card: #1a1a1a;
+    --color-bg-hover: #333333;
+    
+    /* Accent Colors - High contrast, vibrant */
+    --color-accent-primary: #60a5fa;
+    --color-accent-secondary: #a78bfa;
+    --color-accent-success: #34d399;
+    --color-accent-warning: #fbbf24;
+    --color-accent-danger: #f87171;
+    
+    /* Text Colors - Maximum contrast */
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #e5e5e5;
+    --color-text-muted: #b3b3b3;
+    
+    /* Borders & Dividers - High contrast */
+    --color-border: #4d4d4d;
+    --color-divider: #333333;
+    
+    /* Shadows & Glows - More pronounced */
+    --shadow-sm: 0 2px 4px 0 rgba(255, 255, 255, 0.1);
+    --shadow-md: 0 6px 10px -1px rgba(255, 255, 255, 0.15);
+    --shadow-lg: 0 12px 20px -3px rgba(255, 255, 255, 0.2);
+    --glow-primary: 0 0 25px rgba(96, 165, 250, 0.5);
+    --glow-success: 0 0 25px rgba(52, 211, 153, 0.5);
+    --glow-brand: 0 0 30px rgba(20, 201, 31, 0.6);
+}
+
+/* Apply brand color to active sidebar items */
+.sidebar-item.active {
+    background: var(--brand-primary) !important;
+    color: white !important;
+    box-shadow: var(--glow-brand) !important;
+}
+
+/* Apply brand color to primary buttons */
+.btn-primary {
+    background: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+}
+
+.btn-primary:hover {
+    background: var(--brand-primary-hover) !important;
+    border-color: var(--brand-primary-hover) !important;
+}
+
+/* Apply brand color to status badges when connected */
+.status-connected {
+    background: var(--brand-primary) !important;
+    box-shadow: var(--glow-brand) !important;
+}
+
+/* Theme Toggle Button Styles */
+.theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--color-bg-hover);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--brand-primary);
+}
+
+.theme-toggle-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.theme-toggle-btn.active {
+    background: var(--brand-primary-light);
+    border-color: var(--brand-primary);
+    color: var(--brand-primary);
+}
+
+/* Theme Dropdown Menu */
+.theme-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    min-width: 200px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+.theme-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.theme-option:last-child {
+    border-bottom: none;
+}
+
+.theme-option:hover {
+    background: var(--color-bg-hover);
+}
+
+.theme-option.active {
+    background: var(--brand-primary-light);
+    color: var(--brand-primary);
+}
+
+.theme-option-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-option-content {
+    flex: 1;
+}
+
+.theme-option-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.theme-option-description {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.theme-option-check {
+    width: 16px;
+    height: 16px;
+    color: var(--brand-primary);
+    opacity: 0;
+}
+
+.theme-option.active .theme-option-check {
+    opacity: 1;
+}
+
+/* High Contrast Mode - Additional Accessibility Enhancements */
+[data-theme="contrast"] {
+    /* Increase all border widths slightly */
+    --border-width: 2px;
+}
+
+[data-theme="contrast"] .sidebar-item,
+[data-theme="contrast"] .topbar-profile-btn,
+[data-theme="contrast"] .topbar-icon-btn,
+[data-theme="contrast"] .btn,
+[data-theme="contrast"] input,
+[data-theme="contrast"] select,
+[data-theme="contrast"] textarea {
+    border-width: 2px;
+}
+
+[data-theme="contrast"] .sidebar-item:focus,
+[data-theme="contrast"] .topbar-profile-btn:focus,
+[data-theme="contrast"] .topbar-icon-btn:focus,
+[data-theme="contrast"] .btn:focus,
+[data-theme="contrast"] input:focus,
+[data-theme="contrast"] select:focus,
+[data-theme="contrast"] textarea:focus {
+    outline: 3px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+/* Smooth theme transitions */
+body,
+.sidebar,
+.main-content,
+.topbar,
+.dashboard-section,
+.stat-card,
+.btn,
+input,
+select,
+textarea {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

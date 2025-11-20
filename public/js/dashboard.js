@@ -1733,8 +1733,10 @@ async function loadProfiles() {
 
 // Zeigt das Profile Modal
 async function showProfileModal() {
-    document.getElementById('profile-modal').classList.add('active');
-    await loadProfiles();
+    // Navigate to settings view where profile management is located
+    if (window.NavigationManager) {
+        window.NavigationManager.switchView('settings');
+    }
 }
 
 // Versteckt das Profile Modal
