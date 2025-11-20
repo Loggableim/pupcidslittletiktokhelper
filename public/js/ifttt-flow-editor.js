@@ -911,7 +911,23 @@
     function handleCanvasMouseUp(e) {
         // Handle connection completion
         if (state.isConnecting && state.connectionStart) {
-            // If we didn't click on a valid port, cancel the connection
+            // Check if mouse is over a valid input port
+            if (state.hoveredPort) {
+                const portType = state.hoveredPort.dataset.portType;
+                if (portType === 'input') {
+                    const fromNodeId = state.connectionStart.node.id;
+                    const toNodeId = state.hoveredPort.dataset.nodeId;
+                    const portLabel = state.connectionStart.portLabel;
+                    
+                    if (isValidConnection(fromNodeId, toNodeId, portType)) {
+                        createConnection(fromNodeId, toNodeId, portLabel);
+                    } else {
+                        showNotification('Invalid connection: Cannot connect these nodes', 'error');
+                    }
+                }
+            }
+            
+            // Clean up
             if (state.connectionStart.port) {
                 state.connectionStart.port.classList.remove('connecting');
             }
