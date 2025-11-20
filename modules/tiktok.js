@@ -1,6 +1,7 @@
 const { WebcastEventEmitter, createWebSocketUrl, ClientCloseCode, deserializeWebSocketMessage, SchemaVersion } = require('@eulerstream/euler-websocket-sdk');
 const EventEmitter = require('events');
 const WebSocket = require('ws');
+const axios = require('axios');
 
 // Fallback API key for users who don't have their own
 const FALLBACK_API_KEY = 'euler_MmE2OWM1ZTY1NWFkNmIxZmEwOThjNjU5ZmU1NmNjOTlkMWJiOGY5MzkzNWVlOTBjODY2NGVh';
@@ -1401,33 +1402,69 @@ class TikTokConnector extends EventEmitter {
     }
 
     async updateGiftCatalog(options = {}) {
-        // Return current gift catalog from database
-        // Gifts are automatically added to catalog when received from stream
+        // Fetch gift catalog from EulerStream REST API
+        // This provides the complete TikTok gift catalog with names, icons, and values
         try {
-            const catalog = this.db.getGiftCatalog();
-            const count = catalog.length;
+            this.logger.info('🎁 Fetching gift catalog from EulerStream...');
             
-            if (count === 0 && !this.isConnected) {
+            // Fetch gift catalog from EulerStream API
+            const response = await axios.get('https://tiktok.eulerstream.com/webcast/gift_info', {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'PupCidsTikTokHelper/1.0'
+                }
+            });
+            
+            if (!response.data || !response.data.gifts) {
+                this.logger.warn('⚠️  No gifts data in API response');
+                
+                // Fallback to current catalog
+                const catalog = this.db.getGiftCatalog();
                 return { 
-                    success: false, 
-                    message: 'No gifts in catalog. Connect to a stream to automatically populate the gift catalog.',
-                    count: 0 
+                    success: catalog.length > 0, 
+                    message: catalog.length > 0 
+                        ? `Using existing catalog with ${catalog.length} gifts` 
+                        : 'No gifts in catalog. Gifts will be added automatically when received from stream.',
+                    count: catalog.length,
+                    catalog: catalog
                 };
             }
             
-            this.logger.info(`🎁 Gift catalog contains ${count} gifts`);
+            const gifts = response.data.gifts;
+            
+            // Transform gifts to database format
+            const giftsToSave = gifts.map(gift => ({
+                id: gift.id,
+                name: gift.name || `Gift ${gift.id}`,
+                image_url: gift.image?.url_list?.[0] || gift.icon_url || gift.iconUrl || null,
+                diamond_count: gift.diamond_count || gift.price || 0
+            }));
+            
+            // Save to database
+            const savedCount = this.db.updateGiftCatalog(giftsToSave);
+            
+            this.logger.info(`✅ Gift catalog updated with ${savedCount} gifts from EulerStream`);
+            
             return { 
                 success: true, 
-                message: `Gift catalog updated with ${count} gifts`,
-                count: count,
-                catalog: catalog
+                message: `Gift catalog updated with ${savedCount} gifts from EulerStream`,
+                count: savedCount,
+                catalog: this.db.getGiftCatalog()
             };
         } catch (error) {
-            this.logger.error('Error updating gift catalog:', error);
+            this.logger.error('Error updating gift catalog from EulerStream:', error.message);
+            
+            // Fallback to current catalog
+            const catalog = this.db.getGiftCatalog();
+            const count = catalog.length;
+            
             return { 
-                success: false, 
-                message: error.message,
-                count: 0 
+                success: count > 0, 
+                message: count > 0 
+                    ? `API fetch failed. Using existing catalog with ${count} gifts` 
+                    : `API fetch failed: ${error.message}. Gifts will be added automatically when received from stream.`,
+                count: count,
+                catalog: catalog
             };
         }
     }
