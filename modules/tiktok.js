@@ -400,6 +400,31 @@ class TikTokConnector extends EventEmitter {
                     this.logger.info(`🎉 Processing ${parsedData.messages.length} messages from WebSocket`);
                     for (const message of parsedData.messages) {
                         if (message.type && message.data) {
+                            // Special handling for roomInfo event to extract stream start time
+                            if (message.type === 'roomInfo') {
+                                this.logger.info('📋 Received roomInfo event - extracting stream start time');
+                                const extractedTime = this._extractStreamStartTime(message.data);
+                                
+                                // Update stream start time if not already set or if extracted time is earlier
+                                if (!this.streamStartTime || extractedTime < this.streamStartTime) {
+                                    this.streamStartTime = extractedTime;
+                                    this._persistedStreamStart = extractedTime;
+                                    this._streamTimeDetectionMethod = 'roomInfo (from TikTok)';
+                                    
+                                    this.logger.info(`✅ Stream start time set from roomInfo: ${new Date(this.streamStartTime).toISOString()}`);
+                                    
+                                    // Broadcast updated stream time info
+                                    this.io.emit('tiktok:streamTimeInfo', {
+                                        streamStartTime: this.streamStartTime,
+                                        streamStartISO: new Date(this.streamStartTime).toISOString(),
+                                        detectionMethod: this._streamTimeDetectionMethod,
+                                        currentDuration: Math.floor((Date.now() - this.streamStartTime) / 1000)
+                                    });
+                                }
+                                // Don't emit roomInfo as a regular event, just process it
+                                continue;
+                            }
+                            
                             // Map EulerStream event types to our internal event names
                             // EulerStream uses names like "WebcastChatMessage", we need "chat"
                             const eventType = this._mapEulerStreamEventType(message.type);
@@ -766,6 +791,78 @@ class TikTokConnector extends EventEmitter {
         }
 
         return extractedData;
+    }
+
+    /**
+     * Extract stream start time from roomInfo data
+     * Tries multiple possible field names and handles different timestamp formats
+     * @private
+     * @param {object} roomInfo - Room information data from TikTok
+     * @returns {number} Stream start time in milliseconds
+     */
+    _extractStreamStartTime(roomInfo) {
+        if (!roomInfo) {
+            // If we have an earliest event time, use that
+            if (this._earliestEventTime) {
+                return this._earliestEventTime;
+            }
+            // Otherwise use current time as fallback
+            return Date.now();
+        }
+
+        // Try different possible field names for stream start time
+        // Priority order: start_time > createTime > startTime
+        let timestamp = null;
+        
+        if (roomInfo.start_time !== undefined) {
+            timestamp = roomInfo.start_time;
+        } else if (roomInfo.createTime !== undefined) {
+            timestamp = roomInfo.createTime;
+        } else if (roomInfo.startTime !== undefined) {
+            timestamp = roomInfo.startTime;
+        }
+
+        // If no timestamp found, try earliest event time or fallback to now
+        if (timestamp === null || timestamp === undefined) {
+            if (this._earliestEventTime) {
+                return this._earliestEventTime;
+            }
+            return Date.now();
+        }
+
+        // Parse timestamp if it's a string
+        if (typeof timestamp === 'string') {
+            timestamp = parseInt(timestamp, 10);
+        }
+
+        // Validate timestamp is a number
+        if (isNaN(timestamp) || timestamp <= 0) {
+            if (this._earliestEventTime) {
+                return this._earliestEventTime;
+            }
+            return Date.now();
+        }
+
+        // Convert to milliseconds if timestamp is in seconds
+        // Unix timestamps in seconds are less than 10 billion (year ~2286)
+        // Unix timestamps in milliseconds are greater than that
+        if (timestamp < 4000000000) {
+            timestamp = timestamp * 1000;
+        }
+
+        // Validate timestamp is reasonable (not in the future, not before 2020)
+        const now = Date.now();
+        const minTime = new Date('2020-01-01').getTime();
+        
+        if (timestamp > now || timestamp < minTime) {
+            this.logger.warn(`⚠️ Invalid timestamp detected: ${timestamp} (${new Date(timestamp).toISOString()}). Using fallback.`);
+            if (this._earliestEventTime) {
+                return this._earliestEventTime;
+            }
+            return Date.now();
+        }
+
+        return timestamp;
     }
 
     /**
