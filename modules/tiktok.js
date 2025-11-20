@@ -194,9 +194,11 @@ class TikTokConnector extends EventEmitter {
                 this.streamStartTime = this._persistedStreamStart;
                 this.logger.info(`♻️  Restored persisted stream start time: ${new Date(this.streamStartTime).toISOString()}`);
             } else {
-                this.streamStartTime = Date.now();
-                this._persistedStreamStart = this.streamStartTime;
-                this._streamTimeDetectionMethod = 'Connection Time (will auto-correct on first event)';
+                // Don't set streamStartTime to connection time immediately
+                // Wait for roomInfo or first event to get actual stream start time
+                this.streamStartTime = null;
+                this._streamTimeDetectionMethod = 'Waiting for stream data...';
+                this.logger.info(`⏳ Waiting for roomInfo or first event to determine stream start time`);
             }
 
             // Start duration tracking interval
@@ -207,13 +209,15 @@ class TikTokConnector extends EventEmitter {
                 this.broadcastStats();
             }, 1000);
 
-            // Broadcast stream time info
-            this.io.emit('tiktok:streamTimeInfo', {
-                streamStartTime: this.streamStartTime,
-                streamStartISO: new Date(this.streamStartTime).toISOString(),
-                detectionMethod: this._streamTimeDetectionMethod || 'Unknown',
-                currentDuration: Math.floor((Date.now() - this.streamStartTime) / 1000)
-            });
+            // Broadcast stream time info (only if we have a valid time)
+            if (this.streamStartTime) {
+                this.io.emit('tiktok:streamTimeInfo', {
+                    streamStartTime: this.streamStartTime,
+                    streamStartISO: new Date(this.streamStartTime).toISOString(),
+                    detectionMethod: this._streamTimeDetectionMethod || 'Unknown',
+                    currentDuration: Math.floor((Date.now() - this.streamStartTime) / 1000)
+                });
+            }
 
             // Reset auto-reconnect counter after 5 minutes of stable connection
             if (this.autoReconnectResetTimeout) {
@@ -517,7 +521,7 @@ class TikTokConnector extends EventEmitter {
                             this.streamStartTime = this._earliestEventTime;
                             this._persistedStreamStart = this.streamStartTime;
                             this._streamTimeDetectionMethod = 'First Event Timestamp';
-                            this.logger.info(`📅 Set stream start time from earliest event`);
+                            this.logger.info(`📅 Set stream start time from earliest event: ${new Date(this.streamStartTime).toISOString()}`);
                             
                             // Broadcast updated stream time info
                             this.io.emit('tiktok:streamTimeInfo', {

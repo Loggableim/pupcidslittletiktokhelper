@@ -2028,6 +2028,30 @@ io.on('connection', (socket) => {
     // Send initialization state to client
     socket.emit('init:state', initState.getState());
 
+    // Send current TikTok connection status to newly connected client
+    // This ensures the UI reflects the correct status even after page refresh
+    if (tiktok.isActive()) {
+        socket.emit('tiktok:status', {
+            status: 'connected',
+            username: tiktok.currentUsername
+        });
+        // Also send current stats if connected
+        socket.emit('tiktok:stats', {
+            viewers: tiktok.stats.viewers,
+            likes: tiktok.stats.likes,
+            totalCoins: tiktok.stats.totalCoins,
+            followers: tiktok.stats.followers,
+            gifts: tiktok.stats.gifts,
+            streamDuration: tiktok.streamStartTime 
+                ? Math.floor((Date.now() - tiktok.streamStartTime) / 1000)
+                : 0
+        });
+    } else {
+        socket.emit('tiktok:status', {
+            status: 'disconnected'
+        });
+    }
+
     // Plugin Socket Events registrieren
     pluginLoader.registerPluginSocketEvents(socket);
 
