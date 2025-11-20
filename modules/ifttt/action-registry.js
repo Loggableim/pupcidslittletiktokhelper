@@ -62,6 +62,16 @@ class ActionRegistry {
     }
 
     /**
+     * Get all actions for frontend (without executor functions)
+     */
+    getAllForFrontend() {
+        return Array.from(this.actions.values()).map(action => {
+            const { executor, ...actionWithoutExecutor } = action;
+            return actionWithoutExecutor;
+        });
+    }
+
+    /**
      * Get actions by category
      */
     getByCategory(category) {

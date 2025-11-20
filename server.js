@@ -1286,7 +1286,7 @@ app.post('/api/flows/:id/test', apiLimiter, async (req, res) => {
  */
 app.get('/api/ifttt/triggers', apiLimiter, (req, res) => {
     try {
-        const triggers = iftttEngine.triggers.getAll();
+        const triggers = iftttEngine.triggers.getAllForFrontend();
         res.json(triggers);
     } catch (error) {
         logger.error('Error getting triggers:', error);
@@ -1299,8 +1299,8 @@ app.get('/api/ifttt/triggers', apiLimiter, (req, res) => {
  */
 app.get('/api/ifttt/conditions', apiLimiter, (req, res) => {
     try {
-        const conditions = iftttEngine.conditions.getAll();
-        const operators = iftttEngine.conditions.getAllOperators();
+        const conditions = iftttEngine.conditions.getAllForFrontend();
+        const operators = iftttEngine.conditions.getAllOperatorsForFrontend();
         res.json({ conditions, operators });
     } catch (error) {
         logger.error('Error getting conditions:', error);
@@ -1313,7 +1313,7 @@ app.get('/api/ifttt/conditions', apiLimiter, (req, res) => {
  */
 app.get('/api/ifttt/actions', apiLimiter, (req, res) => {
     try {
-        const actions = iftttEngine.actions.getAll();
+        const actions = iftttEngine.actions.getAllForFrontend();
         res.json(actions);
     } catch (error) {
         logger.error('Error getting actions:', error);

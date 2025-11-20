@@ -87,10 +87,128 @@ class ConditionRegistry {
     }
 
     /**
+     * Get all conditions for frontend (without evaluator functions and with fields)
+     */
+    getAllForFrontend() {
+        return Array.from(this.conditions.values()).map(condition => {
+            const { evaluator, ...conditionWithoutEvaluator } = condition;
+            
+            // Add fields array for UI configuration based on condition type
+            const fields = [];
+            
+            // Field value condition needs field selector and value input
+            if (condition.id === 'field_value') {
+                fields.push(
+                    { name: 'field', label: 'Field Name', type: 'text', required: true, placeholder: 'e.g. username, giftName, coins' },
+                    { name: 'operator', label: 'Operator', type: 'select', options: condition.operators || [], required: true },
+                    { name: 'value', label: 'Compare Value', type: 'text', required: true }
+                );
+            }
+            // User level condition
+            else if (condition.id === 'user_level') {
+                fields.push(
+                    { name: 'operator', label: 'Operator', type: 'select', options: condition.operators || [], required: true },
+                    { name: 'level', label: 'Level', type: 'number', min: 0, max: 100, default: 1 }
+                );
+            }
+            // User follower check
+            else if (condition.id === 'user_follower') {
+                fields.push(
+                    { name: 'isFollower', label: 'Must be follower', type: 'checkbox', default: true }
+                );
+            }
+            // Username check
+            else if (condition.id === 'username_check') {
+                fields.push(
+                    { name: 'operator', label: 'Operator', type: 'select', options: condition.operators || [], required: true },
+                    { name: 'username', label: 'Username', type: 'text', required: true }
+                );
+            }
+            // Cooldown
+            else if (condition.id === 'cooldown') {
+                fields.push(
+                    { name: 'key', label: 'Cooldown Key', type: 'text', default: 'default', placeholder: 'Unique identifier' },
+                    { name: 'seconds', label: 'Seconds', type: 'number', min: 1, max: 3600, default: 60 }
+                );
+            }
+            // Rate limit
+            else if (condition.id === 'rate_limit') {
+                fields.push(
+                    { name: 'key', label: 'Rate Limit Key', type: 'text', default: 'default', placeholder: 'Unique identifier' },
+                    { name: 'maxCount', label: 'Max Count', type: 'number', min: 1, max: 1000, default: 5 },
+                    { name: 'windowSeconds', label: 'Window (seconds)', type: 'number', min: 1, max: 3600, default: 60 }
+                );
+            }
+            // Time of day
+            else if (condition.id === 'time_of_day') {
+                fields.push(
+                    { name: 'operator', label: 'Operator', type: 'select', options: ['equals', 'between'], required: true },
+                    { name: 'startTime', label: 'Start Time (HH:MM)', type: 'text', placeholder: '09:00' },
+                    { name: 'endTime', label: 'End Time (HH:MM)', type: 'text', placeholder: '17:00' }
+                );
+            }
+            // Day of week
+            else if (condition.id === 'day_of_week') {
+                fields.push(
+                    { name: 'days', label: 'Days', type: 'multiselect', options: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }
+                );
+            }
+            // TTS speaking
+            else if (condition.id === 'tts_speaking') {
+                fields.push(
+                    { name: 'isSpeaking', label: 'TTS is speaking', type: 'checkbox', default: true }
+                );
+            }
+            // Connection status
+            else if (condition.id === 'connection_status') {
+                fields.push(
+                    { name: 'isConnected', label: 'Is connected', type: 'checkbox', default: true }
+                );
+            }
+            // Variable check
+            else if (condition.id === 'variable_check') {
+                fields.push(
+                    { name: 'variableName', label: 'Variable Name', type: 'text', required: true },
+                    { name: 'operator', label: 'Operator', type: 'select', options: condition.operators || [], required: true },
+                    { name: 'value', label: 'Compare Value', type: 'text', required: true }
+                );
+            }
+            // Random chance
+            else if (condition.id === 'random_chance') {
+                fields.push(
+                    { name: 'percentage', label: 'Chance (%)', type: 'number', min: 0, max: 100, default: 50 }
+                );
+            }
+            // Execution count
+            else if (condition.id === 'execution_count') {
+                fields.push(
+                    { name: 'operator', label: 'Operator', type: 'select', options: condition.operators || [], required: true },
+                    { name: 'count', label: 'Count', type: 'number', min: 0, default: 1 }
+                );
+            }
+            
+            return {
+                ...conditionWithoutEvaluator,
+                fields
+            };
+        });
+    }
+
+    /**
      * Get all operators
      */
     getAllOperators() {
         return Array.from(this.operators.values());
+    }
+
+    /**
+     * Get all operators for frontend (without evaluator functions)
+     */
+    getAllOperatorsForFrontend() {
+        return Array.from(this.operators.values()).map(operator => {
+            const { evaluator, ...operatorWithoutEvaluator } = operator;
+            return operatorWithoutEvaluator;
+        });
     }
 
     /**

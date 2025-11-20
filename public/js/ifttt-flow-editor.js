@@ -777,12 +777,12 @@
         
         const fromRect = fromPort.getBoundingClientRect();
         const toRect = toPort.getBoundingClientRect();
-        const canvasRect = elements.flowCanvas.getBoundingClientRect();
+        const svgRect = elements.connectionsSvg.getBoundingClientRect();
         
-        const x1 = (fromRect.left + fromRect.width / 2 - canvasRect.left) / state.zoom;
-        const y1 = (fromRect.top + fromRect.height / 2 - canvasRect.top + 60) / state.zoom;
-        const x2 = (toRect.left + toRect.width / 2 - canvasRect.left) / state.zoom;
-        const y2 = (toRect.top + toRect.height / 2 - canvasRect.top + 60) / state.zoom;
+        const x1 = (fromRect.left + fromRect.width / 2 - svgRect.left) / state.zoom;
+        const y1 = (fromRect.top + fromRect.height / 2 - svgRect.top) / state.zoom;
+        const x2 = (toRect.left + toRect.width / 2 - svgRect.left) / state.zoom;
+        const y2 = (toRect.top + toRect.height / 2 - svgRect.top) / state.zoom;
         
         // Create curved path
         const dx = x2 - x1;
@@ -883,12 +883,12 @@
             
             const fromPort = state.connectionStart.port;
             const fromRect = fromPort.getBoundingClientRect();
-            const canvasRect = elements.flowCanvas.getBoundingClientRect();
+            const svgRect = elements.connectionsSvg.getBoundingClientRect();
             
-            const x1 = (fromRect.left + fromRect.width / 2 - canvasRect.left) / state.zoom;
-            const y1 = (fromRect.top + fromRect.height / 2 - canvasRect.top + 60) / state.zoom;
-            const x2 = (e.clientX - canvasRect.left) / state.zoom;
-            const y2 = (e.clientY - canvasRect.top + 60) / state.zoom;
+            const x1 = (fromRect.left + fromRect.width / 2 - svgRect.left) / state.zoom;
+            const y1 = (fromRect.top + fromRect.height / 2 - svgRect.top) / state.zoom;
+            const x2 = (e.clientX - svgRect.left) / state.zoom;
+            const y2 = (e.clientY - svgRect.top) / state.zoom;
             
             const dx = x2 - x1;
             const curve = Math.abs(dx) * 0.5;
