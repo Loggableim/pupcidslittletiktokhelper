@@ -138,6 +138,7 @@
     "filter_disabled": "Deaktiviert",
     "upload_plugin": "Plugin hochladen",
     "reload_plugins": "Plugins neu laden",
+    "reload_all_confirm": "Alle Plugins neu laden?",
     "enable": "Aktivieren",
     "disable": "Deaktivieren",
     "reload": "Neu laden",
@@ -145,6 +146,9 @@
     "configure": "Konfigurieren",
     "view_details": "Details anzeigen",
     "no_plugins": "Keine Plugins gefunden",
+    "no_plugins_filter": "Keine Plugins gefunden, die den Filterkriterien entsprechen.",
+    "no_description": "Keine Beschreibung verfügbar",
+    "unknown_author": "Unbekannt",
     "select_zip_file": "Bitte wähle eine ZIP-Datei aus",
     "uploading": "Wird hochgeladen...",
     "upload_success": "Plugin erfolgreich hochgeladen",
@@ -153,7 +157,12 @@
     "disable_error": "Fehler beim Deaktivieren des Plugins",
     "reload_error": "Fehler beim Neuladen des Plugins",
     "delete_error": "Fehler beim Löschen des Plugins",
-    "delete_confirm": "Bist du sicher, dass du dieses Plugin löschen möchtest?"
+    "delete_confirm": "Plugin \"{name}\" wirklich löschen?",
+    "load_error": "Fehler beim Laden der Plugins: {error}",
+    "error_prefix": "Fehler: {error}",
+    "enable_failed": "Fehler beim Aktivieren: {error}",
+    "disable_failed": "Fehler beim Deaktivieren: {error}",
+    "reload_failed": "Fehler beim Neuladen: {error}"
   },
   "leaderboard": {
     "title": "Bestenliste",
