@@ -481,12 +481,29 @@ class OpenShockPlugin {
                     });
                 }
 
+                // Automatically load devices when API key is configured
+                let deviceLoadSuccess = false;
+                let deviceCount = 0;
+                if (this.openShockClient && this.config.apiKey) {
+                    try {
+                        await this.loadDevices();
+                        deviceLoadSuccess = true;
+                        deviceCount = this.devices.length;
+                        this.api.log(`Automatically loaded ${deviceCount} device(s) after config update`, 'info');
+                    } catch (loadError) {
+                        this.api.log(`Could not auto-load devices after config update: ${loadError.message}`, 'warning');
+                        // Don't fail the config save if device loading fails
+                    }
+                }
+
                 this._broadcastStatus();
 
                 res.json({
                     success: true,
                     message: 'Configuration updated successfully',
-                    config: this.config
+                    config: this.config,
+                    deviceLoadSuccess,
+                    deviceCount
                 });
 
             } catch (error) {

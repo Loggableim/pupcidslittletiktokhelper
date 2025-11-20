@@ -1236,25 +1236,30 @@ async function saveApiSettings() {
             throw new Error(errorMessage);
         }
 
+        const result = await response.json();
+        
         await loadConfig();
-        showNotification('API settings saved successfully', 'success');
         
         // After saving API settings, refresh devices and update API status
         try {
             await loadDevices();
             renderDeviceList();
             renderPatternList();
-            updateApiStatus(devices.length > 0, devices.length);
             
-            if (devices.length > 0) {
-                showNotification(`✅ ${devices.length} device(s) loaded successfully`, 'success');
+            const deviceCount = result.deviceCount || devices.length;
+            updateApiStatus(deviceCount > 0, deviceCount);
+            
+            if (deviceCount > 0) {
+                showNotification(`✅ API settings saved and ${deviceCount} device(s) loaded successfully`, 'success');
+            } else if (result.deviceLoadSuccess === false) {
+                showNotification('⚠️ API settings saved but could not load devices', 'warning');
             } else {
-                showNotification('⚠️ API connected but no devices found', 'warning');
+                showNotification('⚠️ API settings saved but no devices found', 'warning');
             }
         } catch (loadError) {
             console.error('[OpenShock] Could not load devices after saving settings:', loadError);
             updateApiStatus(false, 0);
-            showNotification(`❌ Failed to load devices: ${loadError.message || 'Unknown error'}`, 'error');
+            showNotification(`❌ API settings saved but failed to load devices: ${loadError.message || 'Unknown error'}`, 'error');
         }
     } catch (error) {
         console.error('[OpenShock] Error saving API settings:', error);
