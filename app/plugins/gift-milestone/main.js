@@ -358,22 +358,36 @@ class GiftMilestonePlugin {
             try {
                 const db = this.api.getDatabase();
                 const config = db.getMilestoneConfig();
+                const { tierId } = req.body;
 
                 if (!config.enabled) {
                     return res.status(400).json({ success: false, error: 'Milestone is disabled' });
                 }
 
-                const stats = db.getMilestoneStats();
-
                 this.api.log('🧪 Testing milestone celebration', 'info');
 
-                // Trigger celebration
-                this.triggerCelebration(stats.current_milestone || config.threshold);
+                let tier = null;
+                let milestone = config.threshold;
+
+                // Test specific tier if provided
+                if (tierId) {
+                    tier = db.getMilestoneTier(tierId);
+                    if (tier) {
+                        milestone = tier.threshold;
+                        this.triggerCelebration(milestone, tier, 'test-user', 'Test User');
+                    }
+                } else {
+                    // Test global milestone
+                    const stats = db.getMilestoneStats();
+                    milestone = stats.current_milestone || config.threshold;
+                    this.triggerCelebration(milestone);
+                }
 
                 res.json({
                     success: true,
                     message: 'Test celebration triggered',
-                    milestone: stats.current_milestone || config.threshold
+                    milestone: milestone,
+                    tier: tier
                 });
             } catch (error) {
                 this.api.log(`Error testing milestone: ${error.message}`, 'error');
@@ -384,6 +398,123 @@ class GiftMilestonePlugin {
         // Serve uploaded files via static route
         const express = require('express');
         this.api.getApp().use('/plugins/gift-milestone/uploads', express.static(this.uploadDir));
+
+        // Tier Management Routes
+        this.api.registerRoute('get', '/api/gift-milestone/tiers', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const tiers = db.getMilestoneTiers();
+                res.json({ success: true, tiers });
+            } catch (error) {
+                this.api.log(`Error getting milestone tiers: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/gift-milestone/tiers', (req, res) => {
+            try {
+                const tier = req.body;
+                
+                // Validate required fields
+                if (!tier.name || typeof tier.name !== 'string') {
+                    return res.status(400).json({ success: false, error: 'Tier name is required and must be a string' });
+                }
+                if (tier.tier_level === undefined || typeof tier.tier_level !== 'number') {
+                    return res.status(400).json({ success: false, error: 'Tier level is required and must be a number' });
+                }
+                if (!tier.threshold || typeof tier.threshold !== 'number' || tier.threshold < 0) {
+                    return res.status(400).json({ success: false, error: 'Threshold is required and must be a positive number' });
+                }
+                
+                const db = this.api.getDatabase();
+                const tierId = db.saveMilestoneTier(tier);
+                this.api.log(`✅ Milestone tier saved: ${tier.name}`, 'info');
+                res.json({ success: true, tierId });
+            } catch (error) {
+                this.api.log(`Error saving milestone tier: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('delete', '/api/gift-milestone/tiers/:id', (req, res) => {
+            try {
+                const tierId = parseInt(req.params.id);
+                
+                // Validate tier ID
+                if (isNaN(tierId)) {
+                    return res.status(400).json({ success: false, error: 'Invalid tier ID' });
+                }
+                
+                const db = this.api.getDatabase();
+                db.deleteMilestoneTier(tierId);
+                this.api.log(`✅ Milestone tier deleted: ${tierId}`, 'info');
+                res.json({ success: true });
+            } catch (error) {
+                this.api.log(`Error deleting milestone tier: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Per-User Milestone Routes
+        this.api.registerRoute('get', '/api/gift-milestone/users', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const users = db.getAllUserMilestoneStats();
+                res.json({ success: true, users });
+            } catch (error) {
+                this.api.log(`Error getting user milestone stats: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('get', '/api/gift-milestone/users/:userId', (req, res) => {
+            try {
+                const userId = req.params.userId;
+                
+                // Validate userId
+                if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+                    return res.status(400).json({ success: false, error: 'Invalid user ID' });
+                }
+                
+                const db = this.api.getDatabase();
+                const userStats = db.getUserMilestoneStats(userId);
+                res.json({ success: true, userStats });
+            } catch (error) {
+                this.api.log(`Error getting user milestone stats: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/gift-milestone/users/reset', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                db.resetAllUserMilestoneStats();
+                this.api.log('✅ All user milestone stats reset', 'info');
+                res.json({ success: true });
+            } catch (error) {
+                this.api.log(`Error resetting user milestone stats: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('delete', '/api/gift-milestone/users/:userId', (req, res) => {
+            try {
+                const userId = req.params.userId;
+                
+                // Validate userId
+                if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+                    return res.status(400).json({ success: false, error: 'Invalid user ID' });
+                }
+                
+                const db = this.api.getDatabase();
+                db.resetUserMilestoneStats(userId);
+                this.api.log(`✅ User milestone stats reset: ${userId}`, 'info');
+                res.json({ success: true });
+            } catch (error) {
+                this.api.log(`Error resetting user milestone stats: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
 
         this.api.log('✅ Gift Milestone routes registered', 'info');
     }
@@ -401,12 +532,16 @@ class GiftMilestonePlugin {
         try {
             const db = this.api.getDatabase();
             const coins = data.coins || 0;
+            const userId = data.userId || data.uniqueId;
+            const username = data.nickname || data.uniqueId;
 
             if (coins === 0) {
                 return;
             }
 
-            // Add coins and check if milestone reached
+            const config = db.getMilestoneConfig();
+
+            // Global milestone tracking (legacy support)
             const result = db.addCoinsToMilestone(coins);
 
             // Emit stats update to UI
@@ -417,16 +552,39 @@ class GiftMilestonePlugin {
 
             if (result.triggered) {
                 this.api.log(`🎯 Milestone reached! ${result.milestone} coins (Total: ${result.coins})`, 'info');
-                this.triggerCelebration(result.milestone);
+                this.triggerCelebration(result.milestone, null, userId, username);
             } else {
                 this.api.log(`💰 Coins added: +${coins} (Total: ${result.coins}/${result.nextMilestone})`, 'debug');
+            }
+
+            // Per-user milestone tracking (tier-based)
+            if (userId && username) {
+                const userResult = db.addCoinsToUserMilestone(userId, username, coins);
+                
+                // Emit user stats update to UI
+                this.api.emit('milestone:user-stats-update', {
+                    userId: userResult.userId,
+                    username: userResult.username,
+                    cumulative_coins: userResult.coins,
+                    tier: userResult.tier
+                });
+
+                if (userResult.triggered) {
+                    // Celebrate all triggered tiers
+                    if (userResult.triggeredTiers && userResult.triggeredTiers.length > 0) {
+                        for (const tier of userResult.triggeredTiers) {
+                            this.api.log(`🎯 User ${username} reached ${tier.name} tier! (${tier.threshold} coins)`, 'info');
+                            this.triggerCelebration(tier.threshold, tier, userId, username);
+                        }
+                    }
+                }
             }
         } catch (error) {
             this.api.log(`Error handling gift event for milestone: ${error.message}`, 'error');
         }
     }
 
-    triggerCelebration(milestone) {
+    triggerCelebration(milestone, tier = null, userId = null, username = null) {
         try {
             const db = this.api.getDatabase();
             const config = db.getMilestoneConfig();
@@ -435,15 +593,28 @@ class GiftMilestonePlugin {
                 return;
             }
 
-            const celebrationData = {
+            let celebrationData = {
                 milestone: milestone,
-                gif: config.animation_gif_path,
-                video: config.animation_video_path,
-                audio: config.animation_audio_path,
+                userId: userId,
+                username: username,
                 audioVolume: config.audio_volume,
                 duration: config.animation_duration,
                 playbackMode: config.playback_mode
             };
+
+            // Use tier-specific media if tier is provided and has media
+            if (tier) {
+                celebrationData.tier = tier.name;
+                celebrationData.tierLevel = tier.tier_level;
+                celebrationData.gif = tier.animation_gif_path || config.animation_gif_path;
+                celebrationData.video = tier.animation_video_path || config.animation_video_path;
+                celebrationData.audio = tier.animation_audio_path || config.animation_audio_path;
+            } else {
+                // Use global media
+                celebrationData.gif = config.animation_gif_path;
+                celebrationData.video = config.animation_video_path;
+                celebrationData.audio = config.animation_audio_path;
+            }
 
             // Set exclusive mode if configured
             if (config.playback_mode === 'exclusive') {
@@ -461,7 +632,11 @@ class GiftMilestonePlugin {
             // Emit celebration event to overlay
             this.api.emit('milestone:celebrate', celebrationData);
 
-            this.api.log(`🎉 Milestone celebration triggered: ${milestone} coins`, 'info');
+            if (tier) {
+                this.api.log(`🎉 ${tier.name} tier celebration triggered for ${username}: ${milestone} coins`, 'info');
+            } else {
+                this.api.log(`🎉 Milestone celebration triggered: ${milestone} coins`, 'info');
+            }
         } catch (error) {
             this.api.log(`Error triggering celebration: ${error.message}`, 'error');
         }
