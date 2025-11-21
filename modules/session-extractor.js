@@ -10,13 +10,18 @@ const path = require('path');
  * when encountering 504 Sign API errors.
  */
 class SessionExtractor {
-    constructor(db) {
+    constructor(db, configPathManager = null) {
         this.db = db;
         this.browser = null;
         this.isExtracting = false;
         
-        // Session storage path
-        this.sessionPath = path.join(process.cwd(), 'user_data', 'tiktok_session.json');
+        // Session storage path - use persistent location
+        if (configPathManager) {
+            this.sessionPath = path.join(configPathManager.getUserDataDir(), 'tiktok_session.json');
+        } else {
+            // Fallback to old behavior
+            this.sessionPath = path.join(process.cwd(), 'user_data', 'tiktok_session.json');
+        }
     }
 
     /**

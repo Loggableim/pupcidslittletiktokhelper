@@ -13,6 +13,7 @@ database.db-wal
 # User profile management
 user_configs/.active_profile
 database.db.backup
+.config_path
 
 # Logs
 logs

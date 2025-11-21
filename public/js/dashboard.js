@@ -28,7 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await Promise.all([
             loadSettings(),
             loadFlows(),
-            loadActiveProfile()
+            loadActiveProfile(),
+            loadConfigPathInfo()
         ]);
     } catch (err) {
         console.error('Failed to load initial data:', err);
@@ -158,6 +159,17 @@ function initializeButtons() {
         newProfileUsername.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') createProfile();
         });
+    }
+
+    // Config Path Management buttons
+    const setCustomConfigPathBtn = document.getElementById('set-custom-config-path-btn');
+    if (setCustomConfigPathBtn) {
+        setCustomConfigPathBtn.addEventListener('click', setCustomConfigPath);
+    }
+
+    const resetConfigPathBtn = document.getElementById('reset-config-path-btn');
+    if (resetConfigPathBtn) {
+        resetConfigPathBtn.addEventListener('click', resetConfigPath);
     }
 
     // TTS Settings Buttons (nur wenn Elemente existieren - Plugin könnte diese zur Verfügung stellen)
@@ -1961,6 +1973,107 @@ async function backupProfile(username) {
     } catch (error) {
         console.error('Error creating backup:', error);
         alert('❌ Fehler beim Erstellen des Backups!');
+    }
+}
+
+// ========== CONFIG PATH MANAGEMENT ==========
+
+// Load and display config path information
+async function loadConfigPathInfo() {
+    try {
+        const response = await fetch('/api/config-path');
+        const result = await response.json();
+
+        if (result.success) {
+            // Update UI elements
+            const platformEl = document.getElementById('config-path-platform');
+            const defaultEl = document.getElementById('config-path-default');
+            const activeEl = document.getElementById('config-path-active');
+            const isCustomEl = document.getElementById('config-path-is-custom');
+            const customPathInput = document.getElementById('custom-config-path');
+
+            if (platformEl) platformEl.textContent = result.platform || '-';
+            if (defaultEl) defaultEl.textContent = result.defaultConfigDir || '-';
+            if (activeEl) activeEl.textContent = result.activeConfigDir || '-';
+            if (isCustomEl) {
+                isCustomEl.textContent = result.isUsingCustomPath ? '✅ Yes' : '❌ No (Default)';
+                isCustomEl.className = result.isUsingCustomPath ? 'ml-2 text-green-400' : 'ml-2 text-gray-400';
+            }
+            if (customPathInput && result.customConfigDir) {
+                customPathInput.value = result.customConfigDir;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading config path info:', error);
+    }
+}
+
+// Set custom config path
+async function setCustomConfigPath() {
+    const customPathInput = document.getElementById('custom-config-path');
+    if (!customPathInput) return;
+
+    const customPath = customPathInput.value.trim();
+    if (!customPath) {
+        // TODO: Add i18n support for these messages
+        alert('❌ Bitte gib einen Pfad ein!');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/config-path/custom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: customPath })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(
+                `✅ Custom Config Path gesetzt!\n\n` +
+                `Neuer Pfad: ${result.path}\n\n` +
+                `⚠️ Bitte starte die Anwendung neu, damit die Änderungen wirksam werden.`
+            );
+            await loadConfigPathInfo();
+        } else {
+            alert('❌ Fehler beim Setzen des Custom Paths: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error setting custom config path:', error);
+        alert('❌ Fehler beim Setzen des Custom Paths!');
+    }
+}
+
+// Reset to default config path
+async function resetConfigPath() {
+    const confirmReset = confirm(
+        `Möchtest du den Config-Pfad wirklich auf den Standard zurücksetzen?\n\n` +
+        `⚠️ Die Anwendung muss neu gestartet werden.`
+    );
+
+    if (!confirmReset) return;
+
+    try {
+        const response = await fetch('/api/config-path/reset', {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(
+                `✅ Config-Pfad auf Standard zurückgesetzt!\n\n` +
+                `Standard-Pfad: ${result.path}\n\n` +
+                `⚠️ Bitte starte die Anwendung neu.`
+            );
+            await loadConfigPathInfo();
+        } else {
+            alert('❌ Fehler beim Zurücksetzen: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error resetting config path:', error);
+        alert('❌ Fehler beim Zurücksetzen!');
     }
 }
 

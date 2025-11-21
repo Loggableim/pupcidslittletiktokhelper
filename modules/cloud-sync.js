@@ -19,17 +19,25 @@ const logger = require('./logger');
  * - Comprehensive logging of all sync operations
  * 
  * The sync works by monitoring two directories:
- * 1. Local user_configs directory
+ * 1. Local persistent user_configs directory (outside app folder)
  * 2. User-specified cloud sync directory (in OneDrive/Google Drive/Dropbox)
  */
 class CloudSyncEngine extends EventEmitter {
-    constructor(db) {
+    constructor(db, configPathManager = null) {
         super();
         this.db = db;
         this.isEnabled = false;
         this.isSyncing = false;
         this.cloudPath = null;
-        this.localPath = path.join(__dirname, '..', 'user_configs');
+        
+        // Use ConfigPathManager to get persistent local path
+        if (configPathManager) {
+            this.localPath = configPathManager.getUserConfigsDir();
+        } else {
+            // Fallback to old behavior if no configPathManager provided
+            this.localPath = path.join(__dirname, '..', 'user_configs');
+        }
+        
         this.watcher = null;
         this.cloudWatcher = null;
         this.syncInProgress = false;

@@ -17,6 +17,7 @@ const TikTokConnector = require('./modules/tiktok');
 const AlertManager = require('./modules/alerts');
 const { IFTTTEngine } = require('./modules/ifttt'); // IFTTT Engine (replaces old FlowEngine)
 const { GoalManager } = require('./modules/goals');
+const ConfigPathManager = require('./modules/config-path-manager');
 const UserProfileManager = require('./modules/user-profiles');
 const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integration
 const SessionExtractor = require('./modules/session-extractor');
@@ -179,8 +180,16 @@ app.use('/sounds', express.static(path.join(__dirname, 'public', 'sounds')));
 // i18n Middleware
 app.use(i18n.init);
 
+// ========== CONFIG PATH MANAGER INITIALISIEREN ==========
+const configPathManager = new ConfigPathManager();
+logger.info('📂 Config Path Manager initialized');
+logger.info(`   Config directory: ${configPathManager.getConfigDir()}`);
+logger.info(`   User configs: ${configPathManager.getUserConfigsDir()}`);
+logger.info(`   User data: ${configPathManager.getUserDataDir()}`);
+logger.info(`   Uploads: ${configPathManager.getUploadsDir()}`);
+
 // ========== MULTER CONFIGURATION FOR FILE UPLOADS ==========
-const uploadDir = path.join(__dirname, 'uploads', 'animations');
+const uploadDir = path.join(configPathManager.getUploadsDir(), 'animations');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -213,7 +222,7 @@ const upload = multer({
 
 
 // ========== USER PROFILE INITIALISIEREN ==========
-const profileManager = new UserProfileManager();
+const profileManager = new UserProfileManager(configPathManager);
 
 logger.info('🔧 Initializing User Profile Manager...');
 
@@ -282,13 +291,13 @@ const iftttServices = {
     axios,
     fs: require('fs').promises,
     path: require('path'),
-    safeDir: path.join(__dirname, 'user_data', 'flow_logs')
+    safeDir: path.join(configPathManager.getUserDataDir(), 'flow_logs')
 };
 const iftttEngine = new IFTTTEngine(db, logger, iftttServices);
 logger.info('⚡ IFTTT Engine initialized (replaces FlowEngine)');
 
 // Session Extractor for TikTok authentication
-const sessionExtractor = new SessionExtractor(db);
+const sessionExtractor = new SessionExtractor(db, configPathManager);
 logger.info('🔐 Session Extractor initialized');
 
 // New Modules
@@ -332,7 +341,7 @@ const presetManager = new PresetManager(db.db);
 logger.info('📦 Preset Manager initialized');
 
 // Cloud-Sync-Engine initialisieren
-const cloudSync = new CloudSyncEngine(db.db);
+const cloudSync = new CloudSyncEngine(db.db, configPathManager);
 logger.info('☁️  Cloud Sync Engine initialized');
 
 logger.info('✅ All modules initialized');
@@ -1249,6 +1258,69 @@ app.post('/api/profiles/:username/backup', apiLimiter, (req, res) => {
         res.json({ success: true, backup });
     } catch (error) {
         logger.error('Error creating backup:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ========== CONFIG PATH MANAGEMENT ROUTES ==========
+
+// Get current config path information
+app.get('/api/config-path', apiLimiter, (req, res) => {
+    try {
+        const info = configPathManager.getInfo();
+        res.json({
+            success: true,
+            ...info
+        });
+    } catch (error) {
+        logger.error('Error getting config path info:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Set custom config path (requires restart)
+app.post('/api/config-path/custom', apiLimiter, (req, res) => {
+    try {
+        const customPath = Validators.string(req.body.path, {
+            required: true,
+            minLength: 1,
+            maxLength: 500,
+            fieldName: 'path'
+        });
+
+        configPathManager.setCustomConfigDir(customPath);
+        logger.info(`📂 Custom config path set: ${customPath} (restart required)`);
+
+        res.json({
+            success: true,
+            message: 'Custom config path set. Please restart the application to apply changes.',
+            requiresRestart: true,
+            path: customPath
+        });
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            logger.warn(`Invalid custom config path: ${error.message}`);
+            return res.status(400).json({ success: false, error: error.message });
+        }
+        logger.error('Error setting custom config path:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Reset to default config path (requires restart)
+app.post('/api/config-path/reset', apiLimiter, (req, res) => {
+    try {
+        const defaultPath = configPathManager.resetToDefaultConfigDir();
+        logger.info(`📂 Config path reset to default: ${defaultPath} (restart required)`);
+
+        res.json({
+            success: true,
+            message: 'Config path reset to default. Please restart the application to apply changes.',
+            requiresRestart: true,
+            path: defaultPath
+        });
+    } catch (error) {
+        logger.error('Error resetting config path:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
