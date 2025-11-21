@@ -4,7 +4,9 @@ const overlayTypes = [
   { id: 'chatter', name: 'Last Chatter', icon: '💬', color: '#28a745' },
   { id: 'share', name: 'Last Share', icon: '🔗', color: '#17a2b8' },
   { id: 'gifter', name: 'Last Gifter', icon: '🎁', color: '#ffc107' },
-  { id: 'subscriber', name: 'Last Subscriber', icon: '⭐', color: '#6f42c1' }
+  { id: 'subscriber', name: 'Last Subscriber', icon: '⭐', color: '#6f42c1' },
+  { id: 'topgift', name: 'Top Gift', icon: '💎', color: '#fd7e14', description: 'Most expensive gift of the stream' },
+  { id: 'giftstreak', name: 'Gift Streak', icon: '🔥', color: '#e83e8c', description: 'Longest consecutive gift streak' }
 ];
 
 let currentType = null;
@@ -31,6 +33,7 @@ function renderOverlayCards() {
         <span class="icon" style="background: ${type.color}">${type.icon}</span>
         ${type.name}
       </h3>
+      ${type.description ? `<p style="font-size: 13px; color: #666; margin: 10px 0;">${type.description}</p>` : ''}
 
       <div class="url-container">
         ${url}
