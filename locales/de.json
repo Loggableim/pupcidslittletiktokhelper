@@ -447,7 +447,7 @@
         "duck_volume": "Reduktionslautstärke",
         "permission_settings": "Berechtigungseinstellungen",
         "min_team_level": "Minimales Team-Level",
-        "min_team_level_help": "0 = Jeder, 1+ = Nur Team-Mitglieder/Mods",
+        "min_team_level_help": "Team-Level = Anzahl gesendeter Team-Herzen (0 = Jeder kann TTS verwenden)",
         "enable_for_chat": "TTS für Chat-Nachrichten aktivieren",
         "auto_language_detection": "Sprache automatisch erkennen",
         "language_detection": "Spracherkennung",
