@@ -44,6 +44,10 @@ temp/
 
 # Test/debug files
 test-euler-debug.js
+test-*.js
+test-*.sh
+validate-*.js
+load-test-*.js
 
 # Plugin runtime data
 plugins/*/data/
