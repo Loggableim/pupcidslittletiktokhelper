@@ -78,6 +78,11 @@ class ViewerXPPlugin extends EventEmitter {
       res.sendFile(path.join(__dirname, 'overlays', 'leaderboard.html'));
     });
 
+    // Serve main UI (redirects to admin)
+    this.api.registerRoute('GET', '/viewer-xp/ui', (req, res) => {
+      res.sendFile(path.join(__dirname, 'ui.html'));
+    });
+
     // Serve admin panel
     this.api.registerRoute('GET', '/viewer-xp/admin', (req, res) => {
       res.sendFile(path.join(__dirname, 'ui', 'admin.html'));
