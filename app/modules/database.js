@@ -1457,31 +1457,49 @@ class DatabaseManager {
         // Get all enabled tiers
         const tiers = this.getMilestoneTiers().filter(t => t.enabled);
         
-        // Find the highest tier reached
-        let triggeredTier = null;
-        let newTierLevel = userStats.last_tier_reached || 0;
+        // Find all tiers that were reached with this gift
+        const triggeredTiers = [];
+        const lastReachedLevel = userStats.last_tier_reached || 0;
 
         for (const tier of tiers) {
-            if (previousCoins < tier.threshold && newCoins >= tier.threshold && tier.tier_level > newTierLevel) {
-                triggeredTier = tier;
-                newTierLevel = tier.tier_level;
+            if (previousCoins < tier.threshold && newCoins >= tier.threshold && tier.tier_level > lastReachedLevel) {
+                triggeredTiers.push(tier);
             }
         }
 
+        // Get the highest tier reached
+        const triggeredTier = triggeredTiers.length > 0 
+            ? triggeredTiers.reduce((max, tier) => tier.tier_level > max.tier_level ? tier : max)
+            : null;
+        const newTierLevel = triggeredTier ? triggeredTier.tier_level : lastReachedLevel;
+
         // Update user stats
-        const updateStmt = this.db.prepare(`
-            UPDATE milestone_user_stats
-            SET cumulative_coins = ?,
-                last_tier_reached = ?,
-                last_trigger_at = ${triggeredTier ? 'CURRENT_TIMESTAMP' : 'last_trigger_at'},
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = ?
-        `);
-        updateStmt.run(newCoins, newTierLevel, userId);
+        let updateStmt;
+        if (triggeredTier) {
+            updateStmt = this.db.prepare(`
+                UPDATE milestone_user_stats
+                SET cumulative_coins = ?,
+                    last_tier_reached = ?,
+                    last_trigger_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+            `);
+            updateStmt.run(newCoins, newTierLevel, userId);
+        } else {
+            updateStmt = this.db.prepare(`
+                UPDATE milestone_user_stats
+                SET cumulative_coins = ?,
+                    last_tier_reached = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+            `);
+            updateStmt.run(newCoins, newTierLevel, userId);
+        }
 
         return {
-            triggered: !!triggeredTier,
+            triggered: triggeredTiers.length > 0,
             tier: triggeredTier,
+            triggeredTiers: triggeredTiers,  // Return all tiers for multi-tier celebrations
             coins: newCoins,
             userId,
             username

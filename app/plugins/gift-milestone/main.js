@@ -413,8 +413,20 @@ class GiftMilestonePlugin {
 
         this.api.registerRoute('post', '/api/gift-milestone/tiers', (req, res) => {
             try {
-                const db = this.api.getDatabase();
                 const tier = req.body;
+                
+                // Validate required fields
+                if (!tier.name || typeof tier.name !== 'string') {
+                    return res.status(400).json({ success: false, error: 'Tier name is required and must be a string' });
+                }
+                if (tier.tier_level === undefined || typeof tier.tier_level !== 'number') {
+                    return res.status(400).json({ success: false, error: 'Tier level is required and must be a number' });
+                }
+                if (!tier.threshold || typeof tier.threshold !== 'number' || tier.threshold < 0) {
+                    return res.status(400).json({ success: false, error: 'Threshold is required and must be a positive number' });
+                }
+                
+                const db = this.api.getDatabase();
                 const tierId = db.saveMilestoneTier(tier);
                 this.api.log(`✅ Milestone tier saved: ${tier.name}`, 'info');
                 res.json({ success: true, tierId });
@@ -426,8 +438,14 @@ class GiftMilestonePlugin {
 
         this.api.registerRoute('delete', '/api/gift-milestone/tiers/:id', (req, res) => {
             try {
-                const db = this.api.getDatabase();
                 const tierId = parseInt(req.params.id);
+                
+                // Validate tier ID
+                if (isNaN(tierId)) {
+                    return res.status(400).json({ success: false, error: 'Invalid tier ID' });
+                }
+                
+                const db = this.api.getDatabase();
                 db.deleteMilestoneTier(tierId);
                 this.api.log(`✅ Milestone tier deleted: ${tierId}`, 'info');
                 res.json({ success: true });
@@ -451,8 +469,14 @@ class GiftMilestonePlugin {
 
         this.api.registerRoute('get', '/api/gift-milestone/users/:userId', (req, res) => {
             try {
-                const db = this.api.getDatabase();
                 const userId = req.params.userId;
+                
+                // Validate userId
+                if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+                    return res.status(400).json({ success: false, error: 'Invalid user ID' });
+                }
+                
+                const db = this.api.getDatabase();
                 const userStats = db.getUserMilestoneStats(userId);
                 res.json({ success: true, userStats });
             } catch (error) {
@@ -475,8 +499,14 @@ class GiftMilestonePlugin {
 
         this.api.registerRoute('delete', '/api/gift-milestone/users/:userId', (req, res) => {
             try {
-                const db = this.api.getDatabase();
                 const userId = req.params.userId;
+                
+                // Validate userId
+                if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+                    return res.status(400).json({ success: false, error: 'Invalid user ID' });
+                }
+                
+                const db = this.api.getDatabase();
                 db.resetUserMilestoneStats(userId);
                 this.api.log(`✅ User milestone stats reset: ${userId}`, 'info');
                 res.json({ success: true });
@@ -539,9 +569,14 @@ class GiftMilestonePlugin {
                     tier: userResult.tier
                 });
 
-                if (userResult.triggered && userResult.tier) {
-                    this.api.log(`🎯 User ${username} reached ${userResult.tier.name} tier! (${userResult.tier.threshold} coins)`, 'info');
-                    this.triggerCelebration(userResult.tier.threshold, userResult.tier, userId, username);
+                if (userResult.triggered) {
+                    // Celebrate all triggered tiers
+                    if (userResult.triggeredTiers && userResult.triggeredTiers.length > 0) {
+                        for (const tier of userResult.triggeredTiers) {
+                            this.api.log(`🎯 User ${username} reached ${tier.name} tier! (${tier.threshold} coins)`, 'info');
+                            this.triggerCelebration(tier.threshold, tier, userId, username);
+                        }
+                    }
                 }
             }
         } catch (error) {
