@@ -155,8 +155,14 @@ class TikTokSessionExtractor {
                 headless: false, // Always visible - user needs to see login page
                 args: [
                     '--disable-blink-features=AutomationControlled', // Hide automation detection
-                    '--disable-infobars' // Hide "Chrome is being controlled" banner
+                    '--exclude-switches=enable-automation', // Remove automation flag
+                    '--disable-dev-shm-usage', // Overcome limited resource problems
+                    '--no-first-run', // Skip first run wizards
+                    '--no-default-browser-check', // Skip default browser check
+                    '--disable-extensions-except=' + '', // Disable all extensions
+                    '--disable-extensions' // Disable all extensions
                 ],
+                ignoreDefaultArgs: ['--enable-automation'], // Remove automation flag from default args
                 defaultViewport: null // Use full window size
             };
             
@@ -252,40 +258,79 @@ class TikTokSessionExtractor {
 
     /**
      * Hide automation markers that TikTok and other sites use to detect Puppeteer
+     * Comprehensive stealth mode to bypass all detection mechanisms
      * @private
      */
     async _hideAutomation() {
         await this.page.evaluateOnNewDocument(() => {
-            // Overwrite the `navigator.webdriver` property
+            // 1. Overwrite the `navigator.webdriver` property (primary detection method)
             Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
+                get: () => undefined,
+                configurable: true
             });
             
-            // Overwrite the `navigator.plugins` and `navigator.mimeTypes` to appear like real browser
+            // 2. Overwrite the `navigator.plugins` to appear like real browser
             Object.defineProperty(navigator, 'plugins', {
-                get: () => [1, 2, 3, 4, 5]
+                get: () => [1, 2, 3, 4, 5],
+                configurable: true
             });
             
-            // Overwrite the `navigator.languages` to appear more realistic
+            // 3. Overwrite the `navigator.languages` to appear more realistic
             Object.defineProperty(navigator, 'languages', {
-                get: () => ['en-US', 'en']
+                get: () => ['en-US', 'en'],
+                configurable: true
             });
             
-            // Remove Puppeteer-specific properties
-            delete navigator.__proto__.webdriver;
-            
-            // Mock Chrome runtime
-            window.chrome = {
-                runtime: {}
+            // 4. Mock Chrome runtime (required for Chrome detection)
+            if (!window.chrome) {
+                window.chrome = {};
+            }
+            window.chrome.runtime = {
+                connect: () => {},
+                sendMessage: () => {}
             };
             
-            // Mock permissions
+            // 5. Mock permissions API
             const originalQuery = window.navigator.permissions.query;
             window.navigator.permissions.query = (parameters) => (
                 parameters.name === 'notifications' ?
                     Promise.resolve({ state: Notification.permission }) :
                     originalQuery(parameters)
             );
+            
+            // 6. Hide WebGL vendor/renderer (another detection method)
+            const getParameter = WebGLRenderingContext.prototype.getParameter;
+            WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                if (parameter === 37445) {
+                    return 'Intel Inc.'; // UNMASKED_VENDOR_WEBGL
+                }
+                if (parameter === 37446) {
+                    return 'Intel Iris OpenGL Engine'; // UNMASKED_RENDERER_WEBGL
+                }
+                return getParameter.call(this, parameter);
+            };
+            
+            // 7. Override toString to hide modifications
+            const originalToString = Function.prototype.toString;
+            Function.prototype.toString = function() {
+                if (this === window.navigator.permissions.query) {
+                    return 'function query() { [native code] }';
+                }
+                if (this === WebGLRenderingContext.prototype.getParameter) {
+                    return 'function getParameter() { [native code] }';
+                }
+                return originalToString.call(this);
+            };
+            
+            // 8. Mock battery API (sometimes used for fingerprinting)
+            if ('getBattery' in navigator) {
+                navigator.getBattery = () => Promise.resolve({
+                    charging: true,
+                    chargingTime: 0,
+                    dischargingTime: Infinity,
+                    level: 1.0
+                });
+            }
         });
     }
 
