@@ -141,25 +141,23 @@ class TikTokSessionExtractor {
     }
 
     /**
-     * Extract SessionID from TikTok using headless browser
+     * Extract SessionID from TikTok using browser with user's Chrome profile
      * @private
      */
     async _extractSessionId() {
         try {
             const chromePath = this._getChromePath();
+            const userDataDir = this._getChromeUserDataDir();
             
-            // Launch headless browser with user's Chrome if available
+            // Launch visible browser directly with user's Chrome profile
+            // This way we only open ONE browser window and can use existing login
             const launchOptions = {
-                headless: 'new', // Use new headless mode
+                headless: false, // Always visible - user needs to see login page
                 args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--disable-gpu'
-                ]
+                    '--disable-blink-features=AutomationControlled' // Hide automation detection
+                ],
+                defaultViewport: null, // Use full window size
+                ignoreDefaultArgs: ['--enable-automation'] // Don't show "Chrome is being controlled" banner
             };
             
             if (chromePath) {
@@ -169,23 +167,34 @@ class TikTokSessionExtractor {
                 this.logger.info('🚀 Using Puppeteer default browser');
             }
             
-            this.browser = await puppeteer.launch(launchOptions);
-
-            this.page = await this.browser.newPage();
-
-            // Set a realistic viewport and user agent
-            await this.page.setViewport(this.VIEWPORT);
-            await this.page.setUserAgent(this.USER_AGENT);
-
-            // Try to load saved cookies first
-            const savedCookies = await this._loadSavedCookies();
-            if (savedCookies && savedCookies.length > 0) {
-                this.logger.info('📂 Loading saved TikTok cookies...');
-                await this.page.setCookie(...savedCookies);
+            if (userDataDir) {
+                // Use user's actual Chrome profile (where they're already logged in!)
+                launchOptions.userDataDir = userDataDir;
+                this.logger.info('🔑 Using your Chrome profile - you may already be logged in!');
+            } else {
+                this.logger.info('🌐 Opening browser for login...');
+            }
+            
+            try {
+                this.browser = await puppeteer.launch(launchOptions);
+            } catch (profileError) {
+                // If using profile fails (Chrome already running), retry without profile
+                if (userDataDir) {
+                    this.logger.warn('⚠️  Could not use Chrome profile (Chrome may be running). Please close Chrome and try again, or continue without your profile...');
+                    delete launchOptions.userDataDir;
+                    this.browser = await puppeteer.launch(launchOptions);
+                } else {
+                    throw profileError;
+                }
             }
 
-            // Navigate to TikTok
-            this.logger.info('🌐 Opening TikTok...');
+            // Get the first page (already open when browser launches with profile)
+            const pages = await this.browser.pages();
+            this.page = pages.length > 0 ? pages[0] : await this.browser.newPage();
+            
+            await this.page.setUserAgent(this.USER_AGENT);
+            
+            this.logger.info('🌐 Loading TikTok...');
             await this.page.goto('https://www.tiktok.com', {
                 waitUntil: 'networkidle2',
                 timeout: 30000
@@ -195,62 +204,7 @@ class TikTokSessionExtractor {
             const cookies = await this.page.cookies();
             let sessionCookie = cookies.find(c => c.name === 'sessionid');
 
-            if (!sessionCookie || !sessionCookie.value) {
-                this.logger.warn('⚠️  Not logged in to TikTok. Please log in manually.');
-                this.logger.info('💡 Opening TikTok in browser for login...');
-                
-                // Close headless browser and open visible one for login
-                await this.browser.close();
-                this.browser = null;
-                this.page = null;
-                
-                // Get user's Chrome profile to use existing login
-                const userDataDir = this._getChromeUserDataDir();
-                
-                // Launch visible browser for user to log in
-                const visibleLaunchOptions = {
-                    headless: false, // Visible browser
-                    args: [
-                        '--disable-blink-features=AutomationControlled' // Hide automation detection
-                    ],
-                    defaultViewport: null, // Use full window size
-                    ignoreDefaultArgs: ['--enable-automation'] // Don't show "Chrome is being controlled" banner
-                };
-                
-                if (chromePath) {
-                    visibleLaunchOptions.executablePath = chromePath;
-                }
-                
-                if (userDataDir) {
-                    // Use user's actual Chrome profile (where they're already logged in!)
-                    visibleLaunchOptions.userDataDir = userDataDir;
-                    this.logger.info('🔑 Using your Chrome profile - you may already be logged in!');
-                } else {
-                    this.logger.info('🌐 Opening browser for login...');
-                }
-                
-                try {
-                    this.browser = await puppeteer.launch(visibleLaunchOptions);
-                } catch (profileError) {
-                    // If using profile fails (Chrome already running), retry without profile
-                    if (userDataDir) {
-                        this.logger.warn('⚠️  Could not use Chrome profile (Chrome may be running). Opening without profile...');
-                        delete visibleLaunchOptions.userDataDir;
-                        this.browser = await puppeteer.launch(visibleLaunchOptions);
-                    } else {
-                        throw profileError;
-                    }
-                }
-
-                this.page = await this.browser.newPage();
-                await this.page.setUserAgent(this.USER_AGENT);
-                
-                this.logger.info('🌐 Loading TikTok login page...');
-                await this.page.goto('https://www.tiktok.com', {
-                    waitUntil: 'networkidle2',
-                    timeout: 30000
-                });
-
+            if (!sessionCookie || !sessionCookie.value || sessionCookie.value.length < 10) {
                 this.logger.info('📋 Please complete the following steps:');
                 this.logger.info('   1. Log in to your TikTok account in the browser window');
                 this.logger.info('   2. Complete any verification steps if required');
@@ -265,11 +219,13 @@ class TikTokSessionExtractor {
                 const newCookies = await this.page.cookies();
                 sessionCookie = newCookies.find(c => c.name === 'sessionid');
                 
-                // Save cookies for future use
-                if (newCookies.length > 0) {
+                // Save cookies for future use (if not using profile)
+                if (!userDataDir && newCookies.length > 0) {
                     await this._saveCookies(newCookies);
                     this.logger.info('💾 Cookies saved for future auto-login');
                 }
+            } else {
+                this.logger.info('✅ Already logged in! Extracting SessionID...');
             }
 
             await this.browser.close();
