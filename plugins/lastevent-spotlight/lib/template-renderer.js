@@ -121,21 +121,33 @@ class TemplateRenderer {
   buildHTML(userData, profilePicUrl) {
     const parts = [];
 
-    // Profile picture
-    if (this.settings.showProfilePicture && profilePicUrl) {
-      const size = this.settings.profilePictureSize || '80px';
-      parts.push(`
-        <div class="profile-picture" style="
-          width: ${size};
-          height: ${size};
-          border-radius: 50%;
-          overflow: hidden;
-          ${this.settings.enableBorder ? `border: 3px solid ${this.settings.borderColor || '#FFFFFF'};` : ''}
-          margin: 10px;
-        ">
-          <img src="${profilePicUrl}" alt="${userData.nickname}" style="width: 100%; height: 100%; object-fit: cover;">
-        </div>
-      `);
+    // Determine if we should show gift image
+    const isGiftEvent = userData.metadata && userData.metadata.giftPictureUrl;
+    const giftImageUrl = isGiftEvent ? userData.metadata.giftPictureUrl : null;
+
+    // Show gift image for gift-related events, otherwise show profile picture
+    if (this.settings.showProfilePicture) {
+      const imageUrl = giftImageUrl || profilePicUrl;
+      
+      if (imageUrl) {
+        const size = this.settings.profilePictureSize || '80px';
+        const isGift = !!giftImageUrl;
+        
+        parts.push(`
+          <div class="profile-picture" style="
+            width: ${size};
+            height: ${size};
+            ${isGift ? 'border-radius: 8px;' : 'border-radius: 50%;'}
+            overflow: hidden;
+            ${this.settings.enableBorder ? `border: 3px solid ${this.settings.borderColor || '#FFFFFF'};` : ''}
+            margin: 10px;
+            background: ${isGift ? 'rgba(255, 255, 255, 0.1)' : 'transparent'};
+            padding: ${isGift ? '8px' : '0'};
+          ">
+            <img src="${imageUrl}" alt="${userData.nickname}" style="width: 100%; height: 100%; object-fit: ${isGift ? 'contain' : 'cover'};">
+          </div>
+        `);
+      }
     }
 
     // Text content

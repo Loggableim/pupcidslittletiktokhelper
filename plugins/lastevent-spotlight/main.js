@@ -288,6 +288,16 @@ class LastEventSpotlightPlugin {
           label: this.eventTypes[type].label
         };
 
+        // Add gift metadata for gift-related overlays
+        if (type === 'gifter' || type === 'top-gift' || type === 'gift-streak') {
+          testUser.metadata = {
+            giftName: 'Rose',
+            giftCount: type === 'gift-streak' ? 10 : 1,
+            giftPictureUrl: 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/eba9ecd83c5b146bcff0904cbb970c79~tplv-obj.image',
+            coins: type === 'top-gift' ? 1000 : type === 'gift-streak' ? 500 : 1
+          };
+        }
+
         await this.saveLastUser(type, testUser);
 
         // Broadcast update
@@ -368,6 +378,7 @@ class LastEventSpotlightPlugin {
     const coins = userData.metadata.coins || 0;
     const giftName = userData.metadata.giftName;
     const giftCount = userData.metadata.giftCount || 1;
+    const giftPictureUrl = userData.metadata.giftPictureUrl || null;
 
     // Track top gift (most expensive)
     if (!this.topGift || coins > (this.topGift.metadata.coins || 0)) {
@@ -401,6 +412,7 @@ class LastEventSpotlightPlugin {
         nickname: userData.nickname,
         profilePictureUrl: userData.profilePictureUrl,
         giftName: giftName,
+        giftPictureUrl: giftPictureUrl,
         count: giftCount,
         totalCoins: coins,
         startTimestamp: now,
@@ -421,6 +433,7 @@ class LastEventSpotlightPlugin {
         label: this.eventTypes['gift-streak'].label,
         metadata: {
           giftName: this.longestStreak.giftName,
+          giftPictureUrl: this.longestStreak.giftPictureUrl,
           giftCount: this.longestStreak.count,
           coins: this.longestStreak.totalCoins
         }
@@ -460,6 +473,7 @@ class LastEventSpotlightPlugin {
       metadata: {
         giftName: data.giftName,
         giftCount: data.repeatCount || data.count || 1,
+        giftPictureUrl: data.giftPictureUrl || null,
         message: data.comment || data.message,
         // FIX: Use data.coins (already calculated), only fallback to 0 if not present
         // Don't fallback to diamondCount as it's the raw diamond value, not coins
