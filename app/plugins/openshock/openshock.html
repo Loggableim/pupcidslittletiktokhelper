@@ -27,6 +27,7 @@
         <div class="tabs">
             <button class="tab-button active" data-tab="dashboard">📊 Dashboard</button>
             <button class="tab-button" data-tab="mapper">🔗 Event Mapper</button>
+            <button class="tab-button" data-tab="gifts">🎁 Gift Catalog</button>
             <button class="tab-button" data-tab="safety">🛡️ Safety</button>
             <button class="tab-button" data-tab="patterns">🎵 Patterns</button>
             <button class="tab-button" data-tab="advanced">⚙️ Advanced</button>
@@ -164,7 +165,25 @@
             </div>
         </div>
 
-        <!-- Tab 3: Safety -->
+        <!-- Tab 3: Gift Catalog -->
+        <div id="gifts" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🎁 TikTok Gift Catalog</h2>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="refreshGiftCatalog">🔄 Refresh Catalog</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Below are all available TikTok gifts. You can create Event Mappings to trigger shock patterns when specific gifts are received.</p>
+                    <div id="giftCatalogList">
+                        <p class="text-center text-muted">Loading gift catalog...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Safety -->
         <div id="safety" class="tab-content">
             <!-- Global Limits -->
             <div class="card">
@@ -262,7 +281,7 @@
             </div>
         </div>
 
-        <!-- Tab 4: Patterns -->
+        <!-- Tab 5: Patterns -->
         <div id="patterns" class="tab-content">
             <div class="card">
                 <div class="card-header">
@@ -321,7 +340,7 @@
             </div>
         </div>
 
-        <!-- Tab 5: Advanced -->
+        <!-- Tab 6: Advanced -->
         <div id="advanced" class="tab-content">
             <!-- API Settings -->
             <div class="card">
@@ -452,8 +471,12 @@
                 <!-- Conditions (dynamic based on event type) -->
                 <div id="mappingConditions">
                     <div class="form-group" id="conditionGift">
-                        <label class="form-label">Gift Name (optional, leave empty for all gifts)</label>
-                        <input type="text" class="form-input" id="mappingGiftName" placeholder="e.g., Rose, TikTok">
+                        <label class="form-label">Gift Name</label>
+                        <select class="form-select" id="mappingGiftNameSelect">
+                            <option value="">All Gifts</option>
+                        </select>
+                        <small class="form-help-text">Or enter custom name below:</small>
+                        <input type="text" class="form-input" id="mappingGiftName" placeholder="e.g., Rose, TikTok (leave empty to use selection above)">
                     </div>
                     <div class="form-group" id="conditionMinCoins">
                         <label class="form-label">Min Coins</label>

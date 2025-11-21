@@ -156,6 +156,70 @@ class QueueManager extends EventEmitter {
   }
 
   /**
+   * Add an item to the queue (wrapper for enqueue with item object format)
+   * 
+   * This method provides compatibility with calling code that uses the item object format
+   * instead of separate parameters. It transforms the item object into individual parameters
+   * for the enqueue() method.
+   * 
+   * @param {Object} item - Queue item object
+   * @param {string} item.commandType - Command type (shock, vibrate, sound)
+   * @param {string} item.deviceId - Target device ID
+   * @param {string} item.deviceName - Target device name
+   * @param {number} item.intensity - Command intensity (1-100)
+   * @param {number} item.duration - Command duration in milliseconds
+   * @param {string} [item.userId='unknown'] - User ID who triggered the command
+   * @param {string} [item.source='unknown'] - Source of command (gift, pattern, manual, etc.)
+   * @param {Object} [item.sourceData={}] - Original event data
+   * @param {number} [item.priority=5] - Priority level (1-10, 10 = highest)
+   * 
+   * @returns {Promise<Object>} Result object with success, queueId, position, and message
+   * 
+   * @example
+   * await queueManager.addItem({
+   *   commandType: 'shock',
+   *   deviceId: 'abc123',
+   *   deviceName: 'My Device',
+   *   intensity: 50,
+   *   duration: 1000,
+   *   userId: 'user123',
+   *   source: 'pattern:Wave',
+   *   priority: 7
+   * });
+   */
+  async addItem(item) {
+    try {
+      // Extract command data from item
+      const command = {
+        type: item.commandType || item.type,
+        deviceId: item.deviceId,
+        deviceName: item.deviceName,
+        intensity: item.intensity,
+        duration: item.duration
+      };
+
+      // Call enqueue with extracted parameters
+      const result = await this.enqueue(
+        command,
+        item.userId || 'unknown',
+        item.source || 'unknown',
+        item.sourceData || {},
+        item.priority || 5
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error('[QueueManager] Error adding item', { error: error.message });
+      return {
+        success: false,
+        queueId: null,
+        position: -1,
+        message: error.message
+      };
+    }
+  }
+
+  /**
    * Get the next command from the queue (highest priority)
    * @returns {Promise<Object|null>} Queue item or null if queue is empty
    */

@@ -300,6 +300,16 @@ class MappingEngine {
       // Event-specific conditions
       switch (mapping.eventType) {
         case 'gift':
+          // Check gift name if specified
+          if (conditions.giftName) {
+            const giftName = eventData.giftName || eventData.gift?.name || '';
+            // Case-insensitive comparison
+            if (giftName.toLowerCase() !== conditions.giftName.toLowerCase()) {
+              return false;
+            }
+          }
+          
+          // Check minimum coins if specified
           if (conditions.minCoins !== undefined) {
             const coins = eventData.giftCoins || eventData.coins || 0;
             if (coins < conditions.minCoins) {

@@ -1018,6 +1018,27 @@ class OpenShockPlugin {
             }
         });
 
+        // ============ API ROUTES - GIFT CATALOG ============
+        
+        // Get Gift Catalog
+        app.get('/api/openshock/gift-catalog', authMiddleware, (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const catalog = db.getGiftCatalog();
+                
+                res.json({
+                    success: true,
+                    gifts: catalog
+                });
+            } catch (error) {
+                this.api.log(`Failed to get gift catalog: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         // ============ API ROUTES - SAFETY ============
 
         // Get Safety Settings
