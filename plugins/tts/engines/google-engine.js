@@ -213,8 +213,13 @@ class GoogleEngine {
      * @private
      */
     _getAuthErrorHelp(errorMsg) {
+        // Handle null/undefined error messages
+        if (!errorMsg) {
+            return 'Authentication error occurred. Please check your Google Cloud TTS API key configuration.';
+        }
+        
         // Check for OAuth2 error message
-        if (errorMsg && (errorMsg.includes('OAuth2') || errorMsg.includes('Expected OAuth2 access token'))) {
+        if (errorMsg.includes('OAuth2') || errorMsg.includes('Expected OAuth2 access token')) {
             return 'Google Cloud TTS API requires an API key, not OAuth2 tokens. ' +
                    'Please ensure you have:\n' +
                    '1. Created a Google Cloud Project\n' +
@@ -225,7 +230,7 @@ class GoogleEngine {
                    'Visit: https://console.cloud.google.com/apis/credentials';
         }
         
-        if (errorMsg && errorMsg.includes('API key not valid')) {
+        if (errorMsg.includes('API key not valid')) {
             return 'Your Google Cloud API key is invalid. Please check:\n' +
                    '1. The API key is correctly copied\n' +
                    '2. The API key has not been revoked\n' +
@@ -233,13 +238,14 @@ class GoogleEngine {
                    'Visit: https://console.cloud.google.com/apis/credentials';
         }
         
-        if (errorMsg && errorMsg.includes('billing')) {
+        if (errorMsg.includes('billing')) {
             return 'Google Cloud TTS requires billing to be enabled. Please:\n' +
                    '1. Visit https://console.cloud.google.com/billing\n' +
                    '2. Enable billing for your project\n' +
                    '3. Wait a few minutes for changes to propagate';
         }
         
+        // Return original error message if no specific pattern matched
         return errorMsg;
     }
 
