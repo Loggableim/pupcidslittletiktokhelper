@@ -341,22 +341,46 @@ class TikTokEngine {
         // All endpoints and retries failed
         const errorMessage = `All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'}`;
         this.logger.error(errorMessage);
-        this.logger.error('Tried endpoints:', this.apiEndpoints.map(e => `${e.type}:${e.url}`).join(', '));
-        this.logger.error('❌ TikTok TTS failed. Possible causes:');
+        this.logger.error('❌ TikTok TTS UNAVAILABLE - All endpoints returned errors');
+        this.logger.error('');
         
         // Check if all errors were 404
         if (lastError?.message?.includes('404')) {
-            this.logger.error('   ⚠️  All endpoints returned 404 - TikTok likely changed their API');
-            this.logger.error('   💡 TEMPORARY WORKAROUND: Use Google Cloud TTS, ElevenLabs, or Browser TTS instead');
-            this.logger.error('   📧 This issue has been reported - waiting for TikTok API update');
+            this.logger.error('🔍 ROOT CAUSE: TikTok API endpoints have changed (all returned 404)');
+            this.logger.error('');
+            this.logger.error('📋 RECOMMENDED ACTIONS:');
+            this.logger.error('   1. Use ElevenLabs TTS (best quality, requires API key)');
+            this.logger.error('   2. Use Google Cloud TTS (good quality, requires API key)');
+            this.logger.error('   3. Use Browser TTS (free, no setup needed, client-side)');
+            this.logger.error('');
+            this.logger.error('⚙️  HOW TO SWITCH:');
+            this.logger.error('   • Open TTS Admin Panel: http://localhost:3000/plugins/tts/ui/admin-panel.html');
+            this.logger.error('   • Go to Configuration tab');
+            this.logger.error('   • Set "Default Engine" to "elevenlabs" or "google"');
+            this.logger.error('   • Add your API key in the respective field');
+            this.logger.error('   • Enable "Auto Fallback" for redundancy');
+        } else if (lastError?.message?.includes('401') || lastError?.message?.includes('403') || lastError?.message?.includes('Invalid session')) {
+            this.logger.error('🔍 ROOT CAUSE: Invalid or expired SessionID');
+            this.logger.error('');
+            this.logger.error('📋 QUICK FIX:');
+            this.logger.error('   1. Update your TikTok SessionID in TTS Admin Panel');
+            this.logger.error('   2. Or set TIKTOK_SESSION_ID environment variable');
+            this.logger.error('   3. See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for instructions');
+            this.logger.error('');
+            this.logger.error('💡 ALTERNATIVE: Switch to ElevenLabs or Google TTS for reliability');
         } else {
-            this.logger.error('   1. Invalid or expired SessionID - Get a fresh one from TikTok cookies');
-            this.logger.error('   2. TikTok changed their API - Check for updates');
-            this.logger.error('   3. Network/firewall blocking TikTok domains');
-            this.logger.error('💡 Quick fix: Update your TIKTOK_SESSION_ID in TTS Admin Panel');
+            this.logger.error('🔍 POSSIBLE CAUSES:');
+            this.logger.error('   1. Network/firewall blocking TikTok domains');
+            this.logger.error('   2. TikTok API changes (endpoints updated)');
+            this.logger.error('   3. Invalid SessionID configuration');
+            this.logger.error('');
+            this.logger.error('💡 RECOMMENDED: Switch to ElevenLabs or Google TTS');
         }
         
-        this.logger.error('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for full instructions');
+        this.logger.error('');
+        this.logger.error('📚 Documentation: plugins/tts/engines/TIKTOK_TTS_STATUS.md');
+        this.logger.error('');
+        
         throw new Error(errorMessage);
     }
 

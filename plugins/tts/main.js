@@ -39,9 +39,10 @@ class TTSPlugin {
         // Initialize Google engine if API key is configured
         if (this.config.googleApiKey) {
             this.engines.google = new GoogleEngine(this.config.googleApiKey, this.logger);
-            this.logger.info('TTS: Google Cloud TTS engine initialized');
+            this.logger.info('TTS: ✅ Google Cloud TTS engine initialized');
             this._logDebug('INIT', 'Google TTS engine initialized', { hasApiKey: true });
         } else {
+            this.logger.info('TTS: ⚠️  Google Cloud TTS engine NOT initialized (no API key)');
             this._logDebug('INIT', 'Google TTS engine NOT initialized', { hasApiKey: false });
         }
 
@@ -52,9 +53,10 @@ class TTSPlugin {
                 this.logger,
                 this.config
             );
-            this.logger.info('TTS: Speechify TTS engine initialized');
+            this.logger.info('TTS: ✅ Speechify TTS engine initialized');
             this._logDebug('INIT', 'Speechify TTS engine initialized', { hasApiKey: true });
         } else {
+            this.logger.info('TTS: ⚠️  Speechify TTS engine NOT initialized (no API key)');
             this._logDebug('INIT', 'Speechify TTS engine NOT initialized', { hasApiKey: false });
         }
 
@@ -65,9 +67,10 @@ class TTSPlugin {
                 this.logger,
                 this.config
             );
-            this.logger.info('TTS: ElevenLabs TTS engine initialized');
+            this.logger.info('TTS: ✅ ElevenLabs TTS engine initialized');
             this._logDebug('INIT', 'ElevenLabs TTS engine initialized', { hasApiKey: true });
         } else {
+            this.logger.info('TTS: ⚠️  ElevenLabs TTS engine NOT initialized (no API key)');
             this._logDebug('INIT', 'ElevenLabs TTS engine NOT initialized', { hasApiKey: false });
         }
 
@@ -93,7 +96,16 @@ class TTSPlugin {
             startupTimestamp: this.startupTimestamp
         });
 
-        this.logger.info('TTS Plugin initialized successfully');
+        // Log available engines summary
+        const availableEngines = [];
+        if (this.engines.tiktok) availableEngines.push('TikTok');
+        if (this.engines.google) availableEngines.push('Google Cloud TTS');
+        if (this.engines.speechify) availableEngines.push('Speechify');
+        if (this.engines.elevenlabs) availableEngines.push('ElevenLabs');
+        
+        this.logger.info(`TTS Plugin initialized successfully`);
+        this.logger.info(`TTS: Available engines: ${availableEngines.length > 0 ? availableEngines.join(', ') : 'None (TikTok only)'}`);
+        this.logger.info(`TTS: Default engine: ${this.config.defaultEngine}, Auto-fallback: ${this.config.enableAutoFallback ? 'enabled' : 'disabled'}`);
     }
 
     /**
@@ -978,10 +990,10 @@ class TTSPlugin {
                 this.logger.warn(`No voice selected, using absolute fallback: ${selectedVoice}`);
             }
 
-            // Validate engine availability
+            // Validate engine availability and fallback to working engines
             if (selectedEngine === 'elevenlabs' && !this.engines.elevenlabs) {
                 this._logDebug('SPEAK_STEP4', 'ElevenLabs engine not available, falling back');
-                this.logger.warn(`ElevenLabs TTS requested but not available, falling back`);
+                this.logger.warn(`ElevenLabs TTS requested but not available (no API key configured)`);
 
                 // Fallback to Speechify, Google, or TikTok
                 if (this.engines.speechify) {
@@ -992,6 +1004,7 @@ class TTSPlugin {
                         selectedVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
                         this._logDebug('SPEAK_STEP4', 'Voice reset for Speechify fallback', { selectedVoice, langResult });
                     }
+                    this.logger.info(`Falling back to Speechify engine`);
                 } else if (this.engines.google) {
                     selectedEngine = 'google';
                     const googleVoices = GoogleEngine.getVoices();
@@ -1000,6 +1013,7 @@ class TTSPlugin {
                         selectedVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
                         this._logDebug('SPEAK_STEP4', 'Voice reset for Google fallback', { selectedVoice, langResult });
                     }
+                    this.logger.info(`Falling back to Google Cloud TTS engine`);
                 } else {
                     selectedEngine = 'tiktok';
                     const tiktokVoices = TikTokEngine.getVoices();
@@ -1008,15 +1022,25 @@ class TTSPlugin {
                         selectedVoice = langResult?.voiceId || TikTokEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
                         this._logDebug('SPEAK_STEP4', 'Voice reset for TikTok fallback', { selectedVoice, langResult });
                     }
+                    this.logger.info(`Falling back to TikTok TTS engine`);
                 }
             }
 
             if (selectedEngine === 'speechify' && !this.engines.speechify) {
-                this._logDebug('SPEAK_STEP4', 'Speechify engine not available, falling back to Google/TikTok');
-                this.logger.warn(`Speechify TTS requested but not available, falling back`);
+                this._logDebug('SPEAK_STEP4', 'Speechify engine not available, falling back');
+                this.logger.warn(`Speechify TTS requested but not available (no API key configured)`);
 
-                // Fallback to Google if available, otherwise TikTok
-                if (this.engines.google) {
+                // Fallback to ElevenLabs, Google, or TikTok
+                if (this.engines.elevenlabs) {
+                    selectedEngine = 'elevenlabs';
+                    const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
+                    if (!selectedVoice || !elevenlabsVoices[selectedVoice]) {
+                        const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
+                        selectedVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                        this._logDebug('SPEAK_STEP4', 'Voice reset for ElevenLabs fallback', { selectedVoice, langResult });
+                    }
+                    this.logger.info(`Falling back to ElevenLabs engine (premium quality)`);
+                } else if (this.engines.google) {
                     selectedEngine = 'google';
                     const googleVoices = GoogleEngine.getVoices();
                     if (!selectedVoice || !googleVoices[selectedVoice]) {
@@ -1024,6 +1048,7 @@ class TTSPlugin {
                         selectedVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
                         this._logDebug('SPEAK_STEP4', 'Voice reset for Google fallback', { selectedVoice, langResult });
                     }
+                    this.logger.info(`Falling back to Google Cloud TTS engine`);
                 } else {
                     selectedEngine = 'tiktok';
                     const tiktokVoices = TikTokEngine.getVoices();
@@ -1032,20 +1057,42 @@ class TTSPlugin {
                         selectedVoice = langResult?.voiceId || TikTokEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
                         this._logDebug('SPEAK_STEP4', 'Voice reset for TikTok fallback', { selectedVoice, langResult });
                     }
+                    this.logger.info(`Falling back to TikTok TTS engine`);
                 }
             }
 
             if (selectedEngine === 'google' && !this.engines.google) {
-                this._logDebug('SPEAK_STEP4', 'Google engine not available, falling back to TikTok');
-                this.logger.warn(`Google TTS requested but not available, falling back to TikTok`);
-                selectedEngine = 'tiktok';
-                // Keep the selectedVoice if it's valid for TikTok, otherwise use language detection
-                const tiktokVoices = TikTokEngine.getVoices();
-                if (!selectedVoice || !tiktokVoices[selectedVoice]) {
-                    // Try to detect language from text
-                    const langResult = this.languageDetector.detectAndGetVoice(finalText, TikTokEngine, this.config.fallbackLanguage);
-                    selectedVoice = langResult?.voiceId || TikTokEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                    this._logDebug('SPEAK_STEP4', 'Voice reset for TikTok fallback', { selectedVoice, langResult });
+                this._logDebug('SPEAK_STEP4', 'Google engine not available, falling back');
+                this.logger.warn(`Google TTS requested but not available (no API key configured)`);
+                
+                // Fallback to ElevenLabs, Speechify, or TikTok
+                if (this.engines.elevenlabs) {
+                    selectedEngine = 'elevenlabs';
+                    const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
+                    if (!selectedVoice || !elevenlabsVoices[selectedVoice]) {
+                        const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
+                        selectedVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                        this._logDebug('SPEAK_STEP4', 'Voice reset for ElevenLabs fallback', { selectedVoice, langResult });
+                    }
+                    this.logger.info(`Falling back to ElevenLabs engine (premium quality)`);
+                } else if (this.engines.speechify) {
+                    selectedEngine = 'speechify';
+                    const speechifyVoices = await this.engines.speechify.getVoices();
+                    if (!selectedVoice || !speechifyVoices[selectedVoice]) {
+                        const langResult = this.languageDetector.detectAndGetVoice(finalText, SpeechifyEngine, this.config.fallbackLanguage);
+                        selectedVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                        this._logDebug('SPEAK_STEP4', 'Voice reset for Speechify fallback', { selectedVoice, langResult });
+                    }
+                    this.logger.info(`Falling back to Speechify engine`);
+                } else {
+                    selectedEngine = 'tiktok';
+                    const tiktokVoices = TikTokEngine.getVoices();
+                    if (!selectedVoice || !tiktokVoices[selectedVoice]) {
+                        const langResult = this.languageDetector.detectAndGetVoice(finalText, TikTokEngine, this.config.fallbackLanguage);
+                        selectedVoice = langResult?.voiceId || TikTokEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                        this._logDebug('SPEAK_STEP4', 'Voice reset for TikTok fallback', { selectedVoice, langResult });
+                    }
+                    this.logger.info(`Falling back to TikTok TTS engine`);
                 }
             }
 
@@ -1089,9 +1136,75 @@ class TTSPlugin {
                 });
                 this.logger.error(`TTS engine ${selectedEngine} failed: ${engineError.message}, trying fallback`);
 
-                // Fallback chain: ElevenLabs → Speechify → Google → TikTok
-                if (selectedEngine === 'elevenlabs') {
-                    // Try Speechify first, then Google, then TikTok
+                // Improved fallback chain based on quality and reliability:
+                // Primary failure → Try next best alternative
+                // ElevenLabs (premium) → Speechify → Google → TikTok
+                // Google (good quality) → ElevenLabs → Speechify → TikTok
+                // Speechify → ElevenLabs → Google → TikTok
+                // TikTok → ElevenLabs → Speechify → Google
+                
+                if (selectedEngine === 'google') {
+                    // Google failed - try ElevenLabs first (premium quality), then Speechify, then TikTok
+                    if (this.engines.elevenlabs) {
+                        let fallbackVoice = selectedVoice;
+                        const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
+                        if (!fallbackVoice || !elevenlabsVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for ElevenLabs fallback', { fallbackVoice, langResult });
+                        }
+
+                        this.logger.info(`Falling back from Google to ElevenLabs (premium quality)`);
+                        audioData = await this.engines.elevenlabs.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'elevenlabs';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'elevenlabs',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else if (this.engines.speechify) {
+                        let fallbackVoice = selectedVoice;
+                        const speechifyVoices = await this.engines.speechify.getVoices();
+                        if (!fallbackVoice || !speechifyVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, SpeechifyEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for Speechify fallback', { fallbackVoice, langResult });
+                        }
+
+                        this.logger.info(`Falling back from Google to Speechify`);
+                        audioData = await this.engines.speechify.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'speechify';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'speechify',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else if (this.engines.tiktok) {
+                        let fallbackVoice = selectedVoice;
+                        const tiktokVoices = TikTokEngine.getVoices();
+                        if (!fallbackVoice || !tiktokVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, TikTokEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || TikTokEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for TikTok fallback', { fallbackVoice, langResult });
+                        }
+
+                        this.logger.info(`Falling back from Google to TikTok`);
+                        audioData = await this.engines.tiktok.synthesize(finalText, fallbackVoice);
+                        selectedEngine = 'tiktok';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'tiktok',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else {
+                        this._logDebug('SPEAK_ERROR', 'No fallback available', { error: engineError.message });
+                        throw engineError;
+                    }
+                } else if (selectedEngine === 'elevenlabs') {
+                    // ElevenLabs failed - try Speechify first, then Google, then TikTok
                     if (this.engines.speechify) {
                         let fallbackVoice = selectedVoice;
                         const speechifyVoices = await this.engines.speechify.getVoices();
@@ -1101,6 +1214,7 @@ class TTSPlugin {
                             this._logDebug('SPEAK_STEP5', 'Voice adjusted for Speechify fallback', { fallbackVoice, langResult });
                         }
 
+                        this.logger.info(`Falling back from ElevenLabs to Speechify`);
                         audioData = await this.engines.speechify.synthesize(finalText, fallbackVoice, this.config.speed);
                         selectedEngine = 'speechify';
                         selectedVoice = fallbackVoice;
@@ -1118,6 +1232,7 @@ class TTSPlugin {
                             this._logDebug('SPEAK_STEP5', 'Voice adjusted for Google fallback', { fallbackVoice, langResult });
                         }
 
+                        this.logger.info(`Falling back from ElevenLabs to Google`);
                         audioData = await this.engines.google.synthesize(finalText, fallbackVoice, this.config.speed);
                         selectedEngine = 'google';
                         selectedVoice = fallbackVoice;
@@ -1135,6 +1250,7 @@ class TTSPlugin {
                             this._logDebug('SPEAK_STEP5', 'Voice adjusted for TikTok fallback', { fallbackVoice, langResult });
                         }
 
+                        this.logger.info(`Falling back from ElevenLabs to TikTok`);
                         audioData = await this.engines.tiktok.synthesize(finalText, fallbackVoice);
                         selectedEngine = 'tiktok';
                         selectedVoice = fallbackVoice;
@@ -1148,8 +1264,26 @@ class TTSPlugin {
                         throw engineError;
                     }
                 } else if (selectedEngine === 'speechify') {
-                    // Try Google first, then TikTok
-                    if (this.engines.google) {
+                    // Speechify failed - try ElevenLabs first, then Google, then TikTok
+                    if (this.engines.elevenlabs) {
+                        let fallbackVoice = selectedVoice;
+                        const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
+                        if (!fallbackVoice || !elevenlabsVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for ElevenLabs fallback', { fallbackVoice, langResult });
+                        }
+
+                        this.logger.info(`Falling back from Speechify to ElevenLabs`);
+                        audioData = await this.engines.elevenlabs.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'elevenlabs';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'elevenlabs',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else if (this.engines.google) {
                         let fallbackVoice = selectedVoice;
                         const googleVoices = GoogleEngine.getVoices();
                         if (!fallbackVoice || !googleVoices[fallbackVoice]) {
@@ -1158,6 +1292,7 @@ class TTSPlugin {
                             this._logDebug('SPEAK_STEP5', 'Voice adjusted for Google fallback', { fallbackVoice, langResult });
                         }
 
+                        this.logger.info(`Falling back from Speechify to Google`);
                         audioData = await this.engines.google.synthesize(finalText, fallbackVoice, this.config.speed);
                         selectedEngine = 'google';
                         selectedVoice = fallbackVoice;
@@ -1175,6 +1310,7 @@ class TTSPlugin {
                             this._logDebug('SPEAK_STEP5', 'Voice adjusted for TikTok fallback', { fallbackVoice, langResult });
                         }
 
+                        this.logger.info(`Falling back from Speechify to TikTok`);
                         audioData = await this.engines.tiktok.synthesize(finalText, fallbackVoice);
                         selectedEngine = 'tiktok';
                         selectedVoice = fallbackVoice;
@@ -1187,28 +1323,70 @@ class TTSPlugin {
                         this._logDebug('SPEAK_ERROR', 'No fallback available', { error: engineError.message });
                         throw engineError;
                     }
-                } else if (selectedEngine === 'google' && this.engines.tiktok) {
-                    // Try to keep the voice if it's valid for TikTok, otherwise detect language
-                    let fallbackVoice = selectedVoice;
-                    const tiktokVoices = TikTokEngine.getVoices();
-                    if (!fallbackVoice || !tiktokVoices[fallbackVoice]) {
-                        // Try to detect language from text
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, TikTokEngine, this.config.fallbackLanguage);
-                        fallbackVoice = langResult?.voiceId || TikTokEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP5', 'Voice adjusted for TikTok fallback', { fallbackVoice, langResult });
-                    }
+                } else if (selectedEngine === 'tiktok' && this.engines.tiktok) {
+                    // TikTok failed - try ElevenLabs first, then Speechify, then Google
+                    if (this.engines.elevenlabs) {
+                        let fallbackVoice = selectedVoice;
+                        const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
+                        if (!fallbackVoice || !elevenlabsVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for ElevenLabs fallback', { fallbackVoice, langResult });
+                        }
 
-                    audioData = await this.engines.tiktok.synthesize(
-                        finalText,
-                        fallbackVoice
-                    );
-                    selectedEngine = 'tiktok';
-                    selectedVoice = fallbackVoice;
-                    this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
-                        fallbackEngine: 'tiktok',
-                        fallbackVoice,
-                        audioDataLength: audioData?.length || 0
-                    });
+                        this.logger.info(`Falling back from TikTok to ElevenLabs (premium quality)`);
+                        audioData = await this.engines.elevenlabs.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'elevenlabs';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'elevenlabs',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else if (this.engines.speechify) {
+                        let fallbackVoice = selectedVoice;
+                        const speechifyVoices = await this.engines.speechify.getVoices();
+                        if (!fallbackVoice || !speechifyVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, SpeechifyEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for Speechify fallback', { fallbackVoice, langResult });
+                        }
+
+                        this.logger.info(`Falling back from TikTok to Speechify`);
+                        audioData = await this.engines.speechify.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'speechify';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'speechify',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else if (this.engines.google) {
+                        let fallbackVoice = selectedVoice;
+                        const googleVoices = GoogleEngine.getVoices();
+                        if (!fallbackVoice || !googleVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, GoogleEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for Google fallback', { fallbackVoice, langResult });
+                        }
+
+                        this.logger.info(`Falling back from TikTok to Google`);
+                        audioData = await this.engines.google.synthesize(
+                            finalText,
+                            fallbackVoice,
+                            this.config.speed
+                        );
+                        selectedEngine = 'google';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'google',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else {
+                        this._logDebug('SPEAK_ERROR', 'No fallback available', { error: engineError.message });
+                        throw engineError;
+                    }
                 } else {
                     this._logDebug('SPEAK_ERROR', 'No fallback available', { error: engineError.message });
                     throw engineError;

@@ -189,6 +189,12 @@ class GoogleEngine {
 
                 // Check for quota/auth errors (don't retry)
                 if (error.response?.status === 429 || error.response?.status === 403 || error.response?.status === 401) {
+                    // Provide helpful error messages for common issues
+                    if (error.response.status === 401 || error.response.status === 403) {
+                        const helpfulMsg = this._getAuthErrorHelp(errorMsg);
+                        this.logger.error(`Google TTS Authentication Error: ${helpfulMsg}`);
+                        throw new Error(`Google TTS ${error.response.status}: ${helpfulMsg}`);
+                    }
                     throw new Error(`Google TTS ${error.response.status}: ${errorMsg}`);
                 }
 
@@ -200,6 +206,41 @@ class GoogleEngine {
         }
 
         throw new Error(`Google TTS failed after ${this.maxRetries} attempts. Last error: ${lastError?.message || 'Unknown'}`);
+    }
+
+    /**
+     * Get helpful error message for authentication errors
+     * @private
+     */
+    _getAuthErrorHelp(errorMsg) {
+        // Check for OAuth2 error message
+        if (errorMsg && errorMsg.includes('OAuth2') || errorMsg.includes('Expected OAuth2 access token')) {
+            return 'Google Cloud TTS API requires an API key, not OAuth2 tokens. ' +
+                   'Please ensure you have:\n' +
+                   '1. Created a Google Cloud Project\n' +
+                   '2. Enabled the Text-to-Speech API\n' +
+                   '3. Created an API Key (not OAuth credentials)\n' +
+                   '4. Enabled billing for your project\n' +
+                   '5. Added the API key to TTS Admin Panel > Configuration\n' +
+                   'Visit: https://console.cloud.google.com/apis/credentials';
+        }
+        
+        if (errorMsg && errorMsg.includes('API key not valid')) {
+            return 'Your Google Cloud API key is invalid. Please check:\n' +
+                   '1. The API key is correctly copied\n' +
+                   '2. The API key has not been revoked\n' +
+                   '3. API restrictions allow Text-to-Speech API\n' +
+                   'Visit: https://console.cloud.google.com/apis/credentials';
+        }
+        
+        if (errorMsg && errorMsg.includes('billing')) {
+            return 'Google Cloud TTS requires billing to be enabled. Please:\n' +
+                   '1. Visit https://console.cloud.google.com/billing\n' +
+                   '2. Enable billing for your project\n' +
+                   '3. Wait a few minutes for changes to propagate';
+        }
+        
+        return errorMsg;
     }
 
     /**
