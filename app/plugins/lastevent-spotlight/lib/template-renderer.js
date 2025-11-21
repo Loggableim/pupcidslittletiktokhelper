@@ -13,6 +13,16 @@ class TemplateRenderer {
   }
 
   /**
+   * Escape HTML to prevent XSS attacks
+   */
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  /**
    * Update settings and re-render
    */
   updateSettings(newSettings) {
@@ -126,6 +136,8 @@ class TemplateRenderer {
     // Profile picture
     if (this.settings.showProfilePicture && profilePicUrl) {
       const size = this.settings.profilePictureSize || '80px';
+      const escapedNickname = this.escapeHtml(userData.nickname);
+      const escapedProfilePicUrl = this.escapeHtml(profilePicUrl);
       parts.push(`
         <div class="profile-picture" style="
           width: ${size};
@@ -135,7 +147,7 @@ class TemplateRenderer {
           ${this.settings.enableBorder ? `border: 3px solid ${this.settings.borderColor || '#FFFFFF'};` : ''}
           margin: 10px;
         ">
-          <img src="${profilePicUrl}" alt="${userData.nickname}" style="width: 100%; height: 100%; object-fit: cover;">
+          <img src="${escapedProfilePicUrl}" alt="${escapedNickname}" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
       `);
     }
@@ -148,6 +160,8 @@ class TemplateRenderer {
       
       if (giftPictureUrl) {
         // Show gift image if available
+        const escapedGiftPictureUrl = this.escapeHtml(giftPictureUrl);
+        const escapedGiftName = this.escapeHtml(giftName);
         parts.push(`
           <div class="gift-icon" style="
             width: ${size};
@@ -161,7 +175,7 @@ class TemplateRenderer {
             align-items: center;
             justify-content: center;
           ">
-            <img src="${giftPictureUrl}" alt="${giftName}" style="width: 90%; height: 90%; object-fit: contain;">
+            <img src="${escapedGiftPictureUrl}" alt="${escapedGiftName}" style="width: 90%; height: 90%; object-fit: contain;">
           </div>
         `);
       } else {
@@ -190,6 +204,7 @@ class TemplateRenderer {
     const textParts = [];
 
     // Event label
+    const escapedLabel = this.escapeHtml(userData.label || 'Event');
     textParts.push(`
       <div class="event-label" style="
         font-size: calc(${this.settings.fontSize || '32px'} * 0.6);
@@ -197,12 +212,13 @@ class TemplateRenderer {
         opacity: 0.8;
         margin-bottom: 5px;
       ">
-        ${userData.label || 'Event'}
+        ${escapedLabel}
       </div>
     `);
 
     // Username
     if (this.settings.showUsername) {
+      const escapedNickname = this.escapeHtml(userData.nickname || 'Anonymous');
       textParts.push(`
         <div class="username" style="
           font-family: ${this.settings.fontFamily || 'Exo 2'};
@@ -212,7 +228,7 @@ class TemplateRenderer {
           color: ${this.settings.fontColor || '#FFFFFF'};
           font-weight: bold;
         ">
-          ${userData.nickname || 'Anonymous'}
+          ${escapedNickname}
         </div>
       `);
     }
@@ -222,15 +238,18 @@ class TemplateRenderer {
       const giftInfo = [];
       
       if (userData.metadata.giftName) {
-        giftInfo.push(`<span style="color: #ffc107;">🎁 ${userData.metadata.giftName}</span>`);
+        const escapedGiftName = this.escapeHtml(userData.metadata.giftName);
+        giftInfo.push(`<span style="color: #ffc107;">🎁 ${escapedGiftName}</span>`);
       }
       
       if (userData.metadata.giftCount && userData.metadata.giftCount > 1) {
-        giftInfo.push(`<span style="color: #00ff00;">×${userData.metadata.giftCount}</span>`);
+        const giftCount = parseInt(userData.metadata.giftCount) || 0;
+        giftInfo.push(`<span style="color: #00ff00;">×${giftCount}</span>`);
       }
       
       if (userData.metadata.coins && userData.metadata.coins > 0) {
-        giftInfo.push(`<span style="color: #ffd700;">💰 ${userData.metadata.coins} coins</span>`);
+        const coins = parseInt(userData.metadata.coins) || 0;
+        giftInfo.push(`<span style="color: #ffd700;">💰 ${coins} coins</span>`);
       }
       
       if (giftInfo.length > 0) {
