@@ -1680,6 +1680,62 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Config Path Management -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="folder-open"></i>
+                                    Configuration Storage Location
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4">
+                                    Configure where your settings, profiles, and user data are stored. By default, configs are stored outside the application folder to survive updates.
+                                </p>
+                                
+                                <!-- Current Config Path Info -->
+                                <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                                    <div class="space-y-2 text-sm">
+                                        <div>
+                                            <span class="text-gray-400">Platform:</span>
+                                            <span id="config-path-platform" class="ml-2 font-mono">-</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-400">Default Location:</span>
+                                            <span id="config-path-default" class="ml-2 font-mono text-xs">-</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-400">Active Location:</span>
+                                            <span id="config-path-active" class="ml-2 font-mono text-xs font-semibold text-blue-400">-</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-400">Using Custom Path:</span>
+                                            <span id="config-path-is-custom" class="ml-2">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Custom Path Configuration -->
+                                <div class="form-group">
+                                    <label>Custom Storage Location (Optional)</label>
+                                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                        <input type="text" id="custom-config-path" placeholder="e.g., D:\Google Drive\TikTokStreamTool" class="form-input">
+                                        <button id="set-custom-config-path-btn" class="btn btn-primary">
+                                            <i data-lucide="save"></i>
+                                            Set Path
+                                        </button>
+                                    </div>
+                                    <button id="reset-config-path-btn" class="btn btn-ghost btn-sm">
+                                        <i data-lucide="rotate-ccw"></i>
+                                        Reset to Default
+                                    </button>
+                                </div>
+
+                                <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mt-4">
+                                    <p style="font-size: 0.85rem; color: #94a3b8;">
+                                        <i data-lucide="info" class="inline-block w-4 h-4 mr-1"></i>
+                                        <strong>Note:</strong> Changing the storage location requires an application restart. You can set a custom path (e.g., in Google Drive or OneDrive) for automatic cloud backup.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </section>
                 </div>
