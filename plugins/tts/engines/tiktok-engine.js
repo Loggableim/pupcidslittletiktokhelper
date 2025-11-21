@@ -33,28 +33,29 @@ class TikTokEngine {
         this.autoExtractEnabled = false; // Disabled by default - use manual entry instead
         
         // Direct TikTok API endpoints (require SessionID for authentication)
-        // Updated endpoints as of December 2024
+        // Updated endpoints as of November 2025 - TikTok changed from "normal" to "core" in late 2024
+        // Multiple endpoint versions (api16, api19, api22) are used for redundancy
         this.apiEndpoints = [
             {
-                url: 'https://api16-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                url: 'https://api16-core-c-useast1a.tiktokv.com/media/api/text/speech/invoke/',
                 type: 'official',
                 format: 'tiktok',
                 requiresAuth: true
             },
             {
-                url: 'https://api22-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                url: 'https://api19-core-c-useast1a.tiktokv.com/media/api/text/speech/invoke/',
                 type: 'official',
                 format: 'tiktok',
                 requiresAuth: true
             },
             {
-                url: 'https://api16-normal-useast5.us.tiktokv.com/media/api/text/speech/invoke',
+                url: 'https://api16-core-useast5.us.tiktokv.com/media/api/text/speech/invoke/',
                 type: 'official',
                 format: 'tiktok',
                 requiresAuth: true
             },
             {
-                url: 'https://api22-normal-c-alisg.tiktokv.com/media/api/text/speech/invoke',
+                url: 'https://api22-core-c-alisg.tiktokv.com/media/api/text/speech/invoke/',
                 type: 'official',
                 format: 'tiktok',
                 requiresAuth: true
