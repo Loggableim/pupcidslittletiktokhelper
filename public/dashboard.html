@@ -277,9 +277,9 @@
             box-shadow: var(--shadow-md);
         }
 
-        /* Hide script tag text content - Chatango will replace with iframe */
+        /* Hide Chatango script tag text content - Chatango will replace with iframe */
         .shoutbox-container > script,
-        script[id^="cid"] {
+        script[id^="cid"][data-cfasync="false"] {
             display: none !important;
         }
 
