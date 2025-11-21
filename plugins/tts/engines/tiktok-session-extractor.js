@@ -211,9 +211,7 @@ class TikTokSessionExtractor {
                 const visibleLaunchOptions = {
                     headless: false, // Visible browser
                     args: [
-                        '--no-sandbox', 
-                        '--disable-setuid-sandbox',
-                        '--disable-blink-features=AutomationControlled' // Hide automation
+                        '--disable-blink-features=AutomationControlled' // Hide automation detection
                     ],
                     defaultViewport: null, // Use full window size
                     ignoreDefaultArgs: ['--enable-automation'] // Don't show "Chrome is being controlled" banner

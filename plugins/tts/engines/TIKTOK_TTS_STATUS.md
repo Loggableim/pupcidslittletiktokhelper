@@ -123,10 +123,10 @@ rm plugins/tts/engines/.tiktok-cookies.json
   npm install puppeteer
   ```
 
-### Browser Opens But TikTok Blocks It ("Browser not safe")
-- **Cause**: TikTok detected automation (Chromium without profile)
-- **Solution**: Now uses your real Chrome profile - avoids detection
-- **Note**: Close Chrome before first extraction, or it will open without profile
+### Chrome Security Warning About Flags
+- **Warning**: "You are using an unsupported command-line flag"
+- **Fix**: Removed unnecessary sandbox-disabling flags (commit XXXXXXX)
+- **Note**: Only uses `--disable-blink-features=AutomationControlled` to avoid bot detection
 
 ### Chrome Already Running Error
 - **Cause**: Can't use Chrome profile when Chrome is already open
