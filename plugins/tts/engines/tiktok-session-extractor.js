@@ -154,10 +154,10 @@ class TikTokSessionExtractor {
             const launchOptions = {
                 headless: false, // Always visible - user needs to see login page
                 args: [
-                    '--disable-blink-features=AutomationControlled' // Hide automation detection
+                    '--disable-blink-features=AutomationControlled', // Hide automation detection
+                    '--disable-infobars' // Hide "Chrome is being controlled" banner
                 ],
-                defaultViewport: null, // Use full window size
-                ignoreDefaultArgs: ['--enable-automation'] // Don't show "Chrome is being controlled" banner
+                defaultViewport: null // Use full window size
             };
             
             if (chromePath) {
