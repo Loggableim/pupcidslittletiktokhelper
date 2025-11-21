@@ -60,7 +60,7 @@ class TikTokEngine {
         
         // Log SessionID status
         if (this.sessionId) {
-            this.logger.info(`✅ TikTok SessionID configured (${this.sessionId.substring(0, 8)}...)`);
+            this.logger.info(`✅ TikTok SessionID configured (length: ${this.sessionId.length} chars)`);
         } else {
             this.logger.warn('⚠️  No TikTok SessionID configured. TikTok TTS will not work.');
             this.logger.warn('💡 To fix: Set TIKTOK_SESSION_ID environment variable or configure in TTS settings.');
@@ -275,125 +275,66 @@ class TikTokEngine {
     async _makeRequest(endpointConfig, text, voiceId) {
         const { url, type, format } = endpointConfig;
         
-        let requestConfig;
-        let requestData;
-        
-        // Configure request based on endpoint format
-        switch (format) {
-            case 'weilnet':
-                // Weilnet Workers endpoint format
-                requestData = {
-                    text: text,
-                    voice: voiceId
-                };
-                requestConfig = {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'TikTokLiveStreamTool/2.0'
-                    },
-                    timeout: this.timeout,
-                    responseType: 'json'
-                };
-                break;
-                
-            case 'tikapi':
-                // TikAPI format
-                requestData = {
-                    text: text,
-                    voice: voiceId
-                };
-                requestConfig = {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'TikTokLiveStreamTool/2.0'
-                    },
-                    timeout: this.timeout,
-                    responseType: 'json'
-                };
-                break;
-                
-            case 'tiktok':
-                // Official TikTok API format with SessionID authentication
-                // Note: aid (Application ID) parameter is required by TikTok's internal API
-                // Common values: 1233 (TikTok app), 1180 (TikTok Lite)
-                const params = new URLSearchParams({
-                    text_speaker: voiceId,
-                    req_text: text,
-                    speaker_map_type: '0',
-                    aid: '1233' // Application ID for TikTok
-                });
-                requestData = params.toString();
-                requestConfig = {
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        // Using a recent Android User-Agent string
-                        // Format: app_name/version (OS; device_info; Build/build_id; api_version)
-                        'User-Agent': 'com.zhiliaoapp.musically/2023400040 (Linux; U; Android 13; en_US; Pixel 7; Build/TQ3A.230805.001; tt-ok/3.12.13.4)',
-                        'Accept': '*/*',
-                        // CRITICAL: SessionID cookie is required for authentication
-                        'Cookie': `sessionid=${this.sessionId}`
-                    },
-                    timeout: this.timeout,
-                    responseType: 'json'
-                };
-                break;
-                
-            default:
-                throw new Error(`Unknown endpoint format: ${format}`);
+        // Configure request for TikTok API format with SessionID authentication
+        if (format !== 'tiktok') {
+            throw new Error(`Unsupported endpoint format: ${format}`);
         }
+        
+        // Official TikTok API format with SessionID authentication
+        // Note: aid (Application ID) parameter is required by TikTok's internal API
+        // Common values: 1233 (TikTok app), 1180 (TikTok Lite)
+        const params = new URLSearchParams({
+            text_speaker: voiceId,
+            req_text: text,
+            speaker_map_type: '0',
+            aid: '1233' // Application ID for TikTok
+        });
+        const requestData = params.toString();
+        const requestConfig = {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                // Using a recent Android User-Agent string
+                // Format: app_name/version (OS; device_info; Build/build_id; api_version)
+                'User-Agent': 'com.zhiliaoapp.musically/2023400040 (Linux; U; Android 13; en_US; Pixel 7; Build/TQ3A.230805.001; tt-ok/3.12.13.4)',
+                'Accept': '*/*',
+                // CRITICAL: SessionID cookie is required for authentication
+                'Cookie': `sessionid=${this.sessionId}`
+            },
+            timeout: this.timeout,
+            responseType: 'json'
+        };
         
         const response = await axios.post(url, requestData, requestConfig);
         
         // Handle different response formats
-        return this._extractAudioData(response.data, format);
+        return this._extractAudioData(response.data);
     }
     
     /**
-     * Extract audio data from response based on format
+     * Extract audio data from TikTok API response
      * @private
      */
-    _extractAudioData(data, format) {
-        switch (format) {
-            case 'weilnet':
-                // Weilnet returns: { success: true, data: "base64..." }
-                if (data && data.success && data.data) {
-                    return data.data;
-                } else if (data && data.data) {
-                    return data.data;
-                }
-                break;
-                
-            case 'tikapi':
-                // TikAPI returns: { audio: "base64..." } or { audioContent: "base64..." }
-                if (data && data.audio) {
-                    return data.audio;
-                } else if (data && data.audioContent) {
-                    return data.audioContent;
-                }
-                break;
-                
-            case 'tiktok':
-                // Official TikTok API returns: { status_code: 0, data: { v_str: "base64..." } }
-                if (data && data.status_code === 0) {
-                    if (data.data && data.data.v_str) {
-                        return data.data.v_str;
-                    } else if (data.data && typeof data.data === 'string') {
-                        return data.data;
-                    }
-                }
-                // Check for error message
-                if (data && data.status_msg) {
-                    throw new Error(`TikTok API error: ${data.status_msg}`);
-                }
-                break;
+    _extractAudioData(data) {
+        // Official TikTok API returns: { status_code: 0, data: { v_str: "base64..." } }
+        if (data && data.status_code === 0) {
+            if (data.data && data.data.v_str) {
+                return data.data.v_str;
+            } else if (data.data && typeof data.data === 'string') {
+                return data.data;
+            }
         }
         
-        // Fallback: try to find base64 data in common response fields
+        // Check for error message
+        if (data && data.status_msg) {
+            throw new Error(`TikTok API error: ${data.status_msg}`);
+        }
+        
+        // Fallback: try to find base64 data in response
         if (typeof data === 'string' && data.length > 100) {
             return data;
         }
         
-        throw new Error(`Invalid response format from ${format} TTS endpoint`);
+        throw new Error('Invalid response format from TikTok TTS API');
     }
     
     /**
