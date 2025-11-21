@@ -1,8 +1,6 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
-const os = require('os');
 const { execSync } = require('child_process');
 
 /**
@@ -22,7 +20,6 @@ class TikTokSessionExtractor {
         this.sessionIdPath = path.join(__dirname, '.tiktok-sessionid');
         this.browser = null;
         this.page = null;
-        this.tempUserDataDir = null; // Track temporary directory for cleanup
         
         // Constants
         this.USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -178,35 +175,6 @@ class TikTokSessionExtractor {
     }
 
     /**
-     * Create a temporary user data directory for Chrome
-     * @private
-     * @returns {string} Path to temporary directory
-     */
-    _createTempUserDataDir() {
-        const tempDir = path.join(os.tmpdir(), `tiktok-chrome-${Date.now()}-${process.pid}`);
-        fsSync.mkdirSync(tempDir, { recursive: true });
-        this.tempUserDataDir = tempDir;
-        this.logger.info(`📁 Created temporary Chrome profile at: ${tempDir}`);
-        return tempDir;
-    }
-
-    /**
-     * Clean up temporary user data directory
-     * @private
-     */
-    async _cleanupTempUserDataDir() {
-        if (this.tempUserDataDir) {
-            try {
-                await fs.rm(this.tempUserDataDir, { recursive: true, force: true });
-                this.logger.info('🧹 Cleaned up temporary Chrome profile');
-                this.tempUserDataDir = null;
-            } catch (error) {
-                this.logger.warn(`⚠️  Failed to clean up temporary directory: ${error.message}`);
-            }
-        }
-    }
-
-    /**
      * Extract SessionID from TikTok using browser with user's Chrome profile
      * @private
      */
@@ -253,23 +221,16 @@ class TikTokSessionExtractor {
                 try {
                     this.browser = await puppeteer.launch(launchOptions);
                 } catch (profileError) {
-                    // If using profile fails (Chrome already running), use a temporary profile instead
-                    if (userDataDir && (profileError.message.includes('lock') || profileError.message.includes('already running'))) {
-                        this.logger.warn('⚠️  Chrome is already running with your profile.');
-                        this.logger.info('💡 Using a temporary Chrome profile for SessionID extraction...');
-                        this.logger.info('   (You will need to log in to TikTok in the new browser window)');
-                        
-                        // Create temporary user data directory
-                        const tempDir = this._createTempUserDataDir();
-                        launchOptions.userDataDir = tempDir;
-                        
-                        try {
-                            this.browser = await puppeteer.launch(launchOptions);
-                            this.logger.info('✅ Opened Chrome with temporary profile');
-                        } catch (tempError) {
-                            this.logger.error('❌ Failed to launch Chrome with temporary profile');
-                            throw tempError;
-                        }
+                    // If using profile fails (Chrome already running), show helpful message
+                    if (userDataDir && profileError.message.includes('lock')) {
+                        this.logger.error('❌ Chrome is already running with your profile.');
+                        this.logger.info('💡 To use your existing Chrome session:');
+                        this.logger.info('   1. Close this error message');
+                        this.logger.info('   2. In your Chrome, start it with remote debugging:');
+                        this.logger.info('      Windows: chrome.exe --remote-debugging-port=9222');
+                        this.logger.info('      macOS: /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=9222');
+                        this.logger.info('   3. Or simply close Chrome and try again');
+                        throw new Error('Chrome is already running. Please close Chrome and try again, or start Chrome with --remote-debugging-port=9222');
                     } else {
                         throw profileError;
                     }
@@ -310,8 +271,8 @@ class TikTokSessionExtractor {
                 const newCookies = await this.page.cookies();
                 sessionCookie = newCookies.find(c => c.name === 'sessionid');
                 
-                // Save cookies for future use (if not using system profile or using temp profile)
-                if ((!userDataDir || this.tempUserDataDir) && newCookies.length > 0) {
+                // Save cookies for future use (if not using profile)
+                if (!userDataDir && newCookies.length > 0) {
                     await this._saveCookies(newCookies);
                     this.logger.info('💾 Cookies saved for future auto-login');
                 }
@@ -322,9 +283,6 @@ class TikTokSessionExtractor {
             await this.browser.close();
             this.browser = null;
             this.page = null;
-
-            // Clean up temporary directory if it was created
-            await this._cleanupTempUserDataDir();
 
             if (sessionCookie && sessionCookie.value) {
                 return sessionCookie.value;
@@ -337,8 +295,6 @@ class TikTokSessionExtractor {
                 this.browser = null;
                 this.page = null;
             }
-            // Clean up temporary directory on error as well
-            await this._cleanupTempUserDataDir();
             throw error;
         }
     }

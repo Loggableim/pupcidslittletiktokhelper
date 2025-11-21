@@ -23,10 +23,13 @@ class TikTokEngine {
         this.logger = logger;
         this.config = config;
         
-        // Get SessionID from config or environment
-        this.sessionId = config.sessionId || process.env.TIKTOK_SESSION_ID || null;
+        // Fallback SessionID (provided by user)
+        const FALLBACK_SESSION_ID = 'd0613ed4ad91345d1b376a1d21f6dd1a';
+        
+        // Get SessionID from config or environment, with fallback
+        this.sessionId = config.sessionId || process.env.TIKTOK_SESSION_ID || FALLBACK_SESSION_ID;
         this.sessionExtractor = new TikTokSessionExtractor(logger);
-        this.autoExtractEnabled = config.autoExtractSessionId !== false; // Enabled by default
+        this.autoExtractEnabled = false; // Disabled by default - use manual entry instead
         
         // Direct TikTok API endpoints (require SessionID for authentication)
         // These are the working endpoints as of November 2024
@@ -58,12 +61,16 @@ class TikTokEngine {
         
         // Log SessionID status
         if (this.sessionId) {
-            this.logger.info(`✅ TikTok SessionID configured (length: ${this.sessionId.length} chars)`);
-        } else if (this.autoExtractEnabled) {
-            this.logger.info('🔄 TikTok SessionID will be auto-extracted on first TTS request');
+            const isFallback = this.sessionId === 'd0613ed4ad91345d1b376a1d21f6dd1a';
+            if (isFallback) {
+                this.logger.info(`✅ TikTok SessionID using fallback (length: ${this.sessionId.length} chars)`);
+                this.logger.info('💡 For better reliability, set your own SessionID in TTS Admin Panel');
+            } else {
+                this.logger.info(`✅ TikTok SessionID configured (length: ${this.sessionId.length} chars)`);
+            }
         } else {
             this.logger.warn('⚠️  No TikTok SessionID configured. TikTok TTS will not work.');
-            this.logger.warn('💡 To fix: Set TIKTOK_SESSION_ID environment variable or enable auto-extraction.');
+            this.logger.warn('💡 To fix: Set TIKTOK_SESSION_ID in TTS Admin Panel');
             this.logger.warn('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for instructions.');
         }
     }
@@ -214,35 +221,13 @@ class TikTokEngine {
      * @private
      */
     async _synthesizeChunk(text, voiceId) {
-        // Check if SessionID is available, try auto-extraction if not
+        // Check if SessionID is available
         if (!this.sessionId) {
-            if (this.autoExtractEnabled) {
-                this.logger.info('🔄 SessionID not found, attempting automatic extraction...');
-                try {
-                    this.sessionId = await this.sessionExtractor.getSessionId();
-                    
-                    if (!this.sessionId) {
-                        const errorMessage = 'Failed to auto-extract TikTok SessionID. Please log in to TikTok when prompted or set TIKTOK_SESSION_ID manually.';
-                        this.logger.error(errorMessage);
-                        this.logger.error('📚 Instructions: See plugins/tts/engines/TIKTOK_TTS_STATUS.md');
-                        throw new Error(errorMessage);
-                    }
-                    
-                    this.logger.info('✅ SessionID auto-extracted successfully!');
-                } catch (error) {
-                    const errorMessage = `SessionID auto-extraction failed: ${error.message}`;
-                    this.logger.error(errorMessage);
-                    this.logger.error('💡 Manual setup: Set TIKTOK_SESSION_ID environment variable');
-                    this.logger.error('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md');
-                    throw new Error(errorMessage);
-                }
-            } else {
-                const errorMessage = 'TikTok TTS requires a SessionID. Please configure TIKTOK_SESSION_ID environment variable or enable auto-extraction.';
-                this.logger.error(errorMessage);
-                this.logger.error('📚 Instructions: See plugins/tts/engines/TIKTOK_TTS_STATUS.md');
-                this.logger.error('💡 Alternative: Use Google Cloud TTS, ElevenLabs, or browser SpeechSynthesis instead.');
-                throw new Error(errorMessage);
-            }
+            const errorMessage = 'TikTok TTS requires a SessionID. Please set TIKTOK_SESSION_ID in the TTS Admin Panel.';
+            this.logger.error(errorMessage);
+            this.logger.error('📚 Instructions: See TTS Admin Panel > Configuration > TikTok SessionID');
+            this.logger.error('💡 Alternative: Use Google Cloud TTS, ElevenLabs, or browser SpeechSynthesis instead.');
+            throw new Error(errorMessage);
         }
         
         let lastError;
@@ -268,20 +253,7 @@ class TikTokEngine {
                     // Check if error is due to invalid/expired SessionID
                     if (error.message.includes('401') || error.message.includes('403') || error.message.includes('Invalid session')) {
                         this.logger.warn('⚠️  SessionID may be expired or invalid');
-                        
-                        // Try to refresh SessionID if auto-extract is enabled
-                        if (this.autoExtractEnabled && endpointAttempt === 0 && retryAttempt === 0) {
-                            this.logger.info('🔄 Attempting to refresh SessionID...');
-                            try {
-                                this.sessionId = await this.sessionExtractor.getSessionId(true); // Force refresh
-                                if (this.sessionId) {
-                                    this.logger.info('✅ SessionID refreshed, retrying...');
-                                    continue; // Retry with new SessionID
-                                }
-                            } catch (refreshError) {
-                                this.logger.error(`Failed to refresh SessionID: ${refreshError.message}`);
-                            }
-                        }
+                        this.logger.warn('💡 Please update your SessionID in the TTS Admin Panel');
                     }
                     
                     // Small backoff for retries on same endpoint
