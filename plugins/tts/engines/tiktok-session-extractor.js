@@ -192,6 +192,9 @@ class TikTokSessionExtractor {
             const pages = await this.browser.pages();
             this.page = pages.length > 0 ? pages[0] : await this.browser.newPage();
             
+            // Hide automation markers that TikTok detects
+            await this._hideAutomation();
+            
             await this.page.setUserAgent(this.USER_AGENT);
             
             this.logger.info('🌐 Loading TikTok...');
@@ -245,6 +248,45 @@ class TikTokSessionExtractor {
             }
             throw error;
         }
+    }
+
+    /**
+     * Hide automation markers that TikTok and other sites use to detect Puppeteer
+     * @private
+     */
+    async _hideAutomation() {
+        await this.page.evaluateOnNewDocument(() => {
+            // Overwrite the `navigator.webdriver` property
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+            
+            // Overwrite the `navigator.plugins` and `navigator.mimeTypes` to appear like real browser
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5]
+            });
+            
+            // Overwrite the `navigator.languages` to appear more realistic
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-US', 'en']
+            });
+            
+            // Remove Puppeteer-specific properties
+            delete navigator.__proto__.webdriver;
+            
+            // Mock Chrome runtime
+            window.chrome = {
+                runtime: {}
+            };
+            
+            // Mock permissions
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                    Promise.resolve({ state: Notification.permission }) :
+                    originalQuery(parameters)
+            );
+        });
     }
 
     /**
