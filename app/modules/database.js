@@ -249,6 +249,37 @@ class DatabaseManager {
             )
         `);
 
+        // Milestone Tiers - Multiple configurable tiers with different thresholds and media
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS milestone_tiers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                tier_level INTEGER NOT NULL UNIQUE,
+                threshold INTEGER NOT NULL,
+                animation_gif_path TEXT,
+                animation_video_path TEXT,
+                animation_audio_path TEXT,
+                enabled INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Per-User Milestone Tracking
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS milestone_user_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL UNIQUE,
+                username TEXT NOT NULL,
+                cumulative_coins INTEGER DEFAULT 0,
+                current_milestone INTEGER DEFAULT 0,
+                last_tier_reached INTEGER DEFAULT 0,
+                last_trigger_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Default-Einstellungen setzen
         this.setDefaultSettings();
         this.initializeEmojiRainDefaults();
@@ -1149,6 +1180,29 @@ class DatabaseManager {
             VALUES (1, 0, ?)
         `);
         statsStmt.run(defaultConfig.threshold);
+
+        // Initialize default tiers if they don't exist
+        const tierCheckStmt = this.db.prepare('SELECT COUNT(*) as count FROM milestone_tiers');
+        const tierCount = tierCheckStmt.get();
+        
+        if (tierCount.count === 0) {
+            const defaultTiers = [
+                { name: 'Bronze', tier_level: 1, threshold: 1000, enabled: 1 },
+                { name: 'Silver', tier_level: 2, threshold: 5000, enabled: 1 },
+                { name: 'Gold', tier_level: 3, threshold: 10000, enabled: 1 },
+                { name: 'Platinum', tier_level: 4, threshold: 25000, enabled: 1 },
+                { name: 'Diamond', tier_level: 5, threshold: 50000, enabled: 1 }
+            ];
+
+            const tierInsertStmt = this.db.prepare(`
+                INSERT INTO milestone_tiers (name, tier_level, threshold, enabled)
+                VALUES (?, ?, ?, ?)
+            `);
+
+            for (const tier of defaultTiers) {
+                tierInsertStmt.run(tier.name, tier.tier_level, tier.threshold, tier.enabled);
+            }
+        }
     }
 
     /**
@@ -1307,6 +1361,147 @@ class DatabaseManager {
             WHERE id = 1
         `);
         stmt.run(coins);
+    }
+
+    /**
+     * Get all milestone tiers
+     */
+    getMilestoneTiers() {
+        const stmt = this.db.prepare('SELECT * FROM milestone_tiers ORDER BY tier_level ASC');
+        return stmt.all();
+    }
+
+    /**
+     * Get a specific milestone tier
+     */
+    getMilestoneTier(id) {
+        const stmt = this.db.prepare('SELECT * FROM milestone_tiers WHERE id = ?');
+        return stmt.get(id);
+    }
+
+    /**
+     * Create or update a milestone tier
+     */
+    saveMilestoneTier(tier) {
+        if (tier.id) {
+            // Update existing tier
+            const stmt = this.db.prepare(`
+                UPDATE milestone_tiers
+                SET name = ?, tier_level = ?, threshold = ?,
+                    animation_gif_path = ?, animation_video_path = ?, animation_audio_path = ?,
+                    enabled = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `);
+            stmt.run(tier.name, tier.tier_level, tier.threshold,
+                tier.animation_gif_path, tier.animation_video_path, tier.animation_audio_path,
+                tier.enabled, tier.id);
+            return tier.id;
+        } else {
+            // Create new tier
+            const stmt = this.db.prepare(`
+                INSERT INTO milestone_tiers (name, tier_level, threshold, animation_gif_path,
+                    animation_video_path, animation_audio_path, enabled)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `);
+            const result = stmt.run(tier.name, tier.tier_level, tier.threshold,
+                tier.animation_gif_path || null, tier.animation_video_path || null,
+                tier.animation_audio_path || null, tier.enabled !== false ? 1 : 0);
+            return result.lastInsertRowid;
+        }
+    }
+
+    /**
+     * Delete a milestone tier
+     */
+    deleteMilestoneTier(id) {
+        const stmt = this.db.prepare('DELETE FROM milestone_tiers WHERE id = ?');
+        stmt.run(id);
+    }
+
+    /**
+     * Get user milestone stats
+     */
+    getUserMilestoneStats(userId) {
+        const stmt = this.db.prepare('SELECT * FROM milestone_user_stats WHERE user_id = ?');
+        return stmt.get(userId);
+    }
+
+    /**
+     * Get all user milestone stats
+     */
+    getAllUserMilestoneStats() {
+        const stmt = this.db.prepare('SELECT * FROM milestone_user_stats ORDER BY cumulative_coins DESC');
+        return stmt.all();
+    }
+
+    /**
+     * Add coins to a specific user's milestone tracker
+     */
+    addCoinsToUserMilestone(userId, username, coins) {
+        // Get or create user stats
+        let userStats = this.getUserMilestoneStats(userId);
+        
+        if (!userStats) {
+            // Create new user stats
+            const insertStmt = this.db.prepare(`
+                INSERT INTO milestone_user_stats (user_id, username, cumulative_coins)
+                VALUES (?, ?, ?)
+            `);
+            insertStmt.run(userId, username, coins);
+            userStats = { user_id: userId, username, cumulative_coins: coins, current_milestone: 0, last_tier_reached: 0 };
+        }
+
+        const previousCoins = userStats.cumulative_coins || 0;
+        const newCoins = previousCoins + coins;
+
+        // Get all enabled tiers
+        const tiers = this.getMilestoneTiers().filter(t => t.enabled);
+        
+        // Find the highest tier reached
+        let triggeredTier = null;
+        let newTierLevel = userStats.last_tier_reached || 0;
+
+        for (const tier of tiers) {
+            if (previousCoins < tier.threshold && newCoins >= tier.threshold && tier.tier_level > newTierLevel) {
+                triggeredTier = tier;
+                newTierLevel = tier.tier_level;
+            }
+        }
+
+        // Update user stats
+        const updateStmt = this.db.prepare(`
+            UPDATE milestone_user_stats
+            SET cumulative_coins = ?,
+                last_tier_reached = ?,
+                last_trigger_at = ${triggeredTier ? 'CURRENT_TIMESTAMP' : 'last_trigger_at'},
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+        `);
+        updateStmt.run(newCoins, newTierLevel, userId);
+
+        return {
+            triggered: !!triggeredTier,
+            tier: triggeredTier,
+            coins: newCoins,
+            userId,
+            username
+        };
+    }
+
+    /**
+     * Reset all user milestone stats
+     */
+    resetAllUserMilestoneStats() {
+        const stmt = this.db.prepare('DELETE FROM milestone_user_stats');
+        stmt.run();
+    }
+
+    /**
+     * Reset a specific user's milestone stats
+     */
+    resetUserMilestoneStats(userId) {
+        const stmt = this.db.prepare('DELETE FROM milestone_user_stats WHERE user_id = ?');
+        stmt.run(userId);
     }
 
     /**
