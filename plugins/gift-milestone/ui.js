@@ -465,6 +465,5 @@ function displayUserStats(users) {
     `;
 }
 
-loadConfig();
-loadStats();
+// Periodic refresh for stats
 setInterval(loadStats, 5000); // Update stats every 5 seconds

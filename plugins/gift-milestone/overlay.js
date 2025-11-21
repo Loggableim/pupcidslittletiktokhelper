@@ -32,7 +32,13 @@ async function playCelebration(data) {
     }
 
     // Update title
-    title.textContent = `🎯 ${data.milestone.toLocaleString()} Coins Milestone! 🎉`;
+    if (data.isTier && data.tierName) {
+        // Tier celebration with username
+        title.textContent = `🏆 ${data.username} erreichte ${data.tierName}! (${data.totalCoins.toLocaleString()} Coins) 🎉`;
+    } else {
+        // Regular milestone celebration
+        title.textContent = `🎯 ${data.milestone.toLocaleString()} Coins Milestone! 🎉`;
+    }
 
     // Reset media visibility
     gif.style.display = 'none';
