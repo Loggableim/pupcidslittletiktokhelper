@@ -7,20 +7,29 @@
 ### How It Works
 
 1. **First Time**: Browser window opens with TikTok
-2. **You Log In**: One-time login to TikTok
-3. **Auto-Save**: SessionID is extracted and saved automatically
-4. **Future Use**: Works automatically, no login needed
+2. **You Log In**: Log in to TikTok (no time limit!)
+3. **Auto-Detect**: SessionID detected automatically when you complete login
+4. **Auto-Save**: SessionID saved for all future use
+5. **Future Use**: Works automatically, no login needed
 
 ### Quick Start
 
-Just use TikTok TTS - it will prompt you to log in on first use!
+Just use TikTok TTS - a browser will open for you to log in on first use!
 
 ```bash
 # No setup required!
-# On first TTS request, a browser will open
-# Log in to TikTok once
-# SessionID is saved automatically
+# On first TTS request, a browser window opens
+# Log in to TikTok (take your time - no timeout!)
+# Browser closes automatically when login detected
+# SessionID saved and reused forever
 ```
+
+### Important Notes
+
+- **No Rush**: Take your time logging in - there's no timeout
+- **Auto-Close**: Browser closes automatically when SessionID is detected
+- **Don't Close Manually**: Let the system detect login and close the browser
+- **Progress Updates**: You'll see status messages every 10 seconds
 
 ## 🔧 Advanced: Manual SessionID (Optional)
 
@@ -104,21 +113,15 @@ rm plugins/tts/engines/.tiktok-cookies.json
   npm install puppeteer
   ```
 
-### SessionID Extraction Fails
-- **Cause**: Login timeout or network issue
-- **Fix 1**: Try manual SessionID setup (see above)
-- **Fix 2**: Check firewall/proxy settings
-- **Fix 3**: Ensure you can access tiktok.com
+### Browser Opens But SessionID Not Detected
+- **Cause**: Login not completed or verification required
+- **Fix 1**: Complete all login steps including verification
+- **Fix 2**: Wait for "Login detected!" message before closing
+- **Fix 3**: Check console logs for progress updates (every 10 seconds)
 
-### "SessionID expired" Errors
-- **Cause**: SessionID invalidated by TikTok
-- **Fix**: Auto-refresh will trigger automatically
-- **Or**: Delete saved files and re-login
-
-### Browser Stays Open
-- **Cause**: Waiting for login
-- **Fix**: Complete TikTok login in the browser window
-- **Note**: Browser closes automatically after extraction
+### "Timeout waiting for login" Error (Legacy)
+- **Note**: This error no longer occurs - system waits indefinitely
+- **If you see it**: Update to latest version
 
 ## 🔄 SessionID Lifecycle
 

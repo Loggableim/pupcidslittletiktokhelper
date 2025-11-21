@@ -22,7 +22,6 @@ class TikTokSessionExtractor {
         
         // Constants
         this.USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-        this.LOGIN_TIMEOUT_MS = 30000; // 30 seconds
         this.VIEWPORT = { width: 1920, height: 1080 };
     }
 
@@ -106,7 +105,7 @@ class TikTokSessionExtractor {
 
             if (!sessionCookie || !sessionCookie.value) {
                 this.logger.warn('⚠️  Not logged in to TikTok. Please log in manually.');
-                this.logger.info('💡 Opening TikTok in visible browser for login...');
+                this.logger.info('💡 Opening TikTok in browser for login...');
                 
                 // Close headless browser and open visible one for login
                 await this.browser.close();
@@ -116,23 +115,28 @@ class TikTokSessionExtractor {
                 // Launch visible browser for user to log in
                 this.browser = await puppeteer.launch({
                     headless: false, // Visible browser
-                    args: ['--no-sandbox', '--disable-setuid-sandbox']
+                    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+                    defaultViewport: null // Use full window size
                 });
 
                 this.page = await this.browser.newPage();
-                await this.page.setViewport(this.VIEWPORT);
                 await this.page.setUserAgent(this.USER_AGENT);
                 
+                this.logger.info('🌐 Loading TikTok login page...');
                 await this.page.goto('https://www.tiktok.com', {
                     waitUntil: 'networkidle2',
                     timeout: 30000
                 });
 
-                this.logger.info(`⏳ Waiting for login... (${this.LOGIN_TIMEOUT_MS / 1000} seconds)`);
-                this.logger.info('   Please log in to TikTok in the browser window');
+                this.logger.info('📋 Please complete the following steps:');
+                this.logger.info('   1. Log in to your TikTok account in the browser window');
+                this.logger.info('   2. Complete any verification steps if required');
+                this.logger.info('   3. Wait for automatic detection (browser will close automatically)');
+                this.logger.info('');
+                this.logger.info('⚠️  Do NOT close the browser window manually!');
                 
-                // Wait for login
-                await this._waitForSessionId(this.LOGIN_TIMEOUT_MS);
+                // Wait indefinitely for login (no timeout)
+                await this._waitForSessionId();
                 
                 // Get cookies after login
                 const newCookies = await this.page.cookies();
@@ -141,6 +145,7 @@ class TikTokSessionExtractor {
                 // Save cookies for future use
                 if (newCookies.length > 0) {
                     await this._saveCookies(newCookies);
+                    this.logger.info('💾 Cookies saved for future auto-login');
                 }
             }
 
@@ -165,26 +170,39 @@ class TikTokSessionExtractor {
 
     /**
      * Wait for sessionid cookie to appear (user logs in)
+     * Checks continuously without timeout - waits until user actually logs in
      * @private
      */
-    async _waitForSessionId(timeout = 30000) {
-        const startTime = Date.now();
+    async _waitForSessionId() {
+        this.logger.info('⏳ Waiting for you to log in to TikTok...');
+        this.logger.info('💡 After logging in, the SessionID will be detected automatically');
         
-        while (Date.now() - startTime < timeout) {
-            const cookies = await this.page.cookies();
-            const sessionCookie = cookies.find(c => c.name === 'sessionid');
-            
-            if (sessionCookie && sessionCookie.value) {
-                this.logger.info('✅ Login detected!');
-                return true;
+        let checkCount = 0;
+        
+        while (true) {
+            try {
+                const cookies = await this.page.cookies();
+                const sessionCookie = cookies.find(c => c.name === 'sessionid');
+                
+                if (sessionCookie && sessionCookie.value && sessionCookie.value.length > 10) {
+                    this.logger.info('✅ Login detected! SessionID found');
+                    return true;
+                }
+                
+                // Show progress every 10 checks (10 seconds)
+                checkCount++;
+                if (checkCount % 10 === 0) {
+                    this.logger.info(`⏳ Still waiting for login... (${checkCount} seconds elapsed)`);
+                }
+                
+                // Wait 1 second before checking again
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                this.logger.error(`Error checking for SessionID: ${error.message}`);
+                // Continue waiting despite errors
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            
-            // Wait 1 second before checking again
-            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        this.logger.warn('⏱️  Timeout waiting for login');
-        return false;
     }
 
     /**
