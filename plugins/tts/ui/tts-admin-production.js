@@ -338,6 +338,22 @@ function populateConfig(config) {
             elevenlabsKeyInput.value = '';
         }
     }
+
+    // Load TikTok SessionID
+    const tiktokSessionInput = document.getElementById('tiktokSessionId');
+    if (tiktokSessionInput) {
+        if (config.tiktokSessionId) {
+            if (config.tiktokSessionId === '***HIDDEN***') {
+                tiktokSessionInput.placeholder = 'SessionID configured (hidden for security)';
+                tiktokSessionInput.value = '';
+            } else {
+                tiktokSessionInput.value = config.tiktokSessionId;
+            }
+        } else {
+            tiktokSessionInput.placeholder = 'Enter SessionID...';
+            tiktokSessionInput.value = '';
+        }
+    }
 }
 
 async function saveConfig() {
@@ -380,6 +396,12 @@ async function saveConfig() {
         const elevenlabsApiKey = document.getElementById('elevenlabsApiKey')?.value?.trim();
         if (elevenlabsApiKey && elevenlabsApiKey !== '***REDACTED***') {
             config.elevenlabsApiKey = elevenlabsApiKey;
+        }
+
+        // Get TikTok SessionID
+        const tiktokSessionId = document.getElementById('tiktokSessionId')?.value?.trim();
+        if (tiktokSessionId && tiktokSessionId !== '***HIDDEN***') {
+            config.tiktokSessionId = tiktokSessionId;
         }
 
         // Save to server
@@ -1350,6 +1372,18 @@ function setupEventListeners() {
             elevenlabsKeyInput.type = type;
             toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye');
             toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // Toggle TikTok SessionID visibility
+    const toggleTiktokSession = document.getElementById('toggle-tiktok-session');
+    const tiktokSessionInput = document.getElementById('tiktokSessionId');
+    if (toggleTiktokSession && tiktokSessionInput) {
+        toggleTiktokSession.addEventListener('click', () => {
+            const type = tiktokSessionInput.type === 'password' ? 'text' : 'password';
+            tiktokSessionInput.type = type;
+            toggleTiktokSession.querySelector('i').classList.toggle('fa-eye');
+            toggleTiktokSession.querySelector('i').classList.toggle('fa-eye-slash');
         });
     }
 

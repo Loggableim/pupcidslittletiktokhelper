@@ -30,7 +30,7 @@ class TTSPlugin {
 
         // Initialize engines
         this.engines = {
-            tiktok: new TikTokEngine(this.logger),
+            tiktok: new TikTokEngine(this.logger, { sessionId: this.config.tiktokSessionId }),
             google: null, // Initialized if API key is available
             speechify: null, // Initialized if API key is available
             elevenlabs: null // Initialized if API key is available
@@ -170,6 +170,7 @@ class TTSPlugin {
             googleApiKey: null,
             speechifyApiKey: null,
             elevenlabsApiKey: null,
+            tiktokSessionId: null,
             enabledForChat: true,
             autoLanguageDetection: true,
             // New language detection settings
@@ -208,7 +209,8 @@ class TTSPlugin {
                     ...this.config,
                     googleApiKey: this.config.googleApiKey ? '***HIDDEN***' : null,
                     speechifyApiKey: this.config.speechifyApiKey ? '***REDACTED***' : null,
-                    elevenlabsApiKey: this.config.elevenlabsApiKey ? '***REDACTED***' : null
+                    elevenlabsApiKey: this.config.elevenlabsApiKey ? '***REDACTED***' : null,
+                    tiktokSessionId: this.config.tiktokSessionId ? '***HIDDEN***' : null
                 }
             });
         });
@@ -248,12 +250,20 @@ class TTSPlugin {
                     }
                 }
 
-                // Update config (skip API keys - they have dedicated handling below)
+                // Update config (skip API keys and SessionID - they have dedicated handling below)
                 Object.keys(updates).forEach(key => {
-                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey' && key !== 'speechifyApiKey' && key !== 'elevenlabsApiKey') {
+                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey' && key !== 'speechifyApiKey' && key !== 'elevenlabsApiKey' && key !== 'tiktokSessionId') {
                         this.config[key] = updates[key];
                     }
                 });
+
+                // Update TikTok SessionID if provided (and not the placeholder)
+                if (updates.tiktokSessionId && updates.tiktokSessionId !== '***HIDDEN***') {
+                    this.config.tiktokSessionId = updates.tiktokSessionId;
+                    // Reinitialize TikTok engine with new SessionID
+                    this.engines.tiktok = new TikTokEngine(this.logger, { sessionId: updates.tiktokSessionId });
+                    this.logger.info('TikTok TTS engine reinitialized with new SessionID');
+                }
 
                 // Update Google API key if provided (and not the placeholder)
                 if (updates.googleApiKey && updates.googleApiKey !== '***HIDDEN***') {
