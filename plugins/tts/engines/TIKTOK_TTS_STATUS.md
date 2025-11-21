@@ -6,11 +6,19 @@
 
 ### How It Works
 
-1. **First Time**: Browser window opens with TikTok
+1. **First Time**: Browser window opens with TikTok (uses your default Chrome)
 2. **You Log In**: Log in to TikTok (no time limit!)
 3. **Auto-Detect**: SessionID detected automatically when you complete login
 4. **Auto-Save**: SessionID saved for all future use
 5. **Future Use**: Works automatically, no login needed
+
+### Important: Uses Your Default Browser
+
+✨ **NEW**: The system now uses your installed Chrome browser instead of Edge!
+
+- If you're already logged into TikTok in Chrome, it may use those cookies
+- Browser profile is separate to avoid conflicts
+- Falls back to Puppeteer's default if Chrome not found
 
 ### Quick Start
 

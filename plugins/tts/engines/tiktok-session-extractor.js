@@ -60,13 +60,65 @@ class TikTokSessionExtractor {
     }
 
     /**
+     * Get the executable path for the user's default Chrome/Chromium browser
+     * @private
+     */
+    _getChromePath() {
+        const { execSync } = require('child_process');
+        const os = require('os');
+        const fs = require('fs');
+        
+        // Common Chrome/Chromium paths
+        const possiblePaths = [];
+        
+        if (os.platform() === 'win32') {
+            // Windows paths
+            possiblePaths.push(
+                'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+                `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+                `${process.env.PROGRAMFILES}\\Google\\Chrome\\Application\\chrome.exe`,
+                `${process.env['PROGRAMFILES(X86)']}\\Google\\Chrome\\Application\\chrome.exe`
+            );
+        } else if (os.platform() === 'darwin') {
+            // macOS paths
+            possiblePaths.push(
+                '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+                '/Applications/Chromium.app/Contents/MacOS/Chromium'
+            );
+        } else {
+            // Linux paths
+            possiblePaths.push(
+                '/usr/bin/google-chrome',
+                '/usr/bin/google-chrome-stable',
+                '/usr/bin/chromium',
+                '/usr/bin/chromium-browser',
+                '/snap/bin/chromium'
+            );
+        }
+        
+        // Find first existing path
+        for (const path of possiblePaths) {
+            if (path && fs.existsSync(path)) {
+                this.logger.info(`🔍 Found Chrome at: ${path}`);
+                return path;
+            }
+        }
+        
+        this.logger.warn('⚠️  Chrome not found, using Puppeteer default (might be Edge on Windows)');
+        return null; // Let Puppeteer use its default
+    }
+
+    /**
      * Extract SessionID from TikTok using headless browser
      * @private
      */
     async _extractSessionId() {
         try {
-            // Launch headless browser
-            this.browser = await puppeteer.launch({
+            const chromePath = this._getChromePath();
+            
+            // Launch headless browser with user's Chrome if available
+            const launchOptions = {
                 headless: 'new', // Use new headless mode
                 args: [
                     '--no-sandbox',
@@ -77,7 +129,16 @@ class TikTokSessionExtractor {
                     '--no-zygote',
                     '--disable-gpu'
                 ]
-            });
+            };
+            
+            if (chromePath) {
+                launchOptions.executablePath = chromePath;
+                this.logger.info('🚀 Using system Chrome browser');
+            } else {
+                this.logger.info('🚀 Using Puppeteer default browser');
+            }
+            
+            this.browser = await puppeteer.launch(launchOptions);
 
             this.page = await this.browser.newPage();
 
@@ -113,11 +174,20 @@ class TikTokSessionExtractor {
                 this.page = null;
                 
                 // Launch visible browser for user to log in
-                this.browser = await puppeteer.launch({
+                const visibleLaunchOptions = {
                     headless: false, // Visible browser
                     args: ['--no-sandbox', '--disable-setuid-sandbox'],
                     defaultViewport: null // Use full window size
-                });
+                };
+                
+                if (chromePath) {
+                    visibleLaunchOptions.executablePath = chromePath;
+                    this.logger.info('🌐 Opening your default Chrome browser for login...');
+                } else {
+                    this.logger.info('🌐 Opening browser for login...');
+                }
+                
+                this.browser = await puppeteer.launch(visibleLaunchOptions);
 
                 this.page = await this.browser.newPage();
                 await this.page.setUserAgent(this.USER_AGENT);
