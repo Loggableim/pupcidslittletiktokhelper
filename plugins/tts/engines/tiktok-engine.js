@@ -7,33 +7,13 @@ const axios = require('axios');
 class TikTokEngine {
     constructor(logger) {
         this.logger = logger;
-        // Multiple proxy endpoints for redundancy
-        // Using publicly accessible proxies that don't require authentication
-        this.endpoints = [
-            // Try various public proxy endpoints
-            {
-                url: 'https://tiktok-tts.weilnet.workers.dev/api/generation',
-                format: 'proxy'
-            },
-            {
-                url: 'https://countik.com/api/text/speech',
-                format: 'proxy'
-            },
-            {
-                url: 'https://gesserit.co/api/tiktok-tts',
-                format: 'proxy'
-            },
-            {
-                url: 'https://tiktok-tts.vercel.app/api/generate',
-                format: 'proxy'
-            },
-            {
-                url: 'https://lazypy.ro/tts/request_tiktok.php',
-                format: 'proxy'
-            }
+        this.apiUrl = 'https://tiktok-tts.weilnet.workers.dev/api/generation';
+        this.fallbackUrls = [
+            'https://countik.com/api/text/speech',
+            'https://gesserit.co/api/tiktok-tts'
         ];
-        this.timeout = 15000; // 15s timeout
-        this.maxRetries = 1; // Try each endpoint once
+        this.timeout = 15000; // 15s timeout with retries
+        this.maxRetries = 2;
     }
 
     /**
@@ -148,27 +128,38 @@ class TikTokEngine {
      */
     async synthesize(text, voiceId) {
         let lastError;
-        let attemptCount = 0;
 
-        // Try each endpoint in sequence
-        for (const endpoint of this.endpoints) {
+        // Try primary URL with retries
+        for (let attempt = 0; attempt < this.maxRetries; attempt++) {
             try {
-                attemptCount++;
-                this.logger.info(`TikTok TTS attempt ${attemptCount}: ${endpoint.url.substring(0, 50)}...`);
-                
-                const result = await this._makeRequest(endpoint, text, voiceId);
+                const result = await this._makeRequest(this.apiUrl, text, voiceId);
                 if (result) {
-                    this.logger.info(`TikTok TTS success: ${text.substring(0, 30)}... (voice: ${voiceId}, endpoint: ${endpoint.format})`);
+                    this.logger.info(`TikTok TTS success: ${text.substring(0, 30)}... (voice: ${voiceId}, attempt: ${attempt + 1})`);
                     return result;
                 }
             } catch (error) {
                 lastError = error;
-                this.logger.warn(`TikTok TTS endpoint ${endpoint.format} failed: ${error.message}`);
-                
-                // Brief delay before trying next endpoint
-                if (attemptCount < this.endpoints.length) {
-                    await this._delay(500);
+                this.logger.warn(`TikTok TTS attempt ${attempt + 1} failed: ${error.message}`);
+
+                // Exponential backoff
+                if (attempt < this.maxRetries - 1) {
+                    await this._delay(Math.pow(2, attempt) * 1000);
                 }
+            }
+        }
+
+        // Try fallback URLs
+        for (const fallbackUrl of this.fallbackUrls) {
+            try {
+                this.logger.info(`Trying fallback URL: ${fallbackUrl}`);
+                const result = await this._makeRequest(fallbackUrl, text, voiceId);
+                if (result) {
+                    this.logger.info(`TikTok TTS success via fallback: ${fallbackUrl}`);
+                    return result;
+                }
+            } catch (error) {
+                lastError = error;
+                this.logger.warn(`Fallback ${fallbackUrl} failed: ${error.message}`);
             }
         }
 
@@ -179,33 +170,27 @@ class TikTokEngine {
     /**
      * Make TTS request to endpoint
      */
-    async _makeRequest(endpoint, text, voiceId) {
-        // All endpoints use proxy format
-        const requestData = {
-            text: text,
-            voice: voiceId
-        };
-
+    async _makeRequest(url, text, voiceId) {
         const response = await axios.post(
-            endpoint.url,
-            requestData,
+            url,
+            {
+                text: text,
+                voice: voiceId
+            },
             {
                 headers: {
                     'Content-Type': 'application/json',
                     'User-Agent': 'TikTokLiveStreamTool/2.0'
                 },
-                timeout: this.timeout,
-                validateStatus: (status) => status === 200
+                timeout: this.timeout
             }
         );
 
-        // Handle different proxy response formats
+        // Handle different response formats
         if (response.data && response.data.data) {
             return response.data.data; // Primary format
         } else if (response.data && response.data.audioContent) {
             return response.data.audioContent; // Alternative format
-        } else if (response.data && response.data.audio) {
-            return response.data.audio; // Another alternative
         } else if (typeof response.data === 'string' && response.data.length > 100) {
             return response.data; // Direct base64
         }
