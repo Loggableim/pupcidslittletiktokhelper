@@ -162,6 +162,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('✗ Debug logs load failed:', error);
         }
 
+        // Load recent chat users for autocomplete (non-critical)
+        try {
+            await loadRecentUsers();
+            console.log('✓ Recent users loaded for autocomplete');
+        } catch (error) {
+            console.error('✗ Recent users load failed:', error);
+        }
+
         // Setup event listeners
         setupEventListeners();
 
@@ -210,6 +218,11 @@ function switchTab(tabName) {
     if (buttonEl) {
         buttonEl.classList.remove('border-transparent', 'text-gray-400');
         buttonEl.classList.add('border-blue-500', 'text-blue-400');
+    }
+
+    // Refresh recent users when switching to users tab
+    if (tabName === 'users') {
+        loadRecentUsers().catch(err => console.error('Failed to refresh recent users:', err));
     }
 }
 
@@ -583,6 +596,38 @@ async function loadUsers(filter = null) {
         console.error('Failed to load users:', error);
         showNotification(`Failed to load users: ${error.message}`, 'error');
         throw error;
+    }
+}
+
+/**
+ * Load recent chat users for autocomplete
+ */
+async function loadRecentUsers() {
+    try {
+        const data = await fetchJSON('/api/tts/recent-users?limit=100');
+
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to load recent users');
+        }
+
+        const datalist = document.getElementById('recentUsersList');
+        if (datalist && data.users) {
+            // Clear existing options
+            datalist.innerHTML = '';
+            
+            // Add options for each recent user
+            data.users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.username;
+                datalist.appendChild(option);
+            });
+            
+            console.log(`Loaded ${data.users.length} recent users for autocomplete`);
+        }
+
+    } catch (error) {
+        console.error('Failed to load recent users:', error);
+        // Non-critical, don't throw
     }
 }
 
