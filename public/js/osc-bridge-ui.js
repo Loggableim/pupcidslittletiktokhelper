@@ -205,11 +205,170 @@ function addLog(type, message) {
     }
 }
 
+// Parse value helper function
+function parseOSCValue(valueInput) {
+    let value = valueInput;
+    if (valueInput === 'true') value = true;
+    else if (valueInput === 'false') value = false;
+    else if (!isNaN(valueInput) && valueInput !== '') value = parseFloat(valueInput);
+    return value;
+}
+
 // Initial laden
 loadConfig();
+loadCustomPresets();
 
 // Status alle 2 Sekunden aktualisieren
 socket.emit('osc:get-status');
 setInterval(() => {
     socket.emit('osc:get-status');
 }, 2000);
+
+// Custom OSC Action Form Handler
+const customOscForm = document.getElementById('custom-osc-form');
+if (customOscForm) {
+    customOscForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const address = document.getElementById('custom-address').value;
+        const valueInput = document.getElementById('custom-value').value;
+        const duration = parseInt(document.getElementById('custom-duration').value) || 0;
+
+        const value = parseOSCValue(valueInput);
+
+        await sendCustomOSC(address, value, duration);
+    });
+}
+
+// Save Custom Preset Button
+const btnSaveCustom = document.getElementById('btn-save-custom');
+if (btnSaveCustom) {
+    btnSaveCustom.addEventListener('click', () => {
+        const address = document.getElementById('custom-address').value;
+        const valueInput = document.getElementById('custom-value').value;
+        const duration = parseInt(document.getElementById('custom-duration').value) || 0;
+
+        if (!address) {
+            alert('Bitte geben Sie eine OSC-Adresse ein');
+            return;
+        }
+
+        saveCustomPreset(address, valueInput, duration);
+    });
+}
+
+// Send Custom OSC Message
+async function sendCustomOSC(address, value, duration = 0) {
+    if (!address) {
+        alert('Bitte geben Sie eine OSC-Adresse ein');
+        return;
+    }
+
+    const response = await fetch('/api/osc/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            address: address,
+            args: [value]
+        })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        console.log('Custom OSC sent:', address, value);
+        
+        // Auto-reset if duration is set
+        if (duration > 0) {
+            setTimeout(async () => {
+                await fetch('/api/osc/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        address: address,
+                        args: [0]
+                    })
+                });
+            }, duration);
+        }
+    } else {
+        alert('Fehler beim Senden: ' + (data.error || 'OSC-Bridge nicht aktiv'));
+    }
+}
+
+// Save Custom Preset to localStorage
+function saveCustomPreset(address, value, duration) {
+    let presets = JSON.parse(localStorage.getItem('osc-custom-presets') || '[]');
+    
+    // Create a name from the address
+    const name = address.split('/').pop() || address;
+    
+    // Generate unique ID
+    let id = Date.now();
+    while (presets.some(p => p.id === id)) {
+        id++;
+    }
+    
+    const preset = {
+        id: id,
+        name: name,
+        address: address,
+        value: value,
+        duration: duration
+    };
+
+    presets.push(preset);
+    localStorage.setItem('osc-custom-presets', JSON.stringify(presets));
+    
+    loadCustomPresets();
+    alert('Preset gespeichert!');
+}
+
+// Load Custom Presets from localStorage
+function loadCustomPresets() {
+    const presets = JSON.parse(localStorage.getItem('osc-custom-presets') || '[]');
+    const container = document.getElementById('presets-container');
+    
+    if (!container) return;
+    
+    if (presets.length === 0) {
+        container.innerHTML = '<p style="color: var(--color-text-muted); font-size: 0.9em;">Keine Presets gespeichert</p>';
+        return;
+    }
+
+    container.innerHTML = presets.map(preset => `
+        <button class="param-btn" data-preset-id="${preset.id}">
+            🎯 ${preset.name}
+            <small style="display: block; font-size: 0.8em; opacity: 0.7;">${preset.address}</small>
+        </button>
+    `).join('');
+
+    // Add click handlers to preset buttons
+    container.querySelectorAll('.param-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const presetId = parseInt(btn.dataset.presetId);
+            const preset = presets.find(p => p.id === presetId);
+            if (preset) {
+                const value = parseOSCValue(preset.value);
+                sendCustomOSC(preset.address, value, preset.duration);
+            }
+        });
+        
+        // Add right-click to delete
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const presetId = parseInt(btn.dataset.presetId);
+            if (confirm('Preset löschen?')) {
+                deleteCustomPreset(presetId);
+            }
+        });
+    });
+}
+
+// Delete Custom Preset
+function deleteCustomPreset(presetId) {
+    let presets = JSON.parse(localStorage.getItem('osc-custom-presets') || '[]');
+    presets = presets.filter(p => p.id !== presetId);
+    localStorage.setItem('osc-custom-presets', JSON.stringify(presets));
+    loadCustomPresets();
+}
