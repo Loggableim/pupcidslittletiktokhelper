@@ -7,14 +7,14 @@ const os = require('os');
  * 
  * Ensures user configurations are stored outside the application directory
  * to survive updates. Supports:
- * - Windows: %LOCALAPPDATA%/TikTokStreamTool
- * - macOS: ~/Library/Application Support/TikTokStreamTool
- * - Linux: ~/.local/share/TikTokStreamTool
+ * - Windows: %LOCALAPPDATA%/pupcidslittletiktokhelper
+ * - macOS: ~/Library/Application Support/pupcidslittletiktokhelper
+ * - Linux: ~/.local/share/pupcidslittletiktokhelper
  * - Custom path: User-defined location (e.g., cloud sync folder)
  */
 class ConfigPathManager {
     constructor() {
-        this.APP_NAME = 'TikTokStreamTool';
+        this.APP_NAME = 'pupcidslittletiktokhelper';
         this.customConfigPath = null;
         this.settingsFile = null;
         
@@ -52,16 +52,16 @@ class ConfigPathManager {
 
         switch (platform) {
             case 'win32':
-                // Windows: %LOCALAPPDATA%\TikTokStreamTool
+                // Windows: %LOCALAPPDATA%\pupcidslittletiktokhelper
                 return path.join(process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'), this.APP_NAME);
             
             case 'darwin':
-                // macOS: ~/Library/Application Support/TikTokStreamTool
+                // macOS: ~/Library/Application Support/pupcidslittletiktokhelper
                 return path.join(homeDir, 'Library', 'Application Support', this.APP_NAME);
             
             case 'linux':
             default:
-                // Linux: ~/.local/share/TikTokStreamTool
+                // Linux: ~/.local/share/pupcidslittletiktokhelper
                 return path.join(homeDir, '.local', 'share', this.APP_NAME);
         }
     }
