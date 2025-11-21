@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OSC-Bridge Settings</title>
+    <link rel="stylesheet" href="/css/themes.css">
     <style>
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background: #1a1a1a;
-            color: #e0e0e0;
+            background: var(--color-bg-primary);
+            color: var(--color-text-primary);
             padding: 20px;
             margin: 0;
         }
@@ -19,11 +20,11 @@
         }
 
         .card {
-            background: #252525;
+            background: var(--color-bg-card);
             border-radius: 12px;
             padding: 24px;
             margin-bottom: 20px;
-            border: 1px solid #333;
+            border: 1px solid var(--color-border);
         }
 
         .card-header {
@@ -32,7 +33,7 @@
             justify-content: space-between;
             margin-bottom: 20px;
             padding-bottom: 16px;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid var(--color-border);
         }
 
         .card-title {
@@ -52,15 +53,15 @@
         }
 
         .status-indicator.running {
-            background: #1a4d1a;
-            color: #4ade80;
-            border: 1px solid #2d662d;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--color-accent-success);
+            border: 1px solid var(--color-accent-success);
         }
 
         .status-indicator.stopped {
-            background: #4a1a1a;
-            color: #f87171;
-            border: 1px solid #662d2d;
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--color-accent-danger);
+            border: 1px solid var(--color-accent-danger);
         }
 
         .status-dot {
@@ -71,11 +72,11 @@
         }
 
         .status-indicator.running .status-dot {
-            background: #4ade80;
+            background: var(--color-accent-success);
         }
 
         .status-indicator.stopped .status-dot {
-            background: #f87171;
+            background: var(--color-accent-danger);
         }
 
         @keyframes pulse {
@@ -91,24 +92,24 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
-            color: #b0b0b0;
+            color: var(--color-text-secondary);
         }
 
         .form-control {
             width: 100%;
             padding: 10px 14px;
-            background: #1a1a1a;
-            border: 1px solid #404040;
+            background: var(--color-input-bg);
+            border: 1px solid var(--color-input-border);
             border-radius: 6px;
-            color: #e0e0e0;
+            color: var(--color-input-text);
             font-size: 14px;
             transition: all 0.2s;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: var(--color-input-focus);
+            box-shadow: 0 0 0 3px var(--color-active-bg);
         }
 
         .checkbox-group {
@@ -134,39 +135,42 @@
         }
 
         .btn-primary {
-            background: #3b82f6;
+            background: var(--color-accent-primary);
             color: white;
         }
 
         .btn-primary:hover {
-            background: #2563eb;
+            background: var(--color-accent-primary);
+            filter: brightness(0.9);
         }
 
         .btn-success {
-            background: #10b981;
+            background: var(--color-accent-success);
             color: white;
         }
 
         .btn-success:hover {
-            background: #059669;
+            background: var(--color-accent-success);
+            filter: brightness(0.9);
         }
 
         .btn-danger {
-            background: #ef4444;
+            background: var(--color-accent-danger);
             color: white;
         }
 
         .btn-danger:hover {
-            background: #dc2626;
+            background: var(--color-accent-danger);
+            filter: brightness(0.9);
         }
 
         .btn-secondary {
-            background: #6b7280;
-            color: white;
+            background: var(--color-btn-secondary-bg);
+            color: var(--color-btn-secondary-text);
         }
 
         .btn-secondary:hover {
-            background: #4b5563;
+            background: var(--color-btn-secondary-hover);
         }
 
         .btn-group {
@@ -182,28 +186,28 @@
         }
 
         .stat-card {
-            background: #1a1a1a;
+            background: var(--color-bg-secondary);
             padding: 16px;
             border-radius: 8px;
-            border: 1px solid #333;
+            border: 1px solid var(--color-border);
         }
 
         .stat-value {
             font-size: 2em;
             font-weight: 600;
-            color: #3b82f6;
+            color: var(--color-accent-primary);
             margin-bottom: 4px;
         }
 
         .stat-label {
             font-size: 0.9em;
-            color: #888;
+            color: var(--color-text-muted);
         }
 
         .info-box {
-            background: #1a2332;
-            border: 1px solid #2d3748;
-            border-left: 4px solid #3b82f6;
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-left: 4px solid var(--color-accent-primary);
             padding: 16px;
             border-radius: 6px;
             margin-bottom: 20px;
@@ -211,12 +215,12 @@
 
         .info-box h4 {
             margin: 0 0 8px 0;
-            color: #3b82f6;
+            color: var(--color-accent-primary);
         }
 
         .info-box p {
             margin: 0;
-            color: #a0aec0;
+            color: var(--color-text-secondary);
             font-size: 0.9em;
             line-height: 1.5;
         }
@@ -230,18 +234,18 @@
 
         .param-btn {
             padding: 8px 12px;
-            background: #2d3748;
-            border: 1px solid #404040;
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
             border-radius: 6px;
-            color: #e0e0e0;
+            color: var(--color-text-primary);
             cursor: pointer;
             text-align: left;
             transition: all 0.2s;
         }
 
         .param-btn:hover {
-            background: #374151;
-            border-color: #3b82f6;
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
         }
 
         .param-btn:active {
@@ -249,8 +253,8 @@
         }
 
         .log-viewer {
-            background: #0d1117;
-            border: 1px solid #30363d;
+            background: var(--color-bg-primary);
+            border: 1px solid var(--color-border);
             border-radius: 6px;
             padding: 12px;
             max-height: 300px;
@@ -266,15 +270,15 @@
         }
 
         .log-entry.send {
-            color: #4ade80;
+            color: var(--color-accent-success);
         }
 
         .log-entry.recv {
-            color: #3b82f6;
+            color: var(--color-accent-primary);
         }
 
         .log-entry.error {
-            color: #f87171;
+            color: var(--color-accent-danger);
         }
     </style>
 </head>
@@ -383,6 +387,60 @@
             </div>
         </div>
 
+        <!-- Custom OSC Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Eigene OSC-Aktionen</h2>
+            </div>
+
+            <div class="info-box">
+                <h4>Benutzerdefinierte OSC-Nachrichten</h4>
+                <p>Senden Sie eigene OSC-Nachrichten an VRChat oder andere OSC-kompatible Anwendungen. 
+                   Die Nachrichten werden an die konfigurierte Zieladresse gesendet.</p>
+            </div>
+
+            <form id="custom-osc-form">
+                <div class="form-group">
+                    <label for="custom-address">OSC-Adresse</label>
+                    <input type="text" class="form-control" id="custom-address" name="customAddress" 
+                           placeholder="/avatar/parameters/CustomParameter" required>
+                    <small style="color: var(--color-text-muted); font-size: 0.85em;">
+                        Muss mit / beginnen, z.B. /avatar/parameters/MyCustomParam
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-value">Wert</label>
+                    <input type="text" class="form-control" id="custom-value" name="customValue" 
+                           placeholder="1" required>
+                    <small style="color: var(--color-text-muted); font-size: 0.85em;">
+                        Zahl (z.B. 1, 0.5, 100), Text (z.B. "Hallo") oder Boolean (true/false)
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-duration">Auto-Reset nach (ms, optional)</label>
+                    <input type="number" class="form-control" id="custom-duration" name="customDuration" 
+                           placeholder="2000" min="0">
+                    <small style="color: var(--color-text-muted); font-size: 0.85em;">
+                        Wenn gesetzt, wird der Wert nach der angegebenen Zeit auf 0 zurückgesetzt
+                    </small>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">Senden</button>
+                    <button type="button" class="btn btn-secondary" id="btn-save-custom">Als Preset speichern</button>
+                </div>
+            </form>
+
+            <div id="custom-presets" style="margin-top: 20px;">
+                <h4 style="margin-bottom: 12px; color: var(--color-text-secondary);">Gespeicherte Presets</h4>
+                <div id="presets-container" class="vrchat-params">
+                    <!-- Presets werden hier dynamisch eingefügt -->
+                </div>
+            </div>
+        </div>
+
         <!-- Live Log (optional, nur wenn verbose) -->
         <div class="card" id="log-card" style="display: none;">
             <div class="card-header">
@@ -393,6 +451,7 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/theme-manager.js"></script>
     <script src="/js/osc-bridge-ui.js"></script>
 </body>
 </html>

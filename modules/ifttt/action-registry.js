@@ -648,6 +648,182 @@ class ActionRegistry {
             }
         });
 
+        // VRChat OSC Actions
+        this.register('osc:vrchat:wave', {
+            name: 'VRChat: Wave',
+            description: 'Trigger wave gesture in VRChat',
+            category: 'osc',
+            icon: 'hand',
+            fields: [
+                { name: 'duration', label: 'Duration (milliseconds)', type: 'number', min: 100, max: 10000, default: 2000 }
+            ],
+            executor: async (action, context, services) => {
+                const osc = services.osc;
+                if (!osc) {
+                    services.logger?.warn('OSC service not available');
+                    throw new Error('OSC service not available');
+                }
+                
+                services.logger?.info('👋 VRChat: Wave');
+                
+                if (typeof osc.wave === 'function') {
+                    osc.wave(action.duration || 2000);
+                } else if (typeof osc.send === 'function') {
+                    osc.send('/avatar/parameters/Wave', 1);
+                    setTimeout(() => osc.send('/avatar/parameters/Wave', 0), action.duration || 2000);
+                } else {
+                    throw new Error('OSC service not available');
+                }
+            }
+        });
+
+        this.register('osc:vrchat:celebrate', {
+            name: 'VRChat: Celebrate',
+            description: 'Trigger celebration in VRChat',
+            category: 'osc',
+            icon: 'party-popper',
+            fields: [
+                { name: 'duration', label: 'Duration (milliseconds)', type: 'number', min: 100, max: 10000, default: 3000 }
+            ],
+            executor: async (action, context, services) => {
+                const osc = services.osc;
+                if (!osc) {
+                    services.logger?.warn('OSC service not available');
+                    throw new Error('OSC service not available');
+                }
+                
+                services.logger?.info('🎉 VRChat: Celebrate');
+                
+                if (typeof osc.celebrate === 'function') {
+                    osc.celebrate(action.duration || 3000);
+                } else if (typeof osc.send === 'function') {
+                    osc.send('/avatar/parameters/Celebrate', 1);
+                    setTimeout(() => osc.send('/avatar/parameters/Celebrate', 0), action.duration || 3000);
+                } else {
+                    throw new Error('OSC service not available');
+                }
+            }
+        });
+
+        this.register('osc:vrchat:dance', {
+            name: 'VRChat: Dance',
+            description: 'Trigger dance animation in VRChat',
+            category: 'osc',
+            icon: 'music',
+            fields: [
+                { name: 'duration', label: 'Duration (milliseconds)', type: 'number', min: 100, max: 30000, default: 5000 }
+            ],
+            executor: async (action, context, services) => {
+                const osc = services.osc;
+                if (!osc) {
+                    services.logger?.warn('OSC service not available');
+                    throw new Error('OSC service not available');
+                }
+                
+                services.logger?.info('💃 VRChat: Dance');
+                
+                if (typeof osc.dance === 'function') {
+                    osc.dance(action.duration || 5000);
+                } else if (typeof osc.send === 'function') {
+                    osc.send('/avatar/parameters/DanceTrigger', 1);
+                    setTimeout(() => osc.send('/avatar/parameters/DanceTrigger', 0), action.duration || 5000);
+                } else {
+                    throw new Error('OSC service not available');
+                }
+            }
+        });
+
+        this.register('osc:vrchat:hearts', {
+            name: 'VRChat: Hearts',
+            description: 'Trigger hearts effect in VRChat',
+            category: 'osc',
+            icon: 'heart',
+            fields: [
+                { name: 'duration', label: 'Duration (milliseconds)', type: 'number', min: 100, max: 10000, default: 2000 }
+            ],
+            executor: async (action, context, services) => {
+                const osc = services.osc;
+                if (!osc) {
+                    services.logger?.warn('OSC service not available');
+                    throw new Error('OSC service not available');
+                }
+                
+                services.logger?.info('❤️ VRChat: Hearts');
+                
+                if (typeof osc.hearts === 'function') {
+                    osc.hearts(action.duration || 2000);
+                } else if (typeof osc.send === 'function') {
+                    osc.send('/avatar/parameters/Hearts', 1);
+                    setTimeout(() => osc.send('/avatar/parameters/Hearts', 0), action.duration || 2000);
+                } else {
+                    throw new Error('OSC service not available');
+                }
+            }
+        });
+
+        this.register('osc:vrchat:confetti', {
+            name: 'VRChat: Confetti',
+            description: 'Trigger confetti effect in VRChat',
+            category: 'osc',
+            icon: 'sparkles',
+            fields: [
+                { name: 'duration', label: 'Duration (milliseconds)', type: 'number', min: 100, max: 10000, default: 3000 }
+            ],
+            executor: async (action, context, services) => {
+                const osc = services.osc;
+                if (!osc) {
+                    services.logger?.warn('OSC service not available');
+                    throw new Error('OSC service not available');
+                }
+                
+                services.logger?.info('🎊 VRChat: Confetti');
+                
+                if (typeof osc.confetti === 'function') {
+                    osc.confetti(action.duration || 3000);
+                } else if (typeof osc.send === 'function') {
+                    osc.send('/avatar/parameters/Confetti', 1);
+                    setTimeout(() => osc.send('/avatar/parameters/Confetti', 0), action.duration || 3000);
+                } else {
+                    throw new Error('OSC service not available');
+                }
+            }
+        });
+
+        this.register('osc:vrchat:emote', {
+            name: 'VRChat: Trigger Emote',
+            description: 'Trigger a specific emote slot in VRChat',
+            category: 'osc',
+            icon: 'smile',
+            fields: [
+                { name: 'slot', label: 'Emote Slot (0-7)', type: 'number', min: 0, max: 7, default: 0, required: true },
+                { name: 'duration', label: 'Duration (milliseconds)', type: 'number', min: 100, max: 10000, default: 2000 }
+            ],
+            executor: async (action, context, services) => {
+                const osc = services.osc;
+                if (!osc) {
+                    services.logger?.warn('OSC service not available');
+                    throw new Error('OSC service not available');
+                }
+                
+                const slot = action.slot || 0;
+                if (slot < 0 || slot > 7) {
+                    throw new Error('Emote slot must be between 0 and 7');
+                }
+                
+                services.logger?.info(`😀 VRChat: Emote Slot ${slot}`);
+                
+                if (typeof osc.triggerEmote === 'function') {
+                    osc.triggerEmote(slot, action.duration || 2000);
+                } else if (typeof osc.send === 'function') {
+                    osc.send(`/avatar/parameters/EmoteSlot${slot}`, 1);
+                    setTimeout(() => osc.send(`/avatar/parameters/EmoteSlot${slot}`, 0), action.duration || 2000);
+                } else {
+                    throw new Error('OSC service not available');
+                }
+            }
+        });
+
+
         // Delay Action
         this.register('delay:wait', {
             name: 'Wait/Delay',
