@@ -263,6 +263,208 @@ document.getElementById('select-audio-btn').addEventListener('click', () => {
     document.getElementById('audioInput').click();
 });
 
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadConfig();
+    await loadStats();
+    await loadTiers();
+    await loadUserStats();
+});
+
+// Socket events
+socket.on('milestone:stats-update', (data) => {
+    updateStatsDisplay(data, config);
+    loadUserStats(); // Refresh user stats when milestone updates
+});
+
+// ========== TIER MANAGEMENT ==========
+
+let tiers = [];
+
+async function loadTiers() {
+    try {
+        const response = await fetch('/api/gift-milestone/tiers');
+        const data = await response.json();
+        if (data.success) {
+            tiers = data.tiers;
+            displayTiers(tiers);
+        }
+    } catch (error) {
+        console.error('Error loading tiers:', error);
+        showNotification('Fehler beim Laden der Tiers', 'error');
+    }
+}
+
+function displayTiers(tiers) {
+    const container = document.getElementById('tiersContainer');
+    if (!tiers || tiers.length === 0) {
+        container.innerHTML = '<p style="text-align: center; opacity: 0.7;">Keine Tiers definiert</p>';
+        return;
+    }
+
+    container.innerHTML = tiers.map(tier => `
+        <div class="tier-card" data-tier-id="${tier.id}">
+            <div class="tier-header">
+                <div>
+                    <div class="tier-name">🏆 ${tier.tier_name}</div>
+                    <div class="tier-threshold">${tier.threshold.toLocaleString()} Coins</div>
+                </div>
+                <div>
+                    <span class="tier-badge">${tier.enabled ? 'Aktiv' : 'Inaktiv'}</span>
+                </div>
+            </div>
+            <div class="tier-actions">
+                <button class="tier-btn edit" onclick="editTier(${tier.id})">✏️ Bearbeiten</button>
+                <button class="tier-btn delete" onclick="deleteTier(${tier.id})">🗑️ Löschen</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function editTier(tierId) {
+    const tier = tiers.find(t => t.id === tierId);
+    if (!tier) return;
+
+    const newName = prompt('Tier-Name:', tier.tier_name);
+    if (!newName) return;
+
+    const newThreshold = prompt('Schwellenwert (Coins):', tier.threshold);
+    if (!newThreshold) return;
+
+    try {
+        const response = await fetch(`/api/gift-milestone/tiers/${tierId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tier_name: newName,
+                threshold: parseInt(newThreshold),
+                animation_gif_path: tier.animation_gif_path,
+                animation_video_path: tier.animation_video_path,
+                animation_audio_path: tier.animation_audio_path,
+                enabled: tier.enabled,
+                sort_order: tier.sort_order
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Tier aktualisiert');
+            await loadTiers();
+        } else {
+            showNotification('Fehler beim Aktualisieren: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error updating tier:', error);
+        showNotification('Fehler beim Aktualisieren', 'error');
+    }
+}
+
+async function deleteTier(tierId) {
+    if (!confirm('Möchten Sie dieses Tier wirklich löschen?')) return;
+
+    try {
+        const response = await fetch(`/api/gift-milestone/tiers/${tierId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Tier gelöscht');
+            await loadTiers();
+        } else {
+            showNotification('Fehler beim Löschen: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting tier:', error);
+        showNotification('Fehler beim Löschen', 'error');
+    }
+}
+
+document.getElementById('addTierButton')?.addEventListener('click', async () => {
+    const name = prompt('Tier-Name:');
+    if (!name) return;
+
+    const threshold = prompt('Schwellenwert (Coins):');
+    if (!threshold) return;
+
+    try {
+        const response = await fetch('/api/gift-milestone/tiers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tier_name: name,
+                threshold: parseInt(threshold),
+                sort_order: tiers.length + 1
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Tier hinzugefügt');
+            await loadTiers();
+        } else {
+            showNotification('Fehler beim Hinzufügen: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding tier:', error);
+        showNotification('Fehler beim Hinzufügen', 'error');
+    }
+});
+
+// ========== USER STATISTICS ==========
+
+async function loadUserStats() {
+    try {
+        const response = await fetch('/api/gift-milestone/users');
+        const data = await response.json();
+        if (data.success) {
+            displayUserStats(data.users);
+        }
+    } catch (error) {
+        console.error('Error loading user stats:', error);
+        showNotification('Fehler beim Laden der Benutzerstatistiken', 'error');
+    }
+}
+
+function displayUserStats(users) {
+    const container = document.getElementById('userStatsContainer');
+    if (!users || users.length === 0) {
+        container.innerHTML = '<p style="text-align: center; opacity: 0.7;">Noch keine Benutzerstatistiken</p>';
+        return;
+    }
+
+    const topUsers = users.slice(0, 10); // Top 10 users
+
+    container.innerHTML = `
+        <table class="user-stats-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Benutzer</th>
+                    <th>Coins</th>
+                    <th>Aktuelles Tier</th>
+                    <th>Letzter Trigger</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${topUsers.map((user, index) => {
+                    const tier = user.current_tier_id ? tiers.find(t => t.id === user.current_tier_id) : null;
+                    const lastTrigger = user.last_trigger_at ? new Date(user.last_trigger_at).toLocaleString('de-DE') : '-';
+                    return `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${user.username || user.user_id}</td>
+                            <td>${user.cumulative_coins.toLocaleString()}</td>
+                            <td>${tier ? `<span class="tier-badge">🏆 ${tier.tier_name}</span>` : '-'}</td>
+                            <td>${lastTrigger}</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
 loadConfig();
 loadStats();
 setInterval(loadStats, 5000); // Update stats every 5 seconds

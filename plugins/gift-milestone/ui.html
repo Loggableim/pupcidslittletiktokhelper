@@ -368,6 +368,98 @@
             justify-content: center;
             font-weight: bold;
         }
+
+        .tier-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--color-border);
+            transition: all 0.3s ease;
+        }
+
+        .tier-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .tier-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .tier-name {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .tier-threshold {
+            font-size: 1.1em;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .tier-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .tier-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+
+        .tier-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .tier-btn.edit {
+            background: rgba(33,150,243,0.8);
+            color: white;
+        }
+
+        .tier-btn.delete {
+            background: rgba(244,67,54,0.8);
+            color: white;
+        }
+
+        .user-stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .user-stats-table th,
+        .user-stats-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .user-stats-table th {
+            background: rgba(0,0,0,0.3);
+            font-weight: 600;
+        }
+
+        .user-stats-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .tier-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            background: rgba(255,193,7,0.8);
+            color: var(--color-text-primary);
+        }
     </style>
 </head>
 <body>
@@ -505,6 +597,34 @@
             <div style="text-align: center;">
                 <button class="test-button" id="testButton">🧪 Celebration testen</button>
                 <button class="reset-button" id="resetButton">🔄 Statistiken zurücksetzen</button>
+            </div>
+        </div>
+
+        <!-- Tier Management -->
+        <div class="section">
+            <h2>🏆 Tier-Verwaltung</h2>
+            <p class="subtitle">Mehrere Meilenstein-Stufen mit individuellen Animationen</p>
+            
+            <div id="tiersContainer">
+                <div style="text-align: center; padding: 20px;">
+                    <span>Lade Tiers...</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="upload-button" id="addTierButton">➕ Neues Tier hinzufügen</button>
+            </div>
+        </div>
+
+        <!-- User Statistics -->
+        <div class="section">
+            <h2>👥 Benutzer-Statistiken</h2>
+            <p class="subtitle">Top-Spender nach Gesamtcoins</p>
+            
+            <div id="userStatsContainer">
+                <div style="text-align: center; padding: 20px;">
+                    <span>Lade Benutzerstatistiken...</span>
+                </div>
             </div>
         </div>
 
