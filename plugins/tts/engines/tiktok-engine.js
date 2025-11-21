@@ -2,61 +2,70 @@ const axios = require('axios');
 
 /**
  * TikTok TTS Engine
- * Uses TikTok's official API endpoints directly
+ * Uses TikTok's official API endpoints with SessionID authentication
  * Based on research from TikTok-Chat-Reader and community TTS projects
  * 
- * ⚠️  IMPORTANT STATUS UPDATE (November 2024):
- * All public TikTok TTS endpoints are currently DOWN and returning errors:
- * - Weilbyte Workers: 500 Internal Server Error
- * - TikAPI: 403 Forbidden
- * - Official TikTok APIs: 404 Not Found
+ * ✅ SOLUTION (November 2024):
+ * TikTok TTS requires a valid SessionID from a logged-in TikTok account.
  * 
- * This is a widespread issue affecting all community TTS services.
- * See: https://github.com/Weilbyte/tiktok-tts/issues/54
+ * HOW TO GET YOUR SESSION ID:
+ * 1. Log in to TikTok in your browser (https://www.tiktok.com)
+ * 2. Open Developer Tools (F12)
+ * 3. Go to Application > Cookies > https://www.tiktok.com
+ * 4. Find the 'sessionid' cookie and copy its value
+ * 5. Set it in the TTS plugin settings or environment variable TIKTOK_SESSION_ID
  * 
- * RECOMMENDED ALTERNATIVES:
+ * The SessionID must be refreshed periodically (weekly/monthly) as it expires.
+ * 
+ * ALTERNATIVE: If you don't want to use SessionID:
  * 1. Google Cloud TTS (requires API key, very reliable)
  * 2. ElevenLabs TTS (requires API key, high quality)
  * 3. Browser SpeechSynthesis (client-side, free, no setup)
- * 4. Speechify Engine (if configured)
- * 
- * This code will continue attempting all known endpoints in case service is restored.
  */
 class TikTokEngine {
-    constructor(logger) {
+    constructor(logger, config = {}) {
         this.logger = logger;
+        this.config = config;
         
-        // Hybrid approach: Use both direct TikTok API endpoints and public proxy services
-        // This provides better reliability with multiple fallback options
+        // Get SessionID from config, environment, or database
+        this.sessionId = config.sessionId || process.env.TIKTOK_SESSION_ID || null;
+        
+        // Direct TikTok API endpoints (require SessionID for authentication)
+        // These are the working endpoints as of November 2024
         this.apiEndpoints = [
-            // Public proxy services (working as of 2024)
             {
-                url: 'https://tiktok-tts.weilnet.workers.dev/api/generation',
-                type: 'proxy',
-                format: 'weilnet'
-            },
-            {
-                url: 'https://tikapi.io/api/v1/public/tts',
-                type: 'proxy',
-                format: 'tikapi'
-            },
-            // Direct TikTok API endpoints (require proper headers)
-            {
-                url: 'https://api16-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                url: 'https://api16-normal-useast5.us.tiktokv.com/media/api/text/speech/invoke',
                 type: 'official',
-                format: 'tiktok'
+                format: 'tiktok',
+                requiresAuth: true
             },
             {
                 url: 'https://api22-normal-c-alisg.tiktokv.com/media/api/text/speech/invoke',
                 type: 'official',
-                format: 'tiktok'
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api16-normal-c-useast2a.tiktokv.com/media/api/text/speech/invoke',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
             }
         ];
         
         this.currentEndpointIndex = 0;
         this.timeout = 10000; // 10s timeout
-        this.maxRetries = 1; // Reduced retries per endpoint to fail faster
+        this.maxRetries = 1; // One retry per endpoint
         this.maxChunkLength = 300; // TikTok API limit per request
+        
+        // Log SessionID status
+        if (this.sessionId) {
+            this.logger.info(`✅ TikTok SessionID configured (${this.sessionId.substring(0, 8)}...)`);
+        } else {
+            this.logger.warn('⚠️  No TikTok SessionID configured. TikTok TTS will not work.');
+            this.logger.warn('💡 To fix: Set TIKTOK_SESSION_ID environment variable or configure in TTS settings.');
+            this.logger.warn('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for instructions.');
+        }
     }
 
     /**
@@ -205,6 +214,15 @@ class TikTokEngine {
      * @private
      */
     async _synthesizeChunk(text, voiceId) {
+        // Check if SessionID is required and available
+        if (!this.sessionId) {
+            const errorMessage = 'TikTok TTS requires a SessionID. Please configure TIKTOK_SESSION_ID environment variable or set it in TTS settings.';
+            this.logger.error(errorMessage);
+            this.logger.error('📚 Instructions: See plugins/tts/engines/TIKTOK_TTS_STATUS.md');
+            this.logger.error('💡 Alternative: Use Google Cloud TTS, ElevenLabs, or browser SpeechSynthesis instead.');
+            throw new Error(errorMessage);
+        }
+        
         let lastError;
         
         // Try each endpoint until one succeeds
@@ -218,7 +236,7 @@ class TikTokEngine {
                     
                     const result = await this._makeRequest(endpointConfig, text, voiceId);
                     if (result) {
-                        this.logger.info(`TikTok TTS success via ${endpointConfig.type}: ${text.substring(0, 30)}... (voice: ${voiceId})`);
+                        this.logger.info(`✅ TikTok TTS success via ${endpointConfig.type}: ${text.substring(0, 30)}... (voice: ${voiceId})`);
                         return result;
                     }
                 } catch (error) {
@@ -237,15 +255,15 @@ class TikTokEngine {
         }
         
         // All endpoints and retries failed
-        const errorMessage = `All TikTok TTS endpoints are currently unavailable. Last error: ${lastError?.message || 'Unknown'}`;
+        const errorMessage = `All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'}`;
         this.logger.error(errorMessage);
         this.logger.error('Tried endpoints:', this.apiEndpoints.map(e => `${e.type}:${e.url}`).join(', '));
-        this.logger.error('⚠️  TikTok TTS Service Status: All public TikTok TTS endpoints are currently down (500/403/404 errors).');
-        this.logger.error('💡 Recommended alternatives:');
-        this.logger.error('   1. Use Google Cloud TTS engine (more reliable)');
-        this.logger.error('   2. Use ElevenLabs TTS engine (high quality)');
-        this.logger.error('   3. Use browser SpeechSynthesis (client-side, free)');
-        this.logger.error('   4. Wait for TikTok endpoints to be restored (check GitHub issues)');
+        this.logger.error('❌ TikTok TTS failed. Possible causes:');
+        this.logger.error('   1. Invalid or expired SessionID - Get a fresh one from TikTok cookies');
+        this.logger.error('   2. TikTok changed their API - Check for updates');
+        this.logger.error('   3. Network/firewall blocking TikTok domains');
+        this.logger.error('💡 Quick fix: Update your TIKTOK_SESSION_ID in settings');
+        this.logger.error('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for full instructions');
         throw new Error(errorMessage);
     }
 
@@ -295,7 +313,7 @@ class TikTokEngine {
                 break;
                 
             case 'tiktok':
-                // Official TikTok API format
+                // Official TikTok API format with SessionID authentication
                 // Note: aid (Application ID) parameter is required by TikTok's internal API
                 // Common values: 1233 (TikTok app), 1180 (TikTok Lite)
                 const params = new URLSearchParams({
@@ -311,7 +329,9 @@ class TikTokEngine {
                         // Using a recent Android User-Agent string
                         // Format: app_name/version (OS; device_info; Build/build_id; api_version)
                         'User-Agent': 'com.zhiliaoapp.musically/2023400040 (Linux; U; Android 13; en_US; Pixel 7; Build/TQ3A.230805.001; tt-ok/3.12.13.4)',
-                        'Accept': '*/*'
+                        'Accept': '*/*',
+                        // CRITICAL: SessionID cookie is required for authentication
+                        'Cookie': `sessionid=${this.sessionId}`
                     },
                     timeout: this.timeout,
                     responseType: 'json'
