@@ -1,19 +1,71 @@
 const axios = require('axios');
+const TikTokSessionExtractor = require('./tiktok-session-extractor');
 
 /**
  * TikTok TTS Engine
- * Free TTS using TikTok's API via public endpoint
+ * Uses TikTok's official API endpoints with SessionID authentication
+ * Based on research from TikTok-Chat-Reader and community TTS projects
+ * 
+ * ✅ AUTOMATIC SESSION EXTRACTION (November 2024):
+ * The engine can automatically extract SessionID from TikTok:
+ * 1. Opens headless browser with TikTok
+ * 2. Uses saved cookies if available (auto-login)
+ * 3. Or prompts user to log in once (saves for future)
+ * 4. Automatically extracts and uses SessionID
+ * 
+ * MANUAL SETUP (Alternative):
+ * Set TIKTOK_SESSION_ID environment variable with your SessionID
+ * 
+ * The SessionID is saved and reused automatically.
  */
 class TikTokEngine {
-    constructor(logger) {
+    constructor(logger, config = {}) {
         this.logger = logger;
-        this.apiUrl = 'https://tiktok-tts.weilnet.workers.dev/api/generation';
-        this.fallbackUrls = [
-            'https://countik.com/api/text/speech',
-            'https://gesserit.co/api/tiktok-tts'
+        this.config = config;
+        
+        // Get SessionID from config or environment
+        this.sessionId = config.sessionId || process.env.TIKTOK_SESSION_ID || null;
+        this.sessionExtractor = new TikTokSessionExtractor(logger);
+        this.autoExtractEnabled = config.autoExtractSessionId !== false; // Enabled by default
+        
+        // Direct TikTok API endpoints (require SessionID for authentication)
+        // These are the working endpoints as of November 2024
+        this.apiEndpoints = [
+            {
+                url: 'https://api16-normal-useast5.us.tiktokv.com/media/api/text/speech/invoke',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api22-normal-c-alisg.tiktokv.com/media/api/text/speech/invoke',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api16-normal-c-useast2a.tiktokv.com/media/api/text/speech/invoke',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            }
         ];
-        this.timeout = 15000; // 15s timeout with retries
-        this.maxRetries = 2;
+        
+        this.currentEndpointIndex = 0;
+        this.timeout = 10000; // 10s timeout
+        this.maxRetries = 1; // One retry per endpoint
+        this.maxChunkLength = 300; // TikTok API limit per request
+        
+        // Log SessionID status
+        if (this.sessionId) {
+            this.logger.info(`✅ TikTok SessionID configured (length: ${this.sessionId.length} chars)`);
+        } else if (this.autoExtractEnabled) {
+            this.logger.info('🔄 TikTok SessionID will be auto-extracted on first TTS request');
+        } else {
+            this.logger.warn('⚠️  No TikTok SessionID configured. TikTok TTS will not work.');
+            this.logger.warn('💡 To fix: Set TIKTOK_SESSION_ID environment variable or enable auto-extraction.');
+            this.logger.warn('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for instructions.');
+        }
     }
 
     /**
@@ -127,75 +179,254 @@ class TikTokEngine {
      * @returns {Promise<string>} Base64-encoded MP3 audio
      */
     async synthesize(text, voiceId) {
+        // Split text into chunks if it exceeds the limit
+        const chunks = this._splitTextIntoChunks(text, this.maxChunkLength);
+        
+        if (chunks.length > 1) {
+            this.logger.info(`Text split into ${chunks.length} chunks for TTS processing`);
+        }
+        
+        // Process each chunk and combine results
+        const audioChunks = [];
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            this.logger.debug(`Processing chunk ${i + 1}/${chunks.length}: "${chunk.substring(0, 30)}..."`);
+            
+            const audioData = await this._synthesizeChunk(chunk, voiceId);
+            audioChunks.push(audioData);
+        }
+        
+        // If multiple chunks, concatenate them (simple concatenation for base64)
+        // Note: This is a simple approach. For perfect audio joining, decode->join->encode would be better
+        if (audioChunks.length === 1) {
+            return audioChunks[0];
+        } else {
+            this.logger.warn(`Text was split into ${audioChunks.length} chunks. Only the first chunk will be returned.`);
+            this.logger.warn(`For best results, keep TTS messages under 300 characters.`);
+            // TODO: Implement proper audio concatenation by decoding base64, joining MP3 files, re-encoding
+            // For now, return the first chunk to ensure some audio is played
+            return audioChunks[0];
+        }
+    }
+    
+    /**
+     * Synthesize a single chunk of text
+     * @private
+     */
+    async _synthesizeChunk(text, voiceId) {
+        // Check if SessionID is available, try auto-extraction if not
+        if (!this.sessionId) {
+            if (this.autoExtractEnabled) {
+                this.logger.info('🔄 SessionID not found, attempting automatic extraction...');
+                try {
+                    this.sessionId = await this.sessionExtractor.getSessionId();
+                    
+                    if (!this.sessionId) {
+                        const errorMessage = 'Failed to auto-extract TikTok SessionID. Please log in to TikTok when prompted or set TIKTOK_SESSION_ID manually.';
+                        this.logger.error(errorMessage);
+                        this.logger.error('📚 Instructions: See plugins/tts/engines/TIKTOK_TTS_STATUS.md');
+                        throw new Error(errorMessage);
+                    }
+                    
+                    this.logger.info('✅ SessionID auto-extracted successfully!');
+                } catch (error) {
+                    const errorMessage = `SessionID auto-extraction failed: ${error.message}`;
+                    this.logger.error(errorMessage);
+                    this.logger.error('💡 Manual setup: Set TIKTOK_SESSION_ID environment variable');
+                    this.logger.error('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md');
+                    throw new Error(errorMessage);
+                }
+            } else {
+                const errorMessage = 'TikTok TTS requires a SessionID. Please configure TIKTOK_SESSION_ID environment variable or enable auto-extraction.';
+                this.logger.error(errorMessage);
+                this.logger.error('📚 Instructions: See plugins/tts/engines/TIKTOK_TTS_STATUS.md');
+                this.logger.error('💡 Alternative: Use Google Cloud TTS, ElevenLabs, or browser SpeechSynthesis instead.');
+                throw new Error(errorMessage);
+            }
+        }
+        
         let lastError;
-
-        // Try primary URL with retries
-        for (let attempt = 0; attempt < this.maxRetries; attempt++) {
-            try {
-                const result = await this._makeRequest(this.apiUrl, text, voiceId);
-                if (result) {
-                    this.logger.info(`TikTok TTS success: ${text.substring(0, 30)}... (voice: ${voiceId}, attempt: ${attempt + 1})`);
-                    return result;
-                }
-            } catch (error) {
-                lastError = error;
-                this.logger.warn(`TikTok TTS attempt ${attempt + 1} failed: ${error.message}`);
-
-                // Exponential backoff
-                if (attempt < this.maxRetries - 1) {
-                    await this._delay(Math.pow(2, attempt) * 1000);
+        
+        // Try each endpoint until one succeeds
+        for (let endpointAttempt = 0; endpointAttempt < this.apiEndpoints.length; endpointAttempt++) {
+            const endpointConfig = this.apiEndpoints[this.currentEndpointIndex];
+            
+            // Try the current endpoint with retries
+            for (let retryAttempt = 0; retryAttempt < this.maxRetries; retryAttempt++) {
+                try {
+                    this.logger.debug(`Attempting ${endpointConfig.type} TTS: ${endpointConfig.url} (attempt ${retryAttempt + 1}/${this.maxRetries})`);
+                    
+                    const result = await this._makeRequest(endpointConfig, text, voiceId);
+                    if (result) {
+                        this.logger.info(`✅ TikTok TTS success via ${endpointConfig.type}: ${text.substring(0, 30)}... (voice: ${voiceId})`);
+                        return result;
+                    }
+                } catch (error) {
+                    lastError = error;
+                    this.logger.warn(`TikTok TTS ${endpointConfig.type} endpoint failed: ${error.message}`);
+                    
+                    // Check if error is due to invalid/expired SessionID
+                    if (error.message.includes('401') || error.message.includes('403') || error.message.includes('Invalid session')) {
+                        this.logger.warn('⚠️  SessionID may be expired or invalid');
+                        
+                        // Try to refresh SessionID if auto-extract is enabled
+                        if (this.autoExtractEnabled && endpointAttempt === 0 && retryAttempt === 0) {
+                            this.logger.info('🔄 Attempting to refresh SessionID...');
+                            try {
+                                this.sessionId = await this.sessionExtractor.getSessionId(true); // Force refresh
+                                if (this.sessionId) {
+                                    this.logger.info('✅ SessionID refreshed, retrying...');
+                                    continue; // Retry with new SessionID
+                                }
+                            } catch (refreshError) {
+                                this.logger.error(`Failed to refresh SessionID: ${refreshError.message}`);
+                            }
+                        }
+                    }
+                    
+                    // Small backoff for retries on same endpoint
+                    if (retryAttempt < this.maxRetries - 1) {
+                        await this._delay(500);
+                    }
                 }
             }
+            
+            // Move to next endpoint for next attempt
+            this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.apiEndpoints.length;
         }
-
-        // Try fallback URLs
-        for (const fallbackUrl of this.fallbackUrls) {
-            try {
-                this.logger.info(`Trying fallback URL: ${fallbackUrl}`);
-                const result = await this._makeRequest(fallbackUrl, text, voiceId);
-                if (result) {
-                    this.logger.info(`TikTok TTS success via fallback: ${fallbackUrl}`);
-                    return result;
-                }
-            } catch (error) {
-                lastError = error;
-                this.logger.warn(`Fallback ${fallbackUrl} failed: ${error.message}`);
-            }
-        }
-
-        // All attempts failed
-        throw new Error(`All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'}`);
+        
+        // All endpoints and retries failed
+        const errorMessage = `All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'}`;
+        this.logger.error(errorMessage);
+        this.logger.error('Tried endpoints:', this.apiEndpoints.map(e => `${e.type}:${e.url}`).join(', '));
+        this.logger.error('❌ TikTok TTS failed. Possible causes:');
+        this.logger.error('   1. Invalid or expired SessionID - Get a fresh one from TikTok cookies');
+        this.logger.error('   2. TikTok changed their API - Check for updates');
+        this.logger.error('   3. Network/firewall blocking TikTok domains');
+        this.logger.error('💡 Quick fix: Update your TIKTOK_SESSION_ID in settings');
+        this.logger.error('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for full instructions');
+        throw new Error(errorMessage);
     }
 
     /**
      * Make TTS request to endpoint
+     * Handles different API formats (proxy services vs official TikTok API)
+     * @private
      */
-    async _makeRequest(url, text, voiceId) {
-        const response = await axios.post(
-            url,
-            {
-                text: text,
-                voice: voiceId
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'TikTokLiveStreamTool/2.0'
-                },
-                timeout: this.timeout
-            }
-        );
-
-        // Handle different response formats
-        if (response.data && response.data.data) {
-            return response.data.data; // Primary format
-        } else if (response.data && response.data.audioContent) {
-            return response.data.audioContent; // Alternative format
-        } else if (typeof response.data === 'string' && response.data.length > 100) {
-            return response.data; // Direct base64
+    async _makeRequest(endpointConfig, text, voiceId) {
+        const { url, type, format } = endpointConfig;
+        
+        // Configure request for TikTok API format with SessionID authentication
+        if (format !== 'tiktok') {
+            throw new Error(`Unsupported endpoint format: ${format}`);
         }
-
+        
+        // Official TikTok API format with SessionID authentication
+        // Note: aid (Application ID) parameter is required by TikTok's internal API
+        // Common values: 1233 (TikTok app), 1180 (TikTok Lite)
+        const params = new URLSearchParams({
+            text_speaker: voiceId,
+            req_text: text,
+            speaker_map_type: '0',
+            aid: '1233' // Application ID for TikTok
+        });
+        const requestData = params.toString();
+        const requestConfig = {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                // Using a recent Android User-Agent string
+                // Format: app_name/version (OS; device_info; Build/build_id; api_version)
+                'User-Agent': 'com.zhiliaoapp.musically/2023400040 (Linux; U; Android 13; en_US; Pixel 7; Build/TQ3A.230805.001; tt-ok/3.12.13.4)',
+                'Accept': '*/*',
+                // CRITICAL: SessionID cookie is required for authentication
+                'Cookie': `sessionid=${this.sessionId}`
+            },
+            timeout: this.timeout,
+            responseType: 'json'
+        };
+        
+        const response = await axios.post(url, requestData, requestConfig);
+        
+        // Handle different response formats
+        return this._extractAudioData(response.data);
+    }
+    
+    /**
+     * Extract audio data from TikTok API response
+     * @private
+     */
+    _extractAudioData(data) {
+        // Official TikTok API returns: { status_code: 0, data: { v_str: "base64..." } }
+        if (data && data.status_code === 0) {
+            if (data.data && data.data.v_str) {
+                return data.data.v_str;
+            } else if (data.data && typeof data.data === 'string') {
+                return data.data;
+            }
+        }
+        
+        // Check for error message
+        if (data && data.status_msg) {
+            throw new Error(`TikTok API error: ${data.status_msg}`);
+        }
+        
+        // Fallback: try to find base64 data in response
+        if (typeof data === 'string' && data.length > 100) {
+            return data;
+        }
+        
         throw new Error('Invalid response format from TikTok TTS API');
+    }
+    
+    /**
+     * Split text into chunks that fit within TikTok's character limit
+     * @private
+     */
+    _splitTextIntoChunks(text, maxLength) {
+        if (text.length <= maxLength) {
+            return [text];
+        }
+        
+        const chunks = [];
+        let currentChunk = '';
+        
+        // Split by sentences first (period, exclamation, question mark)
+        const sentences = text.split(/([.!?]+\s+)/);
+        
+        for (const sentence of sentences) {
+            if ((currentChunk + sentence).length <= maxLength) {
+                currentChunk += sentence;
+            } else {
+                if (currentChunk) {
+                    chunks.push(currentChunk.trim());
+                }
+                
+                // If a single sentence is too long, split by words
+                if (sentence.length > maxLength) {
+                    const words = sentence.split(' ');
+                    currentChunk = '';
+                    
+                    for (const word of words) {
+                        if ((currentChunk + ' ' + word).length <= maxLength) {
+                            currentChunk += (currentChunk ? ' ' : '') + word;
+                        } else {
+                            if (currentChunk) {
+                                chunks.push(currentChunk.trim());
+                            }
+                            currentChunk = word;
+                        }
+                    }
+                } else {
+                    currentChunk = sentence;
+                }
+            }
+        }
+        
+        if (currentChunk) {
+            chunks.push(currentChunk.trim());
+        }
+        
+        return chunks.filter(c => c.length > 0);
     }
 
     /**

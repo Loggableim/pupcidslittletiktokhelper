@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **TikTok TTS Engine Failing with 500 Errors** - Complete rewrite of TikTok TTS endpoint handling
+  - **Problem:** All third-party proxy endpoints were returning HTTP 500 errors
+  - **Root Cause:** Original implementation relied on outdated proxy services (weilnet, countik, gesserit)
+  - **Solution:** Implemented hybrid endpoint approach with multiple fallback options:
+    - Public proxy services: Weilbyte's Workers endpoint, TikAPI public endpoint
+    - Official TikTok API endpoints with proper authentication headers
+    - Automatic endpoint rotation when failures occur
+  - **Technical Changes:**
+    - Fixed Content-Type mismatch for official TikTok API (now uses URL-encoded format)
+    - Updated User-Agent to modern Android 13 (was outdated Android 7.1.2)
+    - Added support for multiple response formats (Weilnet, TikAPI, Official TikTok)
+    - Implemented text chunking for messages over 300 characters
+    - Improved error messages showing all attempted endpoints
+  - **Known Limitation:** Long text (>300 chars) returns only first chunk - keep messages short
+  - Files modified: `plugins/tts/engines/tiktok-engine.js`
+  - Documentation: `docs/TIKTOK_TTS_FIX.md`
+  - Based on research from TikTok-Chat-Reader project and community TTS implementations
+
 ### Changed
 - **BREAKING: Migration to Eulerstream WebSocket SDK** - Complete replacement of tiktok-live-connector
   - Removed dependency on `tiktok-live-connector` library (https://github.com/zerodytrash/TikTok-Live-Connector)

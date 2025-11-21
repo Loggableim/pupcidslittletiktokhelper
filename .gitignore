@@ -55,3 +55,7 @@ plugins/*/data/
 plugins/plugins_state.json
 test-viewer-xp.js
 *.backup*
+
+# TikTok SessionID auto-extraction files
+plugins/tts/engines/.tiktok-cookies.json
+plugins/tts/engines/.tiktok-sessionid
