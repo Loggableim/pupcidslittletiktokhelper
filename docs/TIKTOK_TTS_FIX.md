@@ -1,6 +1,23 @@
 # TikTok TTS Engine Fix Documentation
 
-## Problem
+## ⚠️ CRITICAL UPDATE (November 2024)
+
+**All public TikTok TTS endpoints are currently DOWN worldwide.**
+
+This is not specific to this implementation - it affects ALL community TikTok TTS services:
+- Weilbyte Workers: 500 errors
+- TikAPI: 403 errors  
+- Official TikTok APIs: 404 errors
+
+**GitHub Issue**: https://github.com/Weilbyte/tiktok-tts/issues/54
+
+**RECOMMENDED**: Use Google Cloud TTS, ElevenLabs, or browser SpeechSynthesis instead.
+
+See `plugins/tts/engines/TIKTOK_TTS_STATUS.md` for detailed alternatives.
+
+---
+
+## Original Problem (Before Service Outage)
 
 The TikTok TTS (Text-to-Speech) engine was failing with 500 Internal Server Error from all configured endpoints:
 

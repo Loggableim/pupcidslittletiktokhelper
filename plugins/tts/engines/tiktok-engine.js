@@ -4,6 +4,23 @@ const axios = require('axios');
  * TikTok TTS Engine
  * Uses TikTok's official API endpoints directly
  * Based on research from TikTok-Chat-Reader and community TTS projects
+ * 
+ * ⚠️  IMPORTANT STATUS UPDATE (November 2024):
+ * All public TikTok TTS endpoints are currently DOWN and returning errors:
+ * - Weilbyte Workers: 500 Internal Server Error
+ * - TikAPI: 403 Forbidden
+ * - Official TikTok APIs: 404 Not Found
+ * 
+ * This is a widespread issue affecting all community TTS services.
+ * See: https://github.com/Weilbyte/tiktok-tts/issues/54
+ * 
+ * RECOMMENDED ALTERNATIVES:
+ * 1. Google Cloud TTS (requires API key, very reliable)
+ * 2. ElevenLabs TTS (requires API key, high quality)
+ * 3. Browser SpeechSynthesis (client-side, free, no setup)
+ * 4. Speechify Engine (if configured)
+ * 
+ * This code will continue attempting all known endpoints in case service is restored.
  */
 class TikTokEngine {
     constructor(logger) {
@@ -220,9 +237,15 @@ class TikTokEngine {
         }
         
         // All endpoints and retries failed
-        const errorMessage = `All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'}`;
+        const errorMessage = `All TikTok TTS endpoints are currently unavailable. Last error: ${lastError?.message || 'Unknown'}`;
         this.logger.error(errorMessage);
         this.logger.error('Tried endpoints:', this.apiEndpoints.map(e => `${e.type}:${e.url}`).join(', '));
+        this.logger.error('⚠️  TikTok TTS Service Status: All public TikTok TTS endpoints are currently down (500/403/404 errors).');
+        this.logger.error('💡 Recommended alternatives:');
+        this.logger.error('   1. Use Google Cloud TTS engine (more reliable)');
+        this.logger.error('   2. Use ElevenLabs TTS engine (high quality)');
+        this.logger.error('   3. Use browser SpeechSynthesis (client-side, free)');
+        this.logger.error('   4. Wait for TikTok endpoints to be restored (check GitHub issues)');
         throw new Error(errorMessage);
     }
 
