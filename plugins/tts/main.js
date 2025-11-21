@@ -1188,6 +1188,63 @@ class TTSPlugin {
                         fallbackVoice,
                         audioDataLength: audioData?.length || 0
                     });
+                } else if (selectedEngine === 'tiktok') {
+                    // TikTok failed, try Google, then Speechify, then ElevenLabs
+                    if (this.engines.google) {
+                        let fallbackVoice = selectedVoice;
+                        const googleVoices = GoogleEngine.getVoices();
+                        if (!fallbackVoice || !googleVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, GoogleEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for Google fallback', { fallbackVoice, langResult });
+                        }
+
+                        audioData = await this.engines.google.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'google';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'google',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else if (this.engines.speechify) {
+                        let fallbackVoice = selectedVoice;
+                        const speechifyVoices = await this.engines.speechify.getVoices();
+                        if (!fallbackVoice || !speechifyVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, SpeechifyEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for Speechify fallback', { fallbackVoice, langResult });
+                        }
+
+                        audioData = await this.engines.speechify.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'speechify';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'speechify',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else if (this.engines.elevenlabs) {
+                        let fallbackVoice = selectedVoice;
+                        const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
+                        if (!fallbackVoice || !elevenlabsVoices[fallbackVoice]) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
+                            fallbackVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP5', 'Voice adjusted for ElevenLabs fallback', { fallbackVoice, langResult });
+                        }
+
+                        audioData = await this.engines.elevenlabs.synthesize(finalText, fallbackVoice, this.config.speed);
+                        selectedEngine = 'elevenlabs';
+                        selectedVoice = fallbackVoice;
+                        this._logDebug('SPEAK_STEP5', 'Fallback synthesis successful', {
+                            fallbackEngine: 'elevenlabs',
+                            fallbackVoice,
+                            audioDataLength: audioData?.length || 0
+                        });
+                    } else {
+                        this._logDebug('SPEAK_ERROR', 'No fallback available', { error: engineError.message });
+                        throw engineError;
+                    }
                 } else {
                     this._logDebug('SPEAK_ERROR', 'No fallback available', { error: engineError.message });
                     throw engineError;

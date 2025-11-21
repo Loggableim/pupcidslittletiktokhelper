@@ -7,13 +7,39 @@ const axios = require('axios');
 class TikTokEngine {
     constructor(logger) {
         this.logger = logger;
-        this.apiUrl = 'https://tiktok-tts.weilnet.workers.dev/api/generation';
-        this.fallbackUrls = [
-            'https://countik.com/api/text/speech',
-            'https://gesserit.co/api/tiktok-tts'
+        // Updated endpoints - using direct TikTok API endpoints as primary
+        // The Weilnet endpoint is known to return 500 errors as of Nov 2025
+        this.endpoints = [
+            // Direct TikTok API endpoints (multiple regions for redundancy)
+            {
+                url: 'https://api16-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                format: 'direct',
+                requiresSession: false
+            },
+            {
+                url: 'https://api22-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                format: 'direct',
+                requiresSession: false
+            },
+            {
+                url: 'https://api16-core-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                format: 'direct',
+                requiresSession: false
+            },
+            // Fallback to proxy endpoints if direct API fails
+            {
+                url: 'https://tiktok-tts.weilnet.workers.dev/api/generation',
+                format: 'proxy',
+                requiresSession: false
+            },
+            {
+                url: 'https://tiktoktts.com/api/tiktok-tts',
+                format: 'proxy',
+                requiresSession: false
+            }
         ];
-        this.timeout = 15000; // 15s timeout with retries
-        this.maxRetries = 2;
+        this.timeout = 15000; // 15s timeout
+        this.maxRetries = 1; // Try each endpoint once
     }
 
     /**
@@ -128,38 +154,27 @@ class TikTokEngine {
      */
     async synthesize(text, voiceId) {
         let lastError;
+        let attemptCount = 0;
 
-        // Try primary URL with retries
-        for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+        // Try each endpoint in sequence
+        for (const endpoint of this.endpoints) {
             try {
-                const result = await this._makeRequest(this.apiUrl, text, voiceId);
+                attemptCount++;
+                this.logger.info(`TikTok TTS attempt ${attemptCount}: ${endpoint.url.substring(0, 50)}...`);
+                
+                const result = await this._makeRequest(endpoint, text, voiceId);
                 if (result) {
-                    this.logger.info(`TikTok TTS success: ${text.substring(0, 30)}... (voice: ${voiceId}, attempt: ${attempt + 1})`);
+                    this.logger.info(`TikTok TTS success: ${text.substring(0, 30)}... (voice: ${voiceId}, endpoint: ${endpoint.format})`);
                     return result;
                 }
             } catch (error) {
                 lastError = error;
-                this.logger.warn(`TikTok TTS attempt ${attempt + 1} failed: ${error.message}`);
-
-                // Exponential backoff
-                if (attempt < this.maxRetries - 1) {
-                    await this._delay(Math.pow(2, attempt) * 1000);
+                this.logger.warn(`TikTok TTS endpoint ${endpoint.format} failed: ${error.message}`);
+                
+                // Brief delay before trying next endpoint
+                if (attemptCount < this.endpoints.length) {
+                    await this._delay(500);
                 }
-            }
-        }
-
-        // Try fallback URLs
-        for (const fallbackUrl of this.fallbackUrls) {
-            try {
-                this.logger.info(`Trying fallback URL: ${fallbackUrl}`);
-                const result = await this._makeRequest(fallbackUrl, text, voiceId);
-                if (result) {
-                    this.logger.info(`TikTok TTS success via fallback: ${fallbackUrl}`);
-                    return result;
-                }
-            } catch (error) {
-                lastError = error;
-                this.logger.warn(`Fallback ${fallbackUrl} failed: ${error.message}`);
             }
         }
 
@@ -170,29 +185,56 @@ class TikTokEngine {
     /**
      * Make TTS request to endpoint
      */
-    async _makeRequest(url, text, voiceId) {
-        const response = await axios.post(
-            url,
-            {
+    async _makeRequest(endpoint, text, voiceId) {
+        // Prepare request based on endpoint format
+        let requestData;
+        if (endpoint.format === 'direct') {
+            // Direct TikTok API format
+            requestData = {
+                text_speaker: voiceId,
+                req_text: text,
+                speaker_map_type: 0,
+                aid: 1233
+            };
+        } else {
+            // Proxy format (Weilnet, tiktoktts.com, etc.)
+            requestData = {
                 text: text,
                 voice: voiceId
-            },
+            };
+        }
+
+        const response = await axios.post(
+            endpoint.url,
+            requestData,
             {
                 headers: {
                     'Content-Type': 'application/json',
-                    'User-Agent': 'TikTokLiveStreamTool/2.0'
+                    'User-Agent': 'com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)'
                 },
-                timeout: this.timeout
+                timeout: this.timeout,
+                validateStatus: (status) => status === 200
             }
         );
 
         // Handle different response formats
-        if (response.data && response.data.data) {
-            return response.data.data; // Primary format
-        } else if (response.data && response.data.audioContent) {
-            return response.data.audioContent; // Alternative format
-        } else if (typeof response.data === 'string' && response.data.length > 100) {
-            return response.data; // Direct base64
+        if (endpoint.format === 'direct') {
+            // Direct TikTok API response format
+            if (response.data && response.data.data && response.data.data.v_str) {
+                return response.data.data.v_str; // Base64 audio data
+            } else if (response.data && response.data.status_code === 0 && response.data.data) {
+                // Alternative direct API format
+                return response.data.data;
+            }
+        } else {
+            // Proxy response format
+            if (response.data && response.data.data) {
+                return response.data.data; // Primary format
+            } else if (response.data && response.data.audioContent) {
+                return response.data.audioContent; // Alternative format
+            } else if (typeof response.data === 'string' && response.data.length > 100) {
+                return response.data; // Direct base64
+            }
         }
 
         throw new Error('Invalid response format from TikTok TTS API');
