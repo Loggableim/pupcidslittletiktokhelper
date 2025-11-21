@@ -58,7 +58,7 @@ class ThemeManager {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
-                    if (node.nodeName === 'IFRAME') {
+                    if (node.tagName === 'IFRAME') {
                         this.monitorIframeLoad(node);
                     } else if (node.nodeType === Node.ELEMENT_NODE) {
                         node.querySelectorAll('iframe').forEach((iframe) => {
@@ -94,6 +94,7 @@ class ThemeManager {
             }
         } catch (e) {
             // Ignore cross-origin errors
+            console.debug('Cannot apply theme to iframe (cross-origin):', e.message);
         }
 
         // Listen for load event
