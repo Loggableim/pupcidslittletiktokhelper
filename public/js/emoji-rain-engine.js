@@ -91,6 +91,10 @@ let config = {
 // User emoji mappings
 let userEmojiMap = {};
 
+// Constants
+const FPS_HISTORY_SIZE = 60;
+const MAX_SPAWN_COUNT_PER_EVENT = 100; // Safety limit to prevent overload
+
 // State
 let engine, render;
 let socket;
@@ -107,7 +111,6 @@ let frameCount = 0;
 let currentFPS = 60;
 let fpsUpdateTime = performance.now();
 let fpsHistory = [];
-const FPS_HISTORY_SIZE = 60;
 
 // Rainbow animation state
 let rainbowHueOffset = 0;
@@ -320,8 +323,11 @@ function applyColorTheme(element, emoji = null) {
     
     // 1. Handle pixel mode filters first (if enabled)
     if (config.pixel_enabled) {
-        filters.push(`contrast(1.${config.pixel_size})`);
-        filters.push(`brightness(1.${Math.min(config.pixel_size, 3)})`);
+        // Use proper decimal values for CSS filters
+        const contrastValue = 1 + (config.pixel_size * 0.1);
+        const brightnessValue = 1 + (Math.min(config.pixel_size, 3) * 0.1);
+        filters.push(`contrast(${contrastValue})`);
+        filters.push(`brightness(${brightnessValue})`);
     }
     
     // 2. Check for user-specific color
@@ -425,10 +431,14 @@ function updateLoop(currentTime) {
         }
 
         // Run physics engine step
-        if (engine) {
-            const clampedDelta = Math.min(deltaTime, targetFrameTime);
-            Engine.update(engine, clampedDelta);
+        if (!engine) {
+            console.warn('⚠️ Physics engine not initialized, skipping update');
+            requestAnimationFrame(updateLoop);
+            return;
         }
+        
+        const clampedDelta = Math.min(deltaTime, targetFrameTime);
+        Engine.update(engine, clampedDelta);
 
         // Update rainbow hue
         if (config.rainbow_enabled) {
@@ -776,7 +786,7 @@ function handleSpawnEvent(data) {
         const actualCount = isBurst ? Math.floor(count * config.superfan_burst_intensity) : count;
 
         // Limit spawn count to prevent overload
-        const limitedCount = Math.min(actualCount, 100);
+        const limitedCount = Math.min(actualCount, MAX_SPAWN_COUNT_PER_EVENT);
         if (actualCount > limitedCount) {
             console.warn(`⚠️ Spawn count limited from ${actualCount} to ${limitedCount}`);
         }
