@@ -1,147 +1,177 @@
-# TikTok TTS Engine - SessionID Required
+# TikTok TTS Engine - Automatic SessionID Extraction
 
-## ✅ SOLUTION FOUND (November 2024)
+## ✅ AUTOMATIC SOLUTION (November 2024)
 
-**TikTok TTS is working!** It requires a valid SessionID from a logged-in TikTok account.
+**TikTok TTS now extracts SessionID automatically!** No manual cookie extraction needed.
 
-Tools like TikFinity and TikTok-Chat-Reader work because they use authenticated SessionIDs.
+### How It Works
 
-## 🔑 How to Get Your SessionID
+1. **First Time**: Browser window opens with TikTok
+2. **You Log In**: One-time login to TikTok
+3. **Auto-Save**: SessionID is extracted and saved automatically
+4. **Future Use**: Works automatically, no login needed
 
-### Step 1: Log into TikTok
-1. Open your browser and go to https://www.tiktok.com
-2. Log in with your TikTok account
+### Quick Start
 
-### Step 2: Extract SessionID from Cookies
-1. Press `F12` to open Developer Tools
-2. Go to the **Application** tab (Chrome) or **Storage** tab (Firefox)
-3. In the left sidebar, expand **Cookies**
-4. Click on `https://www.tiktok.com`
-5. Find the cookie named `sessionid`
-6. Copy the **Value** (it will be a long string of letters and numbers)
+Just use TikTok TTS - it will prompt you to log in on first use!
 
-### Step 3: Configure SessionID
+```bash
+# No setup required!
+# On first TTS request, a browser will open
+# Log in to TikTok once
+# SessionID is saved automatically
+```
 
-**Option A: Environment Variable (Recommended)**
+## 🔧 Advanced: Manual SessionID (Optional)
+
+If you prefer manual setup or auto-extraction doesn't work:
+
+### Step 1: Get SessionID from TikTok
+1. Log in to https://www.tiktok.com in your browser
+2. Press `F12` to open Developer Tools
+3. Go to **Application** tab (Chrome) or **Storage** tab (Firefox)
+4. In the left sidebar, expand **Cookies**
+5. Click on `https://www.tiktok.com`
+6. Find the cookie named `sessionid`
+7. Copy the **Value**
+
+### Step 2: Configure SessionID
+
 ```bash
 # Add to your .env file
 TIKTOK_SESSION_ID=your_session_id_here
 ```
 
-**Option B: Via TTS Plugin Settings**
-1. Open the dashboard
-2. Go to TTS settings
-3. Find "TikTok SessionID" field
-4. Paste your SessionID
-5. Save settings
+## 📋 How Auto-Extraction Works
 
-## ⚠️ Important Notes
-
-### SessionID Expires
-- SessionIDs expire after some time (weeks/months)
-- When it expires, you'll get 401/403 errors
-- **Solution**: Just get a fresh SessionID and update it
-
-### Keep it Private
-- Your SessionID is like a password - keep it secret!
-- Don't share it publicly or commit it to GitHub
-- Use environment variables (.env file)
-
-### Regional Endpoints
-The engine uses multiple TikTok API endpoints for redundancy:
-- US East: `api16-normal-useast5.us.tiktokv.com`
-- Asia: `api22-normal-c-alisg.tiktokv.com`
-- US East 2: `api16-normal-c-useast2a.tiktokv.com`
-
-## 🚀 Quick Start
-
-1. **Get SessionID** (see instructions above)
-2. **Set environment variable**:
-   ```bash
-   echo "TIKTOK_SESSION_ID=your_session_id_here" >> .env
-   ```
-3. **Restart the application**
-4. **Test TTS** - it should work now!
-
-## 🐛 Troubleshooting
-
-### Error: "No TikTok SessionID configured"
-- You haven't set the TIKTOK_SESSION_ID environment variable
-- **Fix**: Follow the instructions above to get and set your SessionID
-
-### Error: "All TikTok TTS endpoints failed" with 401/403
-- Your SessionID is invalid or expired
-- **Fix**: Get a fresh SessionID from TikTok cookies
-
-### Error: "All TikTok TTS endpoints failed" with 404
-- The API endpoints may have changed
-- **Fix**: Check for updates or try alternative TTS engines
-
-### Still Not Working?
-Try these alternatives:
-1. **Google Cloud TTS** - Most reliable, 300+ voices, requires API key
-2. **ElevenLabs TTS** - Highest quality, natural voices, requires API key  
-3. **Browser SpeechSynthesis** - Free, client-side, no setup required
-
-## 📋 How It Works
-
-When you make a TTS request:
-
-1. **Authentication**: Your SessionID is sent in the Cookie header
-2. **Request**: Text and voice ID are sent to TikTok API
-3. **Response**: TikTok returns base64-encoded MP3 audio
-4. **Playback**: Audio is decoded and played
-
-### Example Request
-```javascript
-POST https://api16-normal-useast5.us.tiktokv.com/media/api/text/speech/invoke
-Headers:
-  Cookie: sessionid=YOUR_SESSION_ID
-  Content-Type: application/x-www-form-urlencoded
-Body:
-  text_speaker=en_us_001
-  req_text=Hello world
-  speaker_map_type=0
-  aid=1233
+### First Request Flow
+```
+TTS Request → No SessionID? → Launch Browser → TikTok Login Page
+    ↓
+User Logs In → Extract SessionID → Save to File → Use for TTS
 ```
 
-### Example Response
-```json
+### Subsequent Requests
+```
+TTS Request → Load Saved SessionID → Use for TTS
+```
+
+### Automatic Refresh
+- If SessionID expires (401/403 errors)
+- System automatically attempts to refresh
+- Opens browser if needed for re-login
+
+## 🔒 Security & Privacy
+
+### Saved Files
+- `.tiktok-sessionid` - Your SessionID (kept private)
+- `.tiktok-cookies.json` - Browser cookies for auto-login
+
+**Location**: `plugins/tts/engines/` (already in .gitignore)
+
+### Keep It Private
+- Never commit these files to GitHub
+- Don't share SessionID publicly
+- Already excluded via .gitignore
+
+## 🎛️ Configuration Options
+
+### Enable/Disable Auto-Extraction
+
+Auto-extraction is **enabled by default**. To disable:
+
+```javascript
+// In TTS plugin config
 {
-  "status_code": 0,
-  "data": {
-    "v_str": "base64_encoded_audio_data..."
-  }
+  autoExtractSessionId: false  // Disable auto-extraction
 }
 ```
 
-## 🔄 Updating SessionID Regularly
+### Force Refresh SessionID
 
-### Automated Reminder
-Consider setting up a monthly reminder to update your SessionID:
-1. Get fresh SessionID from TikTok
-2. Update .env file or TTS settings
-3. Restart application
+```bash
+# Delete saved SessionID to force re-extraction
+rm plugins/tts/engines/.tiktok-sessionid
+rm plugins/tts/engines/.tiktok-cookies.json
+```
 
-### Signs SessionID Needs Updating
-- TTS starts failing with 401/403 errors
-- "Invalid SessionID" messages in logs
-- TikTok asks you to log in again on the website
+## 🐛 Troubleshooting
 
-## 💡 Why SessionID is Required
+### Browser Doesn't Open
+- **Cause**: Headless browser launch failed
+- **Fix**: Check Puppeteer installation
+  ```bash
+  npm install puppeteer
+  ```
 
-TikTok TTS is not a public API - it's an internal API for TikTok's apps.  
-To prevent abuse, TikTok requires authentication via SessionID.
+### SessionID Extraction Fails
+- **Cause**: Login timeout or network issue
+- **Fix 1**: Try manual SessionID setup (see above)
+- **Fix 2**: Check firewall/proxy settings
+- **Fix 3**: Ensure you can access tiktok.com
 
-This is how tools like TikFinity work - they ask users to provide their SessionID.
+### "SessionID expired" Errors
+- **Cause**: SessionID invalidated by TikTok
+- **Fix**: Auto-refresh will trigger automatically
+- **Or**: Delete saved files and re-login
+
+### Browser Stays Open
+- **Cause**: Waiting for login
+- **Fix**: Complete TikTok login in the browser window
+- **Note**: Browser closes automatically after extraction
+
+## 🔄 SessionID Lifecycle
+
+### Lifespan
+- TikTok SessionIDs typically last weeks to months
+- Depends on TikTok's security policies
+
+### Auto-Refresh
+- System detects expired SessionID (401/403 errors)
+- Automatically attempts re-extraction
+- Opens browser for re-login if needed
+
+### Manual Refresh
+```bash
+# Clear and re-extract
+rm plugins/tts/engines/.tiktok-sessionid
+# Next TTS request will trigger auto-extraction
+```
+
+## 💡 Best Practices
+
+### First-Time Setup
+1. Make first TTS request
+2. Browser opens with TikTok
+3. Log in once
+4. Done! Works automatically from now on
+
+### Server/Headless Environment
+- Use manual SessionID (TIKTOK_SESSION_ID env var)
+- Auto-extraction requires display for first login
+- After first extraction, works headless
+
+### Multiple Instances
+- Each instance needs own SessionID
+- Or share .tiktok-sessionid file
+- Coordinate to avoid conflicts
 
 ## 🆘 Support
 
-If you need help:
-1. Check the main README
-2. Open a GitHub issue
-3. Email: loggableim@gmail.com
+### Still Having Issues?
+
+1. **Try manual setup first** (see Manual SessionID section)
+2. **Check logs** for specific error messages
+3. **Verify network access** to tiktok.com
+4. **Contact support** with log excerpts
+
+### Alternative TTS Engines
+If TikTok TTS doesn't work for you:
+
+1. **Google Cloud TTS** - Most reliable, 300+ voices
+2. **ElevenLabs TTS** - Highest quality, natural voices
+3. **Browser SpeechSynthesis** - Free, client-side, no setup
 
 ## 📅 Last Updated
 
-2025-11-21 - SessionID authentication implemented and working
+2025-11-21 - Automatic SessionID extraction implemented

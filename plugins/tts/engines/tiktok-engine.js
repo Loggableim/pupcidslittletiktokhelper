@@ -1,34 +1,32 @@
 const axios = require('axios');
+const TikTokSessionExtractor = require('./tiktok-session-extractor');
 
 /**
  * TikTok TTS Engine
  * Uses TikTok's official API endpoints with SessionID authentication
  * Based on research from TikTok-Chat-Reader and community TTS projects
  * 
- * ✅ SOLUTION (November 2024):
- * TikTok TTS requires a valid SessionID from a logged-in TikTok account.
+ * ✅ AUTOMATIC SESSION EXTRACTION (November 2024):
+ * The engine can automatically extract SessionID from TikTok:
+ * 1. Opens headless browser with TikTok
+ * 2. Uses saved cookies if available (auto-login)
+ * 3. Or prompts user to log in once (saves for future)
+ * 4. Automatically extracts and uses SessionID
  * 
- * HOW TO GET YOUR SESSION ID:
- * 1. Log in to TikTok in your browser (https://www.tiktok.com)
- * 2. Open Developer Tools (F12)
- * 3. Go to Application > Cookies > https://www.tiktok.com
- * 4. Find the 'sessionid' cookie and copy its value
- * 5. Set it in the TTS plugin settings or environment variable TIKTOK_SESSION_ID
+ * MANUAL SETUP (Alternative):
+ * Set TIKTOK_SESSION_ID environment variable with your SessionID
  * 
- * The SessionID must be refreshed periodically (weekly/monthly) as it expires.
- * 
- * ALTERNATIVE: If you don't want to use SessionID:
- * 1. Google Cloud TTS (requires API key, very reliable)
- * 2. ElevenLabs TTS (requires API key, high quality)
- * 3. Browser SpeechSynthesis (client-side, free, no setup)
+ * The SessionID is saved and reused automatically.
  */
 class TikTokEngine {
     constructor(logger, config = {}) {
         this.logger = logger;
         this.config = config;
         
-        // Get SessionID from config, environment, or database
+        // Get SessionID from config or environment
         this.sessionId = config.sessionId || process.env.TIKTOK_SESSION_ID || null;
+        this.sessionExtractor = new TikTokSessionExtractor(logger);
+        this.autoExtractEnabled = config.autoExtractSessionId !== false; // Enabled by default
         
         // Direct TikTok API endpoints (require SessionID for authentication)
         // These are the working endpoints as of November 2024
@@ -61,9 +59,11 @@ class TikTokEngine {
         // Log SessionID status
         if (this.sessionId) {
             this.logger.info(`✅ TikTok SessionID configured (length: ${this.sessionId.length} chars)`);
+        } else if (this.autoExtractEnabled) {
+            this.logger.info('🔄 TikTok SessionID will be auto-extracted on first TTS request');
         } else {
             this.logger.warn('⚠️  No TikTok SessionID configured. TikTok TTS will not work.');
-            this.logger.warn('💡 To fix: Set TIKTOK_SESSION_ID environment variable or configure in TTS settings.');
+            this.logger.warn('💡 To fix: Set TIKTOK_SESSION_ID environment variable or enable auto-extraction.');
             this.logger.warn('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for instructions.');
         }
     }
@@ -214,13 +214,35 @@ class TikTokEngine {
      * @private
      */
     async _synthesizeChunk(text, voiceId) {
-        // Check if SessionID is required and available
+        // Check if SessionID is available, try auto-extraction if not
         if (!this.sessionId) {
-            const errorMessage = 'TikTok TTS requires a SessionID. Please configure TIKTOK_SESSION_ID environment variable or set it in TTS settings.';
-            this.logger.error(errorMessage);
-            this.logger.error('📚 Instructions: See plugins/tts/engines/TIKTOK_TTS_STATUS.md');
-            this.logger.error('💡 Alternative: Use Google Cloud TTS, ElevenLabs, or browser SpeechSynthesis instead.');
-            throw new Error(errorMessage);
+            if (this.autoExtractEnabled) {
+                this.logger.info('🔄 SessionID not found, attempting automatic extraction...');
+                try {
+                    this.sessionId = await this.sessionExtractor.getSessionId();
+                    
+                    if (!this.sessionId) {
+                        const errorMessage = 'Failed to auto-extract TikTok SessionID. Please log in to TikTok when prompted or set TIKTOK_SESSION_ID manually.';
+                        this.logger.error(errorMessage);
+                        this.logger.error('📚 Instructions: See plugins/tts/engines/TIKTOK_TTS_STATUS.md');
+                        throw new Error(errorMessage);
+                    }
+                    
+                    this.logger.info('✅ SessionID auto-extracted successfully!');
+                } catch (error) {
+                    const errorMessage = `SessionID auto-extraction failed: ${error.message}`;
+                    this.logger.error(errorMessage);
+                    this.logger.error('💡 Manual setup: Set TIKTOK_SESSION_ID environment variable');
+                    this.logger.error('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md');
+                    throw new Error(errorMessage);
+                }
+            } else {
+                const errorMessage = 'TikTok TTS requires a SessionID. Please configure TIKTOK_SESSION_ID environment variable or enable auto-extraction.';
+                this.logger.error(errorMessage);
+                this.logger.error('📚 Instructions: See plugins/tts/engines/TIKTOK_TTS_STATUS.md');
+                this.logger.error('💡 Alternative: Use Google Cloud TTS, ElevenLabs, or browser SpeechSynthesis instead.');
+                throw new Error(errorMessage);
+            }
         }
         
         let lastError;
@@ -242,6 +264,25 @@ class TikTokEngine {
                 } catch (error) {
                     lastError = error;
                     this.logger.warn(`TikTok TTS ${endpointConfig.type} endpoint failed: ${error.message}`);
+                    
+                    // Check if error is due to invalid/expired SessionID
+                    if (error.message.includes('401') || error.message.includes('403') || error.message.includes('Invalid session')) {
+                        this.logger.warn('⚠️  SessionID may be expired or invalid');
+                        
+                        // Try to refresh SessionID if auto-extract is enabled
+                        if (this.autoExtractEnabled && endpointAttempt === 0 && retryAttempt === 0) {
+                            this.logger.info('🔄 Attempting to refresh SessionID...');
+                            try {
+                                this.sessionId = await this.sessionExtractor.getSessionId(true); // Force refresh
+                                if (this.sessionId) {
+                                    this.logger.info('✅ SessionID refreshed, retrying...');
+                                    continue; // Retry with new SessionID
+                                }
+                            } catch (refreshError) {
+                                this.logger.error(`Failed to refresh SessionID: ${refreshError.message}`);
+                            }
+                        }
+                    }
                     
                     // Small backoff for retries on same endpoint
                     if (retryAttempt < this.maxRetries - 1) {
