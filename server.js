@@ -127,12 +127,13 @@ app.use((req, res, next) => {
         // which prevents XSS attacks via inline script injection.
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='; ` +  // Allow specific Socket.IO inline script via hash
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Socket.IO inline script via hash + Chatango scripts
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com; ` +
+            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com wss://*.chatango.com https://*.chatango.com; ` +
             `media-src 'self' blob: data: https:; ` +
+            `frame-src 'self' https://*.chatango.com; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
@@ -143,12 +144,13 @@ app.use((req, res, next) => {
         // Strict CSP for other routes (including overlays for OBS)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='; ` +  // Allow specific Socket.IO inline script via hash
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Socket.IO inline script via hash + Chatango scripts
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com; ` +
+            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com wss://*.chatango.com https://*.chatango.com; ` +
             `media-src 'self' blob: data: https:; ` +
+            `frame-src 'self' https://*.chatango.com; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
