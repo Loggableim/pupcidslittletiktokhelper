@@ -1583,11 +1583,11 @@
                         <div class="view-header">
                             <h2 class="view-title">
                                 <i data-lucide="book-open"></i>
-                                Wiki & Documentation
+                                <span data-i18n="wiki.title">Wiki & Documentation</span>
                             </h2>
-                            <button id="wiki-open-new-tab" class="btn btn-primary" style="margin-left: auto;" title="Open in new tab">
+                            <button id="wiki-open-new-tab" class="btn btn-primary" style="margin-left: auto;" data-i18n-title="wiki.open_new_tab" title="Open in new tab">
                                 <i data-lucide="external-link"></i>
-                                Open in New Tab
+                                <span data-i18n="wiki.open_new_tab">Open in New Tab</span>
                             </button>
                         </div>
                         <div class="wiki-container">
@@ -1601,6 +1601,7 @@
                                             type="text" 
                                             id="wiki-search" 
                                             class="wiki-search-input" 
+                                            data-i18n="wiki.search_placeholder"
                                             placeholder="Search documentation..."
                                             autocomplete="off"
                                         >
@@ -1619,7 +1620,7 @@
                                     <!-- Article content will be loaded by wiki.js -->
                                     <div class="wiki-loading">
                                         <i data-lucide="loader"></i>
-                                        <span>Loading documentation...</span>
+                                        <span data-i18n="wiki.loading">Loading documentation...</span>
                                     </div>
                                 </div>
                             </main>

@@ -629,5 +629,13 @@
     "intensity": "Intensität",
     "duration": "Dauer",
     "trigger_on": "Auslösen bei"
+  },
+  "wiki": {
+    "title": "Wiki & Dokumentation",
+    "open_new_tab": "In neuem Tab öffnen",
+    "search_placeholder": "Dokumentation durchsuchen...",
+    "loading": "Dokumentation wird geladen...",
+    "no_results": "Keine Ergebnisse gefunden",
+    "search": "Suchen"
   }
 }
