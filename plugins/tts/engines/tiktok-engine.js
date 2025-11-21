@@ -180,7 +180,7 @@ class TikTokEngine {
             {
                 headers: {
                     'Content-Type': 'application/json',
-                    'User-Agent': 'TikTokLiveStreamTool/2.0'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) TikTokLIVEStudio/0.32.2-beta Chrome/104.0.5112.102 Electron/20.1.0-tt.6.release.mssdk.8 TTElectron/20.1.0-tt.6.release.mssdk.8 Safari/537.36'
                 },
                 timeout: this.timeout
             }
