@@ -12,6 +12,7 @@ let config = {};
 let devices = [];
 let mappings = [];
 let patterns = [];
+let giftCatalog = [];
 let queueStatus = {};
 let stats = {};
 let debugLogs = [];
@@ -147,7 +148,8 @@ async function loadInitialData() {
             loadMappings(),
             loadPatterns(),
             loadStats(),
-            loadQueueStatus()
+            loadQueueStatus(),
+            loadGiftCatalog()
         ]);
 
         // Render initial UI
@@ -155,6 +157,7 @@ async function loadInitialData() {
         renderDeviceList();
         renderMappingList();
         renderPatternList();
+        renderGiftCatalog();
         
         // Update API status with device count
         updateApiStatus(devices.length > 0, devices.length);
@@ -268,6 +271,20 @@ async function loadQueueStatus() {
         return queueStatus;
     } catch (error) {
         console.error('[OpenShock] Error loading queue status:', error);
+        throw error;
+    }
+}
+
+async function loadGiftCatalog() {
+    try {
+        const response = await fetch('/api/openshock/gift-catalog');
+        if (!response.ok) throw new Error('Failed to load gift catalog');
+        const data = await response.json();
+        giftCatalog = data.gifts || [];
+        console.log('[OpenShock] Gift catalog loaded:', giftCatalog.length, 'gifts');
+        return giftCatalog;
+    } catch (error) {
+        console.error('[OpenShock] Error loading gift catalog:', error);
         throw error;
     }
 }
@@ -537,6 +554,57 @@ function renderPatternList() {
     }
 }
 
+function renderGiftCatalog() {
+    const container = document.getElementById('giftCatalogList');
+    if (!container) return;
+
+    if (giftCatalog.length === 0) {
+        container.innerHTML = `
+            <p class="text-muted text-center">No gifts found in catalog. The catalog will be populated when you connect to TikTok Live.</p>
+        `;
+        return;
+    }
+
+    const html = `
+        <div class="gift-catalog-grid">
+            ${giftCatalog.map(gift => `
+                <div class="gift-card">
+                    ${gift.image_url ? `<img src="${escapeHtml(gift.image_url)}" alt="${escapeHtml(gift.name)}" class="gift-image">` : '<div class="gift-image-placeholder">🎁</div>'}
+                    <div class="gift-info">
+                        <h3 class="gift-name">${escapeHtml(gift.name)}</h3>
+                        <div class="gift-value">💎 ${gift.diamond_count || 0}</div>
+                    </div>
+                    <button class="btn btn-sm btn-primary create-mapping-for-gift-btn" data-gift-name="${escapeHtml(gift.name)}" data-gift-coins="${gift.diamond_count || 0}">
+                        ➕ Create Mapping
+                    </button>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    container.innerHTML = html;
+    
+    // Populate gift name dropdown in mapping modal
+    updateGiftNameSelect();
+}
+
+function updateGiftNameSelect() {
+    const select = document.getElementById('mappingGiftNameSelect');
+    if (!select) return;
+    
+    // Clear existing options except "All Gifts"
+    select.innerHTML = '<option value="">All Gifts</option>';
+    
+    // Add gift options sorted by diamond count (descending)
+    const sortedGifts = [...giftCatalog].sort((a, b) => (b.diamond_count || 0) - (a.diamond_count || 0));
+    sortedGifts.forEach(gift => {
+        const option = document.createElement('option');
+        option.value = gift.name;
+        option.textContent = `${gift.name} (💎 ${gift.diamond_count || 0})`;
+        select.appendChild(option);
+    });
+}
+
 function renderQueueStatus() {
     // Update the stat values directly in the dashboard
     const queueLengthEl = document.getElementById('queueLength');
@@ -613,6 +681,9 @@ function openMappingModal(mappingId = null) {
 
     // Populate device dropdown with current devices
     updateMappingDeviceList();
+    
+    // Populate gift name select with catalog
+    updateGiftNameSelect();
 
     // Populate form - handle both frontend (trigger) and backend (eventType/conditions) format
     const nameInput = document.getElementById('mappingName');
@@ -664,11 +735,23 @@ function populateTriggerFields(trigger) {
 
     // Set values if editing
     if (trigger) {
+        const giftNameSelect = document.getElementById('mappingGiftNameSelect');
         const giftNameInput = document.getElementById('mappingGiftName');
         const minCoinsInput = document.getElementById('mappingMinCoins');
         const messagePatternInput = document.getElementById('mappingMessagePattern');
 
-        if (giftNameInput && trigger.giftName) giftNameInput.value = trigger.giftName;
+        if (trigger.giftName) {
+            // Try to select from dropdown first
+            if (giftNameSelect) {
+                const option = Array.from(giftNameSelect.options).find(opt => opt.value === trigger.giftName);
+                if (option) {
+                    giftNameSelect.value = trigger.giftName;
+                } else {
+                    // If not in dropdown, use text input
+                    if (giftNameInput) giftNameInput.value = trigger.giftName;
+                }
+            }
+        }
         if (minCoinsInput && trigger.minCoins !== undefined) minCoinsInput.value = trigger.minCoins;
         if (messagePatternInput && trigger.messagePattern) messagePatternInput.value = trigger.messagePattern;
     }
@@ -757,10 +840,17 @@ function collectTriggerData() {
     const trigger = { type };
 
     if (type === 'gift') {
+        const giftNameSelect = document.getElementById('mappingGiftNameSelect');
         const giftNameInput = document.getElementById('mappingGiftName');
         const minCoinsInput = document.getElementById('mappingMinCoins');
         
-        if (giftNameInput?.value) trigger.giftName = giftNameInput.value;
+        // Prefer manual input over select dropdown (manual input takes precedence)
+        if (giftNameInput?.value) {
+            trigger.giftName = giftNameInput.value;
+        } else if (giftNameSelect?.value) {
+            trigger.giftName = giftNameSelect.value;
+        }
+        
         if (minCoinsInput?.value) trigger.minCoins = parseInt(minCoinsInput.value);
     } else if (type === 'chat') {
         const messagePatternInput = document.getElementById('mappingMessagePattern');
@@ -859,6 +949,55 @@ async function exportMappings() {
     } catch (error) {
         console.error('[OpenShock] Error exporting mappings:', error);
         showNotification('Error exporting mappings', 'error');
+    }
+}
+
+// ====================================================================
+// GIFT CATALOG FUNCTIONS
+// ====================================================================
+
+function openMappingModalForGift(giftName, giftCoins) {
+    // Open mapping modal with pre-filled gift data
+    openMappingModal();
+    
+    // Wait for modal to be populated, then set values
+    setTimeout(() => {
+        const eventTypeSelect = document.getElementById('mappingEventType');
+        const giftNameSelect = document.getElementById('mappingGiftNameSelect');
+        const minCoinsInput = document.getElementById('mappingMinCoins');
+        const nameInput = document.getElementById('mappingName');
+        
+        if (eventTypeSelect) eventTypeSelect.value = 'gift';
+        if (giftNameSelect) giftNameSelect.value = giftName;
+        if (minCoinsInput) minCoinsInput.value = giftCoins || 0;
+        if (nameInput) nameInput.value = `${giftName} Gift`;
+        
+        // Trigger event type change to show gift conditions
+        if (eventTypeSelect) {
+            eventTypeSelect.dispatchEvent(new Event('change'));
+        }
+    }, 100);
+}
+
+async function refreshGiftCatalog() {
+    const button = document.getElementById('refreshGiftCatalog');
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    }
+    
+    try {
+        await loadGiftCatalog();
+        renderGiftCatalog();
+        showNotification(`Gift catalog refreshed - ${giftCatalog.length} gifts loaded`, 'success');
+    } catch (error) {
+        console.error('[OpenShock] Error refreshing gift catalog:', error);
+        showNotification('Error refreshing gift catalog', 'error');
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '🔄 Refresh Catalog';
+        }
     }
 }
 
@@ -1799,6 +1938,27 @@ function initializeEventDelegation() {
         });
     }
 
+    // Gift Catalog tab buttons
+    const refreshGiftCatalogBtn = document.getElementById('refreshGiftCatalog');
+    if (refreshGiftCatalogBtn) {
+        refreshGiftCatalogBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await refreshGiftCatalog();
+        });
+    }
+    
+    // Gift name select change handler
+    const giftNameSelect = document.getElementById('mappingGiftNameSelect');
+    if (giftNameSelect) {
+        giftNameSelect.addEventListener('change', (e) => {
+            const giftNameInput = document.getElementById('mappingGiftName');
+            if (giftNameInput && e.target.value) {
+                // Clear manual input when selecting from dropdown
+                giftNameInput.value = '';
+            }
+        });
+    }
+
     // Safety tab buttons
     const saveGlobalLimitsBtn = document.getElementById('saveGlobalLimits');
     if (saveGlobalLimitsBtn) {
@@ -2085,6 +2245,15 @@ function initializeEventDelegation() {
             const button = e.target.closest('.delete-mapping-btn');
             const mappingId = button.dataset.mappingId;
             deleteMapping(mappingId);
+        }
+
+        // Create mapping for gift button
+        if (e.target.closest('.create-mapping-for-gift-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.create-mapping-for-gift-btn');
+            const giftName = button.dataset.giftName;
+            const giftCoins = parseInt(button.dataset.giftCoins) || 0;
+            openMappingModalForGift(giftName, giftCoins);
         }
 
         // Create pattern button
