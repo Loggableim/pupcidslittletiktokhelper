@@ -289,6 +289,14 @@ class TikTokConnector extends EventEmitter {
                 } catch (error) {
                     this.logger.warn('Could not fetch room info from TikTok API:', error.message);
                 }
+                
+                // Update gift catalog after connection
+                try {
+                    const catalogResult = await this.updateGiftCatalog();
+                    this.logger.info(`🎁 ${catalogResult.message}`);
+                } catch (error) {
+                    this.logger.warn('Could not update gift catalog:', error.message);
+                }
             }, 2000); // Wait 2 seconds after connection to fetch room info
             
             // Log success
