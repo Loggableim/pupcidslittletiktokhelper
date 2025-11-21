@@ -60,7 +60,8 @@
                         <div>
                             <label class="block text-sm font-medium mb-2">Default Engine</label>
                             <select id="defaultEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                                <option value="tiktok">TikTok TTS (Free)</option>
+                                <!-- <option value="tiktok">TikTok TTS (Free)</option> -->
+                                <!-- TikTok TTS temporarily disabled - API endpoints not working -->
                                 <option value="google">Google Cloud TTS (Requires API Key)</option>
                                 <option value="speechify">Speechify TTS (Premium, Requires API Key)</option>
                                 <option value="elevenlabs">ElevenLabs TTS (Premium, Requires API Key)</option>
@@ -107,7 +108,8 @@
                             <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://elevenlabs.io/docs/quickstart" target="_blank" class="text-blue-400 hover:text-blue-300">elevenlabs.io</a>. Ultra-realistic AI voices. 100+ voices in 30+ languages.</p>
                         </div>
 
-                        <div id="tiktok-session-id-section" class="border-t border-gray-700 pt-4">
+                        <!-- TikTok SessionID section temporarily hidden - TikTok TTS API endpoints not working -->
+                        <div id="tiktok-session-id-section" class="border-t border-gray-700 pt-4" style="display: none;">
                             <label class="block text-sm font-medium mb-2">🔑 TikTok SessionID (Required for TikTok TTS)</label>
                             <div class="flex gap-2">
                                 <input type="password" id="tiktokSessionId" placeholder="Enter SessionID..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
@@ -305,7 +307,8 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">Engine</label>
                         <select id="manualEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                            <option value="tiktok">TikTok TTS (Free)</option>
+                            <!-- <option value="tiktok">TikTok TTS (Free)</option> -->
+                            <!-- TikTok TTS temporarily disabled - API endpoints not working -->
                             <option value="google">Google Cloud TTS</option>
                             <option value="speechify">Speechify TTS</option>
                             <option value="elevenlabs">ElevenLabs TTS</option>
@@ -516,7 +519,8 @@
             <div class="mb-4">
                 <label class="block text-sm font-bold mb-2">Engine</label>
                 <select id="modalEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
-                    <option value="tiktok">TikTok (Free)</option>
+                    <!-- <option value="tiktok">TikTok (Free)</option> -->
+                    <!-- TikTok TTS temporarily disabled - API endpoints not working -->
                     <option value="google">Google Cloud TTS (Premium)</option>
                     <option value="speechify">Speechify (Premium)</option>
                     <option value="elevenlabs">ElevenLabs (Premium)</option>
