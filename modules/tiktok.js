@@ -670,13 +670,13 @@ class TikTokConnector extends EventEmitter {
                 }
             }
 
-            // Calculate coins: diamond_count * 2 * repeat_count
+            // Calculate coins: diamond_count * repeat_count
             const repeatCount = giftData.repeatCount;
             const diamondCount = giftData.diamondCount;
             let coins = 0;
 
             if (diamondCount > 0) {
-                coins = diamondCount * 2 * repeatCount;
+                coins = diamondCount * repeatCount;
             }
 
             this.logger.info(`🎁 [GIFT] ${giftData.giftName}: diamondCount=${diamondCount}, repeatCount=${repeatCount}, coins=${coins}, giftType=${giftData.giftType}, repeatEnd=${giftData.repeatEnd}`);

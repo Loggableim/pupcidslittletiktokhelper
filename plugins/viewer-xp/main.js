@@ -413,7 +413,7 @@ class ViewerXPPlugin extends EventEmitter {
 
     this.db.updateLastSeen(username);
 
-    // FIX: Use data.coins (already calculated as diamondCount * 2 * repeatCount)
+    // FIX: Use data.coins (already calculated as diamondCount * repeatCount)
     // instead of data.gift?.diamond_count (which is just the raw diamond value per gift)
     const coins = data.coins || 0;
     

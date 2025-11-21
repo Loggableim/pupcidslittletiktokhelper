@@ -58,7 +58,7 @@ const testCases = [
         expected: {
             diamondCount: 1,
             repeatCount: 1,
-            coins: 2 // 1 diamond * 2 * 1 repeat
+            coins: 1 // 1 diamond * 1 repeat
         }
     },
     {
@@ -73,7 +73,7 @@ const testCases = [
         expected: {
             diamondCount: 1,
             repeatCount: 10,
-            coins: 20, // 1 diamond * 2 * 10 repeat
+            coins: 10, // 1 diamond * 10 repeat
             shouldCount: false // Streak not ended
         }
     },
@@ -89,7 +89,7 @@ const testCases = [
         expected: {
             diamondCount: 1,
             repeatCount: 10,
-            coins: 20, // 1 diamond * 2 * 10 repeat
+            coins: 10, // 1 diamond * 10 repeat
             shouldCount: true
         }
     },
@@ -105,7 +105,7 @@ const testCases = [
         expected: {
             diamondCount: 10,
             repeatCount: 5,
-            coins: 100 // 10 diamonds * 2 * 5 repeat
+            coins: 50 // 10 diamonds * 5 repeat
         }
     },
     {
@@ -120,7 +120,7 @@ const testCases = [
         expected: {
             diamondCount: 20,
             repeatCount: 3,
-            coins: 120 // 20 diamonds * 2 * 3 repeat
+            coins: 60 // 20 diamonds * 3 repeat
         }
     }
 ];
@@ -150,7 +150,7 @@ async function runTests() {
         // Calculate coins
         const repeatCount = giftData.repeatCount;
         const diamondCount = giftData.diamondCount;
-        const coins = diamondCount > 0 ? diamondCount * 2 * repeatCount : 0;
+        const coins = diamondCount > 0 ? diamondCount * repeatCount : 0;
         
         // Check if gift should be counted
         const isStreakable = giftData.giftType === 1;

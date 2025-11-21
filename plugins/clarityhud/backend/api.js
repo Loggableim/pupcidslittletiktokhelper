@@ -326,7 +326,7 @@ class ClarityHUDBackend {
           giftName: 'Rose',
           repeatCount: 5,
           diamondCount: 50,
-          coins: 500, // 50 diamonds * 2 * 5 repeatCount = 500 coins
+          coins: 250, // 50 diamonds * 5 repeatCount = 250 coins
           giftPictureUrl: null,
           giftType: 0,
           profilePictureUrl: null,
@@ -514,7 +514,7 @@ class ClarityHUDBackend {
         return;
       }
 
-      // FIX: Use data.coins (already calculated as diamondCount * 2 * repeatCount)
+      // FIX: Use data.coins (already calculated as diamondCount * repeatCount)
       // instead of data.diamondCount (which is just the raw diamond value per gift)
       const giftEvent = {
         user: {
