@@ -394,11 +394,13 @@ class OpenShockPlugin {
 
         // Main UI
         app.get('/openshock/ui', (req, res) => {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'openshock.html'));
         });
 
         // Overlay
         app.get('/openshock/overlay', (req, res) => {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'overlay', 'openshock_overlay.html'));
         });
 
