@@ -542,6 +542,37 @@ class TTSPlugin {
             });
         });
 
+        // Get recent active chat users for autocomplete
+        this.api.registerRoute('GET', '/api/tts/recent-users', (req, res) => {
+            try {
+                const limit = parseInt(req.query.limit) || 50;
+                const db = this.api.getDatabase();
+                
+                // Query event_logs for recent chat messages
+                const stmt = db.db.prepare(`
+                    SELECT DISTINCT username, MAX(timestamp) as last_seen
+                    FROM event_logs
+                    WHERE event_type = 'chat' AND username IS NOT NULL AND username != ''
+                    GROUP BY username
+                    ORDER BY last_seen DESC
+                    LIMIT ?
+                `);
+                
+                const users = stmt.all(limit);
+                
+                res.json({
+                    success: true,
+                    users: users.map(u => ({
+                        username: u.username,
+                        lastSeen: u.last_seen
+                    }))
+                });
+            } catch (error) {
+                this.logger.error(`Failed to get recent users: ${error.message}`);
+                res.json({ success: false, error: error.message });
+            }
+        });
+
         this.logger.info('TTS Plugin: HTTP routes registered');
     }
 
@@ -824,13 +855,7 @@ class TTSPlugin {
                 defaultVoice: this.config.defaultVoice
             });
 
-            // Use configured default voice if no per-user voice is assigned
-            if (!selectedVoice && this.config.defaultVoice) {
-                selectedVoice = this.config.defaultVoice;
-                this._logDebug('SPEAK_STEP4', 'Using configured default voice', { selectedVoice });
-            }
-
-            // Auto language detection as fallback only if no default voice is configured
+            // Priority 1: Auto language detection (if enabled and no user-assigned voice)
             if (!selectedVoice && this.config.autoLanguageDetection) {
                 let engineClass = TikTokEngine;
                 if (selectedEngine === 'speechify' && this.engines.speechify) {
@@ -841,7 +866,7 @@ class TTSPlugin {
                     engineClass = ElevenLabsEngine;
                 }
 
-                this._logDebug('SPEAK_STEP4', 'Starting language detection (fallback)', {
+                this._logDebug('SPEAK_STEP4', 'Starting language detection', {
                     text: finalText.substring(0, 50),
                     textLength: finalText.length,
                     engineClass: engineClass.name,
@@ -921,6 +946,12 @@ class TTSPlugin {
                         this.logger.info(`Using system fallback voice: ${fallbackVoice} for language: ${this.config.fallbackLanguage}`);
                     }
                 }
+            }
+
+            // Priority 2: Use configured default voice if language detection is disabled or failed
+            if (!selectedVoice && this.config.defaultVoice) {
+                selectedVoice = this.config.defaultVoice;
+                this._logDebug('SPEAK_STEP4', 'Using configured default voice (language detection disabled or failed)', { selectedVoice });
             }
 
             // Final fallback to hardcoded default if nothing else worked

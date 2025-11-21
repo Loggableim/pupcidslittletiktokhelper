@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TTS Admin Panel - Pup Cids TikTok Helper</title>
+    <title data-i18n="tts.admin_panel.title">TTS Admin Panel</title>
     <link rel="stylesheet" href="/css/tailwind.output.css">
+    <link rel="stylesheet" href="/css/themes.css">
     <style>
         /* Custom animations */
         .fade-in {
@@ -23,7 +24,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100">
+<body style="background-color: var(--color-bg-primary); color: var(--color-text-primary);">
     <!-- Debug Info (will be hidden once JS loads) -->
     <div id="debug-info" class="fixed top-0 left-0 right-0 bg-yellow-600 text-black p-2 text-center z-50">
         ⚠️ Loading TTS Admin Panel... If this message persists, check browser console (F12)
@@ -32,19 +33,19 @@
     <div class="container mx-auto p-6 max-w-7xl">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-4xl font-bold mb-2">🔊 TTS Admin Panel</h1>
-            <p class="text-gray-400">Text-to-Speech System v2.0</p>
-            <div id="init-status" class="text-sm text-gray-500 mt-2">Initializing...</div>
+            <h1 class="text-4xl font-bold mb-2" data-i18n="tts.admin_panel.title">🔊 TTS Admin Panel</h1>
+            <p class="text-gray-400" data-i18n="tts.admin_panel.subtitle">Text-to-Speech System v2.0</p>
+            <div id="init-status" class="text-sm text-gray-500 mt-2" data-i18n="tts.admin_panel.initializing">Initializing...</div>
         </div>
 
         <!-- Tabs -->
         <div class="mb-6 border-b border-gray-700">
             <nav class="flex space-x-4">
-                <button data-tab="config" id="tab-config" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-400">Configuration</button>
-                <button data-tab="users" id="tab-users" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">User Management</button>
-                <button data-tab="queue" id="tab-queue" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Queue & Playback</button>
-                <button data-tab="stats" id="tab-stats" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">Statistics</button>
-                <button data-tab="debug" id="tab-debug" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300">🐛 Debug Logs</button>
+                <button data-tab="config" id="tab-config" class="tab-button px-4 py-2 font-medium border-b-2 border-blue-500 text-blue-400" data-i18n="tts.admin_panel.tabs.config">Configuration</button>
+                <button data-tab="users" id="tab-users" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300" data-i18n="tts.admin_panel.tabs.users">User Management</button>
+                <button data-tab="queue" id="tab-queue" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300" data-i18n="tts.admin_panel.tabs.queue">Queue & Playback</button>
+                <button data-tab="stats" id="tab-stats" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300" data-i18n="tts.admin_panel.tabs.stats">Statistics</button>
+                <button data-tab="debug" id="tab-debug" class="tab-button px-4 py-2 font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-300" data-i18n="tts.admin_panel.tabs.debug">🐛 Debug Logs</button>
             </nav>
         </div>
 
@@ -143,7 +144,7 @@
                         <div>
                             <label class="block text-sm font-medium mb-2">Minimum Team Level</label>
                             <input type="number" id="teamMinLevel" min="0" max="10" value="0" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
-                            <p class="text-xs text-gray-400 mt-1">0 = Everyone, 1+ = Team members/Mods only</p>
+                            <p class="text-xs text-gray-400 mt-1">Team level equals the number of team hearts sent to the streamer (0 = Anyone can use TTS, 1+ = Only users who have sent team hearts)</p>
                         </div>
 
                         <div class="flex items-center space-x-2">
@@ -263,8 +264,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-2">Username (TikTok uniqueId)</label>
-                        <input type="text" id="manualUsername" placeholder="Enter TikTok username..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                        <p class="text-xs text-gray-400 mt-1">Enter the exact TikTok username (case-sensitive)</p>
+                        <input type="text" id="manualUsername" list="recentUsersList" placeholder="Enter TikTok username..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500" autocomplete="off">
+                        <datalist id="recentUsersList">
+                            <!-- Populated dynamically with recent chat users -->
+                        </datalist>
+                        <p class="text-xs text-gray-400 mt-1">Enter the exact TikTok username (case-sensitive) or select from recent chat users</p>
                     </div>
 
                     <div>
@@ -511,7 +515,47 @@
         </div>
     </div>
 
+    <!-- Load i18n and theme support -->
+    <script src="/js/i18n-client.js"></script>
+    <script src="/js/theme-manager.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Initialize i18n before loading TTS admin
+        (async () => {
+            if (typeof I18nClient !== 'undefined') {
+                window.i18n = new I18nClient();
+                await window.i18n.init();
+                
+                // Apply translations to elements with data-i18n attributes
+                const applyTranslations = () => {
+                    document.querySelectorAll('[data-i18n]').forEach(el => {
+                        const key = el.getAttribute('data-i18n');
+                        const translation = window.i18n.t(key);
+                        if (translation !== key) {
+                            // For input placeholders
+                            if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
+                                el.setAttribute('placeholder', translation);
+                            } else {
+                                // For text content - preserve emojis at the start
+                                const emojiMatch = el.textContent.match(/^([\u{1F300}-\u{1F9FF}]+\s*)/u);
+                                el.textContent = emojiMatch ? emojiMatch[1] + translation : translation;
+                            }
+                        }
+                    });
+                };
+                
+                // Apply translations initially
+                applyTranslations();
+                
+                // Re-apply when language changes
+                window.i18n.onLanguageChange(() => {
+                    applyTranslations();
+                });
+                
+                console.log('✅ TTS Admin Panel: i18n initialized');
+            }
+        })();
+    </script>
     <script src="/plugins/tts/ui/tts-admin-production.js"></script>
 </body>
 </html>
