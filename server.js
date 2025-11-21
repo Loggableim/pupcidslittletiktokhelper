@@ -2321,7 +2321,7 @@ tiktok.on('gift', async (data) => {
     }
 
     // Goals: Coins erhöhen (Event-Data enthält bereits korrekte Coins-Berechnung)
-    // Der TikTok-Connector berechnet: diamondCount * 2 * repeatCount
+    // Der TikTok-Connector berechnet: diamondCount * repeatCount
     // und zählt nur bei Streak-Ende (bei streakable Gifts)
     await goals.incrementGoal('coins', data.coins || 0);
     debugLogger.log('goals', `Coins goal incremented by ${data.coins}`);
