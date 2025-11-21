@@ -4,7 +4,9 @@ const overlayTypes = [
   { id: 'chatter', name: 'Last Chatter', icon: '💬', color: '#28a745' },
   { id: 'share', name: 'Last Share', icon: '🔗', color: '#17a2b8' },
   { id: 'gifter', name: 'Last Gifter', icon: '🎁', color: '#ffc107' },
-  { id: 'subscriber', name: 'Last Subscriber', icon: '⭐', color: '#6f42c1' }
+  { id: 'subscriber', name: 'Last Subscriber', icon: '⭐', color: '#6f42c1' },
+  { id: 'top-gift', name: 'Top Gift', icon: '💎', color: '#e91e63' },
+  { id: 'gift-streak', name: 'Gift Streak', icon: '🔥', color: '#ff5722' }
 ];
 
 let currentType = null;

@@ -169,6 +169,24 @@ class TemplateRenderer {
       `);
     }
 
+    // Gift information (for gift-related events)
+    if (userData.metadata && userData.metadata.giftName) {
+      const giftCount = userData.metadata.giftCount || 1;
+      const coins = userData.metadata.coins || 0;
+      
+      textParts.push(`
+        <div class="gift-info" style="
+          font-size: calc(${this.settings.fontSize || '32px'} * 0.7);
+          color: ${this.settings.fontColor || '#FFFFFF'};
+          opacity: 0.9;
+          margin-top: 8px;
+        ">
+          ${userData.metadata.giftName}${giftCount > 1 ? ` x${giftCount}` : ''}
+          ${coins > 0 ? ` (${coins} coins)` : ''}
+        </div>
+      `);
+    }
+
     if (textParts.length > 0) {
       parts.push(`
         <div class="text-content" style="padding: 10px;">
