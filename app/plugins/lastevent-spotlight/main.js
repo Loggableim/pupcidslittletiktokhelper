@@ -297,6 +297,7 @@ class LastEventSpotlightPlugin {
           label: this.eventTypes[type].label,
           metadata: {
             giftName: type === 'gifter' || type === 'topgift' || type === 'giftstreak' ? 'Rose' : null,
+            giftPictureUrl: type === 'gifter' || type === 'topgift' || type === 'giftstreak' ? 'https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/eba3a9bb85c33e017f3648db945cc9b2~tplv-obj.image' : null,
             giftCount: type === 'giftstreak' ? 10 : 1,
             coins: type === 'gifter' || type === 'topgift' ? 100 : 0,
             streakLength: type === 'giftstreak' ? 10 : null
@@ -410,6 +411,7 @@ class LastEventSpotlightPlugin {
   async handleGiftTracking(userData) {
     const giftCoins = userData.metadata.coins;
     const giftName = userData.metadata.giftName;
+    const giftPictureUrl = userData.metadata.giftPictureUrl;
     const giftCount = userData.metadata.giftCount;
     const uniqueId = userData.uniqueId;
 
@@ -458,6 +460,7 @@ class LastEventSpotlightPlugin {
             label: 'Gift Streak',
             metadata: {
               giftName: this.longestStreak.giftName,
+              giftPictureUrl: this.longestStreak.giftPictureUrl,
               giftCount: this.longestStreak.count,
               coins: this.longestStreak.totalCoins,
               streakLength: this.longestStreak.count
@@ -473,6 +476,7 @@ class LastEventSpotlightPlugin {
       // Start new streak
       this.currentStreak = {
         giftName,
+        giftPictureUrl,
         count: giftCount,
         user: uniqueId,
         userData: {
@@ -513,6 +517,7 @@ class LastEventSpotlightPlugin {
       // Additional event-specific data
       metadata: {
         giftName: data.giftName,
+        giftPictureUrl: data.giftPictureUrl,
         giftCount: data.repeatCount || data.count || 1,
         message: data.comment || data.message,
         // FIX: Use data.coins (already calculated), only fallback to 0 if not present

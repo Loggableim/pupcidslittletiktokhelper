@@ -13,6 +13,16 @@ class TemplateRenderer {
   }
 
   /**
+   * Escape HTML to prevent XSS attacks
+   */
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  /**
    * Update settings and re-render
    */
   updateSettings(newSettings) {
@@ -120,10 +130,14 @@ class TemplateRenderer {
    */
   buildHTML(userData, profilePicUrl) {
     const parts = [];
+    const isGiftEvent = userData.eventType === 'gifter' || userData.eventType === 'topgift' || userData.eventType === 'giftstreak';
+    const hasGiftData = userData.metadata && (userData.metadata.giftName || userData.metadata.giftPictureUrl);
 
     // Profile picture
     if (this.settings.showProfilePicture && profilePicUrl) {
       const size = this.settings.profilePictureSize || '80px';
+      const escapedNickname = this.escapeHtml(userData.nickname);
+      const escapedProfilePicUrl = this.escapeHtml(profilePicUrl);
       parts.push(`
         <div class="profile-picture" style="
           width: ${size};
@@ -133,15 +147,64 @@ class TemplateRenderer {
           ${this.settings.enableBorder ? `border: 3px solid ${this.settings.borderColor || '#FFFFFF'};` : ''}
           margin: 10px;
         ">
-          <img src="${profilePicUrl}" alt="${userData.nickname}" style="width: 100%; height: 100%; object-fit: cover;">
+          <img src="${escapedProfilePicUrl}" alt="${escapedNickname}" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
       `);
+    }
+
+    // Gift icon (for gift-related events)
+    if (isGiftEvent && hasGiftData) {
+      const giftPictureUrl = userData.metadata.giftPictureUrl;
+      const giftName = userData.metadata.giftName || 'Gift';
+      const size = this.settings.profilePictureSize || '80px';
+      
+      if (giftPictureUrl) {
+        // Show gift image if available
+        const escapedGiftPictureUrl = this.escapeHtml(giftPictureUrl);
+        const escapedGiftName = this.escapeHtml(giftName);
+        parts.push(`
+          <div class="gift-icon" style="
+            width: ${size};
+            height: ${size};
+            border-radius: 10px;
+            overflow: hidden;
+            ${this.settings.enableBorder ? `border: 3px solid ${this.settings.borderColor || '#FFFFFF'};` : ''}
+            margin: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <img src="${escapedGiftPictureUrl}" alt="${escapedGiftName}" style="width: 90%; height: 90%; object-fit: contain;">
+          </div>
+        `);
+      } else {
+        // Fallback to emoji if no gift image
+        const giftEmoji = userData.eventType === 'topgift' ? '💎' : (userData.eventType === 'giftstreak' ? '🔥' : '🎁');
+        parts.push(`
+          <div class="gift-icon" style="
+            width: ${size};
+            height: ${size};
+            border-radius: 10px;
+            ${this.settings.enableBorder ? `border: 3px solid ${this.settings.borderColor || '#FFFFFF'};` : ''}
+            margin: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: calc(${size} * 0.6);
+          ">
+            ${giftEmoji}
+          </div>
+        `);
+      }
     }
 
     // Text content
     const textParts = [];
 
     // Event label
+    const escapedLabel = this.escapeHtml(userData.label || 'Event');
     textParts.push(`
       <div class="event-label" style="
         font-size: calc(${this.settings.fontSize || '32px'} * 0.6);
@@ -149,12 +212,13 @@ class TemplateRenderer {
         opacity: 0.8;
         margin-bottom: 5px;
       ">
-        ${userData.label || 'Event'}
+        ${escapedLabel}
       </div>
     `);
 
     // Username
     if (this.settings.showUsername) {
+      const escapedNickname = this.escapeHtml(userData.nickname || 'Anonymous');
       textParts.push(`
         <div class="username" style="
           font-family: ${this.settings.fontFamily || 'Exo 2'};
@@ -164,9 +228,45 @@ class TemplateRenderer {
           color: ${this.settings.fontColor || '#FFFFFF'};
           font-weight: bold;
         ">
-          ${userData.nickname || 'Anonymous'}
+          ${escapedNickname}
         </div>
       `);
+    }
+
+    // Gift metadata (for gift-related events)
+    if (isGiftEvent && hasGiftData) {
+      const giftInfo = [];
+      
+      if (userData.metadata.giftName) {
+        const escapedGiftName = this.escapeHtml(userData.metadata.giftName);
+        giftInfo.push(`<span style="color: #ffc107;">🎁 ${escapedGiftName}</span>`);
+      }
+      
+      if (userData.metadata.giftCount && userData.metadata.giftCount > 1) {
+        const giftCount = parseInt(userData.metadata.giftCount) || 0;
+        giftInfo.push(`<span style="color: #00ff00;">×${giftCount}</span>`);
+      }
+      
+      if (userData.metadata.coins && userData.metadata.coins > 0) {
+        const coins = parseInt(userData.metadata.coins) || 0;
+        giftInfo.push(`<span style="color: #ffd700;">💰 ${coins} coins</span>`);
+      }
+      
+      if (giftInfo.length > 0) {
+        textParts.push(`
+          <div class="gift-metadata" style="
+            font-size: calc(${this.settings.fontSize || '32px'} * 0.7);
+            color: ${this.settings.fontColor || '#FFFFFF'};
+            margin-top: 5px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: ${this.settings.alignCenter ? 'center' : 'flex-start'};
+          ">
+            ${giftInfo.join(' ')}
+          </div>
+        `);
+      }
     }
 
     if (textParts.length > 0) {
