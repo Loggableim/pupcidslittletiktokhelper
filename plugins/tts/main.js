@@ -546,9 +546,10 @@ class TTSPlugin {
         this.api.registerRoute('GET', '/api/tts/recent-users', (req, res) => {
             try {
                 const limit = parseInt(req.query.limit) || 50;
+                const db = this.api.getDatabase();
                 
                 // Query event_logs for recent chat messages
-                const stmt = this.db.db.prepare(`
+                const stmt = db.db.prepare(`
                     SELECT DISTINCT username, MAX(timestamp) as last_seen
                     FROM event_logs
                     WHERE event_type = 'chat' AND username IS NOT NULL AND username != ''

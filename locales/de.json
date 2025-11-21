@@ -447,7 +447,7 @@
         "duck_volume": "Reduktionslautstärke",
         "permission_settings": "Berechtigungseinstellungen",
         "min_team_level": "Minimales Team-Level",
-        "min_team_level_help": "Team-Level = Anzahl gesendeter Team-Herzen (0 = Jeder kann TTS verwenden)",
+        "min_team_level_help": "Team-Level entspricht der Anzahl der an den Streamer gesendeten Team-Herzen (0 = Jeder kann TTS verwenden, 1+ = Nur Benutzer, die Team-Herzen gesendet haben)",
         "enable_for_chat": "TTS für Chat-Nachrichten aktivieren",
         "auto_language_detection": "Sprache automatisch erkennen",
         "language_detection": "Spracherkennung",

@@ -443,7 +443,7 @@
         "duck_volume": "Duck Volume",
         "permission_settings": "Permission Settings",
         "min_team_level": "Minimum Team Level",
-        "min_team_level_help": "Team level = number of team hearts sent (0 = Everyone can use TTS)",
+        "min_team_level_help": "Team level equals the number of team hearts sent to the streamer (0 = Anyone can use TTS, 1+ = Only users who have sent team hearts)",
         "enable_for_chat": "Enable TTS for chat messages",
         "auto_language_detection": "Auto-detect language",
         "language_detection": "Language Detection",
