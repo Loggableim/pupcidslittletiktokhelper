@@ -71,6 +71,7 @@
         let fps = 60;
         let fpsUpdateTime = performance.now();
         const TARGET_FRAME_TIME = 1000 / 60; // 60 FPS target
+        const COLOR_UPDATE_THROTTLE_MS = 100; // Throttle non-rainbow color updates for performance
         let lastUpdateTime = performance.now();
 
         // Object pooling for particles
@@ -336,10 +337,7 @@
 
             // Update rainbow hue
             if (config.rainbow_enabled) {
-                rainbowHueOffset += config.rainbow_speed;
-                if (rainbowHueOffset >= 360) {
-                    rainbowHueOffset -= 360;
-                }
+                rainbowHueOffset = (rainbowHueOffset + config.rainbow_speed) % 360;
             }
 
             // Apply wind force to all emojis
@@ -388,7 +386,7 @@
                         if (config.rainbow_enabled) {
                             applyColorTheme(emoji.element, emoji);
                             emoji.lastColorUpdate = currentTime;
-                        } else if (currentTime - emoji.lastColorUpdate > 100) {
+                        } else if (currentTime - emoji.lastColorUpdate > COLOR_UPDATE_THROTTLE_MS) {
                             applyColorTheme(emoji.element, emoji);
                             emoji.lastColorUpdate = currentTime;
                         }
@@ -507,10 +505,8 @@
 
             emojis.push(emojiObj);
 
-            // Apply pixel effect after creating emojiObj
+            // Apply pixel effect and color theme to the new emoji element
             applyPixelEffect(element);
-            
-            // Apply initial color theme after creating emojiObj to prevent flash
             applyColorTheme(element, emojiObj);
 
             return emojiObj;
