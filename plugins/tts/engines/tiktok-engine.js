@@ -7,35 +7,29 @@ const axios = require('axios');
 class TikTokEngine {
     constructor(logger) {
         this.logger = logger;
-        // Updated endpoints - using direct TikTok API endpoints as primary
-        // The Weilnet endpoint is known to return 500 errors as of Nov 2025
+        // Multiple proxy endpoints for redundancy
+        // Using publicly accessible proxies that don't require authentication
         this.endpoints = [
-            // Direct TikTok API endpoints (multiple regions for redundancy)
-            {
-                url: 'https://api16-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
-                format: 'direct',
-                requiresSession: false
-            },
-            {
-                url: 'https://api22-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
-                format: 'direct',
-                requiresSession: false
-            },
-            {
-                url: 'https://api16-core-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
-                format: 'direct',
-                requiresSession: false
-            },
-            // Fallback to proxy endpoints if direct API fails
+            // Try various public proxy endpoints
             {
                 url: 'https://tiktok-tts.weilnet.workers.dev/api/generation',
-                format: 'proxy',
-                requiresSession: false
+                format: 'proxy'
             },
             {
-                url: 'https://tiktoktts.com/api/tiktok-tts',
-                format: 'proxy',
-                requiresSession: false
+                url: 'https://countik.com/api/text/speech',
+                format: 'proxy'
+            },
+            {
+                url: 'https://gesserit.co/api/tiktok-tts',
+                format: 'proxy'
+            },
+            {
+                url: 'https://tiktok-tts.vercel.app/api/generate',
+                format: 'proxy'
+            },
+            {
+                url: 'https://lazypy.ro/tts/request_tiktok.php',
+                format: 'proxy'
             }
         ];
         this.timeout = 15000; // 15s timeout
@@ -186,23 +180,11 @@ class TikTokEngine {
      * Make TTS request to endpoint
      */
     async _makeRequest(endpoint, text, voiceId) {
-        // Prepare request based on endpoint format
-        let requestData;
-        if (endpoint.format === 'direct') {
-            // Direct TikTok API format
-            requestData = {
-                text_speaker: voiceId,
-                req_text: text,
-                speaker_map_type: 0,
-                aid: 1233
-            };
-        } else {
-            // Proxy format (Weilnet, tiktoktts.com, etc.)
-            requestData = {
-                text: text,
-                voice: voiceId
-            };
-        }
+        // All endpoints use proxy format
+        const requestData = {
+            text: text,
+            voice: voiceId
+        };
 
         const response = await axios.post(
             endpoint.url,
@@ -210,31 +192,22 @@ class TikTokEngine {
             {
                 headers: {
                     'Content-Type': 'application/json',
-                    'User-Agent': 'com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)'
+                    'User-Agent': 'TikTokLiveStreamTool/2.0'
                 },
                 timeout: this.timeout,
                 validateStatus: (status) => status === 200
             }
         );
 
-        // Handle different response formats
-        if (endpoint.format === 'direct') {
-            // Direct TikTok API response format
-            if (response.data && response.data.data && response.data.data.v_str) {
-                return response.data.data.v_str; // Base64 audio data
-            } else if (response.data && response.data.status_code === 0 && response.data.data) {
-                // Alternative direct API format
-                return response.data.data;
-            }
-        } else {
-            // Proxy response format
-            if (response.data && response.data.data) {
-                return response.data.data; // Primary format
-            } else if (response.data && response.data.audioContent) {
-                return response.data.audioContent; // Alternative format
-            } else if (typeof response.data === 'string' && response.data.length > 100) {
-                return response.data; // Direct base64
-            }
+        // Handle different proxy response formats
+        if (response.data && response.data.data) {
+            return response.data.data; // Primary format
+        } else if (response.data && response.data.audioContent) {
+            return response.data.audioContent; // Alternative format
+        } else if (response.data && response.data.audio) {
+            return response.data.audio; // Another alternative
+        } else if (typeof response.data === 'string' && response.data.length > 100) {
+            return response.data; // Direct base64
         }
 
         throw new Error('Invalid response format from TikTok TTS API');
