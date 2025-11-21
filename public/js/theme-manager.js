@@ -49,6 +49,57 @@ class ThemeManager {
     setupUI() {
         this.createThemeToggle();
         this.attachEventListeners();
+        this.setupIframeMonitoring();
+    }
+
+    setupIframeMonitoring() {
+        // Monitor for iframe load events
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.tagName === 'IFRAME') {
+                        this.monitorIframeLoad(node);
+                    } else if (node.querySelectorAll) {
+                        node.querySelectorAll('iframe').forEach((iframe) => {
+                            this.monitorIframeLoad(iframe);
+                        });
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Apply theme to existing iframes when they load
+        document.querySelectorAll('iframe').forEach((iframe) => {
+            this.monitorIframeLoad(iframe);
+        });
+    }
+
+    monitorIframeLoad(iframe) {
+        // Apply theme immediately if already loaded
+        try {
+            if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+                this.applyThemeToDocument(iframe.contentDocument, this.currentTheme);
+            }
+        } catch (e) {
+            // Ignore cross-origin errors
+        }
+
+        // Listen for load event
+        iframe.addEventListener('load', () => {
+            try {
+                if (iframe.contentDocument) {
+                    this.applyThemeToDocument(iframe.contentDocument, this.currentTheme);
+                }
+            } catch (e) {
+                // Ignore cross-origin errors
+                console.debug('Cannot apply theme to loaded iframe:', e.message);
+            }
+        });
     }
 
     createThemeToggle() {
@@ -139,13 +190,38 @@ class ThemeManager {
     }
 
     applyTheme(theme) {
+        // Apply theme to main document
+        this.applyThemeToDocument(document, theme);
+
+        // Apply theme to all iframes
+        this.applyThemeToIframes(theme);
+    }
+
+    applyThemeToDocument(doc, theme) {
         // Remove all theme classes
-        document.documentElement.removeAttribute('data-theme');
+        doc.documentElement.removeAttribute('data-theme');
 
         // Apply new theme (only for non-default)
         if (theme !== 'night') {
-            document.documentElement.setAttribute('data-theme', theme);
+            doc.documentElement.setAttribute('data-theme', theme);
         }
+    }
+
+    applyThemeToIframes(theme) {
+        // Find all iframes
+        const iframes = document.querySelectorAll('iframe');
+        
+        iframes.forEach(iframe => {
+            try {
+                // Check if iframe is loaded and accessible
+                if (iframe.contentDocument && iframe.contentDocument.documentElement) {
+                    this.applyThemeToDocument(iframe.contentDocument, theme);
+                }
+            } catch (e) {
+                // Ignore cross-origin iframes
+                console.debug('Cannot apply theme to iframe:', e.message);
+            }
+        });
     }
 
     saveTheme(theme) {
