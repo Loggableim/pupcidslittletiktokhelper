@@ -1,17 +1,28 @@
 const fs = require('fs');
 const path = require('path');
 const Database = require('./database');
+const ConfigPathManager = require('./config-path-manager');
 
 /**
  * UserProfileManager - Verwaltet User-spezifische Konfigurationsdateien
  *
  * Jeder User bekommt eine eigene SQLite-Datenbank in user_configs/
- * Diese Dateien werden NICHT in Git committet (*.db in .gitignore)
- * und bleiben daher bei Updates erhalten.
+ * Diese Dateien werden in einem persistenten Verzeichnis außerhalb des
+ * Anwendungsverzeichnisses gespeichert, um Updates zu überleben.
  */
 class UserProfileManager {
-    constructor() {
-        this.configDir = path.join(__dirname, '..', 'user_configs');
+    constructor(configPathManager = null) {
+        // Use provided ConfigPathManager or create a new one
+        this.configPathManager = configPathManager || new ConfigPathManager();
+        
+        // Ensure directories exist
+        this.configPathManager.ensureDirectoriesExist();
+        
+        // Migrate from old location if needed
+        this.configPathManager.migrateFromAppDirectory();
+        
+        // Use persistent config directory
+        this.configDir = this.configPathManager.getUserConfigsDir();
         this.activeProfilePath = path.join(this.configDir, '.active_profile');
 
         // Sicherstellen, dass der Config-Ordner existiert
