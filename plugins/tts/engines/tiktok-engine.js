@@ -175,9 +175,10 @@ class TikTokEngine {
         if (audioChunks.length === 1) {
             return audioChunks[0];
         } else {
-            this.logger.info(`Combining ${audioChunks.length} audio chunks`);
-            // For now, return the first chunk. In a production system, you'd want to properly merge audio
-            // TODO: Implement proper audio concatenation if needed
+            this.logger.warn(`Text was split into ${audioChunks.length} chunks. Only the first chunk will be returned.`);
+            this.logger.warn(`For best results, keep TTS messages under 300 characters.`);
+            // TODO: Implement proper audio concatenation by decoding base64, joining MP3 files, re-encoding
+            // For now, return the first chunk to ensure some audio is played
             return audioChunks[0];
         }
     }
@@ -272,16 +273,21 @@ class TikTokEngine {
                 
             case 'tiktok':
                 // Official TikTok API format
-                requestData = {
+                // Note: aid (Application ID) parameter is required by TikTok's internal API
+                // Common values: 1233 (TikTok app), 1180 (TikTok Lite)
+                const params = new URLSearchParams({
                     text_speaker: voiceId,
                     req_text: text,
-                    speaker_map_type: 0,
-                    aid: 1233
-                };
+                    speaker_map_type: '0',
+                    aid: '1233' // Application ID for TikTok
+                });
+                requestData = params.toString();
                 requestConfig = {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'User-Agent': 'com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)',
+                        // Using a recent Android User-Agent string
+                        // Format: app_name/version (OS; device_info; Build/build_id; api_version)
+                        'User-Agent': 'com.zhiliaoapp.musically/2023400040 (Linux; U; Android 13; en_US; Pixel 7; Build/TQ3A.230805.001; tt-ok/3.12.13.4)',
                         'Accept': '*/*'
                     },
                     timeout: this.timeout,
