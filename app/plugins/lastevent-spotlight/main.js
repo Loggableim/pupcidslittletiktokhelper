@@ -17,7 +17,9 @@ class LastEventSpotlightPlugin {
       'chatter': { event: 'chat', label: 'New Chat' },
       'share': { event: 'share', label: 'New Share' },
       'gifter': { event: 'gift', label: 'New Gift' },
-      'subscriber': { event: 'subscribe', label: 'New Subscriber' }
+      'subscriber': { event: 'subscribe', label: 'New Subscriber' },
+      'topgift': { event: 'gift', label: 'Top Gift' },
+      'giftstreak': { event: 'gift', label: 'Gift Streak' }
     };
 
     // Store last user for each type
@@ -27,8 +29,24 @@ class LastEventSpotlightPlugin {
       chatter: null,
       share: null,
       gifter: null,
-      subscriber: null
+      subscriber: null,
+      topgift: null,
+      giftstreak: null
     };
+
+    // Track top gift (most expensive) in current session
+    this.topGift = null;
+    
+    // Track gift streaks
+    this.currentStreak = {
+      giftName: null,
+      count: 0,
+      user: null,
+      userData: null, // Store full user data
+      startTime: null,
+      totalCoins: 0
+    };
+    this.longestStreak = null;
 
     this.defaultSettings = this.getDefaultSettings();
   }
@@ -276,7 +294,13 @@ class LastEventSpotlightPlugin {
           profilePictureUrl: 'https://via.placeholder.com/150/0000FF/FFFFFF?text=Test',
           timestamp: new Date().toISOString(),
           eventType: type,
-          label: this.eventTypes[type].label
+          label: this.eventTypes[type].label,
+          metadata: {
+            giftName: type === 'gifter' || type === 'topgift' || type === 'giftstreak' ? 'Rose' : null,
+            giftCount: type === 'giftstreak' ? 10 : 1,
+            coins: type === 'gifter' || type === 'topgift' ? 100 : 0,
+            streakLength: type === 'giftstreak' ? 10 : null
+          }
         };
 
         await this.saveLastUser(type, testUser);
@@ -287,6 +311,34 @@ class LastEventSpotlightPlugin {
         res.json({ success: true, user: testUser });
       } catch (error) {
         this.api.log(`Error testing ${req.params.type}: ${error.message}`);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Reset stream session (clear top gift and streaks)
+    this.api.registerRoute('POST', '/api/lastevent/reset-session', async (req, res) => {
+      try {
+        this.topGift = null;
+        this.currentStreak = {
+          giftName: null,
+          count: 0,
+          user: null,
+          userData: null,
+          startTime: null,
+          totalCoins: 0
+        };
+        this.longestStreak = null;
+        
+        // Clear stored data
+        await this.api.setConfig('lastuser:topgift', null);
+        await this.api.setConfig('lastuser:giftstreak', null);
+        
+        // Notify clients
+        this.api.emit('lastevent.session.reset', { timestamp: new Date().toISOString() });
+        
+        res.json({ success: true, message: 'Stream session reset successfully' });
+      } catch (error) {
+        this.api.log(`Error resetting session: ${error.message}`);
         res.status(500).json({ success: false, error: error.message });
       }
     });
@@ -342,8 +394,95 @@ class LastEventSpotlightPlugin {
       this.api.emit(`lastevent.update.${overlayType}`, userData);
 
       this.api.log(`Updated last ${overlayType}: ${userData.nickname}`);
+
+      // Handle gift-specific tracking (top gift and streak)
+      if (eventName === 'gift' && userData.metadata.coins) {
+        await this.handleGiftTracking(userData);
+      }
     } catch (error) {
       this.api.log(`Error handling ${eventName} event: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle gift tracking for top gift and streaks
+   */
+  async handleGiftTracking(userData) {
+    const giftCoins = userData.metadata.coins;
+    const giftName = userData.metadata.giftName;
+    const giftCount = userData.metadata.giftCount;
+    const uniqueId = userData.uniqueId;
+
+    // Track top gift (most expensive)
+    if (!this.topGift || giftCoins > this.topGift.metadata.coins) {
+      this.topGift = {
+        ...userData,
+        eventType: 'topgift',
+        label: 'Top Gift'
+      };
+      await this.saveLastUser('topgift', this.topGift);
+      this.api.emit('lastevent.update.topgift', this.topGift);
+      this.api.log(`New top gift: ${giftName} (${giftCoins} coins) from ${userData.nickname}`);
+    }
+
+    // Track gift streaks
+    const now = new Date();
+    const timeSinceLastGift = this.currentStreak.startTime 
+      ? now - new Date(this.currentStreak.startTime) 
+      : Infinity;
+    
+    // Consider it a streak if same gift from same user within 30 seconds
+    const isStreakContinuation = 
+      this.currentStreak.giftName === giftName &&
+      this.currentStreak.user === uniqueId &&
+      timeSinceLastGift < 30000; // 30 seconds
+
+    if (isStreakContinuation) {
+      // Continue streak
+      this.currentStreak.count += giftCount;
+      this.currentStreak.totalCoins += giftCoins;
+    } else {
+      // Check if previous streak should be saved as longest
+      if (this.currentStreak.count > 0) {
+        if (!this.longestStreak || this.currentStreak.count > this.longestStreak.count) {
+          this.longestStreak = { ...this.currentStreak };
+          
+          // Create userData for longest streak using stored user data
+          const storedUserData = this.longestStreak.userData || {};
+          const streakData = {
+            uniqueId: storedUserData.uniqueId || this.longestStreak.user,
+            nickname: storedUserData.nickname || 'Unknown',
+            profilePictureUrl: storedUserData.profilePictureUrl || '',
+            timestamp: this.longestStreak.startTime,
+            eventType: 'giftstreak',
+            label: 'Gift Streak',
+            metadata: {
+              giftName: this.longestStreak.giftName,
+              giftCount: this.longestStreak.count,
+              coins: this.longestStreak.totalCoins,
+              streakLength: this.longestStreak.count
+            }
+          };
+          
+          await this.saveLastUser('giftstreak', streakData);
+          this.api.emit('lastevent.update.giftstreak', streakData);
+          this.api.log(`New gift streak record: ${this.longestStreak.count}x ${this.longestStreak.giftName}`);
+        }
+      }
+
+      // Start new streak
+      this.currentStreak = {
+        giftName,
+        count: giftCount,
+        user: uniqueId,
+        userData: {
+          uniqueId: userData.uniqueId,
+          nickname: userData.nickname,
+          profilePictureUrl: userData.profilePictureUrl
+        },
+        startTime: now.toISOString(),
+        totalCoins: giftCoins
+      };
     }
   }
 
