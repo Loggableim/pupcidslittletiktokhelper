@@ -9,19 +9,36 @@ class TikTokEngine {
     constructor(logger) {
         this.logger = logger;
         
-        // Primary TikTok API endpoints (official, updated 2024)
-        // These endpoints work without session ID for basic usage
+        // Hybrid approach: Use both direct TikTok API endpoints and public proxy services
+        // This provides better reliability with multiple fallback options
         this.apiEndpoints = [
-            'https://api16-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
-            'https://api16-core-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
-            'https://api16-normal-useast5.us.tiktokv.com/media/api/text/speech/invoke',
-            'https://api16-core.tiktokv.com/media/api/text/speech/invoke',
-            'https://api19-core-c-useast1a.tiktokv.com/media/api/text/speech/invoke'
+            // Public proxy services (working as of 2024)
+            {
+                url: 'https://tiktok-tts.weilnet.workers.dev/api/generation',
+                type: 'proxy',
+                format: 'weilnet'
+            },
+            {
+                url: 'https://tikapi.io/api/v1/public/tts',
+                type: 'proxy',
+                format: 'tikapi'
+            },
+            // Direct TikTok API endpoints (require proper headers)
+            {
+                url: 'https://api16-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                type: 'official',
+                format: 'tiktok'
+            },
+            {
+                url: 'https://api22-normal-c-alisg.tiktokv.com/media/api/text/speech/invoke',
+                type: 'official',
+                format: 'tiktok'
+            }
         ];
         
         this.currentEndpointIndex = 0;
         this.timeout = 10000; // 10s timeout
-        this.maxRetries = 2;
+        this.maxRetries = 1; // Reduced retries per endpoint to fail faster
         this.maxChunkLength = 300; // TikTok API limit per request
     }
 
@@ -174,80 +191,160 @@ class TikTokEngine {
         
         // Try each endpoint until one succeeds
         for (let endpointAttempt = 0; endpointAttempt < this.apiEndpoints.length; endpointAttempt++) {
-            const endpoint = this.apiEndpoints[this.currentEndpointIndex];
+            const endpointConfig = this.apiEndpoints[this.currentEndpointIndex];
             
             // Try the current endpoint with retries
             for (let retryAttempt = 0; retryAttempt < this.maxRetries; retryAttempt++) {
                 try {
-                    this.logger.debug(`Attempting TikTok API: ${endpoint} (attempt ${retryAttempt + 1}/${this.maxRetries})`);
+                    this.logger.debug(`Attempting ${endpointConfig.type} TTS: ${endpointConfig.url} (attempt ${retryAttempt + 1}/${this.maxRetries})`);
                     
-                    const result = await this._makeRequest(endpoint, text, voiceId);
+                    const result = await this._makeRequest(endpointConfig, text, voiceId);
                     if (result) {
-                        this.logger.info(`TikTok TTS success: ${text.substring(0, 30)}... (voice: ${voiceId})`);
+                        this.logger.info(`TikTok TTS success via ${endpointConfig.type}: ${text.substring(0, 30)}... (voice: ${voiceId})`);
                         return result;
                     }
                 } catch (error) {
                     lastError = error;
-                    this.logger.warn(`TikTok TTS endpoint ${endpoint} attempt ${retryAttempt + 1} failed: ${error.message}`);
+                    this.logger.warn(`TikTok TTS ${endpointConfig.type} endpoint failed: ${error.message}`);
                     
-                    // Exponential backoff for retries on same endpoint
+                    // Small backoff for retries on same endpoint
                     if (retryAttempt < this.maxRetries - 1) {
-                        await this._delay(Math.pow(2, retryAttempt) * 500);
+                        await this._delay(500);
                     }
                 }
             }
             
             // Move to next endpoint for next attempt
             this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.apiEndpoints.length;
-            this.logger.info(`Switching to next endpoint: ${this.apiEndpoints[this.currentEndpointIndex]}`);
         }
         
         // All endpoints and retries failed
-        throw new Error(`All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'}`);
+        const errorMessage = `All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'}`;
+        this.logger.error(errorMessage);
+        this.logger.error('Tried endpoints:', this.apiEndpoints.map(e => `${e.type}:${e.url}`).join(', '));
+        throw new Error(errorMessage);
     }
 
     /**
-     * Make TTS request to TikTok API endpoint
-     * Uses official TikTok API format
+     * Make TTS request to endpoint
+     * Handles different API formats (proxy services vs official TikTok API)
      * @private
      */
-    async _makeRequest(endpoint, text, voiceId) {
-        const response = await axios.post(
-            endpoint,
-            {
-                text_speaker: voiceId,
-                req_text: text,
-                speaker_map_type: 0,
-                aid: 1233
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)',
-                    'Accept': '*/*'
-                },
-                timeout: this.timeout,
-                responseType: 'json'
-            }
-        );
-
-        // TikTok API returns different response formats
-        // Status code 0 = success, 1 = error
-        if (response.data && response.data.status_code === 0) {
-            // The audio data is in the 'data' field, which contains vstr (voice string base64)
-            if (response.data.data && response.data.data.v_str) {
-                return response.data.data.v_str;
-            } else if (response.data.data && typeof response.data.data === 'string') {
-                return response.data.data;
-            }
+    async _makeRequest(endpointConfig, text, voiceId) {
+        const { url, type, format } = endpointConfig;
+        
+        let requestConfig;
+        let requestData;
+        
+        // Configure request based on endpoint format
+        switch (format) {
+            case 'weilnet':
+                // Weilnet Workers endpoint format
+                requestData = {
+                    text: text,
+                    voice: voiceId
+                };
+                requestConfig = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'TikTokLiveStreamTool/2.0'
+                    },
+                    timeout: this.timeout,
+                    responseType: 'json'
+                };
+                break;
+                
+            case 'tikapi':
+                // TikAPI format
+                requestData = {
+                    text: text,
+                    voice: voiceId
+                };
+                requestConfig = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'TikTokLiveStreamTool/2.0'
+                    },
+                    timeout: this.timeout,
+                    responseType: 'json'
+                };
+                break;
+                
+            case 'tiktok':
+                // Official TikTok API format
+                requestData = {
+                    text_speaker: voiceId,
+                    req_text: text,
+                    speaker_map_type: 0,
+                    aid: 1233
+                };
+                requestConfig = {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'User-Agent': 'com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)',
+                        'Accept': '*/*'
+                    },
+                    timeout: this.timeout,
+                    responseType: 'json'
+                };
+                break;
+                
+            default:
+                throw new Error(`Unknown endpoint format: ${format}`);
         }
         
-        // Check for error message
-        if (response.data && response.data.status_msg) {
-            throw new Error(`TikTok API error: ${response.data.status_msg}`);
+        const response = await axios.post(url, requestData, requestConfig);
+        
+        // Handle different response formats
+        return this._extractAudioData(response.data, format);
+    }
+    
+    /**
+     * Extract audio data from response based on format
+     * @private
+     */
+    _extractAudioData(data, format) {
+        switch (format) {
+            case 'weilnet':
+                // Weilnet returns: { success: true, data: "base64..." }
+                if (data && data.success && data.data) {
+                    return data.data;
+                } else if (data && data.data) {
+                    return data.data;
+                }
+                break;
+                
+            case 'tikapi':
+                // TikAPI returns: { audio: "base64..." } or { audioContent: "base64..." }
+                if (data && data.audio) {
+                    return data.audio;
+                } else if (data && data.audioContent) {
+                    return data.audioContent;
+                }
+                break;
+                
+            case 'tiktok':
+                // Official TikTok API returns: { status_code: 0, data: { v_str: "base64..." } }
+                if (data && data.status_code === 0) {
+                    if (data.data && data.data.v_str) {
+                        return data.data.v_str;
+                    } else if (data.data && typeof data.data === 'string') {
+                        return data.data;
+                    }
+                }
+                // Check for error message
+                if (data && data.status_msg) {
+                    throw new Error(`TikTok API error: ${data.status_msg}`);
+                }
+                break;
         }
         
-        throw new Error('Invalid response format from TikTok TTS API');
+        // Fallback: try to find base64 data in common response fields
+        if (typeof data === 'string' && data.length > 100) {
+            return data;
+        }
+        
+        throw new Error(`Invalid response format from ${format} TTS endpoint`);
     }
     
     /**
