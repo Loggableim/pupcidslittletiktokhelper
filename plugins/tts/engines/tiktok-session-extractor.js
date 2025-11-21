@@ -196,16 +196,10 @@ class TikTokSessionExtractor {
                 const launchOptions = {
                     headless: false, // Always visible - user needs to see login page
                     args: [
-                        '--disable-blink-features=AutomationControlled', // Hide automation detection
-                        '--exclude-switches=enable-automation', // Remove automation flag
-                        '--disable-dev-shm-usage', // Overcome limited resource problems
+                        '--remote-debugging-port=9222', // Enable remote debugging for future connections
                         '--no-first-run', // Skip first run wizards
-                        '--no-default-browser-check', // Skip default browser check
-                        '--disable-extensions-except=' + '', // Disable all extensions
-                        '--disable-extensions', // Disable all extensions
-                        '--remote-debugging-port=9222' // Enable remote debugging for future connections
+                        '--no-default-browser-check' // Skip default browser check
                     ],
-                    ignoreDefaultArgs: ['--enable-automation'], // Remove automation flag from default args
                     defaultViewport: null // Use full window size
                 };
                 
