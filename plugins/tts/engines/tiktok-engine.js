@@ -131,23 +131,29 @@ class TikTokEngine {
      * @returns {Promise<string>} Base64-encoded MP3 audio
      */
     async synthesize(text, voiceId) {
+        this.logger.info(`[TIKTOK_TTS] Starting synthesis - text: "${text}", voice: ${voiceId}`);
         let lastError;
+        let lastStatusCode;
 
         // Try primary URL with retries
         for (let attempt = 0; attempt < this.maxRetries; attempt++) {
             try {
+                this.logger.info(`[TIKTOK_TTS] Attempt ${attempt + 1}/${this.maxRetries} - URL: ${this.apiUrl}`);
                 const result = await this._makeRequest(this.apiUrl, text, voiceId);
                 if (result) {
-                    this.logger.info(`TikTok TTS success: ${text.substring(0, 30)}... (voice: ${voiceId}, attempt: ${attempt + 1})`);
+                    this.logger.info(`[TIKTOK_TTS] ✅ Success: ${text.substring(0, 30)}... (voice: ${voiceId}, attempt: ${attempt + 1})`);
                     return result;
                 }
             } catch (error) {
                 lastError = error;
-                this.logger.warn(`TikTok TTS attempt ${attempt + 1} failed: ${error.message}`);
+                lastStatusCode = error.response?.status || 'N/A';
+                this.logger.error(`[TIKTOK_TTS] ❌ Attempt ${attempt + 1} failed - Status: ${lastStatusCode}, Error: ${error.message}`);
 
                 // Exponential backoff
                 if (attempt < this.maxRetries - 1) {
-                    await this._delay(Math.pow(2, attempt) * 1000);
+                    const delay = Math.pow(2, attempt) * 1000;
+                    this.logger.info(`[TIKTOK_TTS] Waiting ${delay}ms before retry...`);
+                    await this._delay(delay);
                 }
             }
         }
@@ -155,26 +161,33 @@ class TikTokEngine {
         // Try fallback URLs
         for (const fallbackUrl of this.fallbackUrls) {
             try {
-                this.logger.info(`Trying fallback URL: ${fallbackUrl}`);
+                this.logger.info(`[TIKTOK_TTS] Trying fallback URL: ${fallbackUrl}`);
                 const result = await this._makeRequest(fallbackUrl, text, voiceId);
                 if (result) {
-                    this.logger.info(`TikTok TTS success via fallback: ${fallbackUrl}`);
+                    this.logger.info(`[TIKTOK_TTS] ✅ Success via fallback: ${fallbackUrl}`);
                     return result;
                 }
             } catch (error) {
                 lastError = error;
-                this.logger.warn(`Fallback ${fallbackUrl} failed: ${error.message}`);
+                lastStatusCode = error.response?.status || 'N/A';
+                this.logger.error(`[TIKTOK_TTS] ❌ Fallback ${fallbackUrl} failed - Status: ${lastStatusCode}, Error: ${error.message}`);
             }
         }
 
         // All attempts failed
-        throw new Error(`All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'}`);
+        const errorMsg = `All TikTok TTS endpoints failed. Last error: ${lastError?.message || 'Unknown'} (Status: ${lastStatusCode})`;
+        this.logger.error(`[TIKTOK_TTS] ${errorMsg}`);
+        throw new Error(errorMsg);
     }
 
     /**
      * Make TTS request to endpoint
      */
     async _makeRequest(url, text, voiceId) {
+        this.logger.info(`[TIKTOK_TTS] Making request to: ${url}`);
+        this.logger.info(`[TIKTOK_TTS] Request body: { text: "${text.substring(0, 50)}...", voice: "${voiceId}" }`);
+        this.logger.info(`[TIKTOK_TTS] User-Agent: ${this.userAgent.substring(0, 100)}...`);
+        
         const response = await axios.post(
             url,
             {
@@ -190,15 +203,22 @@ class TikTokEngine {
             }
         );
 
+        this.logger.info(`[TIKTOK_TTS] Response status: ${response.status}`);
+        this.logger.info(`[TIKTOK_TTS] Response data type: ${typeof response.data}`);
+        
         // Handle different response formats
         if (response.data && response.data.data) {
+            this.logger.info(`[TIKTOK_TTS] Using response.data.data format (length: ${response.data.data.length})`);
             return response.data.data; // Primary format
         } else if (response.data && response.data.audioContent) {
+            this.logger.info(`[TIKTOK_TTS] Using response.data.audioContent format`);
             return response.data.audioContent; // Alternative format
         } else if (typeof response.data === 'string' && response.data.length > 100) {
+            this.logger.info(`[TIKTOK_TTS] Using direct base64 format (length: ${response.data.length})`);
             return response.data; // Direct base64
         }
 
+        this.logger.error(`[TIKTOK_TTS] Invalid response format. Data: ${JSON.stringify(response.data).substring(0, 200)}`);
         throw new Error('Invalid response format from TikTok TTS API');
     }
 
