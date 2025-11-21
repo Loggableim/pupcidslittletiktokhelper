@@ -211,20 +211,6 @@
             totalEventsReceived: 0
         };
 
-        // State management
-        const state = {
-            activeEffects: [],
-            particles: [],
-            socket: null,
-            connected: false,
-            reconnectAttempts: 0,
-            animationId: null,
-            lastFrameTime: 0,
-            fps: 0,
-            fpsHistory: [],
-            totalEventsReceived: 0
-        };
-
         // Particle class with optimized rendering
         class Particle {
             constructor(type, config = {}) {
@@ -709,8 +695,6 @@
             }
         };
 
-        };
-
         // Render loop with optimized performance
         function render(timestamp) {
             const deltaTime = Math.min(timestamp - state.lastFrameTime, 100); // Cap at 100ms to prevent huge jumps
@@ -951,8 +935,6 @@
             }
             
             ctx.restore();
-        }
-
         }
 
         // Debug info display with enhanced metrics
