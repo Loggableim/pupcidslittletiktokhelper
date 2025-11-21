@@ -161,6 +161,223 @@
             font-weight: 600;
             margin: 0;
         }
+        
+        /* Advanced Search Styles */
+        .advanced-search {
+            margin-top: 24px;
+            padding: 20px;
+            background: var(--gradient-primary);
+            border: 1px solid var(--color-accent-primary);
+            border-radius: 8px;
+        }
+        
+        .advanced-search h3 {
+            color: var(--color-accent-primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .search-filters {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .category-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        
+        .category-btn {
+            padding: 6px 14px;
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            color: var(--color-text-primary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .category-btn:hover {
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
+        }
+        
+        .category-btn.active {
+            background: var(--color-accent-primary);
+            border-color: var(--color-accent-primary);
+            color: #0f172a;
+            font-weight: 600;
+        }
+        
+        /* Gift Catalog Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--color-bg-primary);
+            border: 2px solid var(--color-accent-primary);
+            border-radius: 12px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            color: var(--color-accent-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--color-text-primary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .modal-close:hover {
+            background: var(--color-bg-hover);
+        }
+        
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .selected-sound-info {
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .selected-sound-info h4 {
+            color: var(--color-text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .selected-sound-name {
+            color: var(--color-accent-primary);
+            font-weight: 600;
+        }
+        
+        .gift-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        
+        .gift-card {
+            background: var(--color-bg-secondary);
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .gift-card:hover {
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
+            transform: translateY(-2px);
+        }
+        
+        .gift-card.has-sound {
+            border-color: #22c55e;
+        }
+        
+        .gift-card-image {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        .gift-card-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .gift-card-name {
+            color: var(--color-text-primary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+        
+        .gift-card-id {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+        }
+        
+        .gift-card-coins {
+            color: var(--color-accent-primary);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        .gift-card-badge {
+            display: inline-block;
+            background: #22c55e;
+            color: #0f172a;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -369,89 +586,75 @@
             </button>
         </div>
         
-        <!-- Audio Testing & Permissions -->
-        <div id="audio-test-card" class="settings-card" style="background: var(--gradient-primary); border: 1px solid var(--color-accent-primary); margin-top: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 class="card-title" style="color: var(--color-accent-primary); margin: 0;">
-                <i data-lucide="volume-2"></i>
-                Audio System Test & Permissions
+        <!-- Advanced MyInstants Search -->
+        <div class="advanced-search">
+            <h3>
+                <i data-lucide="search"></i>
+                Advanced Sound Search
             </h3>
-            <button id="minimize-audio-test-btn" class="btn btn-sm btn-ghost" style="padding: 4px 8px;" title="Collapse section" aria-label="Toggle audio test section">
-                <i data-lucide="chevron-up" style="width: 16px; height: 16px;"></i>
-            </button>
-        </div>
-        <div id="audio-test-content">
-            <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
+            
+            <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-4">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <i data-lucide="info" style="color: #3b82f6; width: 20px; height: 20px; flex-shrink: 0;"></i>
-                    <span style="font-size: 0.9rem; line-height: 1.5;">
-                        <strong>Important:</strong> Browsers require user interaction before playing audio. 
-                        Click "Enable Audio Permissions" below before testing sounds.
+                    <i data-lucide="info" style="color: #3b82f6; width: 18px; height: 18px; flex-shrink: 0;"></i>
+                    <span style="font-size: 0.85rem; line-height: 1.4;">
+                        Search for sounds by keyword or browse by category. Click <strong>Preview</strong> to test a sound, or <strong>Use</strong> to bind it to a gift.
                     </span>
                 </div>
             </div>
             
-            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
-                <button id="enable-audio-btn" class="btn btn-primary" style="min-width: 200px;">
-                    <i data-lucide="unlock"></i>
-                    Enable Audio Permissions
+            <!-- Search Filters -->
+            <div class="search-filters">
+                <input type="text" id="advanced-search-input" placeholder="Search for sound effects..." class="form-input">
+                <button id="trending-search-btn" class="btn btn-ghost">
+                    <i data-lucide="trending-up"></i>
+                    Trending
                 </button>
-                <button id="test-audio-btn" class="btn btn-ghost">
-                    <i data-lucide="play-circle"></i>
-                    Test Audio Playback
-                </button>
-                <button id="clear-audio-log-btn" class="btn btn-ghost">
-                    <i data-lucide="trash-2"></i>
-                    Clear Log
+                <button id="advanced-search-btn" class="btn btn-primary">
+                    <i data-lucide="search"></i>
+                    Search
                 </button>
             </div>
             
-            <!-- Audio Player for Testing -->
-            <div id="audio-test-player" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px;">
-                <div style="margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8; font-weight: 600;">Test Audio:</div>
-                <audio id="test-audio-element" controls style="width: 100%; max-width: 500px;">
-                    <source src="https://www.myinstants.com/media/sounds/wow.mp3" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                </audio>
+            <!-- Category Filter Buttons -->
+            <div class="category-buttons" id="category-buttons-container">
+                <button class="category-btn active" data-category="all">
+                    <i data-lucide="grid-3x3" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
+                    All
+                </button>
+                <!-- Categories will be loaded dynamically from MyInstants API -->
             </div>
             
-            <!-- Audio Status -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--color-border); border-radius: 8px;">
-                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Audio Context:</div>
-                    <div id="audio-context-status" style="font-weight: 600; font-size: 0.95rem;">Checking...</div>
-                </div>
-                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--color-border); border-radius: 8px;">
-                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Autoplay:</div>
-                    <div id="autoplay-status" style="font-weight: 600; font-size: 0.95rem;">Checking...</div>
-                </div>
-                <div style="padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--color-border); border-radius: 8px;">
-                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px;">Active Sounds:</div>
-                    <div id="active-sounds-count" style="font-weight: 600; font-size: 0.95rem; color: var(--color-accent-primary);">0</div>
-                </div>
-            </div>
-            
-            <!-- Debug Log -->
-            <div style="margin-top: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 0.9rem; font-weight: 600; color: var(--color-text-primary);">Audio Debug Log</span>
-                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
-                        <input type="checkbox" id="verbose-logging" checked style="cursor: pointer;">
-                        <span style="color: #cbd5e1;">Show Verbose Logs</span>
-                    </label>
-                </div>
-                <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 8px; padding: 8px 12px;">
-                    <div style="font-size: 0.8rem; color: #94a3b8;">
-                        <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
-                        Critical events (play, error) are always logged. Verbose mode shows additional diagnostic information.
-                    </div>
-                </div>
-                <div id="audio-debug-log" style="background: var(--color-bg-primary); border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
-                    <div style="color: var(--color-accent-primary);">🎵 Audio system ready. Waiting for events...</div>
+            <!-- Search Results -->
+            <div id="advanced-search-results" class="myinstants-results">
+                <div class="text-gray-400 text-sm text-center py-4">
+                    Search for sounds or browse trending sounds to get started
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Gift Catalog Modal -->
+    <div id="gift-catalog-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>
+                    <i data-lucide="gift"></i>
+                    Select Gift for Sound
+                </h3>
+                <button class="modal-close" id="close-gift-modal">
+                    <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="selected-sound-info">
+                    <h4>Selected Sound:</h4>
+                    <div class="selected-sound-name" id="selected-sound-name">-</div>
+                </div>
+                <div class="gift-grid" id="modal-gift-grid">
+                    <div class="text-gray-400 text-sm text-center py-8">Loading gifts...</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Audio pool for soundboard playback -->

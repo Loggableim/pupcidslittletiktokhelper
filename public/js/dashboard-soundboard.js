@@ -638,6 +638,344 @@ function useMyInstantsSound(name, url) {
     logAudioEvent('info', `Selected MyInstants sound: ${name}`, { url });
 }
 
+// ========== ADVANCED SEARCH ==========
+let selectedSoundForBinding = null;
+let currentCategory = 'all';
+let availableCategories = [];
+
+// Icon mapping for categories
+const categoryIcons = {
+    'all': 'grid-3x3',
+    'memes': 'laugh',
+    'meme': 'laugh',
+    'games': 'gamepad-2',
+    'game': 'gamepad-2',
+    'gaming': 'gamepad-2',
+    'movies': 'film',
+    'movie': 'film',
+    'tv': 'film',
+    'music': 'music',
+    'songs': 'music',
+    'song': 'music',
+    'animals': 'dog',
+    'animal': 'dog',
+    'pets': 'dog',
+    'sports': 'trophy',
+    'sport': 'trophy',
+    'politics': 'users',
+    'political': 'users',
+    'viral': 'trending-up',
+    'trending': 'trending-up',
+    'funny': 'smile',
+    'comedy': 'smile',
+    'anime': 'sparkles',
+    'cartoons': 'tv',
+    'cartoon': 'tv',
+    'celebrities': 'star',
+    'celebrity': 'star',
+    'famous': 'star',
+    'default': 'tag'
+};
+
+// Get icon for category
+function getCategoryIcon(categoryName) {
+    const name = categoryName.toLowerCase();
+    for (const [key, icon] of Object.entries(categoryIcons)) {
+        if (name.includes(key)) {
+            return icon;
+        }
+    }
+    return categoryIcons.default;
+}
+
+// Load categories from API
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/myinstants/categories');
+        const data = await response.json();
+        
+        if (data.success && data.results && data.results.length > 0) {
+            availableCategories = data.results;
+            renderCategoryButtons();
+        } else {
+            console.warn('No categories returned from API, using defaults');
+            availableCategories = [
+                { name: 'Memes', slug: 'memes' },
+                { name: 'Games', slug: 'games' },
+                { name: 'Movies', slug: 'movies' },
+                { name: 'Music', slug: 'music' },
+                { name: 'Animals', slug: 'animals' }
+            ];
+            renderCategoryButtons();
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        // Use fallback categories
+        availableCategories = [
+            { name: 'Memes', slug: 'memes' },
+            { name: 'Games', slug: 'games' },
+            { name: 'Movies', slug: 'movies' },
+            { name: 'Music', slug: 'music' },
+            { name: 'Animals', slug: 'animals' }
+        ];
+        renderCategoryButtons();
+    }
+}
+
+// Render category buttons
+function renderCategoryButtons() {
+    const container = document.getElementById('category-buttons-container');
+    if (!container) return;
+    
+    // Keep the "All" button, remove the rest
+    const allButton = container.querySelector('[data-category="all"]');
+    container.innerHTML = '';
+    if (allButton) {
+        container.appendChild(allButton);
+    }
+    
+    // Add category buttons from API
+    availableCategories.forEach(category => {
+        const button = document.createElement('button');
+        button.className = 'category-btn';
+        button.dataset.category = category.slug || category.name.toLowerCase();
+        
+        const iconName = getCategoryIcon(category.name);
+        button.innerHTML = `
+            <i data-lucide="${iconName}" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
+            ${escapeHtml(category.name)}
+        `;
+        
+        container.appendChild(button);
+    });
+    
+    // Re-initialize Lucide icons for new buttons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+async function performAdvancedSearch() {
+    const query = document.getElementById('advanced-search-input').value;
+    const resultsDiv = document.getElementById('advanced-search-results');
+    
+    if (!query) {
+        alert('Please enter a search query!');
+        return;
+    }
+    
+    resultsDiv.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">🔍 Searching...</div>';
+    
+    try {
+        // Build search query with category if not "all"
+        let searchQuery = query;
+        if (currentCategory !== 'all') {
+            searchQuery = `${currentCategory} ${query}`;
+        }
+        
+        const response = await fetch(`/api/myinstants/search?query=${encodeURIComponent(searchQuery)}`);
+        const data = await response.json();
+        
+        if (!data.success || data.results.length === 0) {
+            resultsDiv.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">No results found. Try a different search term or category.</div>';
+            return;
+        }
+        
+        renderSearchResults(data.results, resultsDiv);
+    } catch (error) {
+        console.error('Error searching MyInstants:', error);
+        resultsDiv.innerHTML = '<div class="text-red-400 text-sm text-center py-4">Error searching MyInstants. Please try again.</div>';
+    }
+}
+
+async function searchTrending() {
+    const resultsDiv = document.getElementById('advanced-search-results');
+    resultsDiv.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">🔍 Loading trending sounds...</div>';
+    
+    try {
+        const response = await fetch('/api/myinstants/trending');
+        const data = await response.json();
+        
+        if (!data.success || data.results.length === 0) {
+            resultsDiv.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">No trending sounds found.</div>';
+            return;
+        }
+        
+        renderSearchResults(data.results, resultsDiv);
+    } catch (error) {
+        console.error('Error loading trending sounds:', error);
+        resultsDiv.innerHTML = '<div class="text-red-400 text-sm text-center py-4">Error loading trending sounds.</div>';
+    }
+}
+
+function renderSearchResults(results, container) {
+    container.innerHTML = '';
+    
+    results.forEach(sound => {
+        const div = document.createElement('div');
+        div.className = 'myinstants-result-item';
+        
+        // Create preview button
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'bg-blue-600 px-3 py-2 rounded text-sm hover:bg-blue-700 transition flex items-center gap-2';
+        previewBtn.title = 'Preview this sound';
+        previewBtn.dataset.action = 'test-sound';
+        previewBtn.dataset.url = sound.url;
+        previewBtn.innerHTML = `
+            <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+            <span>Preview</span>
+        `;
+        
+        // Create use button
+        const useBtn = document.createElement('button');
+        useBtn.className = 'bg-green-600 px-3 py-2 rounded text-sm hover:bg-green-700 transition flex items-center gap-2';
+        useBtn.title = 'Bind this sound to a gift';
+        useBtn.dataset.action = 'bind-to-gift';
+        useBtn.dataset.name = sound.name;
+        useBtn.dataset.url = sound.url;
+        useBtn.innerHTML = `
+            <i data-lucide="link" style="width: 14px; height: 14px;"></i>
+            <span>Use</span>
+        `;
+        
+        // Create result structure
+        div.innerHTML = `
+            <div class="myinstants-result-info">
+                <div class="myinstants-result-name">${escapeHtml(sound.name)}</div>
+                <div class="myinstants-result-url">${escapeHtml(sound.url)}</div>
+            </div>
+            <div class="myinstants-result-actions"></div>
+        `;
+        
+        // Append buttons to actions div
+        const actionsDiv = div.querySelector('.myinstants-result-actions');
+        actionsDiv.appendChild(previewBtn);
+        actionsDiv.appendChild(useBtn);
+        
+        container.appendChild(div);
+    });
+    
+    // Re-initialize Lucide icons for new elements
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+function handleCategoryClick(category) {
+    currentCategory = category;
+    
+    // Update active state
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.category === category) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+// ========== GIFT CATALOG MODAL ==========
+async function openGiftCatalogModal(soundName, soundUrl) {
+    selectedSoundForBinding = { name: soundName, url: soundUrl };
+    
+    // Update selected sound info
+    document.getElementById('selected-sound-name').textContent = soundName;
+    
+    // Load gift catalog
+    const gridDiv = document.getElementById('modal-gift-grid');
+    gridDiv.innerHTML = '<div class="text-gray-400 text-sm text-center py-8">Loading gifts...</div>';
+    
+    try {
+        const response = await fetch('/api/soundboard/catalog');
+        const data = await response.json();
+        
+        if (!data.success || !data.gifts || data.gifts.length === 0) {
+            gridDiv.innerHTML = '<div class="text-gray-400 text-sm text-center py-8">No gifts available. Please start a TikTok LIVE stream to populate the gift catalog.</div>';
+        } else {
+            // Get current gift sounds to mark which gifts already have sounds
+            const giftSoundsResponse = await fetch('/api/soundboard/gifts');
+            const giftSoundsData = await giftSoundsResponse.json();
+            const giftSoundsMap = {};
+            giftSoundsData.forEach(gs => {
+                giftSoundsMap[gs.giftId] = true;
+            });
+            
+            gridDiv.innerHTML = '';
+            data.gifts.forEach(gift => {
+                const card = document.createElement('div');
+                card.className = 'gift-card';
+                if (giftSoundsMap[gift.id]) {
+                    card.classList.add('has-sound');
+                }
+                card.dataset.giftId = gift.id;
+                card.dataset.giftLabel = gift.name;
+                
+                const imageHtml = gift.diamond_count 
+                    ? `<div class="gift-card-image">💎</div>`
+                    : `<div class="gift-card-image">🎁</div>`;
+                
+                card.innerHTML = `
+                    ${imageHtml}
+                    <div class="gift-card-name">${escapeHtml(gift.name)}</div>
+                    <div class="gift-card-id">ID: ${gift.id}</div>
+                    <div class="gift-card-coins">${gift.diamond_count || 0} 💎</div>
+                    ${giftSoundsMap[gift.id] ? '<div class="gift-card-badge">Has Sound</div>' : ''}
+                `;
+                
+                card.addEventListener('click', () => bindSoundToGift(gift.id, gift.name));
+                gridDiv.appendChild(card);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading gift catalog:', error);
+        gridDiv.innerHTML = '<div class="text-red-400 text-sm text-center py-8">Error loading gifts. Please try again.</div>';
+    }
+    
+    // Show modal
+    document.getElementById('gift-catalog-modal').classList.add('active');
+}
+
+function closeGiftCatalogModal() {
+    document.getElementById('gift-catalog-modal').classList.remove('active');
+    selectedSoundForBinding = null;
+}
+
+async function bindSoundToGift(giftId, giftLabel) {
+    if (!selectedSoundForBinding) {
+        alert('No sound selected!');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/soundboard/gifts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                giftId: parseInt(giftId),
+                label: giftLabel,
+                mp3Url: selectedSoundForBinding.url,
+                volume: 1.0,
+                animationUrl: null,
+                animationType: 'none'
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert(`✅ Sound "${selectedSoundForBinding.name}" successfully bound to gift "${giftLabel}"!`);
+            closeGiftCatalogModal();
+            
+            // Reload gift sounds list
+            await loadGiftSounds();
+            await loadGiftCatalog();
+        } else {
+            alert('❌ Failed to bind sound to gift. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error binding sound to gift:', error);
+        alert('❌ Error binding sound to gift!');
+    }
+}
+
 // ========== AUDIO TESTING & PERMISSIONS ==========
 let audioTestMinimized = false;
 let audioUnlocked = false; // Track if audio has been unlocked
@@ -864,6 +1202,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSoundboardSettings();
     loadGiftSounds();
     loadGiftCatalog();
+    loadCategories(); // Load categories for advanced search
     checkAudioSystemStatus();
     
     // Soundboard save button
@@ -893,6 +1232,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const name = actionBtn.dataset.name;
                 const url = actionBtn.dataset.url;
                 useMyInstantsSound(name, url);
+            } else if (action === 'bind-to-gift') {
+                const name = actionBtn.dataset.name;
+                const url = actionBtn.dataset.url;
+                openGiftCatalogModal(name, url);
             } else if (action === 'delete-gift') {
                 const giftId = parseInt(actionBtn.dataset.giftId);
                 deleteGiftSound(giftId);
@@ -965,6 +1308,55 @@ document.addEventListener('DOMContentLoaded', function() {
         verboseLoggingCheckbox.addEventListener('change', function() {
             if (this.checked) {
                 logAudioEvent('info', 'Verbose logging enabled', null);
+            }
+        });
+    }
+    
+    // Advanced search button
+    const advancedSearchBtn = document.getElementById('advanced-search-btn');
+    if (advancedSearchBtn) {
+        advancedSearchBtn.addEventListener('click', performAdvancedSearch);
+    }
+    
+    // Advanced search on Enter key
+    const advancedSearchInput = document.getElementById('advanced-search-input');
+    if (advancedSearchInput) {
+        advancedSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performAdvancedSearch();
+            }
+        });
+    }
+    
+    // Trending search button
+    const trendingSearchBtn = document.getElementById('trending-search-btn');
+    if (trendingSearchBtn) {
+        trendingSearchBtn.addEventListener('click', searchTrending);
+    }
+    
+    // Category buttons (event delegation for dynamically loaded categories)
+    const categoryContainer = document.getElementById('category-buttons-container');
+    if (categoryContainer) {
+        categoryContainer.addEventListener('click', function(e) {
+            const categoryBtn = e.target.closest('.category-btn');
+            if (categoryBtn && categoryBtn.dataset.category) {
+                handleCategoryClick(categoryBtn.dataset.category);
+            }
+        });
+    }
+    
+    // Close gift catalog modal
+    const closeGiftModalBtn = document.getElementById('close-gift-modal');
+    if (closeGiftModalBtn) {
+        closeGiftModalBtn.addEventListener('click', closeGiftCatalogModal);
+    }
+    
+    // Close modal when clicking overlay
+    const giftCatalogModal = document.getElementById('gift-catalog-modal');
+    if (giftCatalogModal) {
+        giftCatalogModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeGiftCatalogModal();
             }
         });
     }
