@@ -35,7 +35,7 @@ Implemented SessionID authentication for TikTok TTS API access (matching TikFini
 
 ### 1. SessionID Authentication
 
-**Working Endpoints** (with SessionID) - Updated November 2024:
+**Working Endpoints** (with SessionID) - Updated November 2025:
 
 Primary endpoints (most commonly working):
 - `https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/`
