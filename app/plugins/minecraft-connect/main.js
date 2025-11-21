@@ -330,6 +330,11 @@ class MinecraftConnectPlugin {
                 });
             }
         });
+
+        // Serve UI
+        this.api.registerRoute('GET', '/minecraft-connect/ui', (req, res) => {
+            res.sendFile(path.join(this.api.pluginDir, 'minecraft-connect.html'));
+        });
     }
 
     /**
