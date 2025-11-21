@@ -7,6 +7,7 @@
 class ThemeManager {
     constructor() {
         this.currentTheme = 'night'; // Default theme
+        this.monitoredIframes = new WeakSet(); // Track iframes to avoid duplicate listeners
         this.themes = {
             night: {
                 name: 'Night Mode',
@@ -57,9 +58,9 @@ class ThemeManager {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
-                    if (node.tagName === 'IFRAME') {
+                    if (node.nodeName === 'IFRAME') {
                         this.monitorIframeLoad(node);
-                    } else if (node.querySelectorAll) {
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
                         node.querySelectorAll('iframe').forEach((iframe) => {
                             this.monitorIframeLoad(iframe);
                         });
@@ -80,6 +81,12 @@ class ThemeManager {
     }
 
     monitorIframeLoad(iframe) {
+        // Skip if already monitoring this iframe
+        if (this.monitoredIframes.has(iframe)) {
+            return;
+        }
+        this.monitoredIframes.add(iframe);
+
         // Apply theme immediately if already loaded
         try {
             if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
