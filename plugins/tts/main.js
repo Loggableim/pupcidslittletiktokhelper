@@ -176,7 +176,8 @@ class TTSPlugin {
             // New language detection settings
             fallbackLanguage: 'de', // Default fallback language (German)
             languageConfidenceThreshold: 0.90, // 90% confidence required
-            languageMinTextLength: 10 // Minimum text length for reliable detection
+            languageMinTextLength: 10, // Minimum text length for reliable detection
+            enableAutoFallback: true // Enable automatic fallback to other engines when primary fails
         };
 
         // Try to load from database
@@ -1071,6 +1072,16 @@ class TTSPlugin {
                     audioDataLength: audioData?.length || 0
                 });
             } catch (engineError) {
+                // Check if auto-fallback is enabled
+                if (!this.config.enableAutoFallback) {
+                    this._logDebug('SPEAK_ERROR', 'TTS engine failed and auto-fallback is disabled', {
+                        failedEngine: selectedEngine,
+                        error: engineError.message
+                    });
+                    this.logger.error(`TTS engine ${selectedEngine} failed: ${engineError.message}. Auto-fallback is disabled. Please check your ${selectedEngine} configuration.`);
+                    throw engineError;
+                }
+
                 // Fallback to alternative engine
                 this._logDebug('SPEAK_STEP5', 'TTS engine failed, trying fallback', {
                     failedEngine: selectedEngine,

@@ -284,6 +284,7 @@ function populateConfig(config) {
     setText('duckVolumeValue', Math.round((config.duckVolume || 0.3) * 100));
     setValue('enabledForChat', config.enabledForChat !== false);
     setValue('autoLanguageDetection', config.autoLanguageDetection !== false);
+    setValue('enableAutoFallback', config.enableAutoFallback !== false);
 
     // Language detection settings
     setValue('fallbackLanguage', config.fallbackLanguage || 'de');
@@ -374,6 +375,7 @@ async function saveConfig() {
             duckVolume: parseInt(document.getElementById('duckVolume').value, 10) / 100,
             enabledForChat: document.getElementById('enabledForChat').checked,
             autoLanguageDetection: document.getElementById('autoLanguageDetection').checked,
+            enableAutoFallback: document.getElementById('enableAutoFallback').checked,
             // Language detection settings
             fallbackLanguage: document.getElementById('fallbackLanguage').value,
             languageConfidenceThreshold: parseFloat(document.getElementById('languageConfidenceThreshold').value),
