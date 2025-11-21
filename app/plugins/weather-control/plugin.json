@@ -5,7 +5,7 @@
   "description": "Professional weather effects plugin with rain, snow, storm, fog, thunder, sunbeam, and glitch cloud effects for TikTok Live overlays",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": false,
+  "enabled": true,
   "permissions": [
     "socket.io",
     "routes",
