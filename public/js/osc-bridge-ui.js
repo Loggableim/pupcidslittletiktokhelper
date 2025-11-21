@@ -205,6 +205,15 @@ function addLog(type, message) {
     }
 }
 
+// Parse value helper function
+function parseOSCValue(valueInput) {
+    let value = valueInput;
+    if (valueInput === 'true') value = true;
+    else if (valueInput === 'false') value = false;
+    else if (!isNaN(valueInput) && valueInput !== '') value = parseFloat(valueInput);
+    return value;
+}
+
 // Initial laden
 loadConfig();
 loadCustomPresets();
@@ -225,11 +234,7 @@ if (customOscForm) {
         const valueInput = document.getElementById('custom-value').value;
         const duration = parseInt(document.getElementById('custom-duration').value) || 0;
 
-        // Parse value - try to convert to appropriate type
-        let value = valueInput;
-        if (valueInput === 'true') value = true;
-        else if (valueInput === 'false') value = false;
-        else if (!isNaN(valueInput) && valueInput !== '') value = parseFloat(valueInput);
+        const value = parseOSCValue(valueInput);
 
         await sendCustomOSC(address, value, duration);
     });
@@ -298,8 +303,14 @@ function saveCustomPreset(address, value, duration) {
     // Create a name from the address
     const name = address.split('/').pop() || address;
     
+    // Generate unique ID
+    let id = Date.now();
+    while (presets.some(p => p.id === id)) {
+        id++;
+    }
+    
     const preset = {
-        id: Date.now(),
+        id: id,
         name: name,
         address: address,
         value: value,
@@ -338,11 +349,7 @@ function loadCustomPresets() {
             const presetId = parseInt(btn.dataset.presetId);
             const preset = presets.find(p => p.id === presetId);
             if (preset) {
-                let value = preset.value;
-                if (value === 'true') value = true;
-                else if (value === 'false') value = false;
-                else if (!isNaN(value) && value !== '') value = parseFloat(value);
-                
+                const value = parseOSCValue(preset.value);
                 sendCustomOSC(preset.address, value, preset.duration);
             }
         });

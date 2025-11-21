@@ -3,6 +3,10 @@
  * Central registry for all available actions in the automation system
  */
 
+// Constants
+const VRCHAT_EMOTE_SLOT_MIN = 0;
+const VRCHAT_EMOTE_SLOT_MAX = 7;
+
 class ActionRegistry {
     constructor(logger) {
         this.logger = logger;
@@ -795,7 +799,7 @@ class ActionRegistry {
             category: 'osc',
             icon: 'smile',
             fields: [
-                { name: 'slot', label: 'Emote Slot (0-7)', type: 'number', min: 0, max: 7, default: 0, required: true },
+                { name: 'slot', label: `Emote Slot (${VRCHAT_EMOTE_SLOT_MIN}-${VRCHAT_EMOTE_SLOT_MAX})`, type: 'number', min: VRCHAT_EMOTE_SLOT_MIN, max: VRCHAT_EMOTE_SLOT_MAX, default: 0, required: true },
                 { name: 'duration', label: 'Duration (milliseconds)', type: 'number', min: 100, max: 10000, default: 2000 }
             ],
             executor: async (action, context, services) => {
@@ -806,8 +810,8 @@ class ActionRegistry {
                 }
                 
                 const slot = action.slot || 0;
-                if (slot < 0 || slot > 7) {
-                    throw new Error('Emote slot must be between 0 and 7');
+                if (slot < VRCHAT_EMOTE_SLOT_MIN || slot > VRCHAT_EMOTE_SLOT_MAX) {
+                    throw new Error(`Emote slot must be between ${VRCHAT_EMOTE_SLOT_MIN} and ${VRCHAT_EMOTE_SLOT_MAX}`);
                 }
                 
                 services.logger?.info(`😀 VRChat: Emote Slot ${slot}`);
