@@ -203,8 +203,3 @@ class ChatangoThemeAdapter {
 
 // Initialize the adapter when the script loads
 const chatangoThemeAdapter = new ChatangoThemeAdapter();
-
-// Export for use in other scripts if needed
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ChatangoThemeAdapter;
-}

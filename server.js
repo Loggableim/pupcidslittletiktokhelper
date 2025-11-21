@@ -125,6 +125,11 @@ app.use((req, res, next) => {
         // via <script src="..."> tags, NOT inline scripts. This ensures CSP compliance.
         // The script-src 'self' directive only allows scripts from the same origin,
         // which prevents XSS attacks via inline script injection.
+        // 
+        // SECURITY NOTE: 'unsafe-inline' is added to support Chatango embed scripts
+        // which require inline JSON configuration. This is a necessary trade-off for
+        // third-party chat integration. Consider isolating Chatango in an iframe
+        // or implementing a custom chat solution for better security.
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
             `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Socket.IO inline script via hash + Chatango scripts
