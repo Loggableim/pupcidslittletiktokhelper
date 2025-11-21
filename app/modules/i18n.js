@@ -16,6 +16,7 @@ class I18n {
     this.defaultLocale = defaultLocale;
     this.currentLocale = defaultLocale;
     this.translations = {};
+    this.supportedLocales = ['en', 'de', 'es', 'fr'];
     this.loadTranslations();
   }
 
@@ -30,9 +31,7 @@ class I18n {
       fs.mkdirSync(localesDir, { recursive: true });
     }
 
-    const locales = ['en', 'de', 'es', 'fr'];
-
-    for (const locale of locales) {
+    for (const locale of this.supportedLocales) {
       const filePath = path.join(localesDir, `${locale}.json`);
 
       if (fs.existsSync(filePath)) {
@@ -61,8 +60,6 @@ class I18n {
       return;
     }
 
-    const locales = ['en', 'de', 'es', 'fr'];
-
     try {
       const plugins = fs.readdirSync(pluginsDir);
 
@@ -70,7 +67,7 @@ class I18n {
         const pluginLocalesDir = path.join(pluginsDir, plugin, 'locales');
 
         if (fs.existsSync(pluginLocalesDir)) {
-          for (const locale of locales) {
+          for (const locale of this.supportedLocales) {
             const pluginLocalePath = path.join(pluginLocalesDir, `${locale}.json`);
 
             if (fs.existsSync(pluginLocalePath)) {
