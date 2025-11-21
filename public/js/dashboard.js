@@ -2015,6 +2015,7 @@ async function setCustomConfigPath() {
 
     const customPath = customPathInput.value.trim();
     if (!customPath) {
+        // TODO: Add i18n support for these messages
         alert('❌ Bitte gib einen Pfad ein!');
         return;
     }

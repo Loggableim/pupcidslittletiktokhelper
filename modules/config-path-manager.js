@@ -34,8 +34,26 @@ class ConfigPathManager {
         if (fs.existsSync(this.settingsFile)) {
             try {
                 const data = fs.readFileSync(this.settingsFile, 'utf8').trim();
-                if (data && fs.existsSync(data)) {
-                    this.customConfigPath = data;
+                if (data) {
+                    // Validate the path before using it
+                    if (fs.existsSync(data)) {
+                        const stats = fs.statSync(data);
+                        if (stats.isDirectory()) {
+                            // Test write permissions
+                            try {
+                                const testFile = path.join(data, '.write_test');
+                                fs.writeFileSync(testFile, 'test');
+                                fs.unlinkSync(testFile);
+                                this.customConfigPath = data;
+                            } catch (writeError) {
+                                console.warn(`Warning: Custom config path not writable, using default: ${writeError.message}`);
+                            }
+                        } else {
+                            console.warn('Warning: Custom config path is not a directory, using default');
+                        }
+                    } else {
+                        console.warn('Warning: Custom config path does not exist, using default');
+                    }
                 }
             } catch (error) {
                 console.warn(`Warning: Could not read custom config path: ${error.message}`);
