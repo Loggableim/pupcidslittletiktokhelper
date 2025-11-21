@@ -394,31 +394,37 @@ class OpenShockPlugin {
 
         // Main UI
         app.get('/openshock/ui', (req, res) => {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'openshock.html'));
         });
 
         // Overlay
         app.get('/openshock/overlay', (req, res) => {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'overlay', 'openshock_overlay.html'));
         });
 
         // CSS
         app.get('/openshock/openshock.css', (req, res) => {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'openshock.css'));
         });
 
         // JS
         app.get('/openshock/openshock.js', (req, res) => {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'openshock.js'));
         });
 
         // Overlay CSS
         app.get('/openshock/openshock_overlay.css', (req, res) => {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'overlay', 'openshock_overlay.css'));
         });
 
         // Overlay JS
         app.get('/openshock/openshock_overlay.js', (req, res) => {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'overlay', 'openshock_overlay.js'));
         });
 
