@@ -202,9 +202,14 @@ function handleCollision(event) {
             // Use Map for O(1) lookup instead of O(n) find
             const emoji = emojiBodyMap.get(emojiBody);
             
-            if (emoji && !emoji.hasBouncedEffect && !emoji.removed) {
-                emoji.hasBouncedEffect = true;
-                triggerBounceEffect(emoji);
+            // Allow bounce effect to trigger multiple times, but rate-limit to avoid excessive triggers
+            const now = performance.now();
+            if (emoji && !emoji.removed) {
+                // Only trigger bounce if enough time has passed since last bounce (prevent spam)
+                if (!emoji.lastBounceTime || now - emoji.lastBounceTime > 300) {
+                    emoji.lastBounceTime = now;
+                    triggerBounceEffect(emoji);
+                }
             }
         }
     });
@@ -624,7 +629,7 @@ function spawnEmoji(emoji, x, y, size, username = null, color = null) {
         spawnTime: performance.now(),
         fading: false,
         removed: false,
-        hasBouncedEffect: false,
+        lastBounceTime: 0, // Track last bounce time to prevent spam
         username: username,
         userColor: color, // Store user-specific color if provided
         lastColorUpdate: performance.now() // Track when color was last updated

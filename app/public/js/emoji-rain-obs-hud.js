@@ -147,9 +147,14 @@
                     const emojiBody = pair.bodyA.label === 'ground' ? pair.bodyB : pair.bodyA;
                     const emoji = emojis.find(e => e.body === emojiBody);
 
-                    if (emoji && !emoji.hasBouncedEffect) {
-                        emoji.hasBouncedEffect = true;
-                        triggerBounceEffect(emoji);
+                    // Allow bounce effect to trigger multiple times, but rate-limit to avoid excessive triggers
+                    const now = performance.now();
+                    if (emoji && !emoji.removed) {
+                        // Only trigger bounce if enough time has passed since last bounce (prevent spam)
+                        if (!emoji.lastBounceTime || now - emoji.lastBounceTime > 300) {
+                            emoji.lastBounceTime = now;
+                            triggerBounceEffect(emoji);
+                        }
                     }
                 }
             });
@@ -410,7 +415,7 @@
                 spawnTime: performance.now(),
                 fading: false,
                 removed: false,
-                hasBouncedEffect: false
+                lastBounceTime: 0 // Track last bounce time to prevent spam
             };
 
             emojis.push(emojiObj);

@@ -116,9 +116,15 @@
 
                     // Find emoji object
                     const emoji = emojis.find(e => e.body === emojiBody);
-                    if (emoji && !emoji.hasBouncedEffect) {
-                        emoji.hasBouncedEffect = true;
-                        triggerBubbleEffect(emoji);
+                    
+                    // Allow bounce effect to trigger multiple times, but rate-limit to avoid excessive triggers
+                    const now = performance.now();
+                    if (emoji && !emoji.removed) {
+                        // Only trigger bounce if enough time has passed since last bounce (prevent spam)
+                        if (!emoji.lastBounceTime || now - emoji.lastBounceTime > 300) {
+                            emoji.lastBounceTime = now;
+                            triggerBubbleEffect(emoji);
+                        }
                     }
                 }
             });
@@ -128,8 +134,22 @@
         function triggerBubbleEffect(emoji) {
             if (!emoji.element || config.effect === 'none') return;
 
-            // Add bubble animation
+            // Reset animation to trigger it again properly
+            emoji.element.style.animation = 'none';
+            // Force reflow
+            void emoji.element.offsetWidth;
             emoji.element.style.animation = 'bubbleBlop 0.4s ease-out';
+            
+            // Clean up animation after it completes
+            if (emoji.bounceAnimationTimeout) {
+                clearTimeout(emoji.bounceAnimationTimeout);
+            }
+            emoji.bounceAnimationTimeout = setTimeout(() => {
+                if (emoji.element && !emoji.removed) {
+                    emoji.element.style.animation = '';
+                }
+                emoji.bounceAnimationTimeout = null;
+            }, 400);
 
             // Optional: play sound (can be added later)
             // new Audio('/sounds/pop.mp3').play().catch(() => {});
@@ -300,10 +320,11 @@
                 element.style.fontSize = size + 'px';
             }
 
-            // Use transform3d for better performance
-            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+            // Set initial position with explicit position style to prevent top-left corner freeze
+            element.style.position = 'absolute';
             element.style.left = '0';
             element.style.top = '0';
+            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
 
             document.getElementById('canvas-container').appendChild(element);
 
@@ -317,7 +338,7 @@
                 spawnTime: performance.now(),
                 fading: false,
                 removed: false,
-                hasBouncedEffect: false
+                lastBounceTime: 0 // Track last bounce time to prevent spam
             };
 
             emojis.push(emojiObj);
@@ -342,6 +363,12 @@
             if (emoji.removed) return;
 
             emoji.removed = true;
+
+            // Clean up any pending timeouts to prevent memory leaks
+            if (emoji.bounceAnimationTimeout) {
+                clearTimeout(emoji.bounceAnimationTimeout);
+                emoji.bounceAnimationTimeout = null;
+            }
 
             // Remove from physics world
             if (emoji.body) {
