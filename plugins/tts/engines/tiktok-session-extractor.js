@@ -19,6 +19,11 @@ class TikTokSessionExtractor {
         this.sessionIdPath = path.join(__dirname, '.tiktok-sessionid');
         this.browser = null;
         this.page = null;
+        
+        // Constants
+        this.USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+        this.LOGIN_TIMEOUT_MS = 30000; // 30 seconds
+        this.VIEWPORT = { width: 1920, height: 1080 };
     }
 
     /**
@@ -78,8 +83,8 @@ class TikTokSessionExtractor {
             this.page = await this.browser.newPage();
 
             // Set a realistic viewport and user agent
-            await this.page.setViewport({ width: 1920, height: 1080 });
-            await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            await this.page.setViewport(this.VIEWPORT);
+            await this.page.setUserAgent(this.USER_AGENT);
 
             // Try to load saved cookies first
             const savedCookies = await this._loadSavedCookies();
@@ -105,6 +110,8 @@ class TikTokSessionExtractor {
                 
                 // Close headless browser and open visible one for login
                 await this.browser.close();
+                this.browser = null;
+                this.page = null;
                 
                 // Launch visible browser for user to log in
                 this.browser = await puppeteer.launch({
@@ -113,19 +120,19 @@ class TikTokSessionExtractor {
                 });
 
                 this.page = await this.browser.newPage();
-                await this.page.setViewport({ width: 1920, height: 1080 });
-                await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+                await this.page.setViewport(this.VIEWPORT);
+                await this.page.setUserAgent(this.USER_AGENT);
                 
                 await this.page.goto('https://www.tiktok.com', {
                     waitUntil: 'networkidle2',
                     timeout: 30000
                 });
 
-                this.logger.info('⏳ Waiting for login... (30 seconds)');
+                this.logger.info(`⏳ Waiting for login... (${this.LOGIN_TIMEOUT_MS / 1000} seconds)`);
                 this.logger.info('   Please log in to TikTok in the browser window');
                 
-                // Wait for 30 seconds or until sessionid cookie appears
-                await this._waitForSessionId(30000);
+                // Wait for login
+                await this._waitForSessionId(this.LOGIN_TIMEOUT_MS);
                 
                 // Get cookies after login
                 const newCookies = await this.page.cookies();
@@ -149,6 +156,8 @@ class TikTokSessionExtractor {
         } catch (error) {
             if (this.browser) {
                 await this.browser.close();
+                this.browser = null;
+                this.page = null;
             }
             throw error;
         }
