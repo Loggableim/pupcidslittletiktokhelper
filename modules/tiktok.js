@@ -282,7 +282,7 @@ class TikTokConnector extends EventEmitter {
 
             this.logger.info(`✅ Connected to TikTok LIVE: @${username} via Eulerstream`);
             
-            // Fetch room info from TikTok API to get accurate stream start time
+            // Fetch room info and update gift catalog from TikTok API
             setTimeout(async () => {
                 try {
                     await this.fetchRoomInfo();
@@ -297,7 +297,7 @@ class TikTokConnector extends EventEmitter {
                 } catch (error) {
                     this.logger.warn('Could not update gift catalog:', error.message);
                 }
-            }, 2000); // Wait 2 seconds after connection to fetch room info
+            }, 2000); // Wait 2 seconds after connection to fetch room info and update gift catalog
             
             // Log success
             this._logConnectionAttempt(username, true, null, null);
