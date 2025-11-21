@@ -268,7 +268,8 @@ function populateConfig(config) {
     };
 
     // Populate all fields
-    setValue('defaultEngine', config.defaultEngine || 'tiktok');
+    // Note: TikTok TTS temporarily disabled in UI, defaulting to Google
+    setValue('defaultEngine', config.defaultEngine || 'google');
     setValue('volume', config.volume || 80);
     setText('volumeValue', config.volume || 80);
     setValue('speed', config.speed || 1.0);
@@ -451,7 +452,8 @@ function populateVoiceSelect() {
 
     select.innerHTML = '';
 
-    const engine = document.getElementById('defaultEngine')?.value || 'tiktok';
+    // Note: TikTok TTS temporarily disabled in UI, defaulting to Google
+    const engine = document.getElementById('defaultEngine')?.value || 'google';
     const engineVoices = voices[engine];
 
     if (!engineVoices) {
@@ -516,7 +518,8 @@ function populateManualVoiceSelect() {
 
     select.innerHTML = '';
 
-    const engine = document.getElementById('manualEngine')?.value || 'tiktok';
+    // Note: TikTok TTS temporarily disabled in UI, defaulting to Google
+    const engine = document.getElementById('manualEngine')?.value || 'google';
     const engineVoices = voices[engine];
 
     if (!engineVoices) {
@@ -838,7 +841,7 @@ let modalState = {
     userId: null,
     username: null,
     selectedVoiceId: null,
-    selectedEngine: 'tiktok'
+    selectedEngine: 'google' // TikTok TTS temporarily disabled in UI
 };
 
 function assignVoiceDialog(userId, username) {
@@ -847,7 +850,7 @@ function assignVoiceDialog(userId, username) {
     modalState.userId = userId;
     modalState.username = username;
     modalState.selectedVoiceId = null;
-    modalState.selectedEngine = 'tiktok';
+    modalState.selectedEngine = 'google'; // TikTok TTS temporarily disabled in UI
 
     const modal = document.getElementById('voiceAssignmentModal');
     const usernameEl = document.getElementById('modalUsername');
@@ -869,7 +872,8 @@ function assignVoiceDialog(userId, username) {
 
     if (usernameEl) usernameEl.textContent = username;
     if (engineSelect) {
-        engineSelect.value = 'tiktok';
+        // TikTok TTS temporarily disabled in UI
+        engineSelect.value = 'google';
         engineSelect.onchange = () => {
             modalState.selectedEngine = engineSelect.value;
             console.log('[TTS] Engine changed to:', modalState.selectedEngine);
@@ -906,7 +910,8 @@ function assignVoiceDialog(userId, username) {
 function closeVoiceAssignmentModal() {
     const modal = document.getElementById('voiceAssignmentModal');
     if (modal) modal.classList.add('hidden');
-    modalState = { userId: null, username: null, selectedVoiceId: null, selectedEngine: 'tiktok' };
+    // TikTok TTS temporarily disabled in UI
+    modalState = { userId: null, username: null, selectedVoiceId: null, selectedEngine: 'google' };
 }
 
 function renderModalVoiceList() {

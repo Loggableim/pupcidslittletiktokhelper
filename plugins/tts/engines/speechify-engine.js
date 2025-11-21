@@ -120,7 +120,19 @@ class SpeechifyEngine {
                 throw new Error('Invalid response format from Speechify voices API');
             }
         } catch (error) {
-            this.logger.error(`Speechify: Failed to fetch voices from API: ${error.message}`);
+            const statusCode = error.response?.status;
+            const errorMessage = error.response?.data?.error?.message || 
+                               error.response?.data?.message || 
+                               error.message;
+            
+            // Log detailed error for debugging
+            if (statusCode === 404) {
+                this.logger.error(`Speechify: Voices API returned 404 - API endpoint may have changed`);
+                this.logger.error(`Speechify: Attempted URL: ${this.apiVoicesUrl}`);
+                this.logger.error(`Speechify: Please check https://speechify.com/api for updated endpoint`);
+            } else {
+                this.logger.error(`Speechify: Failed to fetch voices from API (${statusCode || 'network error'}): ${errorMessage}`);
+            }
 
             // If cache exists (even if expired), return it as fallback
             if (this.cachedVoices) {
