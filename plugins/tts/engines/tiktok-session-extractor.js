@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs').promises;
 const path = require('path');
+const { execSync } = require('child_process');
 
 /**
  * TikTok SessionID Auto-Extractor
@@ -141,6 +142,39 @@ class TikTokSessionExtractor {
     }
 
     /**
+     * Try to connect to an already running Chrome instance
+     * @private
+     * @returns {Promise<Browser|null>} Connected browser or null if not running
+     */
+    async _connectToRunningChrome() {
+        try {
+            const os = require('os');
+            
+            // Try to find Chrome DevTools Protocol endpoint
+            // Chrome needs to be started with --remote-debugging-port=9222
+            // We'll try common ports
+            const ports = [9222, 9223, 9224];
+            
+            for (const port of ports) {
+                try {
+                    const browser = await puppeteer.connect({
+                        browserURL: `http://localhost:${port}`,
+                        defaultViewport: null
+                    });
+                    this.logger.info(`✅ Connected to running Chrome instance on port ${port}`);
+                    return browser;
+                } catch (err) {
+                    // Port not available, try next
+                }
+            }
+            
+            return null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
      * Extract SessionID from TikTok using browser with user's Chrome profile
      * @private
      */
@@ -149,48 +183,63 @@ class TikTokSessionExtractor {
             const chromePath = this._getChromePath();
             const userDataDir = this._getChromeUserDataDir();
             
-            // Launch visible browser directly with user's Chrome profile
-            // This way we only open ONE browser window and can use existing login
-            const launchOptions = {
-                headless: false, // Always visible - user needs to see login page
-                args: [
-                    '--disable-blink-features=AutomationControlled', // Hide automation detection
-                    '--exclude-switches=enable-automation', // Remove automation flag
-                    '--disable-dev-shm-usage', // Overcome limited resource problems
-                    '--no-first-run', // Skip first run wizards
-                    '--no-default-browser-check', // Skip default browser check
-                    '--disable-extensions-except=' + '', // Disable all extensions
-                    '--disable-extensions' // Disable all extensions
-                ],
-                ignoreDefaultArgs: ['--enable-automation'], // Remove automation flag from default args
-                defaultViewport: null // Use full window size
-            };
+            // First, try to connect to already running Chrome
+            let connectedToRunning = false;
+            this.browser = await this._connectToRunningChrome();
             
-            if (chromePath) {
-                launchOptions.executablePath = chromePath;
-                this.logger.info('🚀 Using system Chrome browser');
+            if (this.browser) {
+                connectedToRunning = true;
+                this.logger.info('🔗 Using your already-running Chrome browser with your TikTok login!');
             } else {
-                this.logger.info('🚀 Using Puppeteer default browser');
-            }
-            
-            if (userDataDir) {
-                // Use user's actual Chrome profile (where they're already logged in!)
-                launchOptions.userDataDir = userDataDir;
-                this.logger.info('🔑 Using your Chrome profile - you may already be logged in!');
-            } else {
-                this.logger.info('🌐 Opening browser for login...');
-            }
-            
-            try {
-                this.browser = await puppeteer.launch(launchOptions);
-            } catch (profileError) {
-                // If using profile fails (Chrome already running), retry without profile
-                if (userDataDir) {
-                    this.logger.warn('⚠️  Could not use Chrome profile (Chrome may be running). Please close Chrome and try again, or continue without your profile...');
-                    delete launchOptions.userDataDir;
-                    this.browser = await puppeteer.launch(launchOptions);
+                // Launch visible browser directly with user's Chrome profile
+                // This way we only open ONE browser window and can use existing login
+                const launchOptions = {
+                    headless: false, // Always visible - user needs to see login page
+                    args: [
+                        '--disable-blink-features=AutomationControlled', // Hide automation detection
+                        '--exclude-switches=enable-automation', // Remove automation flag
+                        '--disable-dev-shm-usage', // Overcome limited resource problems
+                        '--no-first-run', // Skip first run wizards
+                        '--no-default-browser-check', // Skip default browser check
+                        '--disable-extensions-except=' + '', // Disable all extensions
+                        '--disable-extensions', // Disable all extensions
+                        '--remote-debugging-port=9222' // Enable remote debugging for future connections
+                    ],
+                    ignoreDefaultArgs: ['--enable-automation'], // Remove automation flag from default args
+                    defaultViewport: null // Use full window size
+                };
+                
+                if (chromePath) {
+                    launchOptions.executablePath = chromePath;
+                    this.logger.info('🚀 Using system Chrome browser');
                 } else {
-                    throw profileError;
+                    this.logger.info('🚀 Using Puppeteer default browser');
+                }
+                
+                if (userDataDir) {
+                    // Use user's actual Chrome profile (where they're already logged in!)
+                    launchOptions.userDataDir = userDataDir;
+                    this.logger.info('🔑 Using your Chrome profile - you may already be logged in!');
+                } else {
+                    this.logger.info('🌐 Opening browser for login...');
+                }
+                
+                try {
+                    this.browser = await puppeteer.launch(launchOptions);
+                } catch (profileError) {
+                    // If using profile fails (Chrome already running), show helpful message
+                    if (userDataDir && profileError.message.includes('lock')) {
+                        this.logger.error('❌ Chrome is already running with your profile.');
+                        this.logger.info('💡 To use your existing Chrome session:');
+                        this.logger.info('   1. Close this error message');
+                        this.logger.info('   2. In your Chrome, start it with remote debugging:');
+                        this.logger.info('      Windows: chrome.exe --remote-debugging-port=9222');
+                        this.logger.info('      macOS: /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=9222');
+                        this.logger.info('   3. Or simply close Chrome and try again');
+                        throw new Error('Chrome is already running. Please close Chrome and try again, or start Chrome with --remote-debugging-port=9222');
+                    } else {
+                        throw profileError;
+                    }
                 }
             }
 
