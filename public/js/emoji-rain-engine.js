@@ -310,57 +310,76 @@ function calculateWindForce() {
 /**
  * Apply color filter based on theme
  */
+/**
+ * Apply color theme/filter to emoji
+ * Compatible with pixel mode filters
+ */
 function applyColorTheme(element, emoji = null) {
-    // Check for user-specific color first
+    // Build filter string step by step
+    let filters = [];
+    
+    // 1. Handle pixel mode filters first (if enabled)
+    if (config.pixel_enabled) {
+        filters.push(`contrast(1.${config.pixel_size})`);
+        filters.push(`brightness(1.${Math.min(config.pixel_size, 3)})`);
+    }
+    
+    // 2. Check for user-specific color
     if (emoji && emoji.userColor) {
-        element.style.filter = `hue-rotate(${emoji.userColor}deg)`;
+        filters.push(`hue-rotate(${emoji.userColor}deg)`);
+        element.style.filter = filters.join(' ');
         return;
     }
 
+    // 3. Rainbow mode takes precedence over color mode
     if (config.rainbow_enabled) {
-        // Rainbow takes precedence
         const hue = rainbowHueOffset % 360;
-        element.style.filter = `hue-rotate(${hue}deg)`;
+        filters.push(`hue-rotate(${hue}deg)`);
+        element.style.filter = filters.join(' ');
         return;
     }
 
-    if (config.color_mode === 'off') {
-        element.style.filter = '';
-        return;
+    // 4. Apply color mode if not 'off'
+    if (config.color_mode !== 'off') {
+        const intensity = config.color_intensity;
+        
+        switch (config.color_mode) {
+            case 'warm':
+                filters.push(`sepia(${intensity * 0.8})`);
+                filters.push(`saturate(${1 + intensity * 0.5})`);
+                filters.push(`brightness(${1 + intensity * 0.2})`);
+                break;
+            case 'cool':
+                filters.push(`hue-rotate(180deg)`);
+                filters.push(`saturate(${1 + intensity})`);
+                filters.push(`brightness(${0.9 + intensity * 0.1})`);
+                break;
+            case 'neon':
+                filters.push(`saturate(${2 + intensity * 2})`);
+                filters.push(`brightness(${1.2 + intensity * 0.3})`);
+                filters.push(`contrast(1.2)`);
+                break;
+            case 'pastel':
+                filters.push(`saturate(${0.5 + intensity * 0.3})`);
+                filters.push(`brightness(${1.1 + intensity * 0.2})`);
+                break;
+        }
     }
-
-    const intensity = config.color_intensity;
-    let filter = '';
-
-    switch (config.color_mode) {
-        case 'warm':
-            filter = `sepia(${intensity * 0.8}) saturate(${1 + intensity * 0.5}) brightness(${1 + intensity * 0.2})`;
-            break;
-        case 'cool':
-            filter = `hue-rotate(180deg) saturate(${1 + intensity}) brightness(${0.9 + intensity * 0.1})`;
-            break;
-        case 'neon':
-            filter = `saturate(${2 + intensity * 2}) brightness(${1.2 + intensity * 0.3}) contrast(${1.2})`;
-            break;
-        case 'pastel':
-            filter = `saturate(${0.5 + intensity * 0.3}) brightness(${1.1 + intensity * 0.2})`;
-            break;
-    }
-
-    element.style.filter = filter;
+    
+    // Apply combined filters or clear if no filters
+    element.style.filter = filters.length > 0 ? filters.join(' ') : '';
 }
 
 /**
- * Apply pixel effect
+ * Apply pixel effect - now handled within applyColorTheme
+ * This function only sets the image rendering property
  */
 function applyPixelEffect(element) {
-    if (!config.pixel_enabled) {
+    if (config.pixel_enabled) {
+        element.style.imageRendering = 'pixelated';
+    } else {
         element.style.imageRendering = '';
-        return;
     }
-
-    element.style.imageRendering = 'pixelated';
-    // Additional pixelation can be done with canvas if needed
 }
 
 /**
@@ -421,53 +440,61 @@ function updateLoop(currentTime) {
 
     // Update emojis
     emojis.forEach(emoji => {
-        if (emoji.body) {
-            // Check if emoji has escaped the world bounds
-            const pos = emoji.body.position;
-            const margin = 200; // Extra margin outside canvas
-            if (pos.x < -margin || pos.x > canvasWidth + margin || 
-                pos.y < -margin || pos.y > canvasHeight + margin) {
-                // Emoji escaped, remove it
-                removeEmoji(emoji);
-                return;
-            }
+        // Skip if emoji is marked for removal or has invalid state
+        if (emoji.removed || !emoji.body || !emoji.element) {
+            return;
+        }
 
-            // Apply wind
-            if (config.wind_enabled) {
-                Body.applyForce(emoji.body, emoji.body.position, {
-                    x: currentWindForce,
-                    y: 0
-                });
-            }
+        // Check if emoji has escaped the world bounds
+        const pos = emoji.body.position;
+        if (!pos || isNaN(pos.x) || isNaN(pos.y)) {
+            // Invalid position, remove emoji
+            console.warn('⚠️ Invalid emoji position detected, removing');
+            removeEmoji(emoji);
+            return;
+        }
 
-            // Apply air resistance with damping
-            const velocity = emoji.body.velocity;
-            const dampingFactor = config.bounce_damping;
-            Body.setVelocity(emoji.body, {
-                x: velocity.x * (1 - config.physics_air - dampingFactor * 0.01),
-                y: velocity.y * (1 - config.physics_air)
+        const margin = 200; // Extra margin outside canvas
+        if (pos.x < -margin || pos.x > canvasWidth + margin || 
+            pos.y < -margin || pos.y > canvasHeight + margin) {
+            // Emoji escaped, remove it
+            removeEmoji(emoji);
+            return;
+        }
+
+        // Apply wind
+        if (config.wind_enabled) {
+            Body.applyForce(emoji.body, emoji.body.position, {
+                x: currentWindForce,
+                y: 0
             });
+        }
 
-            // Update DOM element
-            if (emoji.element) {
-                const px = emoji.body.position.x;
-                const py = emoji.body.position.y;
-                const rotation = emoji.body.angle + emoji.rotation;
-                emoji.rotation += config.emoji_rotation_speed;
+        // Apply air resistance with damping
+        const velocity = emoji.body.velocity;
+        const dampingFactor = config.bounce_damping;
+        Body.setVelocity(emoji.body, {
+            x: velocity.x * (1 - config.physics_air - dampingFactor * 0.01),
+            y: velocity.y * (1 - config.physics_air)
+        });
 
-                emoji.element.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) rotate(${rotation}rad)`;
-                
-                // Update color theme:
-                // - Rainbow mode needs to update every frame for smooth animation
-                // - Other color modes only update periodically to save performance
-                if (config.rainbow_enabled) {
-                    applyColorTheme(emoji.element, emoji);
-                    emoji.lastColorUpdate = currentTime;
-                } else if (currentTime - emoji.lastColorUpdate > 100) {
-                    applyColorTheme(emoji.element, emoji);
-                    emoji.lastColorUpdate = currentTime;
-                }
-            }
+        // Update DOM element
+        const px = emoji.body.position.x;
+        const py = emoji.body.position.y;
+        const rotation = emoji.body.angle + emoji.rotation;
+        emoji.rotation += config.emoji_rotation_speed;
+
+        emoji.element.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) rotate(${rotation}rad)`;
+        
+        // Update color theme (which includes pixel mode filters):
+        // - Rainbow mode needs to update every frame for smooth animation
+        // - Other color modes only update periodically to save performance
+        if (config.rainbow_enabled) {
+            applyColorTheme(emoji.element, emoji);
+            emoji.lastColorUpdate = currentTime;
+        } else if (currentTime - emoji.lastColorUpdate > 100) {
+            applyColorTheme(emoji.element, emoji);
+            emoji.lastColorUpdate = currentTime;
         }
 
         // Check lifetime
