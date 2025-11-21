@@ -156,6 +156,44 @@ class QueueManager extends EventEmitter {
   }
 
   /**
+   * Add an item to the queue (wrapper for enqueue with item object)
+   * This method provides compatibility with the calling code in main.js
+   * @param {Object} item - Queue item with all properties
+   * @returns {Promise<Object>} Result object
+   */
+  async addItem(item) {
+    try {
+      // Extract command data from item
+      const command = {
+        type: item.commandType || item.type,
+        deviceId: item.deviceId,
+        deviceName: item.deviceName,
+        intensity: item.intensity,
+        duration: item.duration
+      };
+
+      // Call enqueue with extracted parameters
+      const result = await this.enqueue(
+        command,
+        item.userId || 'unknown',
+        item.source || 'unknown',
+        item.sourceData || {},
+        item.priority || 5
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error('[QueueManager] Error adding item', { error: error.message });
+      return {
+        success: false,
+        queueId: null,
+        position: -1,
+        message: error.message
+      };
+    }
+  }
+
+  /**
    * Get the next command from the queue (highest priority)
    * @returns {Promise<Object|null>} Queue item or null if queue is empty
    */
