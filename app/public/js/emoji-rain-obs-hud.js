@@ -40,7 +40,16 @@
             enable_glow: true,
             enable_particles: true,
             enable_depth: true,
-            target_fps: 60
+            target_fps: 60,
+            // Rainbow mode
+            rainbow_enabled: false,
+            rainbow_speed: 1.0,
+            // Pixel mode
+            pixel_enabled: false,
+            pixel_size: 4,
+            // Color theme
+            color_mode: 'off',
+            color_intensity: 0.5
         };
 
         // State
@@ -54,6 +63,7 @@
         let resolutionIndicatorVisible = false;
         let ground, leftWall, rightWall;
         let canvasWidth, canvasHeight;
+        let rainbowHueOffset = 0; // Rainbow animation state
 
         // Performance tracking
         let lastFrameTime = performance.now();
@@ -61,6 +71,7 @@
         let fps = 60;
         let fpsUpdateTime = performance.now();
         const TARGET_FRAME_TIME = 1000 / 60; // 60 FPS target
+        const COLOR_UPDATE_THROTTLE_MS = 100; // Throttle non-rainbow color updates for performance
         let lastUpdateTime = performance.now();
 
         // Object pooling for particles
@@ -147,9 +158,14 @@
                     const emojiBody = pair.bodyA.label === 'ground' ? pair.bodyB : pair.bodyA;
                     const emoji = emojis.find(e => e.body === emojiBody);
 
-                    if (emoji && !emoji.hasBouncedEffect) {
-                        emoji.hasBouncedEffect = true;
-                        triggerBounceEffect(emoji);
+                    // Allow bounce effect to trigger multiple times, but rate-limit to avoid excessive triggers
+                    const now = performance.now();
+                    if (emoji && !emoji.removed) {
+                        // Only trigger bounce if enough time has passed since last bounce (prevent spam)
+                        if (!emoji.lastBounceTime || now - emoji.lastBounceTime > 300) {
+                            emoji.lastBounceTime = now;
+                            triggerBounceEffect(emoji);
+                        }
                     }
                 }
             });
@@ -239,6 +255,61 @@
             }
         }
 
+        /**
+         * Apply color filter based on theme
+         */
+        function applyColorTheme(element, emoji = null) {
+            // Check for user-specific color first
+            if (emoji && emoji.userColor) {
+                element.style.filter = `hue-rotate(${emoji.userColor}deg)`;
+                return;
+            }
+
+            if (config.rainbow_enabled) {
+                // Rainbow takes precedence
+                const hue = rainbowHueOffset % 360;
+                element.style.filter = `hue-rotate(${hue}deg)`;
+                return;
+            }
+
+            if (config.color_mode === 'off') {
+                element.style.filter = '';
+                return;
+            }
+
+            const intensity = config.color_intensity;
+            let filter = '';
+
+            switch (config.color_mode) {
+                case 'warm':
+                    filter = `sepia(${intensity * 0.8}) saturate(${1 + intensity * 0.5}) brightness(${1 + intensity * 0.2})`;
+                    break;
+                case 'cool':
+                    filter = `hue-rotate(180deg) saturate(${1 + intensity}) brightness(${0.9 + intensity * 0.1})`;
+                    break;
+                case 'neon':
+                    filter = `saturate(${2 + intensity * 2}) brightness(${1.2 + intensity * 0.3}) contrast(${1.2})`;
+                    break;
+                case 'pastel':
+                    filter = `saturate(${0.5 + intensity * 0.3}) brightness(${1.1 + intensity * 0.2})`;
+                    break;
+            }
+
+            element.style.filter = filter;
+        }
+
+        /**
+         * Apply pixel effect
+         */
+        function applyPixelEffect(element) {
+            if (!config.pixel_enabled) {
+                element.style.imageRendering = '';
+                return;
+            }
+
+            element.style.imageRendering = 'pixelated';
+        }
+
         // Main update loop with 60 FPS targeting
         function updateLoop(currentTime) {
             // Calculate delta time
@@ -263,6 +334,11 @@
             // Run physics engine step (clamp delta to prevent warnings)
             const clampedDelta = Math.min(deltaTime, TARGET_FRAME_TIME);
             Engine.update(engine, clampedDelta);
+
+            // Update rainbow hue
+            if (config.rainbow_enabled) {
+                rainbowHueOffset = (rainbowHueOffset + config.rainbow_speed) % 360;
+            }
 
             // Apply wind force to all emojis
             windForce += (Math.random() - 0.5) * config.physics_wind_variation;
@@ -303,6 +379,17 @@
 
                         // Use transform for better performance
                         emoji.element.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) rotate(${rotation}rad)`;
+                        
+                        // Update color theme:
+                        // - Rainbow mode needs to update every frame for smooth animation
+                        // - Other color modes only update periodically to save performance
+                        if (config.rainbow_enabled) {
+                            applyColorTheme(emoji.element, emoji);
+                            emoji.lastColorUpdate = currentTime;
+                        } else if (currentTime - emoji.lastColorUpdate > COLOR_UPDATE_THROTTLE_MS) {
+                            applyColorTheme(emoji.element, emoji);
+                            emoji.lastColorUpdate = currentTime;
+                        }
                     }
                 }
 
@@ -410,10 +497,17 @@
                 spawnTime: performance.now(),
                 fading: false,
                 removed: false,
-                hasBouncedEffect: false
+                lastBounceTime: 0, // Track last bounce time to prevent spam
+                username: username,
+                userColor: color, // Store user-specific color if provided
+                lastColorUpdate: performance.now() // Track when color was last updated
             };
 
             emojis.push(emojiObj);
+
+            // Apply pixel effect and color theme to the new emoji element
+            applyPixelEffect(element);
+            applyColorTheme(element, emojiObj);
 
             return emojiObj;
         }
