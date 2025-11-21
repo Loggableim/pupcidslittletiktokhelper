@@ -77,6 +77,36 @@ class GiftMilestonePlugin {
                 )
             `);
 
+            // Create milestone tiers table for multiple configurable tiers
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS milestone_tiers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tier_name TEXT NOT NULL,
+                    threshold INTEGER NOT NULL,
+                    animation_gif_path TEXT,
+                    animation_video_path TEXT,
+                    animation_audio_path TEXT,
+                    enabled INTEGER DEFAULT 1,
+                    sort_order INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Create user milestone stats table for per-user tracking
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS milestone_user_stats (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL UNIQUE,
+                    username TEXT,
+                    cumulative_coins INTEGER DEFAULT 0,
+                    current_tier_id INTEGER,
+                    last_trigger_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
             // Initialize defaults if not exists
             const configStmt = db.prepare(`
                 INSERT OR IGNORE INTO milestone_config (
@@ -92,6 +122,30 @@ class GiftMilestonePlugin {
                 VALUES (1, 0, 1000)
             `);
             statsStmt.run();
+
+            // Initialize default tiers if none exist
+            const tierCountStmt = db.prepare('SELECT COUNT(*) as count FROM milestone_tiers');
+            const tierCount = tierCountStmt.get();
+            if (tierCount.count === 0) {
+                const defaultTiers = [
+                    { name: 'Bronze', threshold: 1000, order: 1 },
+                    { name: 'Silver', threshold: 5000, order: 2 },
+                    { name: 'Gold', threshold: 10000, order: 3 },
+                    { name: 'Platinum', threshold: 25000, order: 4 },
+                    { name: 'Diamond', threshold: 50000, order: 5 }
+                ];
+                
+                const insertTierStmt = db.prepare(`
+                    INSERT INTO milestone_tiers (tier_name, threshold, enabled, sort_order)
+                    VALUES (?, ?, 1, ?)
+                `);
+                
+                for (const tier of defaultTiers) {
+                    insertTierStmt.run(tier.name, tier.threshold, tier.order);
+                }
+                
+                this.api.log('Default milestone tiers created', 'info');
+            }
 
             this.api.log('Database tables initialized', 'info');
         } catch (error) {
@@ -385,6 +439,145 @@ class GiftMilestonePlugin {
         const express = require('express');
         this.api.getApp().use('/plugins/gift-milestone/uploads', express.static(this.uploadDir));
 
+        // ========== TIER MANAGEMENT ROUTES ==========
+        
+        // Get all milestone tiers
+        this.api.registerRoute('get', '/api/gift-milestone/tiers', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare('SELECT * FROM milestone_tiers ORDER BY sort_order ASC, threshold ASC');
+                const tiers = stmt.all();
+                res.json({ success: true, tiers });
+            } catch (error) {
+                this.api.log(`Error getting milestone tiers: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Create new tier
+        this.api.registerRoute('post', '/api/gift-milestone/tiers', (req, res) => {
+            const { tier_name, threshold, animation_gif_path, animation_video_path, animation_audio_path, sort_order } = req.body;
+
+            if (!tier_name || !threshold) {
+                return res.status(400).json({ success: false, error: 'tier_name and threshold are required' });
+            }
+
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare(`
+                    INSERT INTO milestone_tiers (tier_name, threshold, animation_gif_path, animation_video_path, animation_audio_path, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `);
+                const result = stmt.run(
+                    tier_name,
+                    threshold,
+                    animation_gif_path || null,
+                    animation_video_path || null,
+                    animation_audio_path || null,
+                    sort_order || 0
+                );
+
+                this.api.log(`🎯 New milestone tier created: ${tier_name} at ${threshold} coins`, 'info');
+                res.json({ success: true, message: 'Tier created', id: result.lastInsertRowid });
+            } catch (error) {
+                this.api.log(`Error creating milestone tier: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update tier
+        this.api.registerRoute('put', '/api/gift-milestone/tiers/:id', (req, res) => {
+            const tierId = parseInt(req.params.id);
+            const { tier_name, threshold, animation_gif_path, animation_video_path, animation_audio_path, enabled, sort_order } = req.body;
+
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare(`
+                    UPDATE milestone_tiers
+                    SET tier_name = ?, threshold = ?, animation_gif_path = ?, animation_video_path = ?, 
+                        animation_audio_path = ?, enabled = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                `);
+                stmt.run(
+                    tier_name,
+                    threshold,
+                    animation_gif_path || null,
+                    animation_video_path || null,
+                    animation_audio_path || null,
+                    enabled ? 1 : 0,
+                    sort_order || 0,
+                    tierId
+                );
+
+                this.api.log(`🎯 Milestone tier updated: ${tier_name}`, 'info');
+                res.json({ success: true, message: 'Tier updated' });
+            } catch (error) {
+                this.api.log(`Error updating milestone tier: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Delete tier
+        this.api.registerRoute('delete', '/api/gift-milestone/tiers/:id', (req, res) => {
+            const tierId = parseInt(req.params.id);
+
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare('DELETE FROM milestone_tiers WHERE id = ?');
+                stmt.run(tierId);
+
+                this.api.log(`🎯 Milestone tier deleted: ${tierId}`, 'info');
+                res.json({ success: true, message: 'Tier deleted' });
+            } catch (error) {
+                this.api.log(`Error deleting milestone tier: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ========== USER MILESTONE TRACKING ROUTES ==========
+
+        // Get user milestone stats (all users or specific user)
+        this.api.registerRoute('get', '/api/gift-milestone/users', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const userId = req.query.userId;
+                
+                if (userId) {
+                    const stmt = db.prepare('SELECT * FROM milestone_user_stats WHERE user_id = ?');
+                    const user = stmt.get(userId);
+                    res.json({ success: true, user });
+                } else {
+                    const stmt = db.prepare('SELECT * FROM milestone_user_stats ORDER BY cumulative_coins DESC');
+                    const users = stmt.all();
+                    res.json({ success: true, users });
+                }
+            } catch (error) {
+                this.api.log(`Error getting user milestone stats: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Reset user milestone stats
+        this.api.registerRoute('post', '/api/gift-milestone/users/:userId/reset', (req, res) => {
+            const userId = req.params.userId;
+
+            try {
+                const db = this.api.getDatabase();
+                const stmt = db.prepare(`
+                    UPDATE milestone_user_stats
+                    SET cumulative_coins = 0, current_tier_id = NULL, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                `);
+                stmt.run(userId);
+
+                this.api.log(`🎯 User milestone stats reset: ${userId}`, 'info');
+                res.json({ success: true, message: 'User stats reset' });
+            } catch (error) {
+                this.api.log(`Error resetting user milestone stats: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         this.api.log('✅ Gift Milestone routes registered', 'info');
     }
 
@@ -401,13 +594,20 @@ class GiftMilestonePlugin {
         try {
             const db = this.api.getDatabase();
             const coins = data.coins || 0;
+            const userId = data.userId || data.uniqueId;
+            const username = data.nickname || data.uniqueId;
 
             if (coins === 0) {
                 return;
             }
 
-            // Add coins and check if milestone reached
+            // Track global milestone
             const result = db.addCoinsToMilestone(coins);
+
+            // Track per-user milestone
+            if (userId) {
+                this.trackUserMilestone(userId, username, coins);
+            }
 
             // Emit stats update to UI
             this.api.emit('milestone:stats-update', {
@@ -423,6 +623,115 @@ class GiftMilestonePlugin {
             }
         } catch (error) {
             this.api.log(`Error handling gift event for milestone: ${error.message}`, 'error');
+        }
+    }
+
+    trackUserMilestone(userId, username, coins) {
+        try {
+            const db = this.api.getDatabase();
+            
+            // Get or create user stats
+            let userStmt = db.prepare('SELECT * FROM milestone_user_stats WHERE user_id = ?');
+            let userStats = userStmt.get(userId);
+            
+            if (!userStats) {
+                // Create new user entry
+                const insertStmt = db.prepare(`
+                    INSERT INTO milestone_user_stats (user_id, username, cumulative_coins)
+                    VALUES (?, ?, ?)
+                `);
+                insertStmt.run(userId, username, coins);
+                userStats = { user_id: userId, username, cumulative_coins: coins, current_tier_id: null };
+            } else {
+                // Update existing user
+                const newTotal = userStats.cumulative_coins + coins;
+                const updateStmt = db.prepare(`
+                    UPDATE milestone_user_stats
+                    SET cumulative_coins = ?, username = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                `);
+                updateStmt.run(newTotal, username, userId);
+                userStats.cumulative_coins = newTotal;
+            }
+
+            // Check if user reached a new tier
+            const tiersStmt = db.prepare(`
+                SELECT * FROM milestone_tiers 
+                WHERE enabled = 1 AND threshold <= ?
+                ORDER BY threshold DESC
+                LIMIT 1
+            `);
+            const achievedTier = tiersStmt.get(userStats.cumulative_coins);
+
+            if (achievedTier && achievedTier.id !== userStats.current_tier_id) {
+                // User reached a new tier!
+                const updateTierStmt = db.prepare(`
+                    UPDATE milestone_user_stats
+                    SET current_tier_id = ?, last_trigger_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                `);
+                updateTierStmt.run(achievedTier.id, userId);
+
+                this.api.log(`🎯 User ${username} reached tier: ${achievedTier.tier_name} (${achievedTier.threshold} coins)`, 'info');
+                
+                // Trigger tier celebration with user-specific tier data
+                this.triggerTierCelebration(achievedTier, username, userStats.cumulative_coins);
+                
+                // Emit user milestone achievement
+                this.api.emit('milestone:user-achievement', {
+                    userId,
+                    username,
+                    tier: achievedTier,
+                    totalCoins: userStats.cumulative_coins
+                });
+            }
+        } catch (error) {
+            this.api.log(`Error tracking user milestone: ${error.message}`, 'error');
+        }
+    }
+
+    triggerTierCelebration(tier, username, totalCoins) {
+        try {
+            const db = this.api.getDatabase();
+            const config = db.getMilestoneConfig();
+
+            if (!config || !config.enabled) {
+                return;
+            }
+
+            const celebrationData = {
+                milestone: tier.threshold,
+                tierName: tier.tier_name,
+                username: username,
+                totalCoins: totalCoins,
+                gif: tier.animation_gif_path || config.animation_gif_path,
+                video: tier.animation_video_path || config.animation_video_path,
+                audio: tier.animation_audio_path || config.animation_audio_path,
+                audioVolume: config.audio_volume,
+                duration: config.animation_duration,
+                playbackMode: config.playback_mode,
+                isTier: true
+            };
+
+            // Set exclusive mode if configured
+            if (config.playback_mode === 'exclusive') {
+                this.exclusiveMode = true;
+                this.api.emit('milestone:exclusive-start', {});
+
+                // Reset exclusive mode after animation duration
+                const duration = config.animation_duration || 10000;
+                setTimeout(() => {
+                    this.exclusiveMode = false;
+                    this.api.emit('milestone:exclusive-end', {});
+                }, duration);
+            }
+
+            // Emit tier celebration event to overlay
+            this.api.emit('milestone:celebrate', celebrationData);
+
+            this.api.log(`🎉 Tier celebration triggered: ${tier.tier_name} for ${username}`, 'info');
+        } catch (error) {
+            this.api.log(`Error triggering tier celebration: ${error.message}`, 'error');
         }
     }
 
