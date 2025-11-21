@@ -277,11 +277,17 @@
             box-shadow: var(--shadow-md);
         }
 
-        /* Ensure the chatango embed fills the container */
-        .shoutbox-container > script {
-            display: block;
+        /* Hide script tag text content - Chatango will replace with iframe */
+        .shoutbox-container > script,
+        script[id^="cid"] {
+            display: none !important;
+        }
+
+        /* Chatango iframe will be inserted by the script */
+        .shoutbox-container > iframe {
             width: 100% !important;
             height: 100% !important;
+            border: none;
         }
 
         /* Mobile responsiveness for shoutbox */
@@ -766,7 +772,7 @@
                             <i data-lucide="message-square"></i>
                             <span>Community Chat</span>
                         </h2>
-                        <div class="shoutbox-container">
+                        <div class="shoutbox-container" id="chatango-embed-container">
                             <script id="cid0020000424709220769" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: 100%;height: 100%;">{"handle":"pupcidsltth","arch":"js","styles":{"a":"13A318","b":100,"c":"FFFFFF","d":"FFFFFF","k":"13A318","l":"13A318","m":"13A318","n":"FFFFFF","p":"10","q":"13A318","r":100,"t":0,"surl":0,"allowpm":0,"cnrs":"0.35","fwtickm":1}}</script>
                         </div>
                     </section>
