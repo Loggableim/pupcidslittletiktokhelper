@@ -214,7 +214,7 @@ class GoogleEngine {
      */
     _getAuthErrorHelp(errorMsg) {
         // Check for OAuth2 error message
-        if (errorMsg && errorMsg.includes('OAuth2') || errorMsg.includes('Expected OAuth2 access token')) {
+        if (errorMsg && (errorMsg.includes('OAuth2') || errorMsg.includes('Expected OAuth2 access token'))) {
             return 'Google Cloud TTS API requires an API key, not OAuth2 tokens. ' +
                    'Please ensure you have:\n' +
                    '1. Created a Google Cloud Project\n' +

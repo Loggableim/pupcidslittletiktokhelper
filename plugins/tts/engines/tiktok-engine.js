@@ -354,7 +354,7 @@ class TikTokEngine {
             this.logger.error('   3. Use Browser TTS (free, no setup needed, client-side)');
             this.logger.error('');
             this.logger.error('⚙️  HOW TO SWITCH:');
-            this.logger.error('   • Open TTS Admin Panel: http://localhost:3000/plugins/tts/ui/admin-panel.html');
+            this.logger.error('   • Open TTS Admin Panel in your browser');
             this.logger.error('   • Go to Configuration tab');
             this.logger.error('   • Set "Default Engine" to "elevenlabs" or "google"');
             this.logger.error('   • Add your API key in the respective field');
