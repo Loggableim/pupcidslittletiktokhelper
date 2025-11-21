@@ -183,7 +183,7 @@ class TikTokSessionExtractor {
      * @returns {string} Path to temporary directory
      */
     _createTempUserDataDir() {
-        const tempDir = path.join(os.tmpdir(), `tiktok-chrome-${Date.now()}`);
+        const tempDir = path.join(os.tmpdir(), `tiktok-chrome-${Date.now()}-${process.pid}`);
         fsSync.mkdirSync(tempDir, { recursive: true });
         this.tempUserDataDir = tempDir;
         this.logger.info(`📁 Created temporary Chrome profile at: ${tempDir}`);
@@ -195,7 +195,7 @@ class TikTokSessionExtractor {
      * @private
      */
     async _cleanupTempUserDataDir() {
-        if (this.tempUserDataDir && fsSync.existsSync(this.tempUserDataDir)) {
+        if (this.tempUserDataDir) {
             try {
                 await fs.rm(this.tempUserDataDir, { recursive: true, force: true });
                 this.logger.info('🧹 Cleaned up temporary Chrome profile');
