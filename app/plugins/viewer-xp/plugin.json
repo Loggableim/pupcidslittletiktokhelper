@@ -5,7 +5,7 @@
   "description": "Comprehensive viewer XP and leveling system with persistent storage, daily bonuses, streaks, badges, and leaderboards. Gamifies viewer engagement across multiple streams.",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": false,
+  "enabled": true,
   "permissions": [
     "socket.io",
     "routes",
