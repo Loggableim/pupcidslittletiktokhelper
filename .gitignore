@@ -1,21 +1,27 @@
 # Dependencies
+app/node_modules/
 node_modules/
+app/package-lock.json
 package-lock.json
 
 # Database files
-database.db
-database.db-shm
-database.db-wal
+app/database.db
+app/database.db-shm
+app/database.db-wal
 *.db
 *.db-shm
 *.db-wal
 
 # User profile management
+app/user_configs/.active_profile
+app/database.db.backup
+app/.config_path
 user_configs/.active_profile
 database.db.backup
 .config_path
 
 # Logs
+app/logs
 logs
 *.log
 npm-debug.log*
@@ -23,6 +29,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment variables
+app/.env
+app/.env.local
+app/.env.*.local
 .env
 .env.local
 .env.*.local
@@ -51,12 +60,16 @@ validate-*.js
 load-test-*.js
 
 # Plugin runtime data
+app/plugins/*/data/
+app/plugins/plugins_state.json
 plugins/*/data/
 plugins/plugins_state.json
 test-viewer-xp.js
 *.backup*
 
 # TikTok SessionID auto-extraction files
+app/plugins/tts/engines/.tiktok-cookies.json
+app/plugins/tts/engines/.tiktok-sessionid
 plugins/tts/engines/.tiktok-cookies.json
 plugins/tts/engines/.tiktok-sessionid
 test_endpoints.js
