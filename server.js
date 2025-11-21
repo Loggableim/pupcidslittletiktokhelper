@@ -126,13 +126,14 @@ app.use((req, res, next) => {
         // The script-src 'self' directive only allows scripts from the same origin,
         // which prevents XSS attacks via inline script injection.
         // 
-        // SECURITY NOTE: 'unsafe-inline' is added to support Chatango embed scripts
-        // which require inline JSON configuration. This is a necessary trade-off for
-        // third-party chat integration. Consider isolating Chatango in an iframe
-        // or implementing a custom chat solution for better security.
+        // SECURITY NOTE: 'unsafe-eval' is required for Chatango embed scripts which use eval()
+        // 'unsafe-inline' in script-src-elem allows Chatango's inline JSON configuration tags
+        // Hash values allow specific trusted inline scripts (Socket.IO, admin panel)
+        // When hashes are present, 'unsafe-inline' is ignored for script execution (secure)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Socket.IO inline script via hash + Chatango scripts
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + Chatango eval
+            `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Chatango inline script elements with JSON config
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
@@ -149,7 +150,8 @@ app.use((req, res, next) => {
         // Strict CSP for other routes (including overlays for OBS)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Socket.IO inline script via hash + Chatango scripts
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + Chatango eval
+            `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Chatango inline script elements with JSON config
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
