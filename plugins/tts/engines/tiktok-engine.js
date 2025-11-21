@@ -6,17 +6,18 @@ const TikTokSessionExtractor = require('./tiktok-session-extractor');
  * Uses TikTok's official API endpoints with SessionID authentication
  * Based on research from TikTok-Chat-Reader and community TTS projects
  * 
- * ✅ AUTOMATIC SESSION EXTRACTION (November 2024):
- * The engine can automatically extract SessionID from TikTok:
- * 1. Opens headless browser with TikTok
- * 2. Uses saved cookies if available (auto-login)
- * 3. Or prompts user to log in once (saves for future)
- * 4. Automatically extracts and uses SessionID
+ * 🔑 MANUAL SESSIONID SETUP (December 2024):
+ * Configure your TikTok SessionID via the TTS Admin Panel:
+ * 1. Open TTS Admin Panel > Configuration tab
+ * 2. Find "TikTok SessionID" section
+ * 3. Follow the German instructions to extract your SessionID
+ * 4. Paste it into the input field and save
  * 
- * MANUAL SETUP (Alternative):
+ * ALTERNATIVE SETUP:
  * Set TIKTOK_SESSION_ID environment variable with your SessionID
  * 
- * The SessionID is saved and reused automatically.
+ * A fallback SessionID is provided for testing, but for best reliability
+ * you should configure your own SessionID in the Admin Panel.
  */
 class TikTokEngine {
     constructor(logger, config = {}) {
@@ -32,8 +33,20 @@ class TikTokEngine {
         this.autoExtractEnabled = false; // Disabled by default - use manual entry instead
         
         // Direct TikTok API endpoints (require SessionID for authentication)
-        // These are the working endpoints as of November 2024
+        // Updated endpoints as of December 2024
         this.apiEndpoints = [
+            {
+                url: 'https://api16-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api22-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
             {
                 url: 'https://api16-normal-useast5.us.tiktokv.com/media/api/text/speech/invoke',
                 type: 'official',
@@ -42,12 +55,6 @@ class TikTokEngine {
             },
             {
                 url: 'https://api22-normal-c-alisg.tiktokv.com/media/api/text/speech/invoke',
-                type: 'official',
-                format: 'tiktok',
-                requiresAuth: true
-            },
-            {
-                url: 'https://api16-normal-c-useast2a.tiktokv.com/media/api/text/speech/invoke',
                 type: 'official',
                 format: 'tiktok',
                 requiresAuth: true
@@ -250,6 +257,18 @@ class TikTokEngine {
                     lastError = error;
                     this.logger.warn(`TikTok TTS ${endpointConfig.type} endpoint failed: ${error.message}`);
                     
+                    // Log more details for debugging
+                    if (error.response) {
+                        this.logger.debug(`HTTP Status: ${error.response.status}`);
+                        this.logger.debug(`Response data: ${JSON.stringify(error.response.data || {})}`);
+                    }
+                    
+                    // Check if error is due to 404 (API endpoint changed)
+                    if (error.message.includes('404')) {
+                        this.logger.warn('⚠️  API endpoint returned 404 - TikTok may have changed their API');
+                        this.logger.warn('💡 Try updating to the latest version or report this issue');
+                    }
+                    
                     // Check if error is due to invalid/expired SessionID
                     if (error.message.includes('401') || error.message.includes('403') || error.message.includes('Invalid session')) {
                         this.logger.warn('⚠️  SessionID may be expired or invalid');
@@ -272,10 +291,19 @@ class TikTokEngine {
         this.logger.error(errorMessage);
         this.logger.error('Tried endpoints:', this.apiEndpoints.map(e => `${e.type}:${e.url}`).join(', '));
         this.logger.error('❌ TikTok TTS failed. Possible causes:');
-        this.logger.error('   1. Invalid or expired SessionID - Get a fresh one from TikTok cookies');
-        this.logger.error('   2. TikTok changed their API - Check for updates');
-        this.logger.error('   3. Network/firewall blocking TikTok domains');
-        this.logger.error('💡 Quick fix: Update your TIKTOK_SESSION_ID in settings');
+        
+        // Check if all errors were 404
+        if (lastError?.message?.includes('404')) {
+            this.logger.error('   ⚠️  All endpoints returned 404 - TikTok likely changed their API');
+            this.logger.error('   💡 TEMPORARY WORKAROUND: Use Google Cloud TTS, ElevenLabs, or Browser TTS instead');
+            this.logger.error('   📧 This issue has been reported - waiting for TikTok API update');
+        } else {
+            this.logger.error('   1. Invalid or expired SessionID - Get a fresh one from TikTok cookies');
+            this.logger.error('   2. TikTok changed their API - Check for updates');
+            this.logger.error('   3. Network/firewall blocking TikTok domains');
+            this.logger.error('💡 Quick fix: Update your TIKTOK_SESSION_ID in TTS Admin Panel');
+        }
+        
         this.logger.error('📚 See: plugins/tts/engines/TIKTOK_TTS_STATUS.md for full instructions');
         throw new Error(errorMessage);
     }
@@ -316,6 +344,10 @@ class TikTokEngine {
             timeout: this.timeout,
             responseType: 'json'
         };
+        
+        this.logger.debug(`Making TikTok TTS request to: ${url}`);
+        this.logger.debug(`Request params: ${requestData}`);
+        this.logger.debug(`SessionID length: ${this.sessionId?.length || 0}`);
         
         const response = await axios.post(url, requestData, requestConfig);
         
