@@ -5,6 +5,9 @@
 
 const assert = require('assert');
 const GoogleEngine = require('../plugins/tts/engines/google-engine');
+const TikTokEngine = require('../plugins/tts/engines/tiktok-engine');
+const SpeechifyEngine = require('../plugins/tts/engines/speechify-engine');
+const ElevenLabsEngine = require('../plugins/tts/engines/elevenlabs-engine');
 
 // Mock logger
 const mockLogger = {
@@ -99,7 +102,6 @@ runTest('Google Engine should allow updating API key', () => {
 
 // Test 10: TikTok Engine static voice list
 runTest('TikTok Engine should have predefined voices', () => {
-    const TikTokEngine = require('../plugins/tts/engines/tiktok-engine');
     const voices = TikTokEngine.getVoices();
     assert.ok(voices);
     assert.ok(Object.keys(voices).length > 0);
@@ -109,21 +111,18 @@ runTest('TikTok Engine should have predefined voices', () => {
 
 // Test 11: TikTok Engine default voice for German
 runTest('TikTok Engine should return German default voice', () => {
-    const TikTokEngine = require('../plugins/tts/engines/tiktok-engine');
     const voice = TikTokEngine.getDefaultVoiceForLanguage('de');
     assert.strictEqual(voice, 'de_002');
 });
 
 // Test 12: Speechify Engine default voice for German
 runTest('Speechify Engine should return German default voice', () => {
-    const SpeechifyEngine = require('../plugins/tts/engines/speechify-engine');
     const voice = SpeechifyEngine.getDefaultVoiceForLanguage('de');
     assert.strictEqual(voice, 'mads');
 });
 
 // Test 13: ElevenLabs Engine default voice for any language
 runTest('ElevenLabs Engine should return Rachel as default for any language', () => {
-    const ElevenLabsEngine = require('../plugins/tts/engines/elevenlabs-engine');
     const voiceDe = ElevenLabsEngine.getDefaultVoiceForLanguage('de');
     const voiceEn = ElevenLabsEngine.getDefaultVoiceForLanguage('en');
     const voiceUnknown = ElevenLabsEngine.getDefaultVoiceForLanguage('xyz');

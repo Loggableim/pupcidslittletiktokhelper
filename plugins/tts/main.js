@@ -88,6 +88,15 @@ class TTSPlugin {
         this.profanityFilter.setMode(this.config.profanityFilter);
         this.profanityFilter.setReplacement('asterisk');
 
+        // Define fallback chains for each engine
+        // Each engine has a preferred order of fallback engines based on quality and reliability
+        this.fallbackChains = {
+            'google': ['elevenlabs', 'speechify', 'tiktok'],      // Google → Premium → Fallback
+            'elevenlabs': ['speechify', 'google', 'tiktok'],      // Premium → Good → Free
+            'speechify': ['elevenlabs', 'google', 'tiktok'],      // Speechify → Premium → Good → Free
+            'tiktok': ['elevenlabs', 'speechify', 'google']       // Free → Premium → Good
+        };
+
         this._logDebug('INIT', 'TTS Plugin initialized', {
             defaultEngine: this.config.defaultEngine,
             defaultVoice: this.config.defaultVoice,
@@ -123,10 +132,8 @@ class TTSPlugin {
 
         let fallbackVoice = currentVoice;
         
-        // Get appropriate engine class for voice detection
-        let EngineClass;
+        // Adjust voice for target engine
         if (engineName === 'elevenlabs') {
-            EngineClass = ElevenLabsEngine;
             const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
             if (!fallbackVoice || !elevenlabsVoices[fallbackVoice]) {
                 const langResult = this.languageDetector.detectAndGetVoice(text, ElevenLabsEngine, this.config.fallbackLanguage);
@@ -134,7 +141,6 @@ class TTSPlugin {
                 this._logDebug('FALLBACK', `Voice adjusted for ${engineName}`, { fallbackVoice, langResult });
             }
         } else if (engineName === 'speechify') {
-            EngineClass = SpeechifyEngine;
             const speechifyVoices = await this.engines.speechify.getVoices();
             if (!fallbackVoice || !speechifyVoices[fallbackVoice]) {
                 const langResult = this.languageDetector.detectAndGetVoice(text, SpeechifyEngine, this.config.fallbackLanguage);
@@ -142,7 +148,6 @@ class TTSPlugin {
                 this._logDebug('FALLBACK', `Voice adjusted for ${engineName}`, { fallbackVoice, langResult });
             }
         } else if (engineName === 'google') {
-            EngineClass = GoogleEngine;
             const googleVoices = GoogleEngine.getVoices();
             if (!fallbackVoice || !googleVoices[fallbackVoice]) {
                 const langResult = this.languageDetector.detectAndGetVoice(text, GoogleEngine, this.config.fallbackLanguage);
@@ -150,7 +155,6 @@ class TTSPlugin {
                 this._logDebug('FALLBACK', `Voice adjusted for ${engineName}`, { fallbackVoice, langResult });
             }
         } else if (engineName === 'tiktok') {
-            EngineClass = TikTokEngine;
             const tiktokVoices = TikTokEngine.getVoices();
             if (!fallbackVoice || !tiktokVoices[fallbackVoice]) {
                 const langResult = this.languageDetector.detectAndGetVoice(text, TikTokEngine, this.config.fallbackLanguage);
@@ -1197,16 +1201,9 @@ class TTSPlugin {
                 });
                 this.logger.error(`TTS engine ${selectedEngine} failed: ${engineError.message}, trying fallback`);
 
-                // Improved fallback chain based on quality and reliability:
-                // Define fallback order for each engine
-                const fallbackChains = {
-                    'google': ['elevenlabs', 'speechify', 'tiktok'],
-                    'elevenlabs': ['speechify', 'google', 'tiktok'],
-                    'speechify': ['elevenlabs', 'google', 'tiktok'],
-                    'tiktok': ['elevenlabs', 'speechify', 'google']
-                };
-                
-                const fallbackChain = fallbackChains[selectedEngine] || ['elevenlabs', 'speechify', 'google', 'tiktok'];
+                // Improved fallback chain based on quality and reliability
+                // Use predefined fallback chains for each engine
+                const fallbackChain = this.fallbackChains[selectedEngine] || ['elevenlabs', 'speechify', 'google', 'tiktok'];
                 
                 // Try each fallback engine in order
                 for (const fallbackEngine of fallbackChain) {
