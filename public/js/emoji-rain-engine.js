@@ -386,141 +386,160 @@ function applyPixelEffect(element) {
  * Main update loop
  */
 function updateLoop(currentTime) {
-    // Calculate delta time
-    const deltaTime = currentTime - lastUpdateTime;
-    const targetFrameTime = 1000 / config.target_fps;
+    try {
+        // Calculate delta time
+        const deltaTime = currentTime - lastUpdateTime;
+        const targetFrameTime = 1000 / config.target_fps;
 
-    // Throttle to target FPS
-    if (deltaTime < targetFrameTime) {
-        requestAnimationFrame(updateLoop);
-        return;
-    }
-
-    lastUpdateTime = currentTime - (deltaTime % targetFrameTime);
-
-    // Update FPS counter
-    frameCount++;
-    if (currentTime - fpsUpdateTime >= 1000) {
-        currentFPS = Math.round(frameCount * 1000 / (currentTime - fpsUpdateTime));
-        frameCount = 0;
-        fpsUpdateTime = currentTime;
-        
-        // Track FPS history
-        fpsHistory.push(currentFPS);
-        if (fpsHistory.length > FPS_HISTORY_SIZE) {
-            fpsHistory.shift();
-        }
-        
-        // Additional safety: prevent unbounded growth
-        if (fpsHistory.length > FPS_HISTORY_SIZE * 2) {
-            console.warn('⚠️ FPS history array grew too large, resetting');
-            fpsHistory = fpsHistory.slice(-FPS_HISTORY_SIZE);
-        }
-        
-        // Check if FPS optimization is needed
-        if (config.fps_optimization_enabled) {
-            checkAndOptimizeFPS();
-        }
-    }
-
-    // Run physics engine step
-    const clampedDelta = Math.min(deltaTime, targetFrameTime);
-    Engine.update(engine, clampedDelta);
-
-    // Update rainbow hue
-    if (config.rainbow_enabled) {
-        rainbowHueOffset += config.rainbow_speed;
-        if (rainbowHueOffset >= 360) {
-            rainbowHueOffset -= 360;
-        }
-    }
-
-    // Calculate wind force
-    const currentWindForce = calculateWindForce();
-
-    // Update emojis
-    emojis.forEach(emoji => {
-        // Skip if emoji is marked for removal or has invalid state
-        if (emoji.removed || !emoji.body || !emoji.element) {
+        // Throttle to target FPS
+        if (deltaTime < targetFrameTime) {
+            requestAnimationFrame(updateLoop);
             return;
         }
 
-        // Check if emoji has escaped the world bounds
-        const pos = emoji.body.position;
-        if (!pos || isNaN(pos.x) || isNaN(pos.y)) {
-            // Invalid position, remove emoji
-            console.warn('⚠️ Invalid emoji position detected, removing');
-            removeEmoji(emoji);
-            return;
-        }
+        lastUpdateTime = currentTime - (deltaTime % targetFrameTime);
 
-        const margin = 200; // Extra margin outside canvas
-        if (pos.x < -margin || pos.x > canvasWidth + margin || 
-            pos.y < -margin || pos.y > canvasHeight + margin) {
-            // Emoji escaped, remove it
-            removeEmoji(emoji);
-            return;
-        }
-
-        // Apply wind
-        if (config.wind_enabled) {
-            Body.applyForce(emoji.body, emoji.body.position, {
-                x: currentWindForce,
-                y: 0
-            });
-        }
-
-        // Apply air resistance with damping
-        const velocity = emoji.body.velocity;
-        const dampingFactor = config.bounce_damping;
-        Body.setVelocity(emoji.body, {
-            x: velocity.x * (1 - config.physics_air - dampingFactor * 0.01),
-            y: velocity.y * (1 - config.physics_air)
-        });
-
-        // Update DOM element
-        const px = emoji.body.position.x;
-        const py = emoji.body.position.y;
-        const rotation = emoji.body.angle + emoji.rotation;
-        emoji.rotation += config.emoji_rotation_speed;
-
-        emoji.element.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) rotate(${rotation}rad)`;
-        
-        // Update color theme (which includes pixel mode filters):
-        // - Rainbow mode needs to update every frame for smooth animation
-        // - Other color modes only update periodically to save performance
-        if (config.rainbow_enabled) {
-            applyColorTheme(emoji.element, emoji);
-            emoji.lastColorUpdate = currentTime;
-        } else if (currentTime - emoji.lastColorUpdate > 100) {
-            applyColorTheme(emoji.element, emoji);
-            emoji.lastColorUpdate = currentTime;
-        }
-
-        // Check lifetime
-        if (emoji.spawnTime && config.emoji_lifetime_ms > 0) {
-            const age = currentTime - emoji.spawnTime;
-            if (age > config.emoji_lifetime_ms && !emoji.fading) {
-                fadeOutEmoji(emoji);
+        // Update FPS counter
+        frameCount++;
+        if (currentTime - fpsUpdateTime >= 1000) {
+            currentFPS = Math.round(frameCount * 1000 / (currentTime - fpsUpdateTime));
+            frameCount = 0;
+            fpsUpdateTime = currentTime;
+            
+            // Track FPS history
+            fpsHistory.push(currentFPS);
+            if (fpsHistory.length > FPS_HISTORY_SIZE) {
+                fpsHistory.shift();
+            }
+            
+            // Additional safety: prevent unbounded growth
+            if (fpsHistory.length > FPS_HISTORY_SIZE * 2) {
+                console.warn('⚠️ FPS history array grew too large, resetting');
+                fpsHistory = fpsHistory.slice(-FPS_HISTORY_SIZE);
+            }
+            
+            // Check if FPS optimization is needed
+            if (config.fps_optimization_enabled) {
+                checkAndOptimizeFPS();
             }
         }
-    });
 
-    // Remove faded emojis
-    emojis = emojis.filter(emoji => !emoji.removed);
+        // Run physics engine step
+        if (engine) {
+            const clampedDelta = Math.min(deltaTime, targetFrameTime);
+            Engine.update(engine, clampedDelta);
+        }
 
-    // Limit max emojis
-    while (emojis.length > config.max_emojis_on_screen) {
-        const oldest = emojis[0];
-        removeEmoji(oldest);
+        // Update rainbow hue
+        if (config.rainbow_enabled) {
+            rainbowHueOffset += config.rainbow_speed;
+            if (rainbowHueOffset >= 360) {
+                rainbowHueOffset -= 360;
+            }
+        }
+
+        // Calculate wind force
+        const currentWindForce = calculateWindForce();
+
+        // Update emojis
+        emojis.forEach(emoji => {
+            try {
+                // Skip if emoji is marked for removal or has invalid state
+                if (emoji.removed || !emoji.body || !emoji.element) {
+                    return;
+                }
+
+                // Check if emoji has escaped the world bounds
+                const pos = emoji.body.position;
+                if (!pos || isNaN(pos.x) || isNaN(pos.y)) {
+                    // Invalid position, remove emoji
+                    console.warn('⚠️ Invalid emoji position detected, removing');
+                    removeEmoji(emoji);
+                    return;
+                }
+
+                const margin = 200; // Extra margin outside canvas
+                if (pos.x < -margin || pos.x > canvasWidth + margin || 
+                    pos.y < -margin || pos.y > canvasHeight + margin) {
+                    // Emoji escaped, remove it
+                    removeEmoji(emoji);
+                    return;
+                }
+
+                // Apply wind
+                if (config.wind_enabled) {
+                    Body.applyForce(emoji.body, emoji.body.position, {
+                        x: currentWindForce,
+                        y: 0
+                    });
+                }
+
+                // Apply air resistance with damping
+                const velocity = emoji.body.velocity;
+                const dampingFactor = config.bounce_damping;
+                Body.setVelocity(emoji.body, {
+                    x: velocity.x * (1 - config.physics_air - dampingFactor * 0.01),
+                    y: velocity.y * (1 - config.physics_air)
+                });
+
+                // Update DOM element
+                const px = emoji.body.position.x;
+                const py = emoji.body.position.y;
+                const rotation = emoji.body.angle + emoji.rotation;
+                emoji.rotation += config.emoji_rotation_speed;
+
+                emoji.element.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) rotate(${rotation}rad)`;
+                
+                // Update color theme (which includes pixel mode filters):
+                // - Rainbow mode needs to update every frame for smooth animation
+                // - Other color modes only update periodically to save performance
+                if (config.rainbow_enabled) {
+                    applyColorTheme(emoji.element, emoji);
+                    emoji.lastColorUpdate = currentTime;
+                } else if (currentTime - emoji.lastColorUpdate > 100) {
+                    applyColorTheme(emoji.element, emoji);
+                    emoji.lastColorUpdate = currentTime;
+                }
+
+                // Check lifetime
+                if (emoji.spawnTime && config.emoji_lifetime_ms > 0) {
+                    const age = currentTime - emoji.spawnTime;
+                    if (age > config.emoji_lifetime_ms && !emoji.fading) {
+                        fadeOutEmoji(emoji);
+                    }
+                }
+            } catch (emojiError) {
+                console.error('❌ Error updating emoji:', emojiError);
+                // Mark emoji for removal if it causes errors
+                try {
+                    removeEmoji(emoji);
+                } catch (e) {
+                    // Last resort: mark as removed
+                    emoji.removed = true;
+                }
+            }
+        });
+
+        // Remove faded emojis
+        emojis = emojis.filter(emoji => !emoji.removed);
+
+        // Limit max emojis
+        while (emojis.length > config.max_emojis_on_screen) {
+            const oldest = emojis[0];
+            removeEmoji(oldest);
+        }
+
+        // Update debug info
+        if (debugMode) {
+            updateDebugInfo();
+        }
+    } catch (error) {
+        console.error('❌ Critical error in updateLoop:', error);
+        console.error('Stack trace:', error.stack);
+    } finally {
+        // Always schedule next frame, even if there was an error
+        requestAnimationFrame(updateLoop);
     }
-
-    // Update debug info
-    if (debugMode) {
-        updateDebugInfo();
-    }
-
-    requestAnimationFrame(updateLoop);
 }
 
 /**
@@ -699,28 +718,40 @@ function fadeOutEmoji(emoji) {
 function removeEmoji(emoji) {
     if (emoji.removed) return;
 
-    emoji.removed = true;
+    try {
+        emoji.removed = true;
 
-    // Clean up any pending timeouts to prevent memory leaks
-    if (emoji.fadeTimeout) {
-        clearTimeout(emoji.fadeTimeout);
-        emoji.fadeTimeout = null;
-    }
-    if (emoji.bounceAnimationTimeout) {
-        clearTimeout(emoji.bounceAnimationTimeout);
-        emoji.bounceAnimationTimeout = null;
-    }
+        // Clean up any pending timeouts to prevent memory leaks
+        if (emoji.fadeTimeout) {
+            clearTimeout(emoji.fadeTimeout);
+            emoji.fadeTimeout = null;
+        }
+        if (emoji.bounceAnimationTimeout) {
+            clearTimeout(emoji.bounceAnimationTimeout);
+            emoji.bounceAnimationTimeout = null;
+        }
 
-    if (emoji.body) {
-        // Remove from body map
-        emojiBodyMap.delete(emoji.body);
-        World.remove(engine.world, emoji.body);
-        emoji.body = null;
-    }
+        if (emoji.body) {
+            // Remove from body map
+            emojiBodyMap.delete(emoji.body);
+            try {
+                World.remove(engine.world, emoji.body);
+            } catch (e) {
+                console.warn('⚠️ Failed to remove emoji body from world:', e.message);
+            }
+            emoji.body = null;
+        }
 
-    if (emoji.element && emoji.element.parentNode) {
-        emoji.element.parentNode.removeChild(emoji.element);
-        emoji.element = null;
+        if (emoji.element && emoji.element.parentNode) {
+            try {
+                emoji.element.parentNode.removeChild(emoji.element);
+            } catch (e) {
+                console.warn('⚠️ Failed to remove emoji element from DOM:', e.message);
+            }
+            emoji.element = null;
+        }
+    } catch (error) {
+        console.error('❌ Error in removeEmoji:', error);
     }
 }
 
@@ -728,30 +759,41 @@ function removeEmoji(emoji) {
  * Handle spawn event from server
  */
 function handleSpawnEvent(data) {
-    if (!config.enabled) return;
+    try {
+        if (!config.enabled) return;
 
-    const count = data.count || 1;
-    const emoji = data.emoji || getRandomEmoji();
-    const x = data.x !== undefined ? data.x : Math.random();
-    const y = data.y !== undefined ? data.y : 0;
-    const username = data.username || null;
-    const isBurst = data.burst || false;
-    const color = data.color || null;
+        const count = data.count || 1;
+        const emoji = data.emoji || getRandomEmoji();
+        const x = data.x !== undefined ? data.x : Math.random();
+        const y = data.y !== undefined ? data.y : 0;
+        const username = data.username || null;
+        const isBurst = data.burst || false;
+        const color = data.color || null;
 
-    console.log(`🌧️ [SPAWN EVENT] count=${count}, emoji=${emoji}, username=${username}, burst=${isBurst}, color=${color}`);
+        console.log(`🌧️ [SPAWN EVENT] count=${count}, emoji=${emoji}, username=${username}, burst=${isBurst}, color=${color}`);
 
-    // Apply burst multiplier
-    const actualCount = isBurst ? Math.floor(count * config.superfan_burst_intensity) : count;
+        // Apply burst multiplier
+        const actualCount = isBurst ? Math.floor(count * config.superfan_burst_intensity) : count;
 
-    for (let i = 0; i < actualCount; i++) {
-        const size = config.emoji_min_size_px + Math.random() * (config.emoji_max_size_px - config.emoji_min_size_px);
-        const offsetX = x + (Math.random() - 0.5) * 0.2;
-        const offsetY = y - i * 5;
+        // Limit spawn count to prevent overload
+        const limitedCount = Math.min(actualCount, 100);
+        if (actualCount > limitedCount) {
+            console.warn(`⚠️ Spawn count limited from ${actualCount} to ${limitedCount}`);
+        }
 
-        spawnEmoji(emoji, offsetX, offsetY, size, username, color);
+        for (let i = 0; i < limitedCount; i++) {
+            const size = config.emoji_min_size_px + Math.random() * (config.emoji_max_size_px - config.emoji_min_size_px);
+            const offsetX = x + (Math.random() - 0.5) * 0.2;
+            const offsetY = y - i * 5;
+
+            spawnEmoji(emoji, offsetX, offsetY, size, username, color);
+        }
+
+        console.log(`🌧️ Spawned ${limitedCount}x ${emoji} at (${x.toFixed(2)}, ${y})${isBurst ? ' [BURST]' : ''}${username ? ' for ' + username : ''}`);
+    } catch (error) {
+        console.error('❌ Error in handleSpawnEvent:', error);
+        console.error('Stack trace:', error.stack);
     }
-
-    console.log(`🌧️ Spawned ${actualCount}x ${emoji} at (${x.toFixed(2)}, ${y})${isBurst ? ' [BURST]' : ''}${username ? ' for ' + username : ''}`);
 }
 
 /**
