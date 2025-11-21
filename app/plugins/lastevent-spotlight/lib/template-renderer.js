@@ -120,6 +120,8 @@ class TemplateRenderer {
    */
   buildHTML(userData, profilePicUrl) {
     const parts = [];
+    const isGiftEvent = userData.eventType === 'gifter' || userData.eventType === 'topgift' || userData.eventType === 'giftstreak';
+    const hasGiftData = userData.metadata && (userData.metadata.giftName || userData.metadata.giftPictureUrl);
 
     // Profile picture
     if (this.settings.showProfilePicture && profilePicUrl) {
@@ -136,6 +138,52 @@ class TemplateRenderer {
           <img src="${profilePicUrl}" alt="${userData.nickname}" style="width: 100%; height: 100%; object-fit: cover;">
         </div>
       `);
+    }
+
+    // Gift icon (for gift-related events)
+    if (isGiftEvent && hasGiftData) {
+      const giftPictureUrl = userData.metadata.giftPictureUrl;
+      const giftName = userData.metadata.giftName || 'Gift';
+      const size = this.settings.profilePictureSize || '80px';
+      
+      if (giftPictureUrl) {
+        // Show gift image if available
+        parts.push(`
+          <div class="gift-icon" style="
+            width: ${size};
+            height: ${size};
+            border-radius: 10px;
+            overflow: hidden;
+            ${this.settings.enableBorder ? `border: 3px solid ${this.settings.borderColor || '#FFFFFF'};` : ''}
+            margin: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <img src="${giftPictureUrl}" alt="${giftName}" style="width: 90%; height: 90%; object-fit: contain;">
+          </div>
+        `);
+      } else {
+        // Fallback to emoji if no gift image
+        const giftEmoji = userData.eventType === 'topgift' ? '💎' : (userData.eventType === 'giftstreak' ? '🔥' : '🎁');
+        parts.push(`
+          <div class="gift-icon" style="
+            width: ${size};
+            height: ${size};
+            border-radius: 10px;
+            ${this.settings.enableBorder ? `border: 3px solid ${this.settings.borderColor || '#FFFFFF'};` : ''}
+            margin: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: calc(${size} * 0.6);
+          ">
+            ${giftEmoji}
+          </div>
+        `);
+      }
     }
 
     // Text content
@@ -167,6 +215,39 @@ class TemplateRenderer {
           ${userData.nickname || 'Anonymous'}
         </div>
       `);
+    }
+
+    // Gift metadata (for gift-related events)
+    if (isGiftEvent && hasGiftData) {
+      const giftInfo = [];
+      
+      if (userData.metadata.giftName) {
+        giftInfo.push(`<span style="color: #ffc107;">🎁 ${userData.metadata.giftName}</span>`);
+      }
+      
+      if (userData.metadata.giftCount && userData.metadata.giftCount > 1) {
+        giftInfo.push(`<span style="color: #00ff00;">×${userData.metadata.giftCount}</span>`);
+      }
+      
+      if (userData.metadata.coins && userData.metadata.coins > 0) {
+        giftInfo.push(`<span style="color: #ffd700;">💰 ${userData.metadata.coins} coins</span>`);
+      }
+      
+      if (giftInfo.length > 0) {
+        textParts.push(`
+          <div class="gift-metadata" style="
+            font-size: calc(${this.settings.fontSize || '32px'} * 0.7);
+            color: ${this.settings.fontColor || '#FFFFFF'};
+            margin-top: 5px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: ${this.settings.alignCenter ? 'center' : 'flex-start'};
+          ">
+            ${giftInfo.join(' ')}
+          </div>
+        `);
+      }
     }
 
     if (textParts.length > 0) {
