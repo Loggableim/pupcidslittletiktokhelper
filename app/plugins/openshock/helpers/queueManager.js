@@ -156,10 +156,36 @@ class QueueManager extends EventEmitter {
   }
 
   /**
-   * Add an item to the queue (wrapper for enqueue with item object)
-   * This method provides compatibility with the calling code in main.js
-   * @param {Object} item - Queue item with all properties
-   * @returns {Promise<Object>} Result object
+   * Add an item to the queue (wrapper for enqueue with item object format)
+   * 
+   * This method provides compatibility with calling code that uses the item object format
+   * instead of separate parameters. It transforms the item object into individual parameters
+   * for the enqueue() method.
+   * 
+   * @param {Object} item - Queue item object
+   * @param {string} item.commandType - Command type (shock, vibrate, sound)
+   * @param {string} item.deviceId - Target device ID
+   * @param {string} item.deviceName - Target device name
+   * @param {number} item.intensity - Command intensity (1-100)
+   * @param {number} item.duration - Command duration in milliseconds
+   * @param {string} [item.userId='unknown'] - User ID who triggered the command
+   * @param {string} [item.source='unknown'] - Source of command (gift, pattern, manual, etc.)
+   * @param {Object} [item.sourceData={}] - Original event data
+   * @param {number} [item.priority=5] - Priority level (1-10, 10 = highest)
+   * 
+   * @returns {Promise<Object>} Result object with success, queueId, position, and message
+   * 
+   * @example
+   * await queueManager.addItem({
+   *   commandType: 'shock',
+   *   deviceId: 'abc123',
+   *   deviceName: 'My Device',
+   *   intensity: 50,
+   *   duration: 1000,
+   *   userId: 'user123',
+   *   source: 'pattern:Wave',
+   *   priority: 7
+   * });
    */
   async addItem(item) {
     try {
