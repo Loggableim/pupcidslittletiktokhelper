@@ -125,14 +125,21 @@ app.use((req, res, next) => {
         // via <script src="..."> tags, NOT inline scripts. This ensures CSP compliance.
         // The script-src 'self' directive only allows scripts from the same origin,
         // which prevents XSS attacks via inline script injection.
+        // 
+        // SECURITY NOTE: 'unsafe-eval' is required for Chatango embed scripts which use eval()
+        // 'unsafe-inline' in script-src-elem allows Chatango's inline JSON configuration tags
+        // Hash values allow specific trusted inline scripts (Socket.IO, admin panel)
+        // When hashes are present, 'unsafe-inline' is ignored for script execution (secure)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='; ` +  // Allow specific Socket.IO inline script via hash
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + Chatango eval
+            `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Chatango inline script elements with JSON config
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com; ` +
+            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com wss://*.chatango.com https://*.chatango.com; ` +
             `media-src 'self' blob: data: https:; ` +
+            `frame-src 'self' https://*.chatango.com; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
@@ -143,12 +150,14 @@ app.use((req, res, next) => {
         // Strict CSP for other routes (including overlays for OBS)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='; ` +  // Allow specific Socket.IO inline script via hash
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + Chatango eval
+            `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Chatango inline script elements with JSON config
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
-            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com; ` +
+            `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com wss://*.chatango.com https://*.chatango.com; ` +
             `media-src 'self' blob: data: https:; ` +
+            `frame-src 'self' https://*.chatango.com; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
