@@ -60,6 +60,37 @@ class TikTokSessionExtractor {
     }
 
     /**
+     * Get the user's Chrome profile directory
+     * @private
+     */
+    _getChromeUserDataDir() {
+        const os = require('os');
+        const path = require('path');
+        const fs = require('fs');
+        
+        let userDataDir = null;
+        
+        if (os.platform() === 'win32') {
+            // Windows
+            userDataDir = path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'User Data');
+        } else if (os.platform() === 'darwin') {
+            // macOS
+            userDataDir = path.join(os.homedir(), 'Library', 'Application Support', 'Google', 'Chrome');
+        } else {
+            // Linux
+            userDataDir = path.join(os.homedir(), '.config', 'google-chrome');
+        }
+        
+        if (userDataDir && fs.existsSync(userDataDir)) {
+            this.logger.info(`✅ Found Chrome profile at: ${userDataDir}`);
+            return userDataDir;
+        }
+        
+        this.logger.warn('⚠️  Chrome profile not found');
+        return null;
+    }
+
+    /**
      * Get the executable path for the user's default Chrome/Chromium browser
      * @private
      */
@@ -173,21 +204,45 @@ class TikTokSessionExtractor {
                 this.browser = null;
                 this.page = null;
                 
+                // Get user's Chrome profile to use existing login
+                const userDataDir = this._getChromeUserDataDir();
+                
                 // Launch visible browser for user to log in
                 const visibleLaunchOptions = {
                     headless: false, // Visible browser
-                    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-                    defaultViewport: null // Use full window size
+                    args: [
+                        '--no-sandbox', 
+                        '--disable-setuid-sandbox',
+                        '--disable-blink-features=AutomationControlled' // Hide automation
+                    ],
+                    defaultViewport: null, // Use full window size
+                    ignoreDefaultArgs: ['--enable-automation'] // Don't show "Chrome is being controlled" banner
                 };
                 
                 if (chromePath) {
                     visibleLaunchOptions.executablePath = chromePath;
-                    this.logger.info('🌐 Opening your default Chrome browser for login...');
+                }
+                
+                if (userDataDir) {
+                    // Use user's actual Chrome profile (where they're already logged in!)
+                    visibleLaunchOptions.userDataDir = userDataDir;
+                    this.logger.info('🔑 Using your Chrome profile - you may already be logged in!');
                 } else {
                     this.logger.info('🌐 Opening browser for login...');
                 }
                 
-                this.browser = await puppeteer.launch(visibleLaunchOptions);
+                try {
+                    this.browser = await puppeteer.launch(visibleLaunchOptions);
+                } catch (profileError) {
+                    // If using profile fails (Chrome already running), retry without profile
+                    if (userDataDir) {
+                        this.logger.warn('⚠️  Could not use Chrome profile (Chrome may be running). Opening without profile...');
+                        delete visibleLaunchOptions.userDataDir;
+                        this.browser = await puppeteer.launch(visibleLaunchOptions);
+                    } else {
+                        throw profileError;
+                    }
+                }
 
                 this.page = await this.browser.newPage();
                 await this.page.setUserAgent(this.USER_AGENT);

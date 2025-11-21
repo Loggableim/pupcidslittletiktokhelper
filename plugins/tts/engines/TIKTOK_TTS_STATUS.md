@@ -6,19 +6,21 @@
 
 ### How It Works
 
-1. **First Time**: Browser window opens with TikTok (uses your default Chrome)
-2. **You Log In**: Log in to TikTok (no time limit!)
-3. **Auto-Detect**: SessionID detected automatically when you complete login
-4. **Auto-Save**: SessionID saved for all future use
-5. **Future Use**: Works automatically, no login needed
+1. **First Time**: Browser opens with your Chrome profile (where you're logged in!)
+2. **Already Logged In?**: SessionID extracted immediately - no login needed!
+3. **Need to Log In?**: Log in once (no time limit)
+4. **Auto-Detect**: SessionID detected automatically when login complete
+5. **Auto-Save**: SessionID saved for all future use
+6. **Future Use**: Works automatically, no login needed
 
-### Important: Uses Your Default Browser
+### Important: Uses Your Chrome Profile
 
-✨ **NEW**: The system now uses your installed Chrome browser instead of Edge!
+✨ **NEW**: The system now uses your actual Chrome profile!
 
-- If you're already logged into TikTok in Chrome, it may use those cookies
-- Browser profile is separate to avoid conflicts
-- Falls back to Puppeteer's default if Chrome not found
+- **If you're logged into TikTok in Chrome**: SessionID extracted immediately
+- **No repeated logins**: Uses your existing TikTok session
+- **Avoids bot detection**: Real Chrome profile instead of automated browser
+- **Falls back gracefully**: If Chrome is running, opens without profile
 
 ### Quick Start
 
@@ -121,11 +123,15 @@ rm plugins/tts/engines/.tiktok-cookies.json
   npm install puppeteer
   ```
 
-### Browser Opens But SessionID Not Detected
-- **Cause**: Login not completed or verification required
-- **Fix 1**: Complete all login steps including verification
-- **Fix 2**: Wait for "Login detected!" message before closing
-- **Fix 3**: Check console logs for progress updates (every 10 seconds)
+### Browser Opens But TikTok Blocks It ("Browser not safe")
+- **Cause**: TikTok detected automation (Chromium without profile)
+- **Solution**: Now uses your real Chrome profile - avoids detection
+- **Note**: Close Chrome before first extraction, or it will open without profile
+
+### Chrome Already Running Error
+- **Cause**: Can't use Chrome profile when Chrome is already open
+- **Fix**: Close Chrome, then try TTS again
+- **Workaround**: System will automatically retry without profile
 
 ### "Timeout waiting for login" Error (Legacy)
 - **Note**: This error no longer occurs - system waits indefinitely
