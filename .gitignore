@@ -59,3 +59,4 @@ test-viewer-xp.js
 # TikTok SessionID auto-extraction files
 plugins/tts/engines/.tiktok-cookies.json
 plugins/tts/engines/.tiktok-sessionid
+test_endpoints.js

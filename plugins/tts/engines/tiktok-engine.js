@@ -33,9 +33,54 @@ class TikTokEngine {
         this.autoExtractEnabled = false; // Disabled by default - use manual entry instead
         
         // Direct TikTok API endpoints (require SessionID for authentication)
-        // Updated endpoints as of November 2025 - TikTok changed from "normal" to "core" in late 2024
-        // Multiple endpoint versions (api16, api19, api22) are used for redundancy
+        // Updated endpoints as of November 2025 - TikTok rotates between "normal" and "core" variants
+        // Multiple endpoint versions (api16, api19, api22) with both -normal- and -core- variants for maximum redundancy
+        // Community reports show both variants can work depending on region and TikTok's backend routing
         this.apiEndpoints = [
+            // -normal- variant endpoints (commonly working as of Nov 2025)
+            {
+                url: 'https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api16-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke/',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api19-normal-c-useast1a.tiktokv.com/media/api/text/speech/invoke/',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api16-normal-useast5.us.tiktokv.com/media/api/text/speech/invoke/',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api22-normal-c-alisg.tiktokv.com/media/api/text/speech/invoke/',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api16-normal-c-alisg.tiktokv.com/media/api/text/speech/invoke/',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api16-normal-c-useast2a.tiktokv.com/media/api/text/speech/invoke/',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            // -core- variant endpoints (backup endpoints)
             {
                 url: 'https://api16-core-c-useast1a.tiktokv.com/media/api/text/speech/invoke/',
                 type: 'official',
@@ -56,6 +101,12 @@ class TikTokEngine {
             },
             {
                 url: 'https://api22-core-c-alisg.tiktokv.com/media/api/text/speech/invoke/',
+                type: 'official',
+                format: 'tiktok',
+                requiresAuth: true
+            },
+            {
+                url: 'https://api16-core-c-alisg.tiktokv.com/media/api/text/speech/invoke/',
                 type: 'official',
                 format: 'tiktok',
                 requiresAuth: true
