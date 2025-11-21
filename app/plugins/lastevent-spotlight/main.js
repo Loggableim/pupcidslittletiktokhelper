@@ -42,6 +42,7 @@ class LastEventSpotlightPlugin {
       giftName: null,
       count: 0,
       user: null,
+      userData: null, // Store full user data
       startTime: null,
       totalCoins: 0
     };
@@ -322,6 +323,7 @@ class LastEventSpotlightPlugin {
           giftName: null,
           count: 0,
           user: null,
+          userData: null,
           startTime: null,
           totalCoins: 0
         };
@@ -445,11 +447,12 @@ class LastEventSpotlightPlugin {
         if (!this.longestStreak || this.currentStreak.count > this.longestStreak.count) {
           this.longestStreak = { ...this.currentStreak };
           
-          // Create userData for longest streak
+          // Create userData for longest streak using stored user data
+          const storedUserData = this.longestStreak.userData || {};
           const streakData = {
-            uniqueId: this.longestStreak.user,
-            nickname: userData.nickname, // Use current nickname as approximation
-            profilePictureUrl: userData.profilePictureUrl,
+            uniqueId: storedUserData.uniqueId || this.longestStreak.user,
+            nickname: storedUserData.nickname || 'Unknown',
+            profilePictureUrl: storedUserData.profilePictureUrl || '',
             timestamp: this.longestStreak.startTime,
             eventType: 'giftstreak',
             label: 'Gift Streak',
@@ -472,6 +475,11 @@ class LastEventSpotlightPlugin {
         giftName,
         count: giftCount,
         user: uniqueId,
+        userData: {
+          uniqueId: userData.uniqueId,
+          nickname: userData.nickname,
+          profilePictureUrl: userData.profilePictureUrl
+        },
         startTime: now.toISOString(),
         totalCoins: giftCoins
       };
