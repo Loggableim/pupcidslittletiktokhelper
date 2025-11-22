@@ -1,0 +1,32 @@
+{
+  "multicam": {
+    "title": "Multi-Cam Umschalter",
+    "subtitle": "Stream-Kamera-Verwaltung",
+    "cameras": {
+      "title": "Kameraquellen",
+      "add": "Kamera hinzufügen",
+      "name": "Kameraname",
+      "url": "Quell-URL",
+      "active": "Aktiv",
+      "preview": "Vorschau"
+    },
+    "switcher": {
+      "title": "Kamera-Umschalter",
+      "switch_to": "Umschalten zu",
+      "transition": "Übergangseffekt",
+      "duration": "Dauer (ms)",
+      "auto_switch": "Automatisch umschalten",
+      "interval": "Intervall (Sekunden)"
+    },
+    "overlay": {
+      "title": "Overlay-Einstellungen",
+      "url": "Overlay-URL",
+      "copy": "URL kopieren",
+      "open": "Overlay öffnen"
+    },
+    "settings": {
+      "save": "Einstellungen speichern",
+      "reset": "Auf Standard zurücksetzen"
+    }
+  }
+}

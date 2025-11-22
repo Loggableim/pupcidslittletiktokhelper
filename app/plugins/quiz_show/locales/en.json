@@ -1,0 +1,49 @@
+{
+  "quiz_show": {
+    "title": "Quiz Show",
+    "subtitle": "Interactive Quiz Game",
+    "config": {
+      "title": "Configuration",
+      "enabled": "Enable Quiz Show",
+      "time_limit": "Time Limit (seconds)",
+      "points_correct": "Points for Correct Answer",
+      "points_wrong": "Points for Wrong Answer",
+      "save": "Save Settings"
+    },
+    "game": {
+      "title": "Game Control",
+      "start": "Start Quiz",
+      "stop": "Stop Quiz",
+      "next_question": "Next Question",
+      "show_leaderboard": "Show Leaderboard"
+    },
+    "questions": {
+      "title": "Questions",
+      "add": "Add Question",
+      "edit": "Edit Question",
+      "delete": "Delete Question",
+      "question_text": "Question",
+      "answer_a": "Answer A",
+      "answer_b": "Answer B",
+      "answer_c": "Answer C",
+      "answer_d": "Answer D",
+      "correct_answer": "Correct Answer",
+      "import": "Import Questions",
+      "export": "Export Questions"
+    },
+    "overlay": {
+      "title": "Overlay",
+      "quiz_url": "Quiz Overlay URL",
+      "leaderboard_url": "Leaderboard Overlay URL",
+      "copy": "Copy URL",
+      "open": "Open Overlay"
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "rank": "Rank",
+      "player": "Player",
+      "score": "Score",
+      "reset": "Reset Scores"
+    }
+  }
+}

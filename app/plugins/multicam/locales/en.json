@@ -1,0 +1,32 @@
+{
+  "multicam": {
+    "title": "Multi-Cam Switcher",
+    "subtitle": "Stream Camera Management",
+    "cameras": {
+      "title": "Camera Sources",
+      "add": "Add Camera",
+      "name": "Camera Name",
+      "url": "Source URL",
+      "active": "Active",
+      "preview": "Preview"
+    },
+    "switcher": {
+      "title": "Camera Switcher",
+      "switch_to": "Switch to",
+      "transition": "Transition Effect",
+      "duration": "Duration (ms)",
+      "auto_switch": "Auto Switch",
+      "interval": "Interval (seconds)"
+    },
+    "overlay": {
+      "title": "Overlay Settings",
+      "url": "Overlay URL",
+      "copy": "Copy URL",
+      "open": "Open Overlay"
+    },
+    "settings": {
+      "save": "Save Settings",
+      "reset": "Reset to Defaults"
+    }
+  }
+}

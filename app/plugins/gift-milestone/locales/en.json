@@ -1,0 +1,29 @@
+{
+  "gift_milestone": {
+    "title": "Gift Milestone",
+    "subtitle": "Track Gift Milestones",
+    "config": {
+      "title": "Configuration",
+      "enabled": "Enable Gift Milestone Tracking",
+      "milestones": "Milestones",
+      "add_milestone": "Add Milestone",
+      "coins_threshold": "Coins Threshold",
+      "message": "Display Message",
+      "sound": "Play Sound",
+      "save": "Save Settings"
+    },
+    "overlay": {
+      "title": "Overlay",
+      "url": "Overlay URL",
+      "copy": "Copy URL",
+      "open": "Open Overlay"
+    },
+    "stats": {
+      "title": "Statistics",
+      "total_coins": "Total Coins",
+      "next_milestone": "Next Milestone",
+      "progress": "Progress",
+      "reset": "Reset Stats"
+    }
+  }
+}
