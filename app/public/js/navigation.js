@@ -172,6 +172,23 @@
     }
 
     function switchView(viewName) {
+        // Check if the requested view exists and is not hidden (disabled plugin)
+        const requestedView = document.getElementById(`view-${viewName}`);
+        if (!requestedView || requestedView.style.display === 'none') {
+            console.warn(`Cannot switch to view "${viewName}" - view is hidden or does not exist.`);
+            // Redirect to dashboard if view is hidden or doesn't exist
+            // Prevent infinite recursion by checking we're not already trying to switch to dashboard
+            if (viewName !== 'dashboard') {
+                console.log('Redirecting to dashboard...');
+                switchView('dashboard');
+                return;
+            } else {
+                // Dashboard view itself is missing or hidden - this is a critical error
+                console.error('CRITICAL: Dashboard view is missing or hidden! Cannot redirect.');
+                return;
+            }
+        }
+
         // Update active nav item
         document.querySelectorAll('.sidebar-item').forEach(item => {
             item.classList.remove('active');
@@ -399,7 +416,7 @@
 
             console.log('✅ [Navigation] Active plugins loaded:', Array.from(activePlugins));
 
-            // Hide sidebar items and shortcuts for inactive plugins
+            // Hide sidebar items, shortcuts, AND views for inactive plugins
             const pluginElements = document.querySelectorAll('[data-plugin]');
             pluginElements.forEach(element => {
                 const requiredPlugin = element.getAttribute('data-plugin');
