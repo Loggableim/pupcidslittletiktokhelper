@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config Import - Pup Cid's Little TikTok Helper</title>
+    <link rel="stylesheet" href="/css/themes.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--color-bg-primary, #0f0f1e);
+            color: var(--color-text-primary, #ffffff);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--color-border, #2a2a3e);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: var(--color-text-muted, #888);
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background: var(--color-bg-secondary, #1a1a2e);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid var(--color-border, #2a2a3e);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--color-text-primary, #ffffff);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--color-text-primary, #ffffff);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--color-border, #2a2a3e);
+            border-radius: 8px;
+            background: var(--color-bg-tertiary, #0f0f1e);
+            color: var(--color-text-primary, #ffffff);
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 10px;
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .button-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .button-secondary {
+            background: var(--color-bg-tertiary, #2a2a3e);
+            color: var(--color-text-primary, #ffffff);
+            border: 1px solid var(--color-border, #2a2a3e);
+        }
+
+        .button-secondary:hover {
+            background: var(--color-bg-secondary, #3a3a4e);
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ade80;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .alert-warning {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: #fbbf24;
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        .findings {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--color-bg-tertiary, #0f0f1e);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .findings.show {
+            display: block;
+        }
+
+        .findings h3 {
+            margin-bottom: 12px;
+            color: var(--color-text-primary, #ffffff);
+        }
+
+        .findings ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .findings li {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: var(--color-bg-secondary, #1a1a2e);
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+
+        .findings li.found {
+            border-left-color: #4ade80;
+        }
+
+        .findings li.not-found {
+            border-left-color: #f87171;
+            opacity: 0.5;
+        }
+
+        .help-section {
+            background: var(--color-bg-tertiary, #0f0f1e);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .help-section h3 {
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+
+        .help-section ol {
+            padding-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .help-section li {
+            margin-bottom: 8px;
+        }
+
+        .help-section .note {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(251, 191, 36, 0.1);
+            border-radius: 6px;
+            color: #fbbf24;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: var(--color-bg-tertiary, #0f0f1e);
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--color-text-muted, #888);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📥 Config Import</h1>
+            <p>Import your settings from an old installation</p>
+        </div>
+
+        <!-- Help Section -->
+        <div class="card">
+            <div class="help-section">
+                <h3>ℹ️ How to use this tool</h3>
+                <ol>
+                    <li>Enter the full path to your old installation directory</li>
+                    <li>Click "Validate Path" to check if configuration files exist</li>
+                    <li>If the path is valid, click "Import Settings" to import your data</li>
+                </ol>
+                <div class="note">
+                    <strong>⚠️ Important:</strong> Existing settings will be overwritten. Consider creating a backup first!
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Form -->
+        <div class="card">
+            <h2>Import Settings</h2>
+
+            <!-- Alert Messages -->
+            <div id="alert" class="alert"></div>
+
+            <div class="form-group">
+                <label for="importPath">Old Installation Path:</label>
+                <input 
+                    type="text" 
+                    id="importPath" 
+                    placeholder="e.g., C:\old-installation\pupcidslittletiktokhelper"
+                >
+            </div>
+
+            <div>
+                <button class="button button-secondary" id="validateBtn">
+                    <span id="validateText">🔍 Validate Path</span>
+                </button>
+                <button class="button button-primary" id="importBtn" disabled>
+                    <span id="importText">📥 Import Settings</span>
+                </button>
+            </div>
+
+            <!-- Findings -->
+            <div id="findings" class="findings">
+                <h3>Found Configuration Files:</h3>
+                <ul id="findingsList"></ul>
+            </div>
+        </div>
+
+        <!-- Import Results -->
+        <div id="resultsCard" class="card" style="display: none;">
+            <h2>Import Results</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="userConfigsCount">0</div>
+                    <div class="stat-label">User Profiles</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="userDataCount">0</div>
+                    <div class="stat-label">User Data Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="uploadsCount">0</div>
+                    <div class="stat-label">Uploaded Files</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const importPathInput = document.getElementById('importPath');
+        const validateBtn = document.getElementById('validateBtn');
+        const importBtn = document.getElementById('importBtn');
+        const validateText = document.getElementById('validateText');
+        const importText = document.getElementById('importText');
+        const alert = document.getElementById('alert');
+        const findings = document.getElementById('findings');
+        const findingsList = document.getElementById('findingsList');
+        const resultsCard = document.getElementById('resultsCard');
+
+        let validationResult = null;
+
+        // Show alert message
+        function showAlert(message, type = 'info') {
+            alert.textContent = message;
+            alert.className = `alert alert-${type} show`;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Validate path
+        validateBtn.addEventListener('click', async () => {
+            const importPath = importPathInput.value.trim();
+            
+            if (!importPath) {
+                showAlert('Please enter a path', 'error');
+                return;
+            }
+
+            validateBtn.disabled = true;
+            validateText.innerHTML = '<span class="spinner"></span> Validating...';
+
+            try {
+                const response = await fetch('/api/config-import/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ importPath })
+                });
+
+                const data = await response.json();
+                validationResult = data;
+
+                if (data.valid) {
+                    showAlert('✅ Valid configuration path found!', 'success');
+                    importBtn.disabled = false;
+
+                    // Show findings
+                    findingsList.innerHTML = '';
+                    
+                    const items = [
+                        { label: 'User Profiles (user_configs)', found: data.findings.userConfigs },
+                        { label: 'User Data (user_data)', found: data.findings.userData },
+                        { label: 'Uploaded Files (uploads)', found: data.findings.uploads }
+                    ];
+
+                    items.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = item.found ? 'found' : 'not-found';
+                        li.textContent = `${item.found ? '✅' : '❌'} ${item.label}`;
+                        findingsList.appendChild(li);
+                    });
+
+                    findings.classList.add('show');
+                } else {
+                    showAlert(`❌ ${data.error || 'Invalid path'}`, 'error');
+                    importBtn.disabled = true;
+                    findings.classList.remove('show');
+                }
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'error');
+                importBtn.disabled = true;
+                findings.classList.remove('show');
+            } finally {
+                validateBtn.disabled = false;
+                validateText.innerHTML = '🔍 Validate Path';
+            }
+        });
+
+        // Import settings
+        importBtn.addEventListener('click', async () => {
+            const importPath = importPathInput.value.trim();
+            
+            if (!importPath || !validationResult?.valid) {
+                showAlert('Please validate the path first', 'error');
+                return;
+            }
+
+            importBtn.disabled = true;
+            importText.innerHTML = '<span class="spinner"></span> Importing...';
+
+            try {
+                const response = await fetch('/api/config-import/import', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ importPath })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('✅ Settings imported successfully! Please restart the application.', 'success');
+                    
+                    // Show results
+                    document.getElementById('userConfigsCount').textContent = data.imported.userConfigs;
+                    document.getElementById('userDataCount').textContent = data.imported.userData;
+                    document.getElementById('uploadsCount').textContent = data.imported.uploads;
+                    resultsCard.style.display = 'block';
+
+                    // Scroll to results
+                    resultsCard.scrollIntoView({ behavior: 'smooth' });
+
+                    // Clear form
+                    importPathInput.value = '';
+                    findings.classList.remove('show');
+                    validationResult = null;
+                } else {
+                    const errorMsg = data.errors?.join(', ') || data.error || 'Import failed';
+                    showAlert(`❌ ${errorMsg}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'error');
+            } finally {
+                importBtn.disabled = false;
+                importText.innerHTML = '📥 Import Settings';
+            }
+        });
+
+        // Enable import button on Enter key in path input
+        importPathInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                validateBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
