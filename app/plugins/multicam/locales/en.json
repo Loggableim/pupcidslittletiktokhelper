@@ -2,6 +2,29 @@
   "multicam": {
     "title": "Multi-Cam Switcher",
     "subtitle": "Stream Camera Management",
+    "safety_lock": "⚠️ SAFETY LOCK ACTIVE - Too many rapid switches detected. Waiting 60 seconds...",
+    "current_scene": "Current Scene:",
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected"
+    },
+    "connection": {
+      "title": "Connection",
+      "connect": "Connect OBS",
+      "disconnect": "Disconnect OBS"
+    },
+    "switcher": {
+      "title": "Scene Switcher",
+      "select_scene": "Select Scene...",
+      "switch": "Switch"
+    },
+    "hot_buttons": {
+      "title": "Hot Buttons"
+    },
+    "log": {
+      "title": "Activity Log",
+      "waiting": "Waiting for events..."
+    },
     "cameras": {
       "title": "Camera Sources",
       "add": "Add Camera",
@@ -9,14 +32,6 @@
       "url": "Source URL",
       "active": "Active",
       "preview": "Preview"
-    },
-    "switcher": {
-      "title": "Camera Switcher",
-      "switch_to": "Switch to",
-      "transition": "Transition Effect",
-      "duration": "Duration (ms)",
-      "auto_switch": "Auto Switch",
-      "interval": "Interval (seconds)"
     },
     "overlay": {
       "title": "Overlay Settings",
