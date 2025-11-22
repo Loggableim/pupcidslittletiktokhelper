@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Goals - Multi-Overlay System</title>
+    <title data-i18n="goals.title">Goals - Multi-Overlay System</title>
     <link rel="stylesheet" href="/css/themes.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -193,20 +193,20 @@
 <body>
     <div class="app-container">
         <div class="sidebar">
-            <div class="logo">🎯 Goals Plugin</div>
-            <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 24px;">Multi-Overlay System</p>
-            <button class="btn btn-primary" style="width: 100%;" id="create-goal-btn">+ Create New Goal</button>
+            <div class="logo" data-i18n="goals.plugin_title">🎯 Goals Plugin</div>
+            <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 24px;" data-i18n="goals.subtitle">Multi-Overlay System</p>
+            <button class="btn btn-primary" style="width: 100%;" id="create-goal-btn" data-i18n="goals.create_button">+ Create New Goal</button>
         </div>
 
         <div class="main-content">
-            <h1 style="margin-bottom: 8px;">Live Goals</h1>
-            <p style="color: var(--color-text-muted); margin-bottom: 32px;">Each goal has its own overlay URL. Position them in OBS.</p>
+            <h1 style="margin-bottom: 8px;" data-i18n="goals.page_title">Live Goals</h1>
+            <p style="color: var(--color-text-muted); margin-bottom: 32px;" data-i18n="goals.page_description">Each goal has its own overlay URL. Position them in OBS.</p>
 
             <div id="goals-container">
                 <div class="empty-state">
                     <div class="empty-state-icon">🎯</div>
-                    <div class="empty-state-text">No goals created yet</div>
-                    <button class="btn btn-primary" id="create-first-goal-initial-btn">Create Your First Goal</button>
+                    <div class="empty-state-text" data-i18n="goals.empty_state">No goals created yet</div>
+                    <button class="btn btn-primary" id="create-first-goal-initial-btn" data-i18n="goals.create_first">Create Your First Goal</button>
                 </div>
             </div>
         </div>
