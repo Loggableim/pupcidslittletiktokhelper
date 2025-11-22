@@ -368,12 +368,147 @@
             justify-content: center;
             font-weight: bold;
         }
+
+        .tier-item, .user-item {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tier-info, .user-info {
+            flex-grow: 1;
+        }
+
+        .tier-name, .user-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .tier-threshold, .user-coins {
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+
+        .tier-actions, .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .small-button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn {
+            background: rgba(33,150,243,0.8);
+            color: var(--color-text-primary);
+        }
+
+        .edit-btn:hover {
+            background: rgba(33,150,243,1);
+        }
+
+        .delete-btn {
+            background: rgba(244,67,54,0.8);
+            color: var(--color-text-primary);
+        }
+
+        .delete-btn:hover {
+            background: rgba(244,67,54,1);
+        }
+
+        .test-tier-btn {
+            background: rgba(255,193,7,0.8);
+            color: var(--color-text-primary);
+        }
+
+        .test-tier-btn:hover {
+            background: rgba(255,193,7,1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--color-bg-card);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 10px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+        }
+
+        .tier-level-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255,193,7,0.8);
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+
+        .user-tier-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(76,175,80,0.8);
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.6;
+            font-size: 1.1em;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎯 Gift Milestone Celebration</h1>
-        <p class="subtitle">Feiere Coin-Meilensteine mit benutzerdefinierten Animationen und Sounds</p>
+        <p class="subtitle">Verfolge pro Benutzer, wie viele Coins ausgegeben wurden - stream-übergreifend gespeichert</p>
 
         <div class="nav-buttons">
             <a href="/" class="nav-button" target="_blank">🏠 Dashboard</a>
@@ -392,53 +527,41 @@
             </div>
         </div>
 
-        <!-- Statistics -->
+        <!-- Tier Management -->
         <div class="section">
-            <h2>📊 Statistiken</h2>
-            <div class="stats-display">
-                <div class="stat-card">
-                    <div class="stat-value" id="currentCoins">0</div>
-                    <div class="stat-label">Aktuelle Coins</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="nextMilestone">1000</div>
-                    <div class="stat-label">Nächster Meilenstein</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="progressPercent">0%</div>
-                    <div class="stat-label">Fortschritt</div>
-                </div>
+            <h2>🏆 Meilenstein-Stufen (Tiers)</h2>
+            <p class="help-text" style="margin-bottom: 15px;">
+                Definiere benutzerdefinierte Meilenstein-Stufen. Wenn Benutzer diese Coin-Schwellenwerte erreichen, wird eine Celebration ausgelöst.
+            </p>
+            
+            <div id="tiersList"></div>
+            
+            <button class="upload-button" id="addTierButton" style="margin-top: 15px;">➕ Neue Stufe hinzufügen</button>
+        </div>
+
+        <!-- User Statistics -->
+        <div class="section">
+            <h2>👥 Benutzer-Statistiken</h2>
+            <p class="help-text" style="margin-bottom: 15px;">
+                Zeigt an, welche Benutzer wie viele Coins ausgegeben haben (stream-übergreifend). Die Zählung wird NICHT bei jedem Stream zurückgesetzt.
+            </p>
+            
+            <div style="text-align: center; margin-bottom: 15px;">
+                <button class="test-button" id="refreshUsersButton">🔄 Aktualisieren</button>
+                <button class="reset-button" id="resetAllUsersButton">🗑️ Alle Benutzer zurücksetzen</button>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressBar" style="width: 0%;">0%</div>
-            </div>
+            
+            <div id="userStatsList" style="max-height: 400px; overflow-y: auto;"></div>
         </div>
 
         <!-- Configuration -->
         <div class="section">
             <h2>⚙️ Konfiguration</h2>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="threshold">Initialer Schwellenwert (Coins)</label>
-                    <input type="number" id="threshold" min="100" step="100" value="1000">
-                    <div class="help-text">Coins-Anzahl für den ersten Meilenstein</div>
-                </div>
-                <div class="form-group">
-                    <label for="incrementStep">Schrittweite (Auto-Increment)</label>
-                    <input type="number" id="incrementStep" min="100" step="100" value="1000">
-                    <div class="help-text">Wie viele Coins zum nächsten Meilenstein hinzugefügt werden</div>
-                </div>
-            </div>
+            <p class="help-text" style="margin-bottom: 15px;">
+                Globale Einstellungen für Meilenstein-Celebrations. Die Standard-Medien werden verwendet, wenn eine Stufe keine eigenen Medien hat.
+            </p>
 
             <div class="form-row">
-                <div class="form-group">
-                    <label for="mode">Modus</label>
-                    <select id="mode">
-                        <option value="auto_increment">Auto-Increment (empfohlen)</option>
-                        <option value="fixed">Fixer Schwellenwert</option>
-                    </select>
-                    <div class="help-text">Auto-Increment: Erhöht sich automatisch. Fixed: Bleibt gleich.</div>
-                </div>
                 <div class="form-group">
                     <label for="playbackMode">Wiedergabe-Modus</label>
                     <select id="playbackMode">
@@ -447,14 +570,14 @@
                     </select>
                     <div class="help-text">Exklusiv pausiert TTS und andere Alerts während der Animation</div>
                 </div>
-            </div>
-
-            <div class="form-row">
                 <div class="form-group">
                     <label for="audioVolume">Audio-Lautstärke (%)</label>
                     <input type="number" id="audioVolume" min="0" max="100" value="80">
                     <div class="help-text">Lautstärke für Milestone-Audio (0-100%)</div>
                 </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label for="animationDuration">Animation-Dauer (ms)</label>
                     <input type="number" id="animationDuration" min="0" step="1000" value="0">
@@ -462,12 +585,11 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="sessionReset">
-                    Session-Reset (Statistiken bei jedem Server-Start zurücksetzen)
-                </label>
-            </div>
+            <!-- Hidden legacy fields for backward compatibility -->
+            <input type="hidden" id="threshold" value="1000">
+            <input type="hidden" id="incrementStep" value="1000">
+            <input type="hidden" id="mode" value="auto_increment">
+            <input type="hidden" id="sessionReset">
         </div>
 
         <!-- Media Upload -->
@@ -504,7 +626,6 @@
             <h2>🎮 Aktionen</h2>
             <div style="text-align: center;">
                 <button class="test-button" id="testButton">🧪 Celebration testen</button>
-                <button class="reset-button" id="resetButton">🔄 Statistiken zurücksetzen</button>
             </div>
         </div>
 
@@ -516,6 +637,59 @@
 
     <!-- Notification -->
     <div class="notification" id="notification"></div>
+
+    <!-- Tier Edit Modal -->
+    <div class="modal" id="tierModal">
+        <div class="modal-content">
+            <div class="modal-header" id="tierModalTitle">Neue Stufe hinzufügen</div>
+            <div class="form-group">
+                <label for="tierName">Stufen-Name</label>
+                <input type="text" id="tierName" placeholder="z.B. Bronze, Silber, Gold...">
+            </div>
+            <div class="form-group">
+                <label for="tierLevel">Stufen-Level (Reihenfolge)</label>
+                <input type="number" id="tierLevel" min="1" value="1">
+                <div class="help-text">Niedrigere Werte werden zuerst erreicht</div>
+            </div>
+            <div class="form-group">
+                <label for="tierThreshold">Coin-Schwellenwert</label>
+                <input type="number" id="tierThreshold" min="100" step="100" value="1000">
+                <div class="help-text">Anzahl der Coins, die benötigt werden, um diese Stufe zu erreichen</div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="tierEnabled" checked>
+                    Stufe aktiviert
+                </label>
+            </div>
+            
+            <div class="upload-section">
+                <h3>🖼️ Stufen-spezifisches GIF (optional)</h3>
+                <input type="file" id="tierGifInput" class="file-input" accept=".gif,.png,.jpg,.jpeg,.webp">
+                <button class="upload-button" id="select-tier-gif-btn">📁 GIF auswählen</button>
+                <div class="file-preview" id="tierGifPreview" style="display: none;"></div>
+            </div>
+
+            <div class="upload-section">
+                <h3>🎥 Stufen-spezifisches Video (optional)</h3>
+                <input type="file" id="tierVideoInput" class="file-input" accept=".mp4,.webm,.mov,.avi">
+                <button class="upload-button" id="select-tier-video-btn">📁 Video auswählen</button>
+                <div class="file-preview" id="tierVideoPreview" style="display: none;"></div>
+            </div>
+
+            <div class="upload-section">
+                <h3>🔊 Stufen-spezifisches Audio (optional)</h3>
+                <input type="file" id="tierAudioInput" class="file-input" accept=".mp3,.wav,.ogg,.m4a">
+                <button class="upload-button" id="select-tier-audio-btn">📁 Audio auswählen</button>
+                <div class="file-preview" id="tierAudioPreview" style="display: none;"></div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="save-button" id="saveTierButton">💾 Speichern</button>
+                <button class="reset-button" id="cancelTierButton">❌ Abbrechen</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/plugins/gift-milestone/ui.js"></script>

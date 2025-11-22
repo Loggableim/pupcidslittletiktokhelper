@@ -1,6 +1,9 @@
 const socket = io();
 let config = null;
 let stats = null;
+let tiers = [];
+let users = [];
+let currentEditingTier = null;
 
 // Load configuration on page load
 async function loadConfig() {
@@ -17,6 +20,282 @@ async function loadConfig() {
     }
 }
 
+// Load tiers
+async function loadTiers() {
+    try {
+        const response = await fetch('/api/gift-milestone/tiers');
+        const data = await response.json();
+        if (data.success) {
+            tiers = data.tiers;
+            displayTiers();
+        }
+    } catch (error) {
+        console.error('Error loading tiers:', error);
+    }
+}
+
+// Load user statistics
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/gift-milestone/users');
+        const data = await response.json();
+        if (data.success) {
+            users = data.users;
+            displayUsers();
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+// Display tiers
+function displayTiers() {
+    const tiersList = document.getElementById('tiersList');
+    
+    if (!tiers || tiers.length === 0) {
+        tiersList.innerHTML = '<div class="empty-state">📭 Noch keine Stufen definiert. Klicke auf "Neue Stufe hinzufügen" um loszulegen.</div>';
+        return;
+    }
+    
+    tiersList.innerHTML = tiers.map(tier => `
+        <div class="tier-item">
+            <div class="tier-info">
+                <div class="tier-name">
+                    ${tier.name}
+                    <span class="tier-level-badge">Level ${tier.tier_level}</span>
+                    ${!tier.enabled ? '<span style="opacity: 0.5">(Deaktiviert)</span>' : ''}
+                </div>
+                <div class="tier-threshold">
+                    💰 ${tier.threshold.toLocaleString()} Coins
+                    ${tier.animation_gif_path || tier.animation_video_path || tier.animation_audio_path ? '| 🎬 Benutzerdefinierte Medien' : ''}
+                </div>
+            </div>
+            <div class="tier-actions">
+                <button class="small-button test-tier-btn" onclick="testTier(${tier.id})">🧪 Test</button>
+                <button class="small-button edit-btn" onclick="editTier(${tier.id})">✏️ Bearbeiten</button>
+                <button class="small-button delete-btn" onclick="deleteTier(${tier.id})">🗑️ Löschen</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Display users
+function displayUsers() {
+    const userStatsList = document.getElementById('userStatsList');
+    
+    if (!users || users.length === 0) {
+        userStatsList.innerHTML = '<div class="empty-state">📭 Noch keine Benutzer-Statistiken vorhanden.</div>';
+        return;
+    }
+    
+    // Get tier names for display
+    const tierMap = {};
+    tiers.forEach(tier => {
+        tierMap[tier.tier_level] = tier.name;
+    });
+    
+    userStatsList.innerHTML = users.map(user => {
+        const tierName = tierMap[user.last_tier_reached] || 'Keine Stufe';
+        return `
+        <div class="user-item">
+            <div class="user-info">
+                <div class="user-name">
+                    ${user.username || user.user_id}
+                    ${user.last_tier_reached > 0 ? `<span class="user-tier-badge">${tierName}</span>` : ''}
+                </div>
+                <div class="user-coins">
+                    💰 ${user.cumulative_coins.toLocaleString()} Coins gesamt
+                    ${user.last_trigger_at ? `| Letzter Meilenstein: ${new Date(user.last_trigger_at).toLocaleString('de-DE')}` : ''}
+                </div>
+            </div>
+            <div class="user-actions">
+                <button class="small-button delete-btn" onclick="deleteUser('${user.user_id}')">🗑️ Zurücksetzen</button>
+            </div>
+        </div>
+    `;
+    }).join('');
+}
+
+// Add tier
+function addTier() {
+    currentEditingTier = null;
+    document.getElementById('tierModalTitle').textContent = 'Neue Stufe hinzufügen';
+    document.getElementById('tierName').value = '';
+    document.getElementById('tierLevel').value = tiers.length + 1;
+    document.getElementById('tierThreshold').value = 1000;
+    document.getElementById('tierEnabled').checked = true;
+    document.getElementById('tierGifPreview').style.display = 'none';
+    document.getElementById('tierVideoPreview').style.display = 'none';
+    document.getElementById('tierAudioPreview').style.display = 'none';
+    document.getElementById('tierModal').classList.add('active');
+}
+
+// Edit tier
+function editTier(tierId) {
+    const tier = tiers.find(t => t.id === tierId);
+    if (!tier) return;
+    
+    currentEditingTier = tier;
+    document.getElementById('tierModalTitle').textContent = 'Stufe bearbeiten';
+    document.getElementById('tierName').value = tier.name;
+    document.getElementById('tierLevel').value = tier.tier_level;
+    document.getElementById('tierThreshold').value = tier.threshold;
+    document.getElementById('tierEnabled').checked = tier.enabled;
+    
+    if (tier.animation_gif_path) {
+        document.getElementById('tierGifPreview').textContent = `✅ ${tier.animation_gif_path.split('/').pop()}`;
+        document.getElementById('tierGifPreview').style.display = 'block';
+    } else {
+        document.getElementById('tierGifPreview').style.display = 'none';
+    }
+    
+    if (tier.animation_video_path) {
+        document.getElementById('tierVideoPreview').textContent = `✅ ${tier.animation_video_path.split('/').pop()}`;
+        document.getElementById('tierVideoPreview').style.display = 'block';
+    } else {
+        document.getElementById('tierVideoPreview').style.display = 'none';
+    }
+    
+    if (tier.animation_audio_path) {
+        document.getElementById('tierAudioPreview').textContent = `✅ ${tier.animation_audio_path.split('/').pop()}`;
+        document.getElementById('tierAudioPreview').style.display = 'block';
+    } else {
+        document.getElementById('tierAudioPreview').style.display = 'none';
+    }
+    
+    document.getElementById('tierModal').classList.add('active');
+}
+
+// Save tier
+async function saveTier() {
+    const tierData = {
+        name: document.getElementById('tierName').value,
+        tier_level: parseInt(document.getElementById('tierLevel').value),
+        threshold: parseInt(document.getElementById('tierThreshold').value),
+        enabled: document.getElementById('tierEnabled').checked ? 1 : 0
+    };
+    
+    if (!tierData.name) {
+        showNotification('Bitte gib einen Namen ein', 'error');
+        return;
+    }
+    
+    if (tierData.threshold < 100) {
+        showNotification('Schwellenwert muss mindestens 100 sein', 'error');
+        return;
+    }
+    
+    // If editing, include the ID and existing media paths
+    if (currentEditingTier) {
+        tierData.id = currentEditingTier.id;
+        tierData.animation_gif_path = currentEditingTier.animation_gif_path;
+        tierData.animation_video_path = currentEditingTier.animation_video_path;
+        tierData.animation_audio_path = currentEditingTier.animation_audio_path;
+    }
+    
+    try {
+        const response = await fetch('/api/gift-milestone/tiers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tierData)
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Stufe gespeichert!');
+            document.getElementById('tierModal').classList.remove('active');
+            loadTiers();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving tier:', error);
+        showNotification('Fehler beim Speichern', 'error');
+    }
+}
+
+// Delete tier
+async function deleteTier(tierId) {
+    if (!confirm('Diese Stufe wirklich löschen?')) return;
+    
+    try {
+        const response = await fetch(`/api/gift-milestone/tiers/${tierId}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Stufe gelöscht!');
+            loadTiers();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting tier:', error);
+        showNotification('Fehler beim Löschen', 'error');
+    }
+}
+
+// Test tier
+async function testTier(tierId) {
+    try {
+        const response = await fetch('/api/gift-milestone/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tierId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Test-Celebration für diese Stufe ausgelöst!');
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error testing tier:', error);
+        showNotification('Fehler beim Testen', 'error');
+    }
+}
+
+// Delete user
+async function deleteUser(userId) {
+    if (!confirm('Statistiken für diesen Benutzer wirklich zurücksetzen?')) return;
+    
+    try {
+        const response = await fetch(`/api/gift-milestone/users/${userId}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Benutzer-Statistiken zurückgesetzt!');
+            loadUsers();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showNotification('Fehler beim Zurücksetzen', 'error');
+    }
+}
+
+// Delete all users
+async function deleteAllUsers() {
+    if (!confirm('ALLE Benutzer-Statistiken wirklich zurücksetzen? Dies kann nicht rückgängig gemacht werden!')) return;
+    
+    try {
+        const response = await fetch('/api/gift-milestone/users/reset', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Alle Benutzer-Statistiken zurückgesetzt!');
+            loadUsers();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error resetting all users:', error);
+        showNotification('Fehler beim Zurücksetzen', 'error');
+    }
+}
+
 // Load statistics
 async function loadStats() {
     try {
@@ -25,7 +304,7 @@ async function loadStats() {
         if (data.success) {
             stats = data.stats;
             config = data.config;
-            updateStatsDisplay(stats, config);
+            // Stats are now per-user, so we don't need global stats display
         }
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -41,36 +320,22 @@ function populateForm(config) {
 
     document.getElementById('enableToggle').checked = config.enabled || false;
     document.getElementById('statusText').textContent = config.enabled ? 'Aktiviert' : 'Deaktiviert';
-    document.getElementById('threshold').value = config.threshold || 1000;
-    document.getElementById('incrementStep').value = config.increment_step || 1000;
-    document.getElementById('mode').value = config.mode || 'auto_increment';
+    
+    // Only visible fields
     document.getElementById('playbackMode').value = config.playback_mode || 'exclusive';
     document.getElementById('audioVolume').value = config.audio_volume || 80;
     document.getElementById('animationDuration').value = config.animation_duration || 0;
-    document.getElementById('sessionReset').checked = config.session_reset || false;
+    
+    // Hidden legacy fields for backward compatibility
+    document.getElementById('threshold').value = config.threshold || 1000;
+    document.getElementById('incrementStep').value = config.increment_step || 1000;
+    document.getElementById('mode').value = config.mode || 'auto_increment';
+    document.getElementById('sessionReset').value = config.session_reset ? '1' : '0';
 
     // Update file previews
     updateFilePreview('gif', config.animation_gif_path);
     updateFilePreview('video', config.animation_video_path);
     updateFilePreview('audio', config.animation_audio_path);
-}
-
-// Update statistics display
-function updateStatsDisplay(stats, config) {
-    if (!stats || !config) {
-        console.warn('Stats or config is missing');
-        return;
-    }
-
-    const currentCoins = stats.cumulative_coins || 0;
-    const nextMilestone = stats.current_milestone || config.threshold || 1000;
-    const progress = nextMilestone > 0 ? (currentCoins / nextMilestone) * 100 : 0;
-
-    document.getElementById('currentCoins').textContent = currentCoins.toLocaleString();
-    document.getElementById('nextMilestone').textContent = nextMilestone.toLocaleString();
-    document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
-    document.getElementById('progressBar').style.width = Math.min(progress, 100) + '%';
-    document.getElementById('progressBar').textContent = Math.round(progress) + '%';
 }
 
 // Update file preview
@@ -161,13 +426,14 @@ document.getElementById('enableToggle').addEventListener('change', async (e) => 
 document.getElementById('saveButton').addEventListener('click', async () => {
     const config = {
         enabled: document.getElementById('enableToggle').checked,
-        threshold: parseInt(document.getElementById('threshold').value),
-        increment_step: parseInt(document.getElementById('incrementStep').value),
-        mode: document.getElementById('mode').value,
         playback_mode: document.getElementById('playbackMode').value,
         audio_volume: parseInt(document.getElementById('audioVolume').value),
         animation_duration: parseInt(document.getElementById('animationDuration').value),
-        session_reset: document.getElementById('sessionReset').checked
+        // Hidden legacy fields
+        threshold: parseInt(document.getElementById('threshold').value) || 1000,
+        increment_step: parseInt(document.getElementById('incrementStep').value) || 1000,
+        mode: document.getElementById('mode').value || 'auto_increment',
+        session_reset: document.getElementById('sessionReset').value === '1'
     };
 
     try {
@@ -207,32 +473,13 @@ document.getElementById('testButton').addEventListener('click', async () => {
     }
 });
 
-// Reset button
-document.getElementById('resetButton').addEventListener('click', async () => {
-    if (!confirm('Statistiken wirklich zurücksetzen? Dies kann nicht rückgängig gemacht werden!')) {
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/gift-milestone/reset', {
-            method: 'POST'
-        });
-        const data = await response.json();
-        if (data.success) {
-            showNotification('Statistiken zurückgesetzt!');
-            loadStats();
-        } else {
-            showNotification(data.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error resetting stats:', error);
-        showNotification('Fehler beim Zurücksetzen', 'error');
-    }
-});
-
 // Socket.io listeners for real-time updates
 socket.on('milestone:stats-update', (data) => {
     loadStats();
+});
+
+socket.on('milestone:user-stats-update', (data) => {
+    loadUsers();
 });
 
 socket.on('milestone:config-update', (data) => {
@@ -263,6 +510,40 @@ document.getElementById('select-audio-btn').addEventListener('click', () => {
     document.getElementById('audioInput').click();
 });
 
+// Tier management buttons
+document.getElementById('addTierButton').addEventListener('click', addTier);
+document.getElementById('saveTierButton').addEventListener('click', saveTier);
+document.getElementById('cancelTierButton').addEventListener('click', () => {
+    document.getElementById('tierModal').classList.remove('active');
+});
+
+// Tier modal file upload buttons
+document.getElementById('select-tier-gif-btn').addEventListener('click', () => {
+    document.getElementById('tierGifInput').click();
+});
+document.getElementById('select-tier-video-btn').addEventListener('click', () => {
+    document.getElementById('tierVideoInput').click();
+});
+document.getElementById('select-tier-audio-btn').addEventListener('click', () => {
+    document.getElementById('tierAudioInput').click();
+});
+
+// User management buttons
+document.getElementById('refreshUsersButton').addEventListener('click', loadUsers);
+document.getElementById('resetAllUsersButton').addEventListener('click', deleteAllUsers);
+
+// Close modal when clicking outside
+document.getElementById('tierModal').addEventListener('click', (e) => {
+    if (e.target.id === 'tierModal') {
+        document.getElementById('tierModal').classList.remove('active');
+    }
+});
+
 loadConfig();
 loadStats();
-setInterval(loadStats, 5000); // Update stats every 5 seconds
+loadTiers();
+loadUsers();
+setInterval(() => {
+    loadStats();
+    loadUsers();
+}, 5000); // Update stats every 5 seconds
