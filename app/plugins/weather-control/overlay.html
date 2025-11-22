@@ -422,22 +422,31 @@
                         intensity,
                         startTime: Date.now(),
                         duration,
-                        particles: newParticles
+                        particles: newParticles,
+                        timerId: null
                     };
                     
                     state.activeEffects.push(effect);
                     log(`🌧️ Rain effect started (${particleCount} particles, ${duration}ms)`);
                     
-                    // Schedule auto-stop
-                    setTimeout(() => effects.rain.stop(effect), duration);
+                    // Schedule auto-stop and store timer ID
+                    effect.timerId = setTimeout(() => effects.rain.stop(effect), duration);
                 },
                 stop(effect) {
                     if (!effect) {
                         // Stop all rain effects
+                        state.activeEffects.filter(e => e.type === 'rain').forEach(e => {
+                            if (e.timerId) clearTimeout(e.timerId);
+                        });
                         state.particles = state.particles.filter(p => p.type !== 'rain');
                         state.activeEffects = state.activeEffects.filter(e => e.type !== 'rain');
                         log('🌧️ All rain effects stopped');
                     } else {
+                        // Cancel timer to prevent memory leak
+                        if (effect.timerId) {
+                            clearTimeout(effect.timerId);
+                            effect.timerId = null;
+                        }
                         // Stop specific effect
                         effect.particles.forEach(p => p.destroy());
                         state.particles = state.particles.filter(p => p.active);
@@ -464,20 +473,31 @@
                         intensity,
                         startTime: Date.now(),
                         duration,
-                        particles: newParticles
+                        particles: newParticles,
+                        timerId: null
                     };
                     
                     state.activeEffects.push(effect);
                     log(`❄️ Snow effect started (${particleCount} particles, ${duration}ms)`);
                     
-                    setTimeout(() => effects.snow.stop(effect), duration);
+                    // Schedule auto-stop and store timer ID
+                    effect.timerId = setTimeout(() => effects.snow.stop(effect), duration);
                 },
                 stop(effect) {
                     if (!effect) {
+                        // Stop all snow effects
+                        state.activeEffects.filter(e => e.type === 'snow').forEach(e => {
+                            if (e.timerId) clearTimeout(e.timerId);
+                        });
                         state.particles = state.particles.filter(p => p.type !== 'snow');
                         state.activeEffects = state.activeEffects.filter(e => e.type !== 'snow');
                         log('❄️ All snow effects stopped');
                     } else {
+                        // Cancel timer to prevent memory leak
+                        if (effect.timerId) {
+                            clearTimeout(effect.timerId);
+                            effect.timerId = null;
+                        }
                         effect.particles.forEach(p => p.destroy());
                         state.particles = state.particles.filter(p => p.active);
                         state.activeEffects = state.activeEffects.filter(e => e !== effect);
@@ -504,7 +524,8 @@
                         startTime: Date.now(),
                         duration,
                         particles: newParticles,
-                        nextShake: Date.now() + Math.random() * 1500
+                        nextShake: Date.now() + Math.random() * 1500,
+                        timerId: null
                     };
                     
                     state.activeEffects.push(effect);
@@ -517,13 +538,23 @@
                         ease: 'power2.inOut'
                     });
                     
-                    setTimeout(() => effects.storm.stop(effect), duration);
+                    // Schedule auto-stop and store timer ID
+                    effect.timerId = setTimeout(() => effects.storm.stop(effect), duration);
                 },
                 stop(effect) {
                     if (!effect) {
+                        // Stop all storm effects
+                        state.activeEffects.filter(e => e.type === 'storm').forEach(e => {
+                            if (e.timerId) clearTimeout(e.timerId);
+                        });
                         state.particles = state.particles.filter(p => p.type !== 'storm');
                         state.activeEffects = state.activeEffects.filter(e => e.type !== 'storm');
                     } else {
+                        // Cancel timer to prevent memory leak
+                        if (effect.timerId) {
+                            clearTimeout(effect.timerId);
+                            effect.timerId = null;
+                        }
                         effect.particles.forEach(p => p.destroy());
                         state.particles = state.particles.filter(p => p.active);
                         state.activeEffects = state.activeEffects.filter(e => e !== effect);
@@ -560,20 +591,31 @@
                         intensity,
                         startTime: Date.now(),
                         duration,
-                        particles: newParticles
+                        particles: newParticles,
+                        timerId: null
                     };
                     
                     state.activeEffects.push(effect);
                     log(`🌫️ Fog effect started (${particleCount} particles, ${duration}ms)`);
                     
-                    setTimeout(() => effects.fog.stop(effect), duration);
+                    // Schedule auto-stop and store timer ID
+                    effect.timerId = setTimeout(() => effects.fog.stop(effect), duration);
                 },
                 stop(effect) {
                     if (!effect) {
+                        // Stop all fog effects
+                        state.activeEffects.filter(e => e.type === 'fog').forEach(e => {
+                            if (e.timerId) clearTimeout(e.timerId);
+                        });
                         state.particles = state.particles.filter(p => p.type !== 'fog');
                         state.activeEffects = state.activeEffects.filter(e => e.type !== 'fog');
                         log('🌫️ All fog effects stopped');
                     } else {
+                        // Cancel timer to prevent memory leak
+                        if (effect.timerId) {
+                            clearTimeout(effect.timerId);
+                            effect.timerId = null;
+                        }
                         effect.particles.forEach(p => p.destroy());
                         state.particles = state.particles.filter(p => p.active);
                         state.activeEffects = state.activeEffects.filter(e => e !== effect);
@@ -590,19 +632,30 @@
                         startTime: Date.now(),
                         duration,
                         nextFlash: Date.now() + Math.random() * 800,
-                        flashCount: 0
+                        flashCount: 0,
+                        timerId: null
                     };
                     
                     state.activeEffects.push(effect);
                     log(`⚡ Thunder effect started (${duration}ms)`);
                     
-                    setTimeout(() => effects.thunder.stop(effect), duration);
+                    // Schedule auto-stop and store timer ID
+                    effect.timerId = setTimeout(() => effects.thunder.stop(effect), duration);
                 },
                 stop(effect) {
                     if (!effect) {
+                        // Stop all thunder effects
+                        state.activeEffects.filter(e => e.type === 'thunder').forEach(e => {
+                            if (e.timerId) clearTimeout(e.timerId);
+                        });
                         state.activeEffects = state.activeEffects.filter(e => e.type !== 'thunder');
                         log('⚡ All thunder effects stopped');
                     } else {
+                        // Cancel timer to prevent memory leak
+                        if (effect.timerId) {
+                            clearTimeout(effect.timerId);
+                            effect.timerId = null;
+                        }
                         state.activeEffects = state.activeEffects.filter(e => e !== effect);
                         log('⚡ Thunder effect stopped');
                     }
@@ -626,7 +679,9 @@
                             width: 60 + Math.random() * 120,
                             speed: 0.3 + Math.random() * 0.5,
                             opacity: 0
-                        }))
+                        })),
+                        timerId: null,
+                        fadeTimerId: null
                     };
                     
                     // Fade in beams
@@ -643,7 +698,7 @@
                     log(`☀️ Sunbeam effect started (${beamCount} beams, ${duration}ms)`);
                     
                     // Fade out before stopping
-                    setTimeout(() => {
+                    effect.fadeTimerId = setTimeout(() => {
                         effect.beams.forEach((beam, i) => {
                             gsap.to(beam, {
                                 opacity: 0,
@@ -654,13 +709,28 @@
                         });
                     }, duration - 1200);
                     
-                    setTimeout(() => effects.sunbeam.stop(effect), duration);
+                    // Schedule auto-stop and store timer ID
+                    effect.timerId = setTimeout(() => effects.sunbeam.stop(effect), duration);
                 },
                 stop(effect) {
                     if (!effect) {
+                        // Stop all sunbeam effects
+                        state.activeEffects.filter(e => e.type === 'sunbeam').forEach(e => {
+                            if (e.timerId) clearTimeout(e.timerId);
+                            if (e.fadeTimerId) clearTimeout(e.fadeTimerId);
+                        });
                         state.activeEffects = state.activeEffects.filter(e => e.type !== 'sunbeam');
                         log('☀️ All sunbeam effects stopped');
                     } else {
+                        // Cancel timers to prevent memory leak
+                        if (effect.timerId) {
+                            clearTimeout(effect.timerId);
+                            effect.timerId = null;
+                        }
+                        if (effect.fadeTimerId) {
+                            clearTimeout(effect.fadeTimerId);
+                            effect.fadeTimerId = null;
+                        }
                         state.activeEffects = state.activeEffects.filter(e => e !== effect);
                         log('☀️ Sunbeam effect stopped');
                     }
@@ -675,19 +745,30 @@
                         startTime: Date.now(),
                         duration,
                         glitchLines: [],
-                        glitchInterval: null
+                        glitchInterval: null,
+                        timerId: null
                     };
                     
                     state.activeEffects.push(effect);
                     log(`☁️ Glitch Clouds effect started (${duration}ms)`);
                     
-                    setTimeout(() => effects.glitchclouds.stop(effect), duration);
+                    // Schedule auto-stop and store timer ID
+                    effect.timerId = setTimeout(() => effects.glitchclouds.stop(effect), duration);
                 },
                 stop(effect) {
                     if (!effect) {
+                        // Stop all glitch clouds effects
+                        state.activeEffects.filter(e => e.type === 'glitchclouds').forEach(e => {
+                            if (e.timerId) clearTimeout(e.timerId);
+                        });
                         state.activeEffects = state.activeEffects.filter(e => e.type !== 'glitchclouds');
                         log('☁️ All glitch clouds effects stopped');
                     } else {
+                        // Cancel timer to prevent memory leak
+                        if (effect.timerId) {
+                            clearTimeout(effect.timerId);
+                            effect.timerId = null;
+                        }
                         state.activeEffects = state.activeEffects.filter(e => e !== effect);
                         log('☁️ Glitch clouds effect stopped');
                     }
@@ -1122,6 +1203,18 @@
                 state.socket.disconnect();
                 state.socket = null;
             }
+            
+            // Clear all effect timers to prevent memory leaks
+            state.activeEffects.forEach(effect => {
+                if (effect.timerId) {
+                    clearTimeout(effect.timerId);
+                    effect.timerId = null;
+                }
+                if (effect.fadeTimerId) {
+                    clearTimeout(effect.fadeTimerId);
+                    effect.fadeTimerId = null;
+                }
+            });
             
             // Clear all effects
             state.activeEffects = [];
