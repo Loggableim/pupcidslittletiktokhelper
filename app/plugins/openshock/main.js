@@ -1643,6 +1643,9 @@ class OpenShockPlugin {
     async _executePattern(pattern, device, context) {
         const executionId = `pattern-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
+        this.api.log(`[Pattern Execution] Starting pattern "${pattern.name}" (ID: ${pattern.id}) on device "${device.name}" (ID: ${device.id})`, 'info');
+        this.api.log(`[Pattern Execution] Pattern has ${pattern.steps?.length || 0} steps`, 'info');
+
         // Execution tracken
         this.activePatternExecutions.set(executionId, {
             patternId: pattern.id,
@@ -1656,14 +1659,23 @@ class OpenShockPlugin {
         // Pattern-Steps direkt aus pattern.steps verwenden
         const steps = pattern.steps || [];
 
+        if (steps.length === 0) {
+            this.api.log(`[Pattern Execution] Warning: Pattern "${pattern.name}" has no steps!`, 'warn');
+            return executionId;
+        }
+
         // Alle Steps in Queue einfügen
+        let queuedSteps = 0;
         for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
 
             // Skip pause steps in queue
             if (step.type === 'pause') {
+                this.api.log(`[Pattern Execution] Step ${i}: Pause (${step.duration}ms) - skipped in queue`, 'debug');
                 continue;
             }
+
+            this.api.log(`[Pattern Execution] Step ${i}: ${step.type} (intensity: ${step.intensity}, duration: ${step.duration}ms, delay: ${step.delay || 0}ms)`, 'debug');
 
             this.queueManager.addItem({
                 id: `${executionId}-step-${i}`,
@@ -1682,8 +1694,10 @@ class OpenShockPlugin {
                 executionId,
                 stepIndex: i
             });
+            queuedSteps++;
         }
 
+        this.api.log(`[Pattern Execution] Queued ${queuedSteps} steps for pattern "${pattern.name}" (executionId: ${executionId})`, 'info');
         this.stats.patternsExecuted++;
 
         return executionId;
