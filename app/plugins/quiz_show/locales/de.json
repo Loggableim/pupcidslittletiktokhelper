@@ -1,0 +1,49 @@
+{
+  "quiz_show": {
+    "title": "Quiz-Show",
+    "subtitle": "Interaktives Quiz-Spiel",
+    "config": {
+      "title": "Konfiguration",
+      "enabled": "Quiz-Show aktivieren",
+      "time_limit": "Zeitlimit (Sekunden)",
+      "points_correct": "Punkte für richtige Antwort",
+      "points_wrong": "Punkte für falsche Antwort",
+      "save": "Einstellungen speichern"
+    },
+    "game": {
+      "title": "Spielsteuerung",
+      "start": "Quiz starten",
+      "stop": "Quiz stoppen",
+      "next_question": "Nächste Frage",
+      "show_leaderboard": "Bestenliste anzeigen"
+    },
+    "questions": {
+      "title": "Fragen",
+      "add": "Frage hinzufügen",
+      "edit": "Frage bearbeiten",
+      "delete": "Frage löschen",
+      "question_text": "Frage",
+      "answer_a": "Antwort A",
+      "answer_b": "Antwort B",
+      "answer_c": "Antwort C",
+      "answer_d": "Antwort D",
+      "correct_answer": "Richtige Antwort",
+      "import": "Fragen importieren",
+      "export": "Fragen exportieren"
+    },
+    "overlay": {
+      "title": "Overlay",
+      "quiz_url": "Quiz-Overlay-URL",
+      "leaderboard_url": "Bestenlisten-Overlay-URL",
+      "copy": "URL kopieren",
+      "open": "Overlay öffnen"
+    },
+    "leaderboard": {
+      "title": "Bestenliste",
+      "rank": "Rang",
+      "player": "Spieler",
+      "score": "Punkte",
+      "reset": "Punkte zurücksetzen"
+    }
+  }
+}

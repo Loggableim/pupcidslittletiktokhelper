@@ -387,3 +387,37 @@ if (document.readyState === 'loading') {
 
 // Make available globally
 window.i18n = i18n;
+
+// Listen for language changes via socket.io (for real-time sync across tabs/plugins)
+if (typeof io !== 'undefined') {
+    // Shared handler for language change events
+    const handleLanguageChange = async (data) => {
+        const newLocale = data.locale;
+        console.log(`[i18n] Received language change event: ${newLocale}`);
+        
+        if (i18n.currentLocale !== newLocale) {
+            const success = await i18n.changeLanguage(newLocale);
+            if (success) {
+                i18n.updateDOM();
+                console.log(`[i18n] Language updated to: ${newLocale} (via socket.io)`);
+            }
+        }
+    };
+    
+    // Wait for socket.io to be ready
+    const setupSocketListener = () => {
+        if (window.socket) {
+            // Listen for both event names (server uses 'locale-changed', client may emit 'language-changed')
+            window.socket.on('locale-changed', handleLanguageChange);
+            window.socket.on('language-changed', handleLanguageChange);
+            
+            console.log('[i18n] Socket.io language sync enabled');
+        } else {
+            // Retry after a short delay if socket not ready yet
+            setTimeout(setupSocketListener, 100);
+        }
+    };
+    
+    // Start trying to setup the listener
+    setupSocketListener();
+}

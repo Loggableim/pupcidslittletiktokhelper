@@ -624,5 +624,13 @@
     "intensity": "Intensity",
     "duration": "Duration",
     "trigger_on": "Trigger On"
+  },
+  "wiki": {
+    "title": "Wiki & Documentation",
+    "open_new_tab": "Open in New Tab",
+    "search_placeholder": "Search documentation...",
+    "loading": "Loading documentation...",
+    "no_results": "No results found",
+    "search": "Search"
   }
 }

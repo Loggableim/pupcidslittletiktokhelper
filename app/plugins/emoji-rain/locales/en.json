@@ -1,0 +1,32 @@
+{
+  "emoji_rain": {
+    "title": "Emoji Rain Settings",
+    "subtitle": "Interactive Emoji Overlays",
+    "config": {
+      "title": "Configuration",
+      "enabled": "Enable Emoji Rain",
+      "trigger_on_gift": "Trigger on Gift",
+      "trigger_on_follow": "Trigger on Follow",
+      "trigger_on_like": "Trigger on Like Milestone",
+      "like_threshold": "Like Threshold",
+      "duration": "Rain Duration (seconds)",
+      "intensity": "Rain Intensity",
+      "emoji_size": "Emoji Size",
+      "custom_emojis": "Custom Emojis",
+      "save": "Save Settings"
+    },
+    "overlay": {
+      "title": "Overlay",
+      "url": "Overlay URL",
+      "obs_url": "OBS HUD URL",
+      "copy": "Copy URL",
+      "open": "Open Overlay",
+      "test": "Test Rain"
+    },
+    "preview": {
+      "title": "Preview",
+      "start": "Start Preview",
+      "stop": "Stop Preview"
+    }
+  }
+}

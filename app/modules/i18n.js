@@ -16,6 +16,7 @@ class I18n {
     this.defaultLocale = defaultLocale;
     this.currentLocale = defaultLocale;
     this.translations = {};
+    this.supportedLocales = ['en', 'de', 'es', 'fr'];
     this.loadTranslations();
   }
 
@@ -30,9 +31,7 @@ class I18n {
       fs.mkdirSync(localesDir, { recursive: true });
     }
 
-    const locales = ['en', 'de', 'es', 'fr'];
-
-    for (const locale of locales) {
+    for (const locale of this.supportedLocales) {
       const filePath = path.join(localesDir, `${locale}.json`);
 
       if (fs.existsSync(filePath)) {
@@ -46,6 +45,86 @@ class I18n {
         this.translations[locale] = {};
       }
     }
+
+    // Load plugin translations
+    this.loadPluginTranslations();
+  }
+
+  /**
+   * Load translations from all plugins
+   */
+  loadPluginTranslations() {
+    const pluginsDir = path.join(__dirname, '..', 'plugins');
+
+    if (!fs.existsSync(pluginsDir)) {
+      return;
+    }
+
+    try {
+      const plugins = fs.readdirSync(pluginsDir);
+
+      for (const plugin of plugins) {
+        const pluginLocalesDir = path.join(pluginsDir, plugin, 'locales');
+
+        if (fs.existsSync(pluginLocalesDir)) {
+          for (const locale of this.supportedLocales) {
+            const pluginLocalePath = path.join(pluginLocalesDir, `${locale}.json`);
+
+            if (fs.existsSync(pluginLocalePath)) {
+              try {
+                const pluginTranslations = JSON.parse(fs.readFileSync(pluginLocalePath, 'utf8'));
+
+                // Merge plugin translations into main translations
+                if (!this.translations[locale]) {
+                  this.translations[locale] = {};
+                }
+
+                this.translations[locale] = this.deepMerge(
+                  this.translations[locale],
+                  pluginTranslations
+                );
+
+                console.log(`✅ Loaded ${locale} translations for plugin: ${plugin}`);
+              } catch (error) {
+                console.error(`Failed to load ${locale} translations for plugin ${plugin}:`, error.message);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading plugin translations:', error.message);
+    }
+  }
+
+  /**
+   * Deep merge two objects
+   */
+  deepMerge(target, source) {
+    const output = Object.assign({}, target);
+
+    if (this.isObject(target) && this.isObject(source)) {
+      Object.keys(source).forEach(key => {
+        if (this.isObject(source[key])) {
+          if (!(key in target)) {
+            Object.assign(output, { [key]: source[key] });
+          } else {
+            output[key] = this.deepMerge(target[key], source[key]);
+          }
+        } else {
+          Object.assign(output, { [key]: source[key] });
+        }
+      });
+    }
+
+    return output;
+  }
+
+  /**
+   * Check if value is an object
+   */
+  isObject(item) {
+    return item && typeof item === 'object' && !Array.isArray(item);
   }
 
   /**
@@ -129,6 +208,14 @@ class I18n {
   getAllTranslations(locale = null) {
     const targetLocale = locale || this.currentLocale;
     return this.translations[targetLocale] || {};
+  }
+
+  /**
+   * Reload all translations (useful after plugin changes)
+   */
+  reloadTranslations() {
+    this.loadTranslations();
+    console.log('✅ Translations reloaded');
   }
 
   /**

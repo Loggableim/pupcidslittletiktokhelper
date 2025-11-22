@@ -1,0 +1,47 @@
+{
+  "resource_monitor": {
+    "title": "Ressourcenmonitor - Echtzeit-Systemleistung",
+    "header": "System-Ressourcenmonitor",
+    "subtitle": "Live-Leistungsmetriken",
+    "cpu": {
+      "title": "CPU-Auslastung",
+      "cores": "Kerne",
+      "threads": "Threads",
+      "usage": "Auslastung",
+      "speed": "Geschwindigkeit"
+    },
+    "memory": {
+      "title": "Arbeitsspeicher",
+      "used": "Verwendet",
+      "free": "Frei",
+      "total": "Gesamt",
+      "usage": "Auslastung"
+    },
+    "disk": {
+      "title": "Festplatte",
+      "used": "Verwendet",
+      "free": "Frei",
+      "total": "Gesamt"
+    },
+    "network": {
+      "title": "Netzwerk",
+      "upload": "Upload",
+      "download": "Download",
+      "sent": "Gesendet",
+      "received": "Empfangen"
+    },
+    "system": {
+      "title": "Systeminformationen",
+      "os": "Betriebssystem",
+      "uptime": "Laufzeit",
+      "hostname": "Hostname",
+      "platform": "Plattform"
+    },
+    "overlay": {
+      "title": "Overlay-Einstellungen",
+      "url": "Overlay-URL",
+      "copy": "URL kopieren",
+      "open": "In neuem Tab öffnen"
+    }
+  }
+}

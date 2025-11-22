@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Cam Switcher - Admin Panel</title>
+    <title data-i18n="multicam.title">Multi-Cam Switcher - Admin Panel</title>
     <style>
         * {
             margin: 0;
@@ -261,59 +261,60 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎥 Multi-Cam Switcher</h1>
+        <h1 data-i18n="multicam.title">🎥 Multi-Cam Switcher</h1>
 
         <div class="locked-banner" id="lockedBanner">
-            ⚠️ SAFETY LOCK ACTIVE - Too many rapid switches detected. Waiting 60 seconds...
+            <span data-i18n="multicam.safety_lock">⚠️ SAFETY LOCK ACTIVE - Too many rapid switches detected. Waiting 60 seconds...</span>
         </div>
 
         <div class="status-bar">
             <div class="status-indicator">
                 <div class="status-dot" id="statusDot"></div>
-                <span class="status-text" id="statusText">Disconnected</span>
+                <span class="status-text" id="statusText" data-i18n="multicam.status.disconnected">Disconnected</span>
             </div>
             <div class="current-scene" id="currentScene">
-                Current Scene: <strong>-</strong>
+                <span data-i18n="multicam.current_scene">Current Scene:</span> <strong>-</strong>
             </div>
         </div>
 
         <div class="control-group">
-            <h2>Connection</h2>
+            <h2 data-i18n="multicam.connection.title">Connection</h2>
             <div class="button-group">
-                <button class="success" id="obs-connect-btn">Connect OBS</button>
-                <button class="danger" id="obs-disconnect-btn">Disconnect OBS</button>
+                <button class="success" id="obs-connect-btn" data-i18n="multicam.connection.connect">Connect OBS</button>
+                <button class="danger" id="obs-disconnect-btn" data-i18n="multicam.connection.disconnect">Disconnect OBS</button>
             </div>
         </div>
 
         <div class="control-group">
-            <h2>Scene Switcher</h2>
+            <h2 data-i18n="multicam.switcher.title">Scene Switcher</h2>
             <div class="scene-selector">
                 <select id="sceneSelect">
-                    <option value="">Select Scene...</option>
+                    <option value="" data-i18n="multicam.switcher.select_scene">Select Scene...</option>
                 </select>
-                <button class="primary" id="switch-scene-btn">Switch</button>
+                <button class="primary" id="switch-scene-btn" data-i18n="multicam.switcher.switch">Switch</button>
             </div>
         </div>
 
         <div class="control-group">
-            <h2>Hot Buttons</h2>
+            <h2 data-i18n="multicam.hot_buttons.title">Hot Buttons</h2>
             <div class="hot-buttons" id="hotButtons">
-                <!-- Dynamisch geladen -->
+                <!-- Dynamically loaded -->
             </div>
         </div>
 
         <div class="control-group">
-            <h2>Activity Log</h2>
+            <h2 data-i18n="multicam.log.title">Activity Log</h2>
             <div class="log-container" id="logContainer">
                 <div class="log-entry">
                     <span class="log-time">--:--:--</span>
-                    <span>Waiting for events...</span>
+                    <span data-i18n="multicam.log.waiting">Waiting for events...</span>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/i18n-client.js"></script>
     <script src="/plugins/multicam/ui.js"></script>
 </body>
 </html>
