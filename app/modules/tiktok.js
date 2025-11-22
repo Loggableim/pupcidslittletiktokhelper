@@ -792,7 +792,7 @@ class TikTokConnector extends EventEmitter {
 
             this.logger.info(`💗 [LIKE EVENT] likeCount=${likeCount}, totalLikes=${totalLikes} (raw)`);
 
-            // If totalLikes found, use it (multiply by 10 as Eulerstream API provides values in tens)
+            // If totalLikes found, use it (multiply by 10 as Eulerstream API provides totalLikes in units of 10 likes)
             if (totalLikes !== null) {
                 this.stats.likes = totalLikes * 10;
                 this.logger.info(`💗 [LIKE EVENT] Adjusted totalLikes: ${this.stats.likes}`);
@@ -1060,7 +1060,7 @@ class TikTokConnector extends EventEmitter {
         for (const field of likeFields) {
             const value = roomInfo[field] || roomInfo.room?.[field] || roomInfo.stats?.[field];
             if (typeof value === 'number' && value >= 0) {
-                // Multiply by 10 as Eulerstream API provides values in tens
+                // Multiply by 10 as Eulerstream API provides like counts in units of 10 likes
                 this.stats.likes = value * 10;
                 this.logger.info(`📊 Extracted like count from roomInfo.${field}: ${value} (raw) -> ${this.stats.likes} (adjusted)`);
                 statsUpdated = true;
