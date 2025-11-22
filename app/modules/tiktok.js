@@ -797,7 +797,8 @@ class TikTokConnector extends EventEmitter {
                 this.stats.likes = totalLikes * 10;
                 this.logger.info(`💗 [LIKE EVENT] Adjusted totalLikes: ${this.stats.likes}`);
             } else {
-                // Fallback: increment based on likeCount
+                // Fallback: increment based on likeCount (individual event count, not in tens)
+                // Note: likeCount represents individual likes in this event (typically 1), not cumulative
                 this.stats.likes += likeCount;
             }
 
