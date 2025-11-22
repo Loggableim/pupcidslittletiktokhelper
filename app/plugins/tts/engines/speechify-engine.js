@@ -115,7 +115,7 @@ class SpeechifyEngine {
                 this.logger.info('Speechify: Using new API format (data.voices)');
             } 
             // Handle legacy format (direct array in data) - backward compatibility
-            else if (response.data && Array.isArray(response.data) && response.data.length > 0 && response.data[0].id) {
+            else if (response.data && Array.isArray(response.data) && response.data.length > 0 && response.data[0]?.id) {
                 voices = response.data;
                 this.logger.info('Speechify: Using legacy API format (direct array) for backward compatibility');
             }
@@ -183,6 +183,9 @@ class SpeechifyEngine {
         const voiceMap = {};
 
         for (const voice of apiVoices) {
+            // Skip null/undefined entries
+            if (!voice) continue;
+            
             // Handle both old and new API response formats
             const voiceId = voice.voice_id || voice.id;
             const voiceName = voice.display_name || voice.name;
