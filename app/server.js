@@ -310,6 +310,9 @@ const pluginsDir = path.join(__dirname, 'plugins');
 const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
 logger.info('🔌 Plugin Loader initialized');
 
+// Add pluginLoader to IFTTT services so actions can access plugins
+iftttServices.pluginLoader = pluginLoader;
+
 // PluginLoader an AlertManager übergeben (um doppelte Sounds zu vermeiden)
 alerts.setPluginLoader(pluginLoader);
 

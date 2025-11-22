@@ -595,6 +595,12 @@ class QueueManager extends EventEmitter {
     try {
       const { command, userId } = item;
 
+      this.logger.info(`[QueueManager] Executing command: ${command.type} on device ${command.deviceId} (intensity: ${command.intensity}, duration: ${command.duration})`, {
+        queueId: item.id,
+        userId,
+        source: item.source
+      });
+
       // Safety check via SafetyManager
       const safetyCheck = await this.safetyManager.checkCommand(
         command.type,
@@ -605,7 +611,12 @@ class QueueManager extends EventEmitter {
       );
 
       if (!safetyCheck.allowed) {
+        this.logger.warn(`[QueueManager] Safety check failed: ${safetyCheck.reason}`);
         throw new Error(`Safety check failed: ${safetyCheck.reason}`);
+      }
+
+      if (safetyCheck.adjustedIntensity !== command.intensity || safetyCheck.adjustedDuration !== command.duration) {
+        this.logger.info(`[QueueManager] Safety adjustments applied: intensity ${command.intensity} -> ${safetyCheck.adjustedIntensity}, duration ${command.duration} -> ${safetyCheck.adjustedDuration}`);
       }
 
       // Execute command via OpenShockClient
@@ -614,16 +625,16 @@ class QueueManager extends EventEmitter {
         case 'shock':
           result = await this.openShockClient.sendShock(
             command.deviceId,
-            command.intensity,
-            command.duration
+            safetyCheck.adjustedIntensity || command.intensity,
+            safetyCheck.adjustedDuration || command.duration
           );
           break;
 
         case 'vibrate':
           result = await this.openShockClient.sendVibrate(
             command.deviceId,
-            command.intensity,
-            command.duration
+            safetyCheck.adjustedIntensity || command.intensity,
+            safetyCheck.adjustedDuration || command.duration
           );
           break;
 
@@ -631,8 +642,8 @@ class QueueManager extends EventEmitter {
         case 'sound':
           result = await this.openShockClient.sendSound(
             command.deviceId,
-            command.intensity,
-            command.duration
+            safetyCheck.adjustedIntensity || command.intensity,
+            safetyCheck.adjustedDuration || command.duration
           );
           break;
 
@@ -642,13 +653,17 @@ class QueueManager extends EventEmitter {
 
       // Check result
       if (!result || !result.success) {
+        this.logger.error(`[QueueManager] Command execution failed: ${result?.message || 'Unknown error'}`);
         throw new Error(result?.message || 'Command execution failed');
       }
+
+      this.logger.info(`[QueueManager] Command executed successfully: ${command.type} on ${command.deviceId}`);
 
       // Handle success
       await this._handleCommandSuccess(item);
 
     } catch (error) {
+      this.logger.error(`[QueueManager] Error executing command: ${error.message}`);
       await this._handleCommandError(item, error);
     }
   }

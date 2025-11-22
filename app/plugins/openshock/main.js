@@ -124,6 +124,9 @@ class OpenShockPlugin {
             // 6. TikTok Events registrieren
             this._registerTikTokEvents();
 
+            // 6.5. IFTTT Flow Actions registrieren
+            this._registerIFTTTActions();
+
             // 7. Devices laden (wenn API Key vorhanden)
             if (this.config.apiKey && this.config.apiKey.trim() !== '') {
                 try {
@@ -1337,6 +1340,61 @@ class OpenShockPlugin {
     }
 
     /**
+     * IFTTT Flow Actions registrieren
+     */
+    /**
+     * IFTTT Flow Actions registrieren (Legacy - kept for backwards compatibility)
+     * Note: The main IFTTT integration is now in action-registry.js
+     */
+    _registerIFTTTActions() {
+        // Legacy flow action support - these delegate to executeAction for consistency
+        this.api.registerFlowAction('openshock.send_shock', async (params) => {
+            return await this.executeAction({
+                type: 'command',
+                deviceId: params.deviceId,
+                commandType: 'shock',
+                intensity: params.intensity || 50,
+                duration: params.duration || 1000
+            }, {
+                userId: 'flow-system-legacy',
+                username: 'Legacy Flow',
+                source: 'legacy-flow-action',
+                sourceData: params
+            });
+        });
+
+        this.api.registerFlowAction('openshock.send_vibrate', async (params) => {
+            return await this.executeAction({
+                type: 'command',
+                deviceId: params.deviceId,
+                commandType: 'vibrate',
+                intensity: params.intensity || 50,
+                duration: params.duration || 1000
+            }, {
+                userId: 'flow-system-legacy',
+                username: 'Legacy Flow',
+                source: 'legacy-flow-action',
+                sourceData: params
+            });
+        });
+
+        this.api.registerFlowAction('openshock.execute_pattern', async (params) => {
+            return await this.executeAction({
+                type: 'pattern',
+                deviceId: params.deviceId,
+                patternId: params.patternId
+            }, {
+                userId: 'flow-system-legacy',
+                username: 'Legacy Flow',
+                source: 'legacy-flow-action',
+                sourceData: params
+            });
+        });
+
+        this.api.log('OpenShock legacy flow actions registered (delegate to executeAction)', 'info');
+    }
+
+    /**
      * TikTok Event Handler
      */
     async handleTikTokEvent(eventType, eventData) {
@@ -1389,32 +1447,58 @@ class OpenShockPlugin {
             if (this.config.emergencyStop.enabled) {
                 this.api.log('Action blocked: Emergency Stop is active', 'warn');
                 this.stats.blockedCommands++;
-                return;
+                return {
+                    success: false,
+                    error: 'Emergency Stop is active',
+                    blocked: true
+                };
             }
 
             // Pause Check
             if (this.isPaused) {
                 this.api.log('Action blocked: Plugin is paused', 'warn');
                 this.stats.blockedCommands++;
-                return;
+                return {
+                    success: false,
+                    error: 'Plugin is paused',
+                    blocked: true
+                };
             }
 
             // Action-Type bestimmen
             if (action.type === 'command') {
                 // Direkter Command
                 await this._executeCommand(action, context);
+                return {
+                    success: true,
+                    message: 'Command queued successfully',
+                    type: action.commandType
+                };
 
             } else if (action.type === 'pattern') {
                 // Pattern ausführen
-                await this._executePatternFromAction(action, context);
+                const executionId = await this._executePatternFromAction(action, context);
+                return {
+                    success: true,
+                    message: 'Pattern execution started',
+                    executionId
+                };
 
             } else {
                 this.api.log(`Unknown action type: ${action.type}`, 'warn');
+                return {
+                    success: false,
+                    error: `Unknown action type: ${action.type}`
+                };
             }
 
         } catch (error) {
             this.api.log(`Error executing action: ${error.message}`, 'error');
             this._addError('Action Execution Error', error.message);
+            return {
+                success: false,
+                error: error.message
+            };
         }
     }
 
@@ -1463,18 +1547,18 @@ class OpenShockPlugin {
         const pattern = this.patternEngine.getPattern(patternId);
         if (!pattern) {
             this.api.log(`Pattern ${patternId} not found`, 'warn');
-            return;
+            return null;
         }
 
         // Device finden
         const device = this.devices.find(d => d.id === deviceId);
         if (!device) {
             this.api.log(`Device ${deviceId} not found`, 'warn');
-            return;
+            return null;
         }
 
-        // Pattern ausführen
-        await this._executePattern(pattern, device, {
+        // Pattern ausführen and return executionId
+        return await this._executePattern(pattern, device, {
             userId,
             username,
             source,
@@ -1489,6 +1573,9 @@ class OpenShockPlugin {
     async _executePattern(pattern, device, context) {
         const executionId = `pattern-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
+        this.api.log(`[Pattern Execution] Starting pattern "${pattern.name}" (ID: ${pattern.id}) on device "${device.name}" (ID: ${device.id})`, 'info');
+        this.api.log(`[Pattern Execution] Pattern has ${pattern.steps?.length || 0} steps`, 'info');
+
         // Execution tracken
         this.activePatternExecutions.set(executionId, {
             patternId: pattern.id,
@@ -1502,14 +1589,23 @@ class OpenShockPlugin {
         // Pattern-Steps direkt aus pattern.steps verwenden
         const steps = pattern.steps || [];
 
+        if (steps.length === 0) {
+            this.api.log(`[Pattern Execution] Warning: Pattern "${pattern.name}" has no steps!`, 'warn');
+            return executionId;
+        }
+
         // Alle Steps in Queue einfügen
+        let queuedSteps = 0;
         for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
 
             // Skip pause steps in queue
             if (step.type === 'pause') {
+                this.api.log(`[Pattern Execution] Step ${i}: Pause (${step.duration}ms) - skipped in queue`, 'debug');
                 continue;
             }
+
+            this.api.log(`[Pattern Execution] Step ${i}: ${step.type} (intensity: ${step.intensity}, duration: ${step.duration}ms, delay: ${step.delay || 0}ms)`, 'debug');
 
             this.queueManager.addItem({
                 id: `${executionId}-step-${i}`,
@@ -1528,8 +1624,10 @@ class OpenShockPlugin {
                 executionId,
                 stepIndex: i
             });
+            queuedSteps++;
         }
 
+        this.api.log(`[Pattern Execution] Queued ${queuedSteps} steps for pattern "${pattern.name}" (executionId: ${executionId})`, 'info');
         this.stats.patternsExecuted++;
 
         return executionId;
