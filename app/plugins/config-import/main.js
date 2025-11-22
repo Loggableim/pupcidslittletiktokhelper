@@ -49,7 +49,16 @@ class ConfigImportPlugin {
                     });
                 }
 
-                const validation = this.validateImportPath(importPath);
+                // Sanitize and validate input path
+                const sanitizedPath = this.sanitizePath(importPath);
+                if (!sanitizedPath) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid path format'
+                    });
+                }
+
+                const validation = this.validateImportPath(sanitizedPath);
                 res.json(validation);
             } catch (error) {
                 this.api.log(`Validation error: ${error.message}`, 'error');
@@ -72,8 +81,17 @@ class ConfigImportPlugin {
                     });
                 }
 
+                // Sanitize and validate input path
+                const sanitizedPath = this.sanitizePath(importPath);
+                if (!sanitizedPath) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid path format'
+                    });
+                }
+
                 // Validate first
-                const validation = this.validateImportPath(importPath);
+                const validation = this.validateImportPath(sanitizedPath);
                 if (!validation.valid) {
                     return res.status(400).json({
                         success: false,
@@ -82,7 +100,7 @@ class ConfigImportPlugin {
                 }
 
                 // Perform import
-                const result = await this.importSettings(importPath);
+                const result = await this.importSettings(sanitizedPath);
                 res.json(result);
             } catch (error) {
                 this.api.log(`Import error: ${error.message}`, 'error');
@@ -94,6 +112,47 @@ class ConfigImportPlugin {
         });
 
         this.api.log('Registered Config Import routes', 'info');
+    }
+
+    /**
+     * Sanitize and validate path input to prevent directory traversal attacks
+     */
+    sanitizePath(inputPath) {
+        try {
+            if (typeof inputPath !== 'string') {
+                return null;
+            }
+
+            // Trim whitespace
+            let cleanPath = inputPath.trim();
+
+            // Check for empty path
+            if (!cleanPath) {
+                return null;
+            }
+
+            // Resolve to absolute path to prevent directory traversal
+            const absolutePath = path.resolve(cleanPath);
+
+            // Additional security check: Ensure the path doesn't contain suspicious patterns
+            // that might indicate an attempt to escape the file system
+            const suspiciousPatterns = [
+                /\.\.[\/\\]/,  // Directory traversal attempts
+                /[<>:"|?*]/,   // Invalid filename characters (except on Unix where : is valid in paths)
+            ];
+
+            for (const pattern of suspiciousPatterns) {
+                if (pattern.test(cleanPath)) {
+                    this.api.log(`Suspicious path pattern detected: ${cleanPath}`, 'warn');
+                    return null;
+                }
+            }
+
+            return absolutePath;
+        } catch (error) {
+            this.api.log(`Path sanitization error: ${error.message}`, 'error');
+            return null;
+        }
     }
 
     /**
@@ -277,13 +336,21 @@ class ConfigImportPlugin {
                 // Recursively copy subdirectory
                 fileCount += this.copyDirectoryContents(srcPath, destPath);
             } else {
-                // Copy file
-                fs.copyFileSync(srcPath, destPath);
-                fileCount++;
-                
-                // Preserve modification time
-                const stats = fs.statSync(srcPath);
-                fs.utimesSync(destPath, stats.atime, stats.mtime);
+                try {
+                    // Get stats before copying for efficiency
+                    const stats = fs.statSync(srcPath);
+                    
+                    // Copy file with COPYFILE_FICLONE flag if available (uses CoW on supported filesystems)
+                    fs.copyFileSync(srcPath, destPath, fs.constants.COPYFILE_FICLONE);
+                    
+                    // Preserve modification time
+                    fs.utimesSync(destPath, stats.atime, stats.mtime);
+                    
+                    fileCount++;
+                } catch (copyError) {
+                    // Log error but continue with other files
+                    this.api.log(`Failed to copy ${srcPath}: ${copyError.message}`, 'warn');
+                }
             }
         }
 
