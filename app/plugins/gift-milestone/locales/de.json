@@ -1,7 +1,7 @@
 {
   "gift_milestone": {
     "title": "Geschenk-Meilenstein",
-    "subtitle": "Verfolge pro Benutzer, wie viele Coins ausgegeben wurden - stream-übergreifend gespeichert",
+    "subtitle": "Verfolge pro Benutzer, wie viele Coins ausgegeben wurden - streamübergreifend gespeichert",
     "tiers": {
       "title": "Meilenstein-Stufen (Tiers)",
       "description": "Definiere benutzerdefinierte Meilenstein-Stufen. Wenn Benutzer diese Coin-Schwellenwerte erreichen, wird eine Celebration ausgelöst.",
@@ -18,7 +18,7 @@
     },
     "users": {
       "title": "Benutzer-Statistiken",
-      "description": "Zeigt an, welche Benutzer wie viele Coins ausgegeben haben (stream-übergreifend). Die Zählung wird NICHT bei jedem Stream zurückgesetzt.",
+      "description": "Zeigt an, welche Benutzer wie viele Coins ausgegeben haben (streamübergreifend). Die Zählung wird NICHT bei jedem Stream zurückgesetzt.",
       "refresh": "Aktualisieren",
       "reset_all": "Alle Benutzer zurücksetzen",
       "reset": "Zurücksetzen",

@@ -326,11 +326,12 @@ function populateForm(config) {
     document.getElementById('audioVolume').value = config.audio_volume || 80;
     document.getElementById('animationDuration').value = config.animation_duration || 0;
     
-    // Hidden legacy fields for backward compatibility
+    // Hidden legacy fields for backward compatibility - always use default values
     document.getElementById('threshold').value = config.threshold || 1000;
     document.getElementById('incrementStep').value = config.increment_step || 1000;
     document.getElementById('mode').value = config.mode || 'auto_increment';
-    document.getElementById('sessionReset').value = config.session_reset ? '1' : '0';
+    // Session reset is deprecated for per-user tracking, always set to false
+    document.getElementById('sessionReset').value = '0';
 
     // Update file previews
     updateFilePreview('gif', config.animation_gif_path);
@@ -429,11 +430,12 @@ document.getElementById('saveButton').addEventListener('click', async () => {
         playback_mode: document.getElementById('playbackMode').value,
         audio_volume: parseInt(document.getElementById('audioVolume').value),
         animation_duration: parseInt(document.getElementById('animationDuration').value),
-        // Hidden legacy fields
+        // Hidden legacy fields - use defaults to maintain compatibility
         threshold: parseInt(document.getElementById('threshold').value) || 1000,
         increment_step: parseInt(document.getElementById('incrementStep').value) || 1000,
         mode: document.getElementById('mode').value || 'auto_increment',
-        session_reset: document.getElementById('sessionReset').value === '1'
+        // Session reset is deprecated for per-user tracking, always false
+        session_reset: false
     };
 
     try {
