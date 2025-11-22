@@ -355,23 +355,23 @@ async function testGiftSound(url, volume) {
         if (!previewAudio) {
             previewAudio = document.createElement('audio');
             
-            // Add event listeners for preview audio
-            previewAudio.onended = () => {
+            // Add event listeners for preview audio (using addEventListener for proper cleanup)
+            previewAudio.addEventListener('ended', () => {
                 isPreviewPlaying = false;
                 logAudioEvent('success', 'Preview finished playing', null);
-            };
+            });
             
-            previewAudio.onerror = (e) => {
+            previewAudio.addEventListener('error', (e) => {
                 isPreviewPlaying = false;
                 const errorMsg = previewAudio.error ? `Error code: ${previewAudio.error.code}` : 'Unknown error';
                 logAudioEvent('error', `Preview playback error: ${errorMsg}`, { url: previewAudio.src }, true);
-            };
+            });
             
-            previewAudio.onpause = () => {
+            previewAudio.addEventListener('pause', () => {
                 if (!previewAudio.ended) {
                     logAudioEvent('info', 'Preview paused', null);
                 }
-            };
+            });
         }
         
         // Set the new source and volume
@@ -387,19 +387,29 @@ async function testGiftSound(url, volume) {
         // Wait for audio to be ready before playing
         await new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
+                // Clean up event listeners on timeout
+                previewAudio.removeEventListener('canplay', onCanPlay);
+                previewAudio.removeEventListener('error', onError);
                 reject(new Error('Audio loading timeout'));
             }, 10000); // 10 second timeout
             
-            previewAudio.oncanplay = () => {
+            const onCanPlay = () => {
                 clearTimeout(timeout);
+                previewAudio.removeEventListener('canplay', onCanPlay);
+                previewAudio.removeEventListener('error', onError);
                 resolve();
             };
             
-            previewAudio.onerror = () => {
+            const onError = () => {
                 clearTimeout(timeout);
+                previewAudio.removeEventListener('canplay', onCanPlay);
+                previewAudio.removeEventListener('error', onError);
                 const errorMsg = previewAudio.error ? `Error code: ${previewAudio.error.code}` : 'Unknown error';
                 reject(new Error(`Failed to load audio: ${errorMsg}`));
             };
+            
+            previewAudio.addEventListener('canplay', onCanPlay, { once: true });
+            previewAudio.addEventListener('error', onError, { once: true });
         });
         
         // Play the preview
