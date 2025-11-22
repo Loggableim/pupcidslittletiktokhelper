@@ -6,7 +6,7 @@ const axios = require('axios');
  *
  * API Documentation:
  * - Base URL: https://api.sws.speechify.com/v1
- * - Voices: GET /audio_models
+ * - Voices: GET /voices
  * - Synthesis: POST /audio/speech
  * - Audio Format: MP3
  * - Speed Range: 0.5 - 2.0
@@ -31,7 +31,7 @@ class SpeechifyEngine {
 
         // API Configuration
         this.apiBaseUrl = 'https://api.sws.speechify.com/v1';
-        this.apiVoicesUrl = `${this.apiBaseUrl}/audio_models`;
+        this.apiVoicesUrl = `${this.apiBaseUrl}/voices`;
         this.apiSynthesisUrl = `${this.apiBaseUrl}/audio/speech`;
 
         // Request Configuration
@@ -107,8 +107,18 @@ class SpeechifyEngine {
                 timeout: this.timeout
             });
 
-            if (response.data && response.data.audio_models) {
-                const voiceMap = this._transformVoicesToMap(response.data.audio_models);
+            if (response.data && Array.isArray(response.data.voices)) {
+                const voiceMap = this._transformVoicesToMap(response.data.voices);
+
+                // Update cache
+                this.cachedVoices = voiceMap;
+                this.cacheTimestamp = Date.now();
+
+                this.logger.info(`Speechify: Fetched ${Object.keys(voiceMap).length} voices from API`);
+                return voiceMap;
+            } else if (response.data && Array.isArray(response.data)) {
+                // Handle case where response is directly an array
+                const voiceMap = this._transformVoicesToMap(response.data);
 
                 // Update cache
                 this.cachedVoices = voiceMap;
@@ -170,9 +180,13 @@ class SpeechifyEngine {
         const voiceMap = {};
 
         for (const voice of apiVoices) {
-            if (voice.id && voice.name) {
-                voiceMap[voice.id] = {
-                    name: voice.name,
+            // Handle both old and new API response formats
+            const voiceId = voice.voice_id || voice.id;
+            const voiceName = voice.display_name || voice.name;
+            
+            if (voiceId && voiceName) {
+                voiceMap[voiceId] = {
+                    name: voiceName,
                     lang: this._extractLanguageCode(voice.language || voice.lang || 'en'),
                     language: voice.language || voice.lang || 'en-US',
                     gender: voice.gender || 'neutral',
