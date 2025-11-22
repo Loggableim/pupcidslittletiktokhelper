@@ -38,16 +38,24 @@
       "animations": {
         "smooth": "Smooth Progress",
         "bounce": "Bounce",
-        "pulse": "Pulse Wave",
-        "none": "None"
+        "glow": "Glow Pulse"
       },
       "animation_reach_label": "Animation on Reach",
       "reach_animations": {
-        "confetti": "🎉 Confetti Burst",
-        "fireworks": "🎆 Fireworks",
-        "sparkles": "✨ Sparkles",
-        "none": "None"
+        "celebration": "Celebration",
+        "confetti": "Confetti Burst",
+        "pulse": "Pulse Wave",
+        "flash": "Flash",
+        "rainbow": "Rainbow"
       },
+      "on_reach_label": "When Goal is Reached",
+      "on_reach_options": {
+        "hide": "Hide Goal",
+        "reset": "Reset to Start",
+        "double": "Double Target",
+        "increment": "Increase Target by Amount"
+      },
+      "increment_label": "Increment Amount",
       "width_label": "Overlay Width (px)",
       "height_label": "Overlay Height (px)",
       "save_button": "Save Goal",

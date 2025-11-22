@@ -215,109 +215,110 @@
     <!-- Create/Edit Modal -->
     <div id="goal-modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">Create New Goal</div>
+            <div class="modal-header" data-i18n="goals.modal.create_title">Create New Goal</div>
             <form id="goal-form">
                 <div class="form-group">
-                    <label class="form-label">Goal Name</label>
-                    <input type="text" class="form-input" id="goal-name" placeholder="e.g., Coin Goal" required>
+                    <label class="form-label" data-i18n="goals.modal.name_label">Goal Name</label>
+                    <input type="text" class="form-input" id="goal-name" data-i18n="goals.modal.name_placeholder" placeholder="e.g., Coin Goal" required>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Goal Type</label>
+                        <label class="form-label" data-i18n="goals.modal.type_label">Goal Type</label>
                         <select class="form-select" id="goal-type" required>
-                            <option value="coin">🪙 Coins</option>
-                            <option value="likes">❤️ Likes</option>
-                            <option value="follower">👥 Followers</option>
-                            <option value="custom">⭐ Custom</option>
+                            <option value="coin" data-i18n="goals.modal.types.coin">🪙 Coins</option>
+                            <option value="likes" data-i18n="goals.modal.types.likes">❤️ Likes</option>
+                            <option value="follower" data-i18n="goals.modal.types.follower">👥 Followers</option>
+                            <option value="custom" data-i18n="goals.modal.types.custom">⭐ Custom</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Template</label>
+                        <label class="form-label" data-i18n="goals.modal.template_label">Template</label>
                         <select class="form-select" id="goal-template">
-                            <option value="compact-bar">Compact Bar</option>
-                            <option value="full-width">Full Width</option>
-                            <option value="minimal-counter">Minimal Counter</option>
-                            <option value="circular-progress">Circular Progress</option>
-                            <option value="floating-pill">Floating Pill</option>
-                            <option value="vertical-meter">Vertical Meter</option>
-                            <option value="neon-glow">🌟 Neon Glow (NEW)</option>
-                            <option value="hexagon-progress">⬡ Hexagon Progress (NEW)</option>
-                            <option value="glassy-card">✨ Glassy Card (NEW)</option>
+                            <option value="compact-bar" data-i18n="goals.modal.templates.compact_bar">Compact Bar</option>
+                            <option value="full-width" data-i18n="goals.modal.templates.full_width">Full Width</option>
+                            <option value="minimal-counter" data-i18n="goals.modal.templates.minimal_counter">Minimal Counter</option>
+                            <option value="circular-progress" data-i18n="goals.modal.templates.circular_progress">Circular Progress</option>
+                            <option value="floating-pill" data-i18n="goals.modal.templates.floating_pill">Floating Pill</option>
+                            <option value="vertical-meter" data-i18n="goals.modal.templates.vertical_meter">Vertical Meter</option>
+                            <option value="neon-glow" data-i18n="goals.modal.templates.neon_glow">🌟 Neon Glow (NEW)</option>
+                            <option value="hexagon-progress" data-i18n="goals.modal.templates.hexagon_progress">⬡ Hexagon Progress (NEW)</option>
+                            <option value="glassy-card" data-i18n="goals.modal.templates.glassy_card">✨ Glassy Card (NEW)</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Start Value</label>
+                        <label class="form-label" data-i18n="goals.modal.start_value_label">Start Value</label>
                         <input type="number" class="form-input" id="goal-start" value="0" min="0">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Target Value</label>
+                        <label class="form-label" data-i18n="goals.modal.target_value_label">Target Value</label>
                         <input type="number" class="form-input" id="goal-target" value="1000" min="1" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Animation on Update</label>
+                        <label class="form-label" data-i18n="goals.modal.animation_update_label">Animation on Update</label>
                         <select class="form-select" id="goal-anim-update">
-                            <option value="smooth-progress">Smooth Progress</option>
-                            <option value="bounce">Bounce</option>
-                            <option value="glow">Glow Pulse</option>
+                            <option value="smooth-progress" data-i18n="goals.modal.animations.smooth">Smooth Progress</option>
+                            <option value="bounce" data-i18n="goals.modal.animations.bounce">Bounce</option>
+                            <option value="glow" data-i18n="goals.modal.animations.glow">Glow Pulse</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Animation on Reach</label>
+                        <label class="form-label" data-i18n="goals.modal.animation_reach_label">Animation on Reach</label>
                         <select class="form-select" id="goal-anim-reach">
-                            <option value="celebration">Celebration</option>
-                            <option value="confetti">Confetti Burst</option>
-                            <option value="pulse">Pulse Wave</option>
-                            <option value="flash">Flash</option>
-                            <option value="rainbow">Rainbow</option>
+                            <option value="celebration" data-i18n="goals.modal.reach_animations.celebration">Celebration</option>
+                            <option value="confetti" data-i18n="goals.modal.reach_animations.confetti">Confetti Burst</option>
+                            <option value="pulse" data-i18n="goals.modal.reach_animations.pulse">Pulse Wave</option>
+                            <option value="flash" data-i18n="goals.modal.reach_animations.flash">Flash</option>
+                            <option value="rainbow" data-i18n="goals.modal.reach_animations.rainbow">Rainbow</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">When Goal is Reached</label>
+                    <label class="form-label" data-i18n="goals.modal.on_reach_label">When Goal is Reached</label>
                     <select class="form-select" id="goal-on-reach">
-                        <option value="hide">Hide Goal</option>
-                        <option value="reset">Reset to Start</option>
-                        <option value="double">Double Target</option>
-                        <option value="increment">Increase Target by Amount</option>
+                        <option value="hide" data-i18n="goals.modal.on_reach_options.hide">Hide Goal</option>
+                        <option value="reset" data-i18n="goals.modal.on_reach_options.reset">Reset to Start</option>
+                        <option value="double" data-i18n="goals.modal.on_reach_options.double">Double Target</option>
+                        <option value="increment" data-i18n="goals.modal.on_reach_options.increment">Increase Target by Amount</option>
                     </select>
                 </div>
 
                 <div class="form-group" id="increment-amount-group" style="display: none;">
-                    <label class="form-label">Increment Amount</label>
+                    <label class="form-label" data-i18n="goals.modal.increment_label">Increment Amount</label>
                     <input type="number" class="form-input" id="goal-increment" value="100" min="1">
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Overlay Width (px)</label>
+                        <label class="form-label" data-i18n="goals.modal.width_label">Overlay Width (px)</label>
                         <input type="number" class="form-input" id="goal-width" value="500" min="100">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Overlay Height (px)</label>
+                        <label class="form-label" data-i18n="goals.modal.height_label">Overlay Height (px)</label>
                         <input type="number" class="form-input" id="goal-height" value="100" min="50">
                     </div>
                 </div>
 
                 <div style="display: flex; gap: 12px; margin-top: 24px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Goal</button>
-                    <button type="button" class="btn btn-secondary" id="cancel-goal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;" data-i18n="goals.modal.save_button">Save Goal</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-goal-btn" data-i18n="goals.modal.cancel_button">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <script src="/js/i18n-client.js"></script>
     <script src="/plugins/goals/ui.js"></script>
 </body>
 </html>

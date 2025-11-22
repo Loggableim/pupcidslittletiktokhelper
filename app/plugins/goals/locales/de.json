@@ -38,16 +38,24 @@
       "animations": {
         "smooth": "Sanfter Fortschritt",
         "bounce": "Hüpfen",
-        "pulse": "Pulswelle",
-        "none": "Keine"
+        "glow": "Leuchtimpuls"
       },
       "animation_reach_label": "Animation bei Erreichen",
       "reach_animations": {
-        "confetti": "🎉 Konfetti-Explosion",
-        "fireworks": "🎆 Feuerwerk",
-        "sparkles": "✨ Funkeln",
-        "none": "Keine"
+        "celebration": "Feier",
+        "confetti": "Konfetti-Explosion",
+        "pulse": "Pulswelle",
+        "flash": "Blitz",
+        "rainbow": "Regenbogen"
       },
+      "on_reach_label": "Wenn Ziel erreicht ist",
+      "on_reach_options": {
+        "hide": "Ziel ausblenden",
+        "reset": "Auf Start zurücksetzen",
+        "double": "Ziel verdoppeln",
+        "increment": "Ziel um Betrag erhöhen"
+      },
+      "increment_label": "Erhöhungsbetrag",
       "width_label": "Overlay-Breite (px)",
       "height_label": "Overlay-Höhe (px)",
       "save_button": "Ziel speichern",
