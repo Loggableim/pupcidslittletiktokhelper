@@ -16,6 +16,10 @@ function escapeHtml(text) {
 // Audio pool for soundboard playback
 let audioPool = [];
 
+// Dedicated preview audio element (reused to prevent multiple simultaneous previews)
+let previewAudio = null;
+let isPreviewPlaying = false;
+
 // ========== SOCKET EVENTS ==========
 socket.on('soundboard:play', (data) => {
     playDashboardSoundboard(data);
@@ -339,15 +343,78 @@ async function deleteGiftSound(giftId) {
 async function testGiftSound(url, volume) {
     try {
         logAudioEvent('info', `Testing sound: ${url}`, { volume }, true);
-        await fetch('/api/soundboard/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, volume: parseFloat(volume) || 1.0 })
+        
+        // Stop any currently playing preview
+        if (previewAudio) {
+            previewAudio.pause();
+            previewAudio.currentTime = 0;
+            logAudioEvent('info', 'Stopped previous preview', null);
+        }
+        
+        // Create or reuse preview audio element
+        if (!previewAudio) {
+            previewAudio = document.createElement('audio');
+            
+            // Add event listeners for preview audio (using addEventListener for proper cleanup)
+            previewAudio.addEventListener('ended', () => {
+                isPreviewPlaying = false;
+                logAudioEvent('success', 'Preview finished playing', null);
+            });
+            
+            previewAudio.addEventListener('error', (e) => {
+                isPreviewPlaying = false;
+                const errorMsg = previewAudio.error ? `Error code: ${previewAudio.error.code}` : 'Unknown error';
+                logAudioEvent('error', `Preview playback error: ${errorMsg}`, { url: previewAudio.src }, true);
+            });
+            
+            previewAudio.addEventListener('pause', () => {
+                if (!previewAudio.ended) {
+                    logAudioEvent('info', 'Preview paused', null);
+                }
+            });
+        }
+        
+        // Ensure audio unlocking if needed
+        await ensureAudioUnlocked();
+        
+        // Set the new source and volume (after ensuring audio context is unlocked)
+        previewAudio.src = url;
+        previewAudio.volume = parseFloat(volume) || 1.0;
+        
+        // Load the audio before playing
+        previewAudio.load();
+        
+        // Wait for audio to be ready before playing
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Audio loading timeout'));
+            }, 10000); // 10 second timeout
+            
+            const onCanPlay = () => {
+                clearTimeout(timeout);
+                resolve();
+            };
+            
+            const onError = () => {
+                clearTimeout(timeout);
+                const errorMsg = previewAudio.error ? `Error code: ${previewAudio.error.code}` : 'Unknown error';
+                reject(new Error(`Failed to load audio: ${errorMsg}`));
+            };
+            
+            // Event listeners with { once: true } automatically clean themselves up
+            previewAudio.addEventListener('canplay', onCanPlay, { once: true });
+            previewAudio.addEventListener('error', onError, { once: true });
         });
-        logAudioEvent('success', `Test sound request sent: ${url}`, null, true);
+        
+        // Play the preview
+        isPreviewPlaying = true;
+        await previewAudio.play();
+        logAudioEvent('success', `Preview started playing: ${url}`, null, true);
+        
     } catch (error) {
+        isPreviewPlaying = false;
         console.error('Error testing sound:', error);
-        logAudioEvent('error', `Failed to test sound: ${error.message}`, null, true);
+        logAudioEvent('error', `Failed to preview sound: ${error.message}`, { url }, true);
     }
 }
 
@@ -382,18 +449,8 @@ async function testEventSound(eventType) {
         return;
     }
     
-    try {
-        logAudioEvent('info', `Testing ${eventType} sound: ${url}`, { volume });
-        await fetch('/api/soundboard/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, volume: parseFloat(volume) || 1.0 })
-        });
-        logAudioEvent('success', `Test ${eventType} sound request sent`, null);
-    } catch (error) {
-        console.error('Error testing sound:', error);
-        logAudioEvent('error', `Failed to test sound: ${error.message}`, null);
-    }
+    // Use the same preview mechanism as testGiftSound
+    await testGiftSound(url, volume);
 }
 
 function clearGiftSoundForm() {
