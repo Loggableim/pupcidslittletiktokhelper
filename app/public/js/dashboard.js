@@ -6,6 +6,10 @@ let currentTab = 'events';
 let settings = {};
 // voices wird vom tts_core_v2 Plugin verwaltet
 
+// Dedicated preview audio element (reused to prevent multiple simultaneous previews)
+let previewAudio = null;
+let isPreviewPlaying = false;
+
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize UI first
@@ -1336,12 +1340,61 @@ async function deleteGiftSound(giftId) {
 
 async function testGiftSound(url, volume) {
     try {
-        await fetch('/api/soundboard/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, volume })
+        // Stop any currently playing preview
+        if (previewAudio) {
+            previewAudio.pause();
+            previewAudio.currentTime = 0;
+        }
+        
+        // Create or reuse preview audio element
+        if (!previewAudio) {
+            previewAudio = document.createElement('audio');
+            
+            // Add event listeners for preview audio
+            previewAudio.onended = () => {
+                isPreviewPlaying = false;
+                console.log('✅ Preview finished playing');
+            };
+            
+            previewAudio.onerror = (e) => {
+                isPreviewPlaying = false;
+                const errorMsg = previewAudio.error ? `Error code: ${previewAudio.error.code}` : 'Unknown error';
+                console.error('❌ Preview playback error:', errorMsg);
+            };
+        }
+        
+        // Set the new source and volume
+        previewAudio.src = url;
+        previewAudio.volume = parseFloat(volume) || 1.0;
+        
+        // Load the audio before playing
+        previewAudio.load();
+        
+        // Wait for audio to be ready before playing
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Audio loading timeout'));
+            }, 10000); // 10 second timeout
+            
+            previewAudio.oncanplay = () => {
+                clearTimeout(timeout);
+                resolve();
+            };
+            
+            previewAudio.onerror = () => {
+                clearTimeout(timeout);
+                const errorMsg = previewAudio.error ? `Error code: ${previewAudio.error.code}` : 'Unknown error';
+                reject(new Error(`Failed to load audio: ${errorMsg}`));
+            };
         });
+        
+        // Play the preview
+        isPreviewPlaying = true;
+        await previewAudio.play();
+        console.log('✅ Preview started playing:', url);
+        
     } catch (error) {
+        isPreviewPlaying = false;
         console.error('Error testing sound:', error);
     }
 }
@@ -1377,15 +1430,8 @@ async function testEventSound(eventType) {
         return;
     }
 
-    try {
-        await fetch('/api/soundboard/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, volume: parseFloat(volume) })
-        });
-    } catch (error) {
-        console.error('Error testing sound:', error);
-    }
+    // Use the same preview mechanism as testGiftSound
+    await testGiftSound(url, volume);
 }
 
 async function searchMyInstants() {
