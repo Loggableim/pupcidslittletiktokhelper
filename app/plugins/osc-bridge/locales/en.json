@@ -1,0 +1,56 @@
+{
+  "osc_bridge": {
+    "title": "OSC-Bridge Settings",
+    "status": {
+      "title": "OSC-Bridge Status",
+      "running": "Running",
+      "stopped": "Stopped",
+      "messages_sent": "Messages Sent",
+      "messages_received": "Messages Received",
+      "errors": "Errors",
+      "uptime": "Uptime"
+    },
+    "config": {
+      "title": "Configuration",
+      "info_title": "VRChat OSC Integration",
+      "info_text": "This bridge enables direct communication with VRChat avatars via OSC (Open Sound Control). Enable the bridge to automatically send TikTok events to VRChat.",
+      "enable": "Enable OSC-Bridge (VRChat Integration)",
+      "target_host": "Target Host (VRChat IP)",
+      "send_port": "Send Port (VRChat receives)",
+      "receive_port": "Receive Port (local port)",
+      "verbose_mode": "Verbose mode (show all OSC packets live)",
+      "save": "Save Configuration",
+      "start": "Start Bridge",
+      "stop": "Stop Bridge",
+      "test": "Send Test Signal"
+    },
+    "parameter_tester": {
+      "title": "VRChat Parameter Tester",
+      "description": "Click a button to trigger the corresponding VRChat parameter:",
+      "wave": "👋 Wave",
+      "celebrate": "🎉 Celebrate",
+      "dance": "💃 Dance",
+      "hearts": "❤️ Hearts",
+      "confetti": "🎊 Confetti",
+      "emote0": "😀 Emote 0",
+      "emote1": "😎 Emote 1",
+      "emote2": "😂 Emote 2"
+    },
+    "custom_actions": {
+      "title": "Custom OSC Actions",
+      "subtitle": "Custom OSC Messages",
+      "description": "Send custom OSC messages to VRChat or other OSC-compatible applications. Messages will be sent to the configured target address.",
+      "address_label": "OSC Address",
+      "address_help": "Must start with /, e.g. /avatar/parameters/MyCustomParam",
+      "value_label": "Value",
+      "value_help": "Number (e.g. 1, 0.5, 100), text (e.g. \"Hello\"), or boolean (true/false)",
+      "reset_label": "Auto-reset after (ms, optional)",
+      "reset_help": "If set, the value will be reset to 0 after the specified time",
+      "send": "Send"
+    },
+    "log": {
+      "title": "OSC Message Log",
+      "clear": "Clear Log"
+    }
+  }
+}
