@@ -107,18 +107,21 @@ class SpeechifyEngine {
                 timeout: this.timeout
             });
 
+            let voices = null;
+            
+            // Handle new API format (voices array in data.voices)
             if (response.data && Array.isArray(response.data.voices)) {
-                const voiceMap = this._transformVoicesToMap(response.data.voices);
+                voices = response.data.voices;
+                this.logger.info('Speechify: Using new API format (data.voices)');
+            } 
+            // Handle legacy format (direct array in data) - backward compatibility
+            else if (response.data && Array.isArray(response.data) && response.data.length > 0 && response.data[0].id) {
+                voices = response.data;
+                this.logger.info('Speechify: Using legacy API format (direct array) for backward compatibility');
+            }
 
-                // Update cache
-                this.cachedVoices = voiceMap;
-                this.cacheTimestamp = Date.now();
-
-                this.logger.info(`Speechify: Fetched ${Object.keys(voiceMap).length} voices from API`);
-                return voiceMap;
-            } else if (response.data && Array.isArray(response.data)) {
-                // Handle case where response is directly an array
-                const voiceMap = this._transformVoicesToMap(response.data);
+            if (voices) {
+                const voiceMap = this._transformVoicesToMap(voices);
 
                 // Update cache
                 this.cachedVoices = voiceMap;
