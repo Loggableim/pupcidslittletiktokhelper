@@ -385,6 +385,15 @@ Example structure:
 Part of Pup Cid's Little TikTok Helper.
 Licensed under MIT License.
 
+## 🔧 Recent Fixes
+
+### Version 1.0.1 (2025-11-22)
+**Fixed:** Memory leak in timer management
+- All weather effects now properly store and clean up their setTimeout timer IDs
+- Timers are cancelled when effects are stopped manually
+- All timers are cleared during page cleanup/unload
+- Prevents memory leaks and ensures stable long-term operation
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow the existing code style and add tests for new features.
@@ -395,6 +404,6 @@ For issues and feature requests, please create an issue on GitHub.
 
 ---
 
-**Version**: 1.0.0
+**Version**: 1.0.1
 **Author**: Pup Cid
-**Last Updated**: 2025-11-19
+**Last Updated**: 2025-11-22
