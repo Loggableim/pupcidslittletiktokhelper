@@ -124,6 +124,9 @@ class OpenShockPlugin {
             // 6. TikTok Events registrieren
             this._registerTikTokEvents();
 
+            // 6.5. IFTTT Flow Actions registrieren
+            this._registerIFTTTActions();
+
             // 7. Devices laden (wenn API Key vorhanden)
             if (this.config.apiKey && this.config.apiKey.trim() !== '') {
                 try {
@@ -1334,6 +1337,157 @@ class OpenShockPlugin {
         });
 
         this.api.log('OpenShock TikTok event handlers registered', 'info');
+    }
+
+    /**
+     * IFTTT Flow Actions registrieren
+     */
+    _registerIFTTTActions() {
+        // Action: OpenShock - Send Shock
+        this.api.registerFlowAction('openshock.send_shock', async (params) => {
+            try {
+                const { deviceId, intensity = 50, duration = 1000 } = params;
+                
+                if (!deviceId) {
+                    return { success: false, error: 'Device ID is required' };
+                }
+
+                const device = this.devices.find(d => d.id === deviceId);
+                if (!device) {
+                    return { success: false, error: 'Device not found' };
+                }
+
+                // Safety check
+                const safetyCheck = this.safetyManager.validateCommand({
+                    deviceId,
+                    type: 'shock',
+                    intensity,
+                    duration,
+                    userId: 'flow-system',
+                    source: 'ifttt-flow'
+                });
+
+                if (!safetyCheck.allowed) {
+                    return { success: false, error: safetyCheck.reason };
+                }
+
+                // Send command
+                await this.openShockClient.sendControl(deviceId, {
+                    type: 'shock',
+                    intensity: safetyCheck.adjustedIntensity || intensity,
+                    duration: safetyCheck.adjustedDuration || duration
+                });
+
+                this.stats.totalCommands++;
+                this.stats.successfulCommands++;
+
+                return { 
+                    success: true, 
+                    message: `Shock sent to ${device.name}`,
+                    intensity: safetyCheck.adjustedIntensity || intensity,
+                    duration: safetyCheck.adjustedDuration || duration
+                };
+            } catch (error) {
+                this.api.log(`Flow action error (send_shock): ${error.message}`, 'error');
+                return { success: false, error: error.message };
+            }
+        });
+
+        // Action: OpenShock - Send Vibrate
+        this.api.registerFlowAction('openshock.send_vibrate', async (params) => {
+            try {
+                const { deviceId, intensity = 50, duration = 1000 } = params;
+                
+                if (!deviceId) {
+                    return { success: false, error: 'Device ID is required' };
+                }
+
+                const device = this.devices.find(d => d.id === deviceId);
+                if (!device) {
+                    return { success: false, error: 'Device not found' };
+                }
+
+                // Safety check
+                const safetyCheck = this.safetyManager.validateCommand({
+                    deviceId,
+                    type: 'vibrate',
+                    intensity,
+                    duration,
+                    userId: 'flow-system',
+                    source: 'ifttt-flow'
+                });
+
+                if (!safetyCheck.allowed) {
+                    return { success: false, error: safetyCheck.reason };
+                }
+
+                // Send command
+                await this.openShockClient.sendControl(deviceId, {
+                    type: 'vibrate',
+                    intensity: safetyCheck.adjustedIntensity || intensity,
+                    duration: safetyCheck.adjustedDuration || duration
+                });
+
+                this.stats.totalCommands++;
+                this.stats.successfulCommands++;
+
+                return { 
+                    success: true, 
+                    message: `Vibrate sent to ${device.name}`,
+                    intensity: safetyCheck.adjustedIntensity || intensity,
+                    duration: safetyCheck.adjustedDuration || duration
+                };
+            } catch (error) {
+                this.api.log(`Flow action error (send_vibrate): ${error.message}`, 'error');
+                return { success: false, error: error.message };
+            }
+        });
+
+        // Action: OpenShock - Execute Pattern
+        this.api.registerFlowAction('openshock.execute_pattern', async (params) => {
+            try {
+                const { deviceId, patternId } = params;
+                
+                if (!deviceId) {
+                    return { success: false, error: 'Device ID is required' };
+                }
+                if (!patternId) {
+                    return { success: false, error: 'Pattern ID is required' };
+                }
+
+                const device = this.devices.find(d => d.id === deviceId);
+                if (!device) {
+                    return { success: false, error: 'Device not found' };
+                }
+
+                const pattern = this.patternEngine.getPattern(patternId);
+                if (!pattern) {
+                    return { success: false, error: 'Pattern not found' };
+                }
+
+                // Execute pattern
+                const executionId = await this._executePattern(pattern, device, {
+                    userId: 'flow-system',
+                    username: 'IFTTT Flow',
+                    source: 'ifttt-flow',
+                    sourceData: params,
+                    variables: {}
+                });
+
+                return { 
+                    success: true, 
+                    message: `Pattern "${pattern.name}" started on ${device.name}`,
+                    executionId,
+                    patternName: pattern.name,
+                    deviceName: device.name
+                };
+            } catch (error) {
+                this.api.log(`Flow action error (execute_pattern): ${error.message}`, 'error');
+                return { success: false, error: error.message };
+            }
+        });
+
+        this.api.log('OpenShock IFTTT flow actions registered', 'info');
     }
 
     /**

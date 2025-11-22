@@ -991,6 +991,154 @@ class ActionRegistry {
                 io.emit('notification', notificationData);
             }
         });
+
+        // ========== OpenShock Actions ==========
+        
+        // OpenShock: Send Shock
+        this.register('openshock:shock', {
+            name: 'OpenShock - Send Shock',
+            description: 'Send a shock command to an OpenShock device',
+            category: 'openshock',
+            icon: 'zap',
+            fields: [
+                { name: 'deviceId', label: 'Device ID', type: 'text', required: true, help: 'OpenShock device ID (UUID)' },
+                { name: 'intensity', label: 'Intensity (%)', type: 'range', min: 1, max: 100, default: 50 },
+                { name: 'duration', label: 'Duration (ms)', type: 'number', min: 300, max: 30000, default: 1000 }
+            ],
+            executor: async (action, context, services) => {
+                const pluginLoader = services.pluginLoader;
+                if (!pluginLoader) {
+                    throw new Error('Plugin loader not available');
+                }
+
+                const openShockPlugin = pluginLoader.plugins.get('openshock');
+                if (!openShockPlugin || !openShockPlugin.instance) {
+                    throw new Error('OpenShock plugin not loaded');
+                }
+
+                const deviceId = services.templateEngine.render(action.deviceId || '', context.data);
+                const intensity = parseInt(action.intensity) || 50;
+                const duration = parseInt(action.duration) || 1000;
+
+                if (!deviceId) {
+                    throw new Error('Device ID is required');
+                }
+
+                // Call the plugin's executeAction method
+                const result = await openShockPlugin.instance.executeAction({
+                    type: 'command',
+                    deviceId,
+                    commandType: 'shock',
+                    intensity,
+                    duration
+                }, {
+                    userId: 'flow-system',
+                    username: 'IFTTT Flow',
+                    source: 'ifttt-flow',
+                    sourceData: context.data
+                });
+
+                services.logger?.info(`⚡ OpenShock: Shock sent to ${deviceId} (${intensity}%, ${duration}ms)`);
+                return result;
+            }
+        });
+
+        // OpenShock: Send Vibrate
+        this.register('openshock:vibrate', {
+            name: 'OpenShock - Send Vibrate',
+            description: 'Send a vibrate command to an OpenShock device',
+            category: 'openshock',
+            icon: 'zap',
+            fields: [
+                { name: 'deviceId', label: 'Device ID', type: 'text', required: true, help: 'OpenShock device ID (UUID)' },
+                { name: 'intensity', label: 'Intensity (%)', type: 'range', min: 1, max: 100, default: 50 },
+                { name: 'duration', label: 'Duration (ms)', type: 'number', min: 300, max: 30000, default: 1000 }
+            ],
+            executor: async (action, context, services) => {
+                const pluginLoader = services.pluginLoader;
+                if (!pluginLoader) {
+                    throw new Error('Plugin loader not available');
+                }
+
+                const openShockPlugin = pluginLoader.plugins.get('openshock');
+                if (!openShockPlugin || !openShockPlugin.instance) {
+                    throw new Error('OpenShock plugin not loaded');
+                }
+
+                const deviceId = services.templateEngine.render(action.deviceId || '', context.data);
+                const intensity = parseInt(action.intensity) || 50;
+                const duration = parseInt(action.duration) || 1000;
+
+                if (!deviceId) {
+                    throw new Error('Device ID is required');
+                }
+
+                // Call the plugin's executeAction method
+                const result = await openShockPlugin.instance.executeAction({
+                    type: 'command',
+                    deviceId,
+                    commandType: 'vibrate',
+                    intensity,
+                    duration
+                }, {
+                    userId: 'flow-system',
+                    username: 'IFTTT Flow',
+                    source: 'ifttt-flow',
+                    sourceData: context.data
+                });
+
+                services.logger?.info(`📳 OpenShock: Vibrate sent to ${deviceId} (${intensity}%, ${duration}ms)`);
+                return result;
+            }
+        });
+
+        // OpenShock: Execute Pattern
+        this.register('openshock:pattern', {
+            name: 'OpenShock - Execute Pattern',
+            description: 'Execute a shock pattern on an OpenShock device',
+            category: 'openshock',
+            icon: 'zap',
+            fields: [
+                { name: 'deviceId', label: 'Device ID', type: 'text', required: true, help: 'OpenShock device ID (UUID)' },
+                { name: 'patternId', label: 'Pattern ID', type: 'text', required: true, help: 'Pattern ID or name' }
+            ],
+            executor: async (action, context, services) => {
+                const pluginLoader = services.pluginLoader;
+                if (!pluginLoader) {
+                    throw new Error('Plugin loader not available');
+                }
+
+                const openShockPlugin = pluginLoader.plugins.get('openshock');
+                if (!openShockPlugin || !openShockPlugin.instance) {
+                    throw new Error('OpenShock plugin not loaded');
+                }
+
+                const deviceId = services.templateEngine.render(action.deviceId || '', context.data);
+                const patternId = services.templateEngine.render(action.patternId || '', context.data);
+
+                if (!deviceId) {
+                    throw new Error('Device ID is required');
+                }
+                if (!patternId) {
+                    throw new Error('Pattern ID is required');
+                }
+
+                // Call the plugin's executeAction method
+                const result = await openShockPlugin.instance.executeAction({
+                    type: 'pattern',
+                    deviceId,
+                    patternId
+                }, {
+                    userId: 'flow-system',
+                    username: 'IFTTT Flow',
+                    source: 'ifttt-flow',
+                    sourceData: context.data
+                });
+
+                services.logger?.info(`🎵 OpenShock: Pattern ${patternId} executed on ${deviceId}`);
+                return result;
+            }
+        });
     }
 }
 
