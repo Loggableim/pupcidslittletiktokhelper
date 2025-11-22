@@ -1342,152 +1342,56 @@ class OpenShockPlugin {
     /**
      * IFTTT Flow Actions registrieren
      */
+    /**
+     * IFTTT Flow Actions registrieren (Legacy - kept for backwards compatibility)
+     * Note: The main IFTTT integration is now in action-registry.js
+     */
     _registerIFTTTActions() {
-        // Action: OpenShock - Send Shock
+        // Legacy flow action support - these delegate to executeAction for consistency
         this.api.registerFlowAction('openshock.send_shock', async (params) => {
-            try {
-                const { deviceId, intensity = 50, duration = 1000 } = params;
-                
-                if (!deviceId) {
-                    return { success: false, error: 'Device ID is required' };
-                }
-
-                const device = this.devices.find(d => d.id === deviceId);
-                if (!device) {
-                    return { success: false, error: 'Device not found' };
-                }
-
-                // Safety check
-                const safetyCheck = this.safetyManager.validateCommand({
-                    deviceId,
-                    type: 'shock',
-                    intensity,
-                    duration,
-                    userId: 'flow-system',
-                    source: 'ifttt-flow'
-                });
-
-                if (!safetyCheck.allowed) {
-                    return { success: false, error: safetyCheck.reason };
-                }
-
-                // Send command
-                await this.openShockClient.sendControl(deviceId, {
-                    type: 'shock',
-                    intensity: safetyCheck.adjustedIntensity || intensity,
-                    duration: safetyCheck.adjustedDuration || duration
-                });
-
-                this.stats.totalCommands++;
-                this.stats.successfulCommands++;
-
-                return { 
-                    success: true, 
-                    message: `Shock sent to ${device.name}`,
-                    intensity: safetyCheck.adjustedIntensity || intensity,
-                    duration: safetyCheck.adjustedDuration || duration
-                };
-            } catch (error) {
-                this.api.log(`Flow action error (send_shock): ${error.message}`, 'error');
-                return { success: false, error: error.message };
-            }
+            return await this.executeAction({
+                type: 'command',
+                deviceId: params.deviceId,
+                commandType: 'shock',
+                intensity: params.intensity || 50,
+                duration: params.duration || 1000
+            }, {
+                userId: 'flow-system-legacy',
+                username: 'Legacy Flow',
+                source: 'legacy-flow-action',
+                sourceData: params
+            });
         });
 
-        // Action: OpenShock - Send Vibrate
         this.api.registerFlowAction('openshock.send_vibrate', async (params) => {
-            try {
-                const { deviceId, intensity = 50, duration = 1000 } = params;
-                
-                if (!deviceId) {
-                    return { success: false, error: 'Device ID is required' };
-                }
-
-                const device = this.devices.find(d => d.id === deviceId);
-                if (!device) {
-                    return { success: false, error: 'Device not found' };
-                }
-
-                // Safety check
-                const safetyCheck = this.safetyManager.validateCommand({
-                    deviceId,
-                    type: 'vibrate',
-                    intensity,
-                    duration,
-                    userId: 'flow-system',
-                    source: 'ifttt-flow'
-                });
-
-                if (!safetyCheck.allowed) {
-                    return { success: false, error: safetyCheck.reason };
-                }
-
-                // Send command
-                await this.openShockClient.sendControl(deviceId, {
-                    type: 'vibrate',
-                    intensity: safetyCheck.adjustedIntensity || intensity,
-                    duration: safetyCheck.adjustedDuration || duration
-                });
-
-                this.stats.totalCommands++;
-                this.stats.successfulCommands++;
-
-                return { 
-                    success: true, 
-                    message: `Vibrate sent to ${device.name}`,
-                    intensity: safetyCheck.adjustedIntensity || intensity,
-                    duration: safetyCheck.adjustedDuration || duration
-                };
-            } catch (error) {
-                this.api.log(`Flow action error (send_vibrate): ${error.message}`, 'error');
-                return { success: false, error: error.message };
-            }
+            return await this.executeAction({
+                type: 'command',
+                deviceId: params.deviceId,
+                commandType: 'vibrate',
+                intensity: params.intensity || 50,
+                duration: params.duration || 1000
+            }, {
+                userId: 'flow-system-legacy',
+                username: 'Legacy Flow',
+                source: 'legacy-flow-action',
+                sourceData: params
+            });
         });
 
-        // Action: OpenShock - Execute Pattern
         this.api.registerFlowAction('openshock.execute_pattern', async (params) => {
-            try {
-                const { deviceId, patternId } = params;
-                
-                if (!deviceId) {
-                    return { success: false, error: 'Device ID is required' };
-                }
-                if (!patternId) {
-                    return { success: false, error: 'Pattern ID is required' };
-                }
-
-                const device = this.devices.find(d => d.id === deviceId);
-                if (!device) {
-                    return { success: false, error: 'Device not found' };
-                }
-
-                const pattern = this.patternEngine.getPattern(patternId);
-                if (!pattern) {
-                    return { success: false, error: 'Pattern not found' };
-                }
-
-                // Execute pattern
-                const executionId = await this._executePattern(pattern, device, {
-                    userId: 'flow-system',
-                    username: 'IFTTT Flow',
-                    source: 'ifttt-flow',
-                    sourceData: params,
-                    variables: {}
-                });
-
-                return { 
-                    success: true, 
-                    message: `Pattern "${pattern.name}" started on ${device.name}`,
-                    executionId,
-                    patternName: pattern.name,
-                    deviceName: device.name
-                };
-            } catch (error) {
-                this.api.log(`Flow action error (execute_pattern): ${error.message}`, 'error');
-                return { success: false, error: error.message };
-            }
+            return await this.executeAction({
+                type: 'pattern',
+                deviceId: params.deviceId,
+                patternId: params.patternId
+            }, {
+                userId: 'flow-system-legacy',
+                username: 'Legacy Flow',
+                source: 'legacy-flow-action',
+                sourceData: params
+            });
         });
 
-        this.api.log('OpenShock IFTTT flow actions registered', 'info');
+        this.api.log('OpenShock legacy flow actions registered (delegate to executeAction)', 'info');
     }
 
     /**
@@ -1543,32 +1447,58 @@ class OpenShockPlugin {
             if (this.config.emergencyStop.enabled) {
                 this.api.log('Action blocked: Emergency Stop is active', 'warn');
                 this.stats.blockedCommands++;
-                return;
+                return {
+                    success: false,
+                    error: 'Emergency Stop is active',
+                    blocked: true
+                };
             }
 
             // Pause Check
             if (this.isPaused) {
                 this.api.log('Action blocked: Plugin is paused', 'warn');
                 this.stats.blockedCommands++;
-                return;
+                return {
+                    success: false,
+                    error: 'Plugin is paused',
+                    blocked: true
+                };
             }
 
             // Action-Type bestimmen
             if (action.type === 'command') {
                 // Direkter Command
                 await this._executeCommand(action, context);
+                return {
+                    success: true,
+                    message: 'Command queued successfully',
+                    type: action.commandType
+                };
 
             } else if (action.type === 'pattern') {
                 // Pattern ausführen
-                await this._executePatternFromAction(action, context);
+                const executionId = await this._executePatternFromAction(action, context);
+                return {
+                    success: true,
+                    message: 'Pattern execution started',
+                    executionId
+                };
 
             } else {
                 this.api.log(`Unknown action type: ${action.type}`, 'warn');
+                return {
+                    success: false,
+                    error: `Unknown action type: ${action.type}`
+                };
             }
 
         } catch (error) {
             this.api.log(`Error executing action: ${error.message}`, 'error');
             this._addError('Action Execution Error', error.message);
+            return {
+                success: false,
+                error: error.message
+            };
         }
     }
 
@@ -1617,18 +1547,18 @@ class OpenShockPlugin {
         const pattern = this.patternEngine.getPattern(patternId);
         if (!pattern) {
             this.api.log(`Pattern ${patternId} not found`, 'warn');
-            return;
+            return null;
         }
 
         // Device finden
         const device = this.devices.find(d => d.id === deviceId);
         if (!device) {
             this.api.log(`Device ${deviceId} not found`, 'warn');
-            return;
+            return null;
         }
 
-        // Pattern ausführen
-        await this._executePattern(pattern, device, {
+        // Pattern ausführen and return executionId
+        return await this._executePattern(pattern, device, {
             userId,
             username,
             source,
