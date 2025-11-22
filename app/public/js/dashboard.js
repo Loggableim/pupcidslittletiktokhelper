@@ -1373,27 +1373,21 @@ async function testGiftSound(url, volume) {
         // Wait for audio to be ready before playing
         await new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
-                // Clean up event listeners on timeout
-                previewAudio.removeEventListener('canplay', onCanPlay);
-                previewAudio.removeEventListener('error', onError);
                 reject(new Error('Audio loading timeout'));
             }, 10000); // 10 second timeout
             
             const onCanPlay = () => {
                 clearTimeout(timeout);
-                previewAudio.removeEventListener('canplay', onCanPlay);
-                previewAudio.removeEventListener('error', onError);
                 resolve();
             };
             
             const onError = () => {
                 clearTimeout(timeout);
-                previewAudio.removeEventListener('canplay', onCanPlay);
-                previewAudio.removeEventListener('error', onError);
                 const errorMsg = previewAudio.error ? `Error code: ${previewAudio.error.code}` : 'Unknown error';
                 reject(new Error(`Failed to load audio: ${errorMsg}`));
             };
             
+            // Event listeners with { once: true } automatically clean themselves up
             previewAudio.addEventListener('canplay', onCanPlay, { once: true });
             previewAudio.addEventListener('error', onError, { once: true });
         });

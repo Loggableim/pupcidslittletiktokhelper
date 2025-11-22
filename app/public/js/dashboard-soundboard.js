@@ -374,12 +374,12 @@ async function testGiftSound(url, volume) {
             });
         }
         
-        // Set the new source and volume
-        previewAudio.src = url;
-        previewAudio.volume = parseFloat(volume) || 1.0;
-        
         // Ensure audio unlocking if needed
         await ensureAudioUnlocked();
+        
+        // Set the new source and volume (after ensuring audio context is unlocked)
+        previewAudio.src = url;
+        previewAudio.volume = parseFloat(volume) || 1.0;
         
         // Load the audio before playing
         previewAudio.load();
@@ -387,27 +387,21 @@ async function testGiftSound(url, volume) {
         // Wait for audio to be ready before playing
         await new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
-                // Clean up event listeners on timeout
-                previewAudio.removeEventListener('canplay', onCanPlay);
-                previewAudio.removeEventListener('error', onError);
                 reject(new Error('Audio loading timeout'));
             }, 10000); // 10 second timeout
             
             const onCanPlay = () => {
                 clearTimeout(timeout);
-                previewAudio.removeEventListener('canplay', onCanPlay);
-                previewAudio.removeEventListener('error', onError);
                 resolve();
             };
             
             const onError = () => {
                 clearTimeout(timeout);
-                previewAudio.removeEventListener('canplay', onCanPlay);
-                previewAudio.removeEventListener('error', onError);
                 const errorMsg = previewAudio.error ? `Error code: ${previewAudio.error.code}` : 'Unknown error';
                 reject(new Error(`Failed to load audio: ${errorMsg}`));
             };
             
+            // Event listeners with { once: true } automatically clean themselves up
             previewAudio.addEventListener('canplay', onCanPlay, { once: true });
             previewAudio.addEventListener('error', onError, { once: true });
         });
