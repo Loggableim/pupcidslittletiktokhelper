@@ -3,6 +3,7 @@
  * Wrapper für das VDONinjaManager-Modul
  */
 
+const path = require('path');
 const VDONinjaManager = require('../../modules/vdoninja');
 
 class VDONinjaPlugin {
@@ -33,6 +34,11 @@ class VDONinjaPlugin {
     }
 
     registerRoutes() {
+        // UI Route
+        this.api.registerRoute('GET', '/vdoninja/ui', (req, res) => {
+            res.sendFile(path.join(__dirname, 'ui.html'));
+        });
+
         // GET /api/vdoninja/rooms - Alle Räume
         this.api.registerRoute('GET', '/api/vdoninja/rooms', async (req, res) => {
             try {
