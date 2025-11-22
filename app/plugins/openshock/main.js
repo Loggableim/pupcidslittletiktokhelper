@@ -398,7 +398,7 @@ class OpenShockPlugin {
         // Main UI
         app.get('/openshock/ui', (req, res) => {
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            res.sendFile(path.join(pluginDir, 'openshock.html'));
+            res.sendFile(path.join(pluginDir, 'ui.html'));
         });
 
         // Overlay
@@ -413,7 +413,13 @@ class OpenShockPlugin {
             res.sendFile(path.join(pluginDir, 'openshock.css'));
         });
 
-        // JS
+        // UI JS (new standard naming)
+        app.get('/openshock/ui.js', (req, res) => {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            res.sendFile(path.join(pluginDir, 'ui.js'));
+        });
+
+        // JS (legacy route for backward compatibility)
         app.get('/openshock/openshock.js', (req, res) => {
             res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'openshock.js'));
