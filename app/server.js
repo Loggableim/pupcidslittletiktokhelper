@@ -134,7 +134,7 @@ app.use((req, res, next) => {
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
             `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + Chatango eval
-            `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Chatango inline script elements with JSON config
+            `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com https://cdnjs.cloudflare.com; ` +  // Allow Chatango inline script elements with JSON config + GSAP from cdnjs
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
@@ -152,7 +152,7 @@ app.use((req, res, next) => {
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
             `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + Chatango eval
-            `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com; ` +  // Allow Chatango inline script elements with JSON config
+            `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com https://cdnjs.cloudflare.com; ` +  // Allow Chatango inline script elements with JSON config + GSAP from cdnjs
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
             `font-src 'self' data:; ` +
