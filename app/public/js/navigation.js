@@ -175,10 +175,16 @@
         // Check if the requested view exists and is not hidden (disabled plugin)
         const requestedView = document.getElementById(`view-${viewName}`);
         if (!requestedView || requestedView.style.display === 'none') {
-            console.warn(`Cannot switch to view "${viewName}" - view is hidden or does not exist. Redirecting to dashboard.`);
+            console.warn(`Cannot switch to view "${viewName}" - view is hidden or does not exist.`);
             // Redirect to dashboard if view is hidden or doesn't exist
+            // Prevent infinite recursion by checking we're not already trying to switch to dashboard
             if (viewName !== 'dashboard') {
+                console.log('Redirecting to dashboard...');
                 switchView('dashboard');
+                return;
+            } else {
+                // Dashboard view itself is missing or hidden - this is a critical error
+                console.error('CRITICAL: Dashboard view is missing or hidden! Cannot redirect.');
                 return;
             }
         }
