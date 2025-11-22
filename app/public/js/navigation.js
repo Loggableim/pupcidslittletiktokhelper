@@ -172,6 +172,17 @@
     }
 
     function switchView(viewName) {
+        // Check if the requested view exists and is not hidden (disabled plugin)
+        const requestedView = document.getElementById(`view-${viewName}`);
+        if (!requestedView || requestedView.style.display === 'none') {
+            console.warn(`Cannot switch to view "${viewName}" - view is hidden or does not exist. Redirecting to dashboard.`);
+            // Redirect to dashboard if view is hidden or doesn't exist
+            if (viewName !== 'dashboard') {
+                switchView('dashboard');
+                return;
+            }
+        }
+
         // Update active nav item
         document.querySelectorAll('.sidebar-item').forEach(item => {
             item.classList.remove('active');
@@ -399,7 +410,7 @@
 
             console.log('✅ [Navigation] Active plugins loaded:', Array.from(activePlugins));
 
-            // Hide sidebar items and shortcuts for inactive plugins
+            // Hide sidebar items, shortcuts, AND views for inactive plugins
             const pluginElements = document.querySelectorAll('[data-plugin]');
             pluginElements.forEach(element => {
                 const requiredPlugin = element.getAttribute('data-plugin');
