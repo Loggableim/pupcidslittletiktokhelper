@@ -62,13 +62,21 @@ class StreamAlchemyPlugin {
             // Load plugin configuration
             await this.loadConfiguration();
 
+            // Create logger wrapper for compatibility
+            const logger = {
+                info: (msg) => this.api.log(msg, 'info'),
+                warn: (msg) => this.api.log(msg, 'warn'),
+                error: (msg) => this.api.log(msg, 'error'),
+                debug: (msg) => this.api.log(msg, 'debug')
+            };
+
             // Initialize database
-            this.db = new AlchemyDatabase(this.pluginDir, this.api);
+            this.db = new AlchemyDatabase(this.pluginDir, logger);
             await this.db.init();
 
             // Initialize crafting service
             const openaiKey = process.env.OPENAI_API_KEY || this.pluginConfig?.openaiApiKey;
-            this.craftingService = new CraftingService(this.db, this.api, openaiKey);
+            this.craftingService = new CraftingService(this.db, logger, openaiKey);
 
             // Register routes
             this.registerRoutes();

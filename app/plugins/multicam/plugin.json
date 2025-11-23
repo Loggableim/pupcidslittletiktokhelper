@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": false,
+  "enabled": true,
   "type": "utility",
   "dependencies": ["express", "socket.io", "obs-websocket-js"],
   "permissions": ["tiktok-events", "obs-control"]

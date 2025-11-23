@@ -417,6 +417,10 @@
                     <i data-lucide="award"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.viewer_xp">Viewer XP</span>
                 </a>
+                <a href="#" class="sidebar-item" data-view="leaderboard" data-plugin="leaderboard">
+                    <i data-lucide="trophy"></i>
+                    <span class="sidebar-item-text" data-i18n="navigation.leaderboard">Leaderboard</span>
+                </a>
                 <a href="#" class="sidebar-item" data-view="resource-monitor" data-plugin="resource-monitor">
                     <i data-lucide="cpu"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.resources">Resources</span>
@@ -1402,6 +1406,25 @@
                         </div>
                         <div class="iframe-container">
                             <iframe src="/viewer-xp/admin" title="Viewer XP Admin Panel"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: Leaderboard -->
+                <div id="view-leaderboard" class="content-view" data-plugin="leaderboard">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="trophy"></i>
+                                Leaderboard
+                            </h2>
+                            <a href="/leaderboard/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/leaderboard/ui" title="Leaderboard Configuration"></iframe>
                         </div>
                     </section>
                 </div>
