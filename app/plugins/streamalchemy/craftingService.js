@@ -15,10 +15,14 @@ const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
 
 class CraftingService {
-    constructor(db, logger, apiKey) {
+    constructor(db, logger, apiKey, customPrompts = null) {
         this.db = db;
         this.logger = logger;
         this.apiKey = apiKey;
+        this.customPrompts = customPrompts || {
+            baseItemTemplate: '',
+            craftedItemTemplate: ''
+        };
         
         // Initialize OpenAI client
         if (this.apiKey) {
@@ -39,6 +43,18 @@ class CraftingService {
             failedGenerations: 0,
             cacheHits: 0
         };
+    }
+
+    /**
+     * Update custom prompts
+     * @param {Object} prompts - Custom prompts configuration
+     */
+    updateCustomPrompts(prompts) {
+        this.customPrompts = prompts || {
+            baseItemTemplate: '',
+            craftedItemTemplate: ''
+        };
+        this.logger.info('[CRAFTING SERVICE] Custom prompts updated');
     }
 
     /**
@@ -87,7 +103,17 @@ class CraftingService {
         // Generate image via AI
         if (this.openai) {
             try {
-                const prompt = config.PROMPTS.BASE_ITEM(gift.name);
+                // Use custom prompt if available, otherwise use default
+                let prompt;
+                if (this.customPrompts.baseItemTemplate) {
+                    // Replace placeholders in custom template
+                    prompt = this.customPrompts.baseItemTemplate
+                        .replace('{giftName}', gift.name)
+                        .replace('{coinValue}', gift.coins || 0);
+                } else {
+                    prompt = config.PROMPTS.BASE_ITEM(gift.name);
+                }
+                
                 const imageURL = await this.queueAIGeneration(prompt);
                 item.imageURL = imageURL;
             } catch (error) {
@@ -145,12 +171,26 @@ class CraftingService {
         // Generate image via AI
         if (this.openai) {
             try {
-                const prompt = config.PROMPTS.CRAFTED_ITEM(
-                    itemA.name,
-                    itemB.name,
-                    rarityTier.color,
-                    rarityTier.auraEffect
-                );
+                // Use custom prompt if available, otherwise use default
+                let prompt;
+                if (this.customPrompts.craftedItemTemplate) {
+                    // Replace placeholders in custom template
+                    prompt = this.customPrompts.craftedItemTemplate
+                        .replace('{itemA}', itemA.name)
+                        .replace('{itemB}', itemB.name)
+                        .replace('{rarity}', rarityTier.name)
+                        .replace('{rarityColor}', rarityTier.color)
+                        .replace('{auraEffect}', rarityTier.auraEffect)
+                        .replace('{totalCoins}', totalCoins);
+                } else {
+                    prompt = config.PROMPTS.CRAFTED_ITEM(
+                        itemA.name,
+                        itemB.name,
+                        rarityTier.color,
+                        rarityTier.auraEffect
+                    );
+                }
+                
                 const imageURL = await this.queueAIGeneration(prompt);
                 item.imageURL = imageURL;
             } catch (error) {

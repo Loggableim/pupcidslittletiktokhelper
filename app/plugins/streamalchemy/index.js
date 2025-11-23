@@ -76,7 +76,8 @@ class StreamAlchemyPlugin {
 
             // Initialize crafting service
             const openaiKey = process.env.OPENAI_API_KEY || this.pluginConfig?.openaiApiKey;
-            this.craftingService = new CraftingService(this.db, logger, openaiKey);
+            const customPrompts = this.pluginConfig?.customPrompts || null;
+            this.craftingService = new CraftingService(this.db, logger, openaiKey, customPrompts);
 
             // Register routes
             this.registerRoutes();
@@ -123,6 +124,16 @@ class StreamAlchemyPlugin {
                 openaiApiKey: null,
                 autoGenerateItems: true,
                 autoCrafting: true,
+                itemGenerationMode: config.ITEM_GENERATION_MODE,
+                customPrompts: {
+                    baseItemTemplate: config.CUSTOM_PROMPTS.BASE_ITEM_TEMPLATE,
+                    craftedItemTemplate: config.CUSTOM_PROMPTS.CRAFTED_ITEM_TEMPLATE
+                },
+                dalleConfig: { ...config.DALLE_CONFIG },
+                craftingWindowMs: config.CRAFTING_WINDOW_MS,
+                rarityTiers: { ...config.RARITY_TIERS },
+                animations: { ...config.ANIMATIONS },
+                rateLimit: { ...config.RATE_LIMIT },
                 ...this.pluginConfig
             };
 
@@ -137,6 +148,14 @@ class StreamAlchemyPlugin {
      * Register Express routes
      */
     registerRoutes() {
+        // Validation helpers
+        const validateUUID = (id) => {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            return uuidRegex.test(id);
+        };
+        
+        const VALID_RARITIES = ['Common', 'Rare', 'Legendary', 'Mythic'];
+        
         // Serve UI HTML
         this.api.registerRoute('GET', '/streamalchemy/ui', (req, res) => {
             try {
@@ -168,14 +187,65 @@ class StreamAlchemyPlugin {
         // API: Update plugin configuration
         this.api.registerRoute('POST', '/api/streamalchemy/config', async (req, res) => {
             try {
-                this.pluginConfig = { ...this.pluginConfig, ...req.body };
+                const updates = req.body;
+                
+                // Validate custom prompts if provided
+                if (updates.customPrompts) {
+                    if (updates.customPrompts.baseItemTemplate && 
+                        typeof updates.customPrompts.baseItemTemplate === 'string' &&
+                        updates.customPrompts.baseItemTemplate.length > 5000) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Base item template is too long (max 5000 characters)'
+                        });
+                    }
+                    
+                    if (updates.customPrompts.craftedItemTemplate && 
+                        typeof updates.customPrompts.craftedItemTemplate === 'string' &&
+                        updates.customPrompts.craftedItemTemplate.length > 5000) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Crafted item template is too long (max 5000 characters)'
+                        });
+                    }
+                }
+                
+                // Validate item generation mode
+                if (updates.itemGenerationMode) {
+                    const validModes = ['auto', 'manual', 'hybrid'];
+                    if (!validModes.includes(updates.itemGenerationMode)) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Invalid item generation mode'
+                        });
+                    }
+                }
+                
+                // Validate crafting window
+                if (updates.craftingWindowMs !== undefined) {
+                    const window = parseInt(updates.craftingWindowMs);
+                    if (isNaN(window) || window < 1000 || window > 60000) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Crafting window must be between 1000 and 60000 ms'
+                        });
+                    }
+                }
+                
+                this.pluginConfig = { ...this.pluginConfig, ...updates };
                 await this.api.setConfig('streamalchemy_config', this.pluginConfig);
+                
+                // Update crafting service with new custom prompts if provided
+                if (updates.customPrompts) {
+                    this.craftingService.updateCustomPrompts(updates.customPrompts);
+                }
                 
                 res.json({
                     success: true,
                     config: this.pluginConfig
                 });
             } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Error updating config: ${error.message}`, 'error');
                 res.status(500).json({
                     success: false,
                     error: error.message
@@ -242,6 +312,178 @@ class StreamAlchemyPlugin {
                     items
                 });
             } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Create custom item (manual upload)
+        this.api.registerRoute('POST', '/api/streamalchemy/items', async (req, res) => {
+            try {
+                const { name, rarity, imageURL, coinValue, giftId } = req.body;
+                
+                // Validate required fields
+                if (!name || !rarity) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Name and rarity are required'
+                    });
+                }
+                
+                // Validate name length
+                if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Name must be between 1 and 100 characters'
+                    });
+                }
+                
+                // Validate rarity
+                if (!VALID_RARITIES.includes(rarity)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid rarity. Must be one of: Common, Rare, Legendary, Mythic'
+                    });
+                }
+                
+                // Validate imageURL if provided
+                if (imageURL && typeof imageURL !== 'string') {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'imageURL must be a string'
+                    });
+                }
+                
+                // Validate coinValue
+                const coins = parseInt(coinValue) || 0;
+                if (coins < 0 || coins > 1000000) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'coinValue must be between 0 and 1000000'
+                    });
+                }
+                
+                // Create item
+                const item = await this.db.createCustomItem({
+                    name: name.trim(),
+                    rarity,
+                    imageURL: imageURL || null,
+                    coinValue: coins,
+                    giftId: giftId || null
+                });
+                
+                res.json({
+                    success: true,
+                    item
+                });
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Error creating item: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Update item
+        this.api.registerRoute('PUT', '/api/streamalchemy/items/:itemId', async (req, res) => {
+            try {
+                const { itemId } = req.params;
+                const updates = req.body;
+                
+                // Validate itemId format (UUID v4)
+                if (!validateUUID(itemId)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid item ID format'
+                    });
+                }
+                
+                // Validate name if provided
+                if (updates.name !== undefined) {
+                    if (typeof updates.name !== 'string' || updates.name.length < 1 || updates.name.length > 100) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Name must be between 1 and 100 characters'
+                        });
+                    }
+                    updates.name = updates.name.trim();
+                }
+                
+                // Validate rarity if provided
+                if (updates.rarity !== undefined) {
+                    if (!VALID_RARITIES.includes(updates.rarity)) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Invalid rarity. Must be one of: Common, Rare, Legendary, Mythic'
+                        });
+                    }
+                }
+                
+                // Validate coinValue if provided
+                if (updates.coinValue !== undefined) {
+                    const coins = parseInt(updates.coinValue);
+                    if (isNaN(coins) || coins < 0 || coins > 1000000) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'coinValue must be between 0 and 1000000'
+                        });
+                    }
+                    updates.coinValue = coins;
+                }
+                
+                const item = await this.db.updateItem(itemId, updates);
+                
+                if (!item) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Item not found'
+                    });
+                }
+                
+                res.json({
+                    success: true,
+                    item
+                });
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Error updating item: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Delete item
+        this.api.registerRoute('DELETE', '/api/streamalchemy/items/:itemId', async (req, res) => {
+            try {
+                const { itemId } = req.params;
+                
+                // Validate itemId format (UUID v4)
+                if (!validateUUID(itemId)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid item ID format'
+                    });
+                }
+                
+                const success = await this.db.deleteItem(itemId);
+                
+                if (!success) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Item not found'
+                    });
+                }
+                
+                res.json({
+                    success: true,
+                    message: 'Item deleted successfully'
+                });
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Error deleting item: ${error.message}`, 'error');
                 res.status(500).json({
                     success: false,
                     error: error.message

@@ -305,6 +305,86 @@ class AlchemyDatabase {
     }
 
     /**
+     * Create a custom item manually (for manual upload mode)
+     * @param {Object} itemData - Item data
+     * @returns {Object} Created item
+     */
+    async createCustomItem(itemData) {
+        const { v4: uuidv4 } = require('uuid');
+        
+        const item = {
+            itemId: uuidv4(),
+            giftId: itemData.giftId || null,
+            name: itemData.name,
+            rarity: itemData.rarity || 'Common',
+            imageURL: itemData.imageURL || null,
+            isCrafted: false,
+            coinValue: itemData.coinValue || 0,
+            createdAt: new Date().toISOString(),
+            isCustom: true
+        };
+        
+        return await this.saveItem(item);
+    }
+
+    /**
+     * Update an existing item
+     * @param {string} itemId - Item ID to update
+     * @param {Object} updates - Fields to update
+     * @returns {Object|null} Updated item or null if not found
+     */
+    async updateItem(itemId, updates) {
+        return this.queueWrite(async () => {
+            await this.init();
+            await this.inventoryGlobalDb.read();
+            
+            const itemIndex = this.inventoryGlobalDb.data.items.findIndex(
+                i => i.itemId === itemId
+            );
+            
+            if (itemIndex === -1) {
+                return null;
+            }
+            
+            // Merge updates (don't allow changing itemId)
+            const { itemId: _, ...allowedUpdates } = updates;
+            this.inventoryGlobalDb.data.items[itemIndex] = {
+                ...this.inventoryGlobalDb.data.items[itemIndex],
+                ...allowedUpdates
+            };
+            
+            await this.inventoryGlobalDb.write();
+            return this.inventoryGlobalDb.data.items[itemIndex];
+        }, 'global');
+    }
+
+    /**
+     * Delete an item from global inventory
+     * @param {string} itemId - Item ID to delete
+     * @returns {boolean} True if deleted, false if not found
+     */
+    async deleteItem(itemId) {
+        return this.queueWrite(async () => {
+            await this.init();
+            await this.inventoryGlobalDb.read();
+            
+            const itemIndex = this.inventoryGlobalDb.data.items.findIndex(
+                i => i.itemId === itemId
+            );
+            
+            if (itemIndex === -1) {
+                return false;
+            }
+            
+            this.inventoryGlobalDb.data.items.splice(itemIndex, 1);
+            await this.inventoryGlobalDb.write();
+            
+            this.logger.info(`[ALCHEMY DB] Deleted item: ${itemId}`);
+            return true;
+        }, 'global');
+    }
+
+    /**
      * Clean up database connections
      */
     async destroy() {
