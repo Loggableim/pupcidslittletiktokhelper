@@ -442,14 +442,18 @@ class SoundboardPlugin {
             }
 
             try {
+                // Validate and clamp volume values between 0 and 1
+                const validVolume = Math.max(0, Math.min(1, parseFloat(volume) || 1.0));
+                const validAnimVolume = Math.max(0, Math.min(1, parseFloat(animationVolume) || 1.0));
+
                 const id = this.soundboard.setGiftSound(
                     giftId,
                     label,
                     mp3Url,
-                    volume || 1.0,
+                    validVolume,
                     animationUrl || null,
                     animationType || 'none',
-                    animationVolume || 1.0
+                    validAnimVolume
                 );
                 this.api.log(`🎵 Gift sound set: ${label} (ID: ${giftId})`, 'info');
                 res.json({ success: true, id });
