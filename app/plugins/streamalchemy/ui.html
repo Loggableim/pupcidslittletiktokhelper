@@ -461,9 +461,9 @@
                 <form id="prompts-form">
                     <div class="config-group">
                         <label class="config-label" for="baseItemTemplate">Base Item Prompt Template</label>
-                        <div class="config-description">Prompt für Basis-Items (von TikTok Gifts)</div>
-                        <textarea id="baseItemTemplate" name="baseItemTemplate" rows="4" placeholder="Leer lassen für Standard-Prompt"></textarea>
-                        <div class="prompt-placeholder">
+                        <div class="config-description" id="base-template-desc">Prompt für Basis-Items (von TikTok Gifts)</div>
+                        <textarea id="baseItemTemplate" name="baseItemTemplate" rows="4" placeholder="Leer lassen für Standard-Prompt" aria-describedby="base-template-desc base-template-placeholders"></textarea>
+                        <div class="prompt-placeholder" id="base-template-placeholders">
                             <strong>Verfügbare Platzhalter:</strong><br>
                             {giftName} - Name des TikTok Gifts<br>
                             {coinValue} - Münzwert des Gifts
@@ -476,9 +476,9 @@
 
                     <div class="config-group">
                         <label class="config-label" for="craftedItemTemplate">Crafted Item Prompt Template</label>
-                        <div class="config-description">Prompt für gecraftete Items (Kombinationen)</div>
-                        <textarea id="craftedItemTemplate" name="craftedItemTemplate" rows="4" placeholder="Leer lassen für Standard-Prompt"></textarea>
-                        <div class="prompt-placeholder">
+                        <div class="config-description" id="crafted-template-desc">Prompt für gecraftete Items (Kombinationen)</div>
+                        <textarea id="craftedItemTemplate" name="craftedItemTemplate" rows="4" placeholder="Leer lassen für Standard-Prompt" aria-describedby="crafted-template-desc crafted-template-placeholders"></textarea>
+                        <div class="prompt-placeholder" id="crafted-template-placeholders">
                             <strong>Verfügbare Platzhalter:</strong><br>
                             {itemA} - Name des ersten Items<br>
                             {itemB} - Name des zweiten Items<br>
@@ -731,7 +731,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">Neues Item erstellen</h2>
-                <button class="modal-close" onclick="closeCreateItemModal()">×</button>
+                <button class="modal-close" onclick="closeCreateItemModal()" aria-label="Schließen">×</button>
             </div>
             <form id="create-item-form">
                 <div class="config-group">

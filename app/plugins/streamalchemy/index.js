@@ -148,6 +148,14 @@ class StreamAlchemyPlugin {
      * Register Express routes
      */
     registerRoutes() {
+        // Validation helpers
+        const validateUUID = (id) => {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            return uuidRegex.test(id);
+        };
+        
+        const VALID_RARITIES = ['Common', 'Rare', 'Legendary', 'Mythic'];
+        
         // Serve UI HTML
         this.api.registerRoute('GET', '/streamalchemy/ui', (req, res) => {
             try {
@@ -333,8 +341,7 @@ class StreamAlchemyPlugin {
                 }
                 
                 // Validate rarity
-                const validRarities = ['Common', 'Rare', 'Legendary', 'Mythic'];
-                if (!validRarities.includes(rarity)) {
+                if (!VALID_RARITIES.includes(rarity)) {
                     return res.status(400).json({
                         success: false,
                         error: 'Invalid rarity. Must be one of: Common, Rare, Legendary, Mythic'
@@ -387,8 +394,7 @@ class StreamAlchemyPlugin {
                 const updates = req.body;
                 
                 // Validate itemId format (UUID v4)
-                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-                if (!uuidRegex.test(itemId)) {
+                if (!validateUUID(itemId)) {
                     return res.status(400).json({
                         success: false,
                         error: 'Invalid item ID format'
@@ -408,8 +414,7 @@ class StreamAlchemyPlugin {
                 
                 // Validate rarity if provided
                 if (updates.rarity !== undefined) {
-                    const validRarities = ['Common', 'Rare', 'Legendary', 'Mythic'];
-                    if (!validRarities.includes(updates.rarity)) {
+                    if (!VALID_RARITIES.includes(updates.rarity)) {
                         return res.status(400).json({
                             success: false,
                             error: 'Invalid rarity. Must be one of: Common, Rare, Legendary, Mythic'
@@ -457,8 +462,7 @@ class StreamAlchemyPlugin {
                 const { itemId } = req.params;
                 
                 // Validate itemId format (UUID v4)
-                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-                if (!uuidRegex.test(itemId)) {
+                if (!validateUUID(itemId)) {
                     return res.status(400).json({
                         success: false,
                         error: 'Invalid item ID format'
