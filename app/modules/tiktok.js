@@ -731,7 +731,14 @@ class TikTokConnector extends EventEmitter {
             
             // Social events can be follow, share, etc.
             // We need to check the displayType or action field
-            if (data.displayType === 'pm_main_follow_message_viewer_2' || data.action === 1) {
+            // Enhanced follow detection to handle various TikTok API patterns
+            const isFollow = 
+                data.displayType === 'pm_main_follow_message_viewer_2' || 
+                data.displayType === 'pm_mt_guidance_viewer_follow' ||
+                data.displayType?.includes('follow') ||
+                data.action === 1;
+            
+            if (isFollow) {
                 this.stats.followers++;
 
                 const userData = this.extractUserData(data);
@@ -745,6 +752,9 @@ class TikTokConnector extends EventEmitter {
                 this.handleEvent('follow', eventData);
                 this.db.logEvent('follow', eventData.username, eventData);
                 this.broadcastStats();
+            } else {
+                // Log unrecognized social event types for debugging
+                this.logger.debug(`Unrecognized social event type: displayType="${data.displayType}", action=${data.action}`);
             }
         });
 
