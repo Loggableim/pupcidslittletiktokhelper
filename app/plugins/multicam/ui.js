@@ -5,6 +5,8 @@ let state = {
     scenes: [],
     locked: false
 };
+let config = null;
+let giftCatalog = [];
 
 // Socket.io Events
 socket.on('connect', () => {
@@ -68,6 +70,17 @@ function updateSceneSelect(scenes) {
         option.textContent = scene;
         select.appendChild(option);
     }
+
+    // Also update gift-scene-select
+    const giftSceneSelect = document.getElementById('gift-scene-select');
+    giftSceneSelect.innerHTML = '<option value="">Select Scene...</option>';
+    
+    for (const scene of scenes) {
+        const option = document.createElement('option');
+        option.value = scene;
+        option.textContent = scene;
+        giftSceneSelect.appendChild(option);
+    }
 }
 
 // State laden
@@ -92,11 +105,21 @@ async function loadConfig() {
         const res = await fetch('/api/multicam/config');
         const data = await res.json();
         if (data.success) {
-            renderHotButtons(data.config.ui.hotButtons);
+            config = data.config;
+            renderHotButtons(config.ui.hotButtons);
+            updateConnectionSettings(config.obs);
+            renderGiftMappings(config.mapping.gifts);
         }
     } catch (error) {
         console.error('Failed to load config:', error);
     }
+}
+
+// Update connection settings in UI
+function updateConnectionSettings(obsConfig) {
+    document.getElementById('obs-host').value = obsConfig.host || '127.0.0.1';
+    document.getElementById('obs-port').value = obsConfig.port || 4455;
+    document.getElementById('obs-password').value = obsConfig.password || '';
 }
 
 // Hot Buttons rendern
@@ -135,7 +158,15 @@ async function executeHotButton(btn) {
 // Connect OBS
 async function connect() {
     try {
-        const res = await fetch('/api/multicam/connect', { method: 'POST' });
+        const host = document.getElementById('obs-host').value;
+        const port = parseInt(document.getElementById('obs-port').value);
+        const password = document.getElementById('obs-password').value;
+
+        const res = await fetch('/api/multicam/connect-with-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ host, port, password })
+        });
         const data = await res.json();
         if (!data.success) {
             alert(`Connection failed: ${data.error}`);
@@ -213,10 +244,200 @@ function addLogEntry(data) {
     }
 }
 
+// Save OBS Settings
+async function saveOBSSettings() {
+    try {
+        const host = document.getElementById('obs-host').value;
+        const port = parseInt(document.getElementById('obs-port').value);
+        const password = document.getElementById('obs-password').value;
+
+        const updatedConfig = {
+            ...config,
+            obs: {
+                ...config.obs,
+                host,
+                port,
+                password
+            }
+        };
+
+        const res = await fetch('/api/multicam/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedConfig)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            config = data.config;
+            alert('OBS settings saved successfully!');
+        } else {
+            alert(`Failed to save settings: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Save settings error:', error);
+        alert('Failed to save settings');
+    }
+}
+
+// Load Gift Catalog
+async function loadGiftCatalog() {
+    try {
+        const res = await fetch('/api/multicam/gift-catalog');
+        const data = await res.json();
+        if (data.success) {
+            giftCatalog = data.gifts;
+            updateGiftSelect(giftCatalog);
+        }
+    } catch (error) {
+        console.error('Failed to load gift catalog:', error);
+    }
+}
+
+// Update Gift Select
+function updateGiftSelect(gifts) {
+    const select = document.getElementById('gift-select');
+    select.innerHTML = '<option value="">Select Gift...</option>';
+
+    for (const gift of gifts) {
+        const option = document.createElement('option');
+        option.value = gift.name;
+        option.textContent = `${gift.name} (${gift.coins || 0} coins)`;
+        select.appendChild(option);
+    }
+}
+
+// Render Gift Mappings
+function renderGiftMappings(mappings) {
+    const container = document.getElementById('gift-mappings-container');
+    container.innerHTML = '';
+
+    if (!mappings || Object.keys(mappings).length === 0) {
+        container.innerHTML = '<p style="color: #666; font-size: 13px;">No gift mappings configured yet.</p>';
+        return;
+    }
+
+    for (const [giftName, mapping] of Object.entries(mappings)) {
+        const item = document.createElement('div');
+        item.className = 'gift-mapping-item';
+        
+        const minCoins = mapping.minCoins || 0;
+        item.innerHTML = `
+            <div class="gift-mapping-info">
+                <span class="gift-name">${giftName}</span>
+                <span>→</span>
+                <span class="scene-target">${mapping.target}</span>
+                <span class="coins-info">(min: ${minCoins} coins)</span>
+            </div>
+            <button class="remove-mapping-btn" onclick="removeGiftMapping('${giftName}')">Remove</button>
+        `;
+        
+        container.appendChild(item);
+    }
+}
+
+// Add Gift Mapping
+async function addGiftMapping() {
+    try {
+        const giftName = document.getElementById('gift-select').value;
+        const targetScene = document.getElementById('gift-scene-select').value;
+        const minCoins = parseInt(document.getElementById('gift-min-coins').value) || 0;
+
+        if (!giftName) {
+            alert('Please select a gift');
+            return;
+        }
+
+        if (!targetScene) {
+            alert('Please select a target scene');
+            return;
+        }
+
+        const updatedConfig = {
+            ...config,
+            mapping: {
+                ...config.mapping,
+                gifts: {
+                    ...config.mapping.gifts,
+                    [giftName]: {
+                        action: 'switchScene',
+                        target: targetScene,
+                        minCoins: minCoins
+                    }
+                }
+            }
+        };
+
+        const res = await fetch('/api/multicam/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedConfig)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            config = data.config;
+            renderGiftMappings(config.mapping.gifts);
+            alert('Gift mapping added successfully!');
+            
+            // Reset form
+            document.getElementById('gift-select').value = '';
+            document.getElementById('gift-scene-select').value = '';
+            document.getElementById('gift-min-coins').value = '1';
+        } else {
+            alert(`Failed to add mapping: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Add gift mapping error:', error);
+        alert('Failed to add gift mapping');
+    }
+}
+
+// Remove Gift Mapping
+async function removeGiftMapping(giftName) {
+    try {
+        if (!confirm(`Remove mapping for "${giftName}"?`)) {
+            return;
+        }
+
+        const updatedGifts = { ...config.mapping.gifts };
+        delete updatedGifts[giftName];
+
+        const updatedConfig = {
+            ...config,
+            mapping: {
+                ...config.mapping,
+                gifts: updatedGifts
+            }
+        };
+
+        const res = await fetch('/api/multicam/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedConfig)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            config = data.config;
+            renderGiftMappings(config.mapping.gifts);
+        } else {
+            alert(`Failed to remove mapping: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Remove gift mapping error:', error);
+        alert('Failed to remove gift mapping');
+    }
+}
+
 // Set up event listeners
 document.getElementById('obs-connect-btn').addEventListener('click', connect);
 document.getElementById('obs-disconnect-btn').addEventListener('click', disconnect);
 document.getElementById('switch-scene-btn').addEventListener('click', switchToSelected);
+document.getElementById('obs-save-settings-btn').addEventListener('click', saveOBSSettings);
+document.getElementById('add-gift-mapping-btn').addEventListener('click', addGiftMapping);
+document.getElementById('refresh-gifts-btn').addEventListener('click', loadGiftCatalog);
 
 // Initial load
 loadState();
+loadGiftCatalog();
