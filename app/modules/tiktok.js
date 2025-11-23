@@ -732,9 +732,14 @@ class TikTokConnector extends EventEmitter {
             // Social events can be follow, share, etc.
             // We need to check the displayType or action field
             // Enhanced follow detection to handle various TikTok API patterns
+            // Check for specific known patterns first, then fall back to pattern matching
             const isFollow = data.displayType === 'pm_main_follow_message_viewer_2' ||
                              data.displayType === 'pm_mt_guidance_viewer_follow' ||
-                             data.displayType?.includes('follow') ||
+                             (data.displayType && (
+                                 data.displayType.includes('_follow') ||
+                                 data.displayType.includes('follow_message') ||
+                                 data.displayType.includes('follow_viewer')
+                             )) ||
                              data.action === 1;
             
             if (isFollow) {
