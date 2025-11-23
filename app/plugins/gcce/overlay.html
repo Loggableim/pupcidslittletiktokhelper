@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="/gcce/style.css">
 </head>
 <body>
+    <!-- Command Input Notifications -->
+    <div id="commandInputNotifications" class="command-input-notifications"></div>
+
     <!-- Command Result Messages -->
     <div id="commandMessages" class="command-messages"></div>
 
@@ -38,6 +41,50 @@
         const socket = io();
         
         // ===== MESSAGE DISPLAY =====
+        
+        /**
+         * Display a command input notification
+         */
+        function displayCommandInput(data) {
+            const container = document.getElementById('commandInputNotifications');
+            const notification = document.createElement('div');
+            notification.className = 'command-input-notification';
+            
+            // Create notification content
+            notification.innerHTML = `
+                <div class="command-input-content">
+                    <div class="command-input-icon">💬</div>
+                    <div class="command-input-details">
+                        <div class="command-input-user">${escapeHtml(data.username)}</div>
+                        <div class="command-input-text">${escapeHtml(data.command)}</div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Remove after duration
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.remove();
+                }, 500);
+            }, 3000);
+        }
+        
+        /**
+         * Escape HTML to prevent XSS
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
         
         /**
          * Display a command result message
@@ -188,6 +235,14 @@
         }
 
         // ===== SOCKET EVENT HANDLERS =====
+
+        /**
+         * Handle command input notification
+         */
+        socket.on('gcce:command_input', (data) => {
+            console.log('GCCE command input:', data);
+            displayCommandInput(data);
+        });
 
         /**
          * Handle command result from GCCE

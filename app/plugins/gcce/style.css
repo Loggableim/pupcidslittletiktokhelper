@@ -25,6 +25,81 @@ body {
     display: none !important;
 }
 
+/* ===== COMMAND INPUT NOTIFICATIONS ===== */
+
+.command-input-notifications {
+    position: fixed;
+    top: 80px;
+    right: 80px;
+    width: 450px;
+    max-height: 600px;
+    overflow-y: auto;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.command-input-notification {
+    background: linear-gradient(135deg, rgba(30, 30, 45, 0.95), rgba(20, 20, 35, 0.95));
+    border: 2px solid rgba(76, 175, 80, 0.6);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 30px rgba(76, 175, 80, 0.3);
+    opacity: 0;
+    transform: translateX(100px);
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.command-input-notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.command-input-content {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    gap: 15px;
+}
+
+.command-input-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.command-input-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.command-input-user {
+    font-size: 14px;
+    font-weight: bold;
+    color: #4CAF50;
+    margin-bottom: 4px;
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.command-input-text {
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    color: #E0E0E0;
+    font-weight: 600;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
 /* ===== COMMAND MESSAGES ===== */
 
 .command-messages {
@@ -290,7 +365,8 @@ body {
 
 .help-panel,
 .error-container,
-.command-message {
+.command-message,
+.command-input-notification {
     will-change: transform, opacity;
     backface-visibility: hidden;
     -webkit-font-smoothing: antialiased;
