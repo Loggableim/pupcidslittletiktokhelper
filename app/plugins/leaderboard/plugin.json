@@ -1,0 +1,16 @@
+{
+  "id": "leaderboard",
+  "name": "Leaderboard",
+  "version": "1.0.0",
+  "description": "Real-time leaderboard for top gifters with session and all-time tracking. Displays top contributors as an OBS overlay.",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": true,
+  "type": "overlay",
+  "permissions": [
+    "socket.io",
+    "routes",
+    "tiktok-events",
+    "database"
+  ]
+}
