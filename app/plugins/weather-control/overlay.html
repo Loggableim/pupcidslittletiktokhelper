@@ -145,8 +145,8 @@
 
     <!-- Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
-    <!-- GSAP for smooth animations -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <!-- GSAP for smooth animations (served from local node_modules) -->
+    <script src="/gsap/gsap.min.js"></script>
 
     <!-- Weather Engine -->
     <script>
@@ -156,6 +156,25 @@
          * GPU-accelerated weather effects with GSAP animations
          * Supports: rain, snow, storm, fog, thunder, sunbeam, glitchclouds
          */
+
+        // Check if GSAP is loaded
+        if (typeof gsap === 'undefined') {
+            console.error('❌ GSAP library failed to load! Animations will not work.');
+            console.error('Please ensure /gsap/gsap.min.js is accessible.');
+            // Show error message on screen using safe DOM manipulation
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,0.9);color:white;padding:20px;border-radius:10px;font-family:monospace;text-align:center;z-index:99999;';
+            const title = document.createElement('strong');
+            title.textContent = '⚠️ GSAP Loading Error';
+            errorDiv.appendChild(title);
+            errorDiv.appendChild(document.createElement('br'));
+            const msg1 = document.createTextNode('The GSAP animation library failed to load.');
+            errorDiv.appendChild(msg1);
+            errorDiv.appendChild(document.createElement('br'));
+            const msg2 = document.createTextNode('Weather effects will not display.');
+            errorDiv.appendChild(msg2);
+            document.body.appendChild(errorDiv);
+        }
 
         // Configuration
         const config = {
@@ -178,6 +197,69 @@
         const debugInfo = document.getElementById('debug-info');
         const lightningFlash = document.getElementById('lightning-flash');
         const connectionStatus = document.getElementById('connection-status');
+
+        // Safe GSAP wrapper - fallback to setTimeout if GSAP not available
+        const safeGsap = (() => {
+            // Helper function to apply properties to target
+            // GSAP-specific properties to exclude from direct assignment (GSAP 3.x)
+            const gsapProps = ['duration', 'delay', 'ease', 'onComplete', 'repeat', 'yoyo', 'stagger', 'yoyoEase', 'onStart', 'onUpdate', 'onRepeat', 'repeatDelay'];
+            
+            function applyProperties(target, vars) {
+                Object.keys(vars).forEach(key => {
+                    if (!gsapProps.includes(key)) {
+                        if (typeof target === 'object' && target !== null) {
+                            try {
+                                // Check if target is a DOM element with a style property
+                                if (target.style && typeof target.style === 'object') {
+                                    // Apply CSS properties via style
+                                    target.style[key] = vars[key];
+                                } else {
+                                    // Apply directly to object (for plain objects)
+                                    target[key] = vars[key];
+                                }
+                            } catch (error) {
+                                // Silently ignore invalid property assignments
+                                console.debug(`Could not apply property ${key} to target:`, error);
+                            }
+                        }
+                    }
+                });
+            }
+            
+            return {
+                to: (target, vars) => {
+                    if (typeof gsap !== 'undefined') {
+                        return gsap.to(target, vars);
+                    } else {
+                        // Fallback: apply properties directly without animation
+                        // In the fallback, we skip the "animation" so we apply immediately
+                        // The delay represents when the animation would start, so we delay the property application
+                        const applyDelay = (vars.delay || 0) * 1000;
+                        
+                        setTimeout(() => {
+                            applyProperties(target, vars);
+                            
+                            // Call onComplete after duration (since animation is instant in fallback)
+                            if (vars.onComplete) {
+                                const completionDelay = (vars.duration || 0) * 1000;
+                                setTimeout(vars.onComplete, completionDelay);
+                            }
+                        }, applyDelay);
+                        
+                        return { kill: () => {} };
+                    }
+                },
+                set: (target, vars) => {
+                    if (typeof gsap !== 'undefined') {
+                        return gsap.set(target, vars);
+                    } else {
+                        // Fallback: apply properties directly
+                        applyProperties(target, vars);
+                        return { kill: () => {} };
+                    }
+                }
+            };
+        })();
 
         // Responsive canvas sizing with device pixel ratio support
         function resizeCanvas() {
@@ -532,7 +614,7 @@
                     log(`⛈️ Storm effect started (${particleCount} particles, ${duration}ms)`);
                     
                     // Darken screen slightly
-                    gsap.to(canvas.style, {
+                    safeGsap.to(canvas.style, {
                         filter: 'brightness(0.85)',
                         duration: 0.5,
                         ease: 'power2.inOut'
@@ -563,7 +645,7 @@
                     // Restore brightness if no more storms
                     const hasStorm = state.activeEffects.some(e => e.type === 'storm');
                     if (!hasStorm) {
-                        gsap.to(canvas.style, {
+                        safeGsap.to(canvas.style, {
                             filter: 'brightness(1)',
                             duration: 0.8,
                             ease: 'power2.inOut'
@@ -686,7 +768,7 @@
                     
                     // Fade in beams
                     effect.beams.forEach((beam, i) => {
-                        gsap.to(beam, {
+                        safeGsap.to(beam, {
                             opacity: 1,
                             duration: 1,
                             delay: i * 0.1,
@@ -700,7 +782,7 @@
                     // Fade out before stopping
                     effect.fadeTimerId = setTimeout(() => {
                         effect.beams.forEach((beam, i) => {
-                            gsap.to(beam, {
+                            safeGsap.to(beam, {
                                 opacity: 0,
                                 duration: 1,
                                 delay: i * 0.05,
@@ -860,12 +942,12 @@
             const maxOpacity = 0.3 + intensity * 0.6;
             
             // Main flash
-            gsap.to(lightningFlash, {
+            safeGsap.to(lightningFlash, {
                 opacity: maxOpacity,
                 duration: 0.05,
                 ease: 'power4.in',
                 onComplete: () => {
-                    gsap.to(lightningFlash, {
+                    safeGsap.to(lightningFlash, {
                         opacity: 0,
                         duration: 0.1,
                         ease: 'power2.out'
@@ -875,13 +957,13 @@
 
             // Sometimes double flash for realism
             if (Math.random() > 0.5) {
-                gsap.to(lightningFlash, {
+                safeGsap.to(lightningFlash, {
                     opacity: maxOpacity * 0.6,
                     duration: 0.04,
                     delay: 0.12,
                     ease: 'power4.in',
                     onComplete: () => {
-                        gsap.to(lightningFlash, {
+                        safeGsap.to(lightningFlash, {
                             opacity: 0,
                             duration: 0.08,
                             ease: 'power2.out'
@@ -896,7 +978,7 @@
             const shakeAmount = 6 * intensity;
             const shakeDuration = 0.5;
             
-            gsap.to(canvas, {
+            safeGsap.to(canvas, {
                 x: `+=${(Math.random() - 0.5) * shakeAmount}`,
                 y: `+=${(Math.random() - 0.5) * shakeAmount}`,
                 duration: 0.05,
@@ -904,7 +986,7 @@
                 yoyo: true,
                 ease: 'power1.inOut',
                 onComplete: () => {
-                    gsap.set(canvas, { x: 0, y: 0 });
+                    safeGsap.set(canvas, { x: 0, y: 0 });
                 }
             });
         }

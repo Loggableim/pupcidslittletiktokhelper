@@ -171,6 +171,9 @@ app.use((req, res, next) => {
 
 app.use(express.static('public'));
 
+// Serve GSAP library for overlays
+app.use('/gsap', express.static(path.join(__dirname, 'node_modules', 'gsap', 'dist')));
+
 // Serve TTS UI files (legacy support)
 app.use('/tts', express.static(path.join(__dirname, 'tts')));
 
