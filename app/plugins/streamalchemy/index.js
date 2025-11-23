@@ -129,6 +129,11 @@ class StreamAlchemyPlugin {
      * Register Express routes
      */
     registerRoutes() {
+        // Serve UI HTML
+        this.api.registerRoute('GET', '/streamalchemy/ui', (req, res) => {
+            res.sendFile(path.join(this.pluginDir, 'ui.html'));
+        });
+
         // Serve overlay HTML
         this.api.registerRoute('GET', '/streamalchemy/overlay', (req, res) => {
             res.sendFile(path.join(this.pluginDir, 'overlay.html'));

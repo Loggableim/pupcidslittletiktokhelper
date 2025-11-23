@@ -153,6 +153,11 @@ class GlobalChatCommandEngine {
      * Register Express routes
      */
     registerRoutes() {
+        // Serve UI HTML
+        this.api.registerRoute('GET', '/gcce/ui', (req, res) => {
+            res.sendFile(path.join(this.pluginDir, 'ui.html'));
+        });
+
         // Serve overlay HTML
         this.api.registerRoute('GET', '/gcce/overlay', (req, res) => {
             res.sendFile(path.join(this.pluginDir, 'overlay.html'));

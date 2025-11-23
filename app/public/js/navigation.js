@@ -293,6 +293,9 @@
             { icon: 'help-circle', label: 'Quiz Show', view: 'quiz-show', plugin: 'quiz-show' },
             { icon: 'award', label: 'Viewer XP', view: 'viewer-xp', plugin: 'viewer-xp' },
             { icon: 'cpu', label: 'Resources', view: 'resource-monitor', plugin: 'resource-monitor' },
+            { icon: 'flask-conical', label: 'Stream Alchemy', view: 'streamalchemy', plugin: 'streamalchemy' },
+            { icon: 'terminal', label: 'Chat Commands', view: 'gcce', plugin: 'gcce' },
+            { icon: 'printer', label: 'Thermal Printer', view: 'thermal-printer', plugin: 'thermal-printer' },
             { icon: 'plug', label: 'Plugins', view: 'plugins' },
             { icon: 'settings', label: 'Settings', view: 'settings' }
         ];
