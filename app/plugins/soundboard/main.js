@@ -37,7 +37,8 @@ class SoundboardManager extends EventEmitter {
             mp3Url: sound.mp3_url,
             volume: sound.volume || 1.0,
             animationUrl: sound.animation_url || null,
-            animationType: sound.animation_type || 'none'
+            animationType: sound.animation_type || 'none',
+            animationVolume: sound.animation_volume || 1.0
         } : null;
     }
 
@@ -54,26 +55,28 @@ class SoundboardManager extends EventEmitter {
             mp3Url: s.mp3_url,
             volume: s.volume || 1.0,
             animationUrl: s.animation_url || null,
-            animationType: s.animation_type || 'none'
+            animationType: s.animation_type || 'none',
+            animationVolume: s.animation_volume || 1.0
         }));
     }
 
     /**
      * Add or update gift sound
      */
-    setGiftSound(giftId, label, mp3Url, volume = 1.0, animationUrl = null, animationType = 'none') {
+    setGiftSound(giftId, label, mp3Url, volume = 1.0, animationUrl = null, animationType = 'none', animationVolume = 1.0) {
         const stmt = this.db.db.prepare(`
-            INSERT INTO gift_sounds (gift_id, label, mp3_url, volume, animation_url, animation_type)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO gift_sounds (gift_id, label, mp3_url, volume, animation_url, animation_type, animation_volume)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(gift_id) DO UPDATE SET
                 label = excluded.label,
                 mp3_url = excluded.mp3_url,
                 volume = excluded.volume,
                 animation_url = excluded.animation_url,
-                animation_type = excluded.animation_type
+                animation_type = excluded.animation_type,
+                animation_volume = excluded.animation_volume
         `);
 
-        const result = stmt.run(giftId, label, mp3Url, volume, animationUrl, animationType);
+        const result = stmt.run(giftId, label, mp3Url, volume, animationUrl, animationType, animationVolume);
         return result.lastInsertRowid || result.changes;
     }
 
@@ -128,13 +131,14 @@ class SoundboardManager extends EventEmitter {
         const animationData = {
             type: giftSound.animationType,
             url: giftSound.animationUrl,
+            volume: giftSound.animationVolume || 1.0,
             giftName: giftData.giftName || giftSound.label,
             username: giftData.username || 'Anonymous',
             giftImage: giftData.giftPictureUrl || null,
             timestamp: Date.now()
         };
 
-        console.log(`🎬 Playing gift animation: ${animationData.type} for ${animationData.giftName}`);
+        console.log(`🎬 Playing gift animation: ${animationData.type} for ${animationData.giftName} (volume: ${animationData.volume})`);
         this.io.emit('gift:animation', animationData);
     }
 
@@ -431,7 +435,7 @@ class SoundboardPlugin {
 
         // Add/update gift sound
         this.api.registerRoute('post', '/api/soundboard/gifts', (req, res) => {
-            const { giftId, label, mp3Url, volume, animationUrl, animationType } = req.body;
+            const { giftId, label, mp3Url, volume, animationUrl, animationType, animationVolume } = req.body;
 
             if (!giftId || !label || !mp3Url) {
                 return res.status(400).json({ success: false, error: 'giftId, label and mp3Url are required' });
@@ -444,7 +448,8 @@ class SoundboardPlugin {
                     mp3Url,
                     volume || 1.0,
                     animationUrl || null,
-                    animationType || 'none'
+                    animationType || 'none',
+                    animationVolume || 1.0
                 );
                 this.api.log(`🎵 Gift sound set: ${label} (ID: ${giftId})`, 'info');
                 res.json({ success: true, id });

@@ -215,7 +215,7 @@ async function loadGiftSounds() {
         tbody.innerHTML = '';
         
         if (gifts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">No gift sounds configured yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-gray-400">No gift sounds configured yet</td></tr>';
             return;
         }
         
@@ -248,6 +248,7 @@ async function loadGiftSounds() {
                 <td class="py-2 pr-4 text-sm truncate max-w-xs">${escapeHtml(gift.mp3Url)}</td>
                 <td class="py-2 pr-4">${gift.volume}</td>
                 <td class="py-2 pr-4">${animationInfo}</td>
+                <td class="py-2 pr-4">${gift.animationVolume || 1.0}</td>
                 <td class="py-2"></td>
             `;
             
@@ -281,6 +282,7 @@ async function addGiftSound() {
     const volume = document.getElementById('new-gift-volume').value;
     const animationUrl = document.getElementById('new-gift-animation-url').value;
     const animationType = document.getElementById('new-gift-animation-type').value;
+    const animationVolume = document.getElementById('new-gift-animation-volume').value;
     
     if (!giftId || !label || !url) {
         alert('Please select a gift from the catalog above and enter a sound URL!');
@@ -297,7 +299,8 @@ async function addGiftSound() {
                 mp3Url: url,
                 volume: parseFloat(volume),
                 animationUrl: animationUrl || null,
-                animationType: animationType || 'none'
+                animationType: animationType || 'none',
+                animationVolume: parseFloat(animationVolume)
             })
         });
         
@@ -460,6 +463,7 @@ function clearGiftSoundForm() {
     document.getElementById('new-gift-volume').value = '1.0';
     document.getElementById('new-gift-animation-url').value = '';
     document.getElementById('new-gift-animation-type').value = 'none';
+    document.getElementById('new-gift-animation-volume').value = '1.0';
 }
 
 // ========== GIFT CATALOG ==========
@@ -605,6 +609,7 @@ async function loadExistingGiftSound(giftId) {
             document.getElementById('new-gift-volume').value = existingGift.volume || 1.0;
             document.getElementById('new-gift-animation-url').value = existingGift.animationUrl || '';
             document.getElementById('new-gift-animation-type').value = existingGift.animationType || 'none';
+            document.getElementById('new-gift-animation-volume').value = existingGift.animationVolume || 1.0;
         }
     } catch (error) {
         console.error('Error loading existing gift sound:', error);
