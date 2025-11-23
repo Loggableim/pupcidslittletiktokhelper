@@ -15,167 +15,911 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--color-bg);
-            color: var(--color-text);
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
         .header {
-            margin-bottom: 30px;
-        }
-
-        h1 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: var(--color-text);
-        }
-
-        .description {
-            color: var(--color-text-muted);
-            font-size: 14px;
-        }
-
-        .section {
-            background: var(--color-surface);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            padding: 1.5rem;
+            background: var(--color-bg-secondary);
+            border-radius: 16px;
             border: 1px solid var(--color-border);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
         }
 
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: var(--color-text);
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-title h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .status-indicator {
             display: inline-block;
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .status-active {
             background-color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
         }
 
         .status-inactive {
             background-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
         }
 
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            font-size: 14px;
+        .card {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            background: var(--color-bg-tertiary);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h3 {
+            font-size: 1.25rem;
             font-weight: 600;
-            cursor: pointer;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--color-text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-bg-secondary);
+            color: var(--color-text-primary);
+            font-size: 0.875rem;
             transition: all 0.2s;
         }
 
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
         .btn-primary {
-            background: var(--color-primary);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
 
         .btn-primary:hover {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
-        .info-box {
-            background: var(--color-bg-secondary, rgba(59, 130, 246, 0.1));
-            border-left: 4px solid var(--color-primary);
-            padding: 16px;
+        .btn-secondary {
+            background: var(--color-bg-tertiary);
+            color: var(--color-text-primary);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-bg-hover);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .room-info {
+            background: var(--color-bg-secondary);
+            padding: 1rem;
             border-radius: 8px;
-            margin-top: 20px;
+            border: 1px solid var(--color-border);
+            margin-bottom: 1rem;
         }
 
-        .info-box p {
-            margin: 8px 0;
-            line-height: 1.6;
+        .room-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
         }
 
-        .feature-list {
-            list-style: none;
-            padding: 0;
+        .room-info-row:last-child {
+            margin-bottom: 0;
         }
 
-        .feature-list li {
-            padding: 12px 0;
-            border-bottom: 1px solid var(--color-border);
+        .room-info-label {
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            font-size: 0.875rem;
         }
 
-        .feature-list li:last-child {
-            border-bottom: none;
+        .room-info-value {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: var(--color-text-primary);
+            background: var(--color-bg-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .feature-list li::before {
-            content: "✓";
-            color: var(--color-primary);
-            font-weight: bold;
-            margin-right: 10px;
+        .copy-btn {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            background: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--color-bg-hover);
+        }
+
+        .guest-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .guest-card {
+            background: var(--color-bg-secondary);
+            border: 2px solid var(--color-border);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.2s;
+        }
+
+        .guest-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .guest-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .guest-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .guest-slot {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .guest-controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-tertiary);
+            color: var(--color-text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 70px;
+        }
+
+        .control-btn:hover {
+            background: var(--color-bg-hover);
+            transform: scale(1.05);
+        }
+
+        .control-btn.active {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+
+        .volume-control {
+            margin-top: 0.75rem;
+        }
+
+        .volume-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--color-bg-tertiary);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .volume-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .layout-btn {
+            padding: 1rem;
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-bg-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .layout-btn:hover {
+            border-color: #667eea;
+            background: var(--color-bg-hover);
+        }
+
+        .layout-btn.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .layout-preview {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: var(--color-bg-primary);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            display: grid;
+            gap: 2px;
+            padding: 4px;
+        }
+
+        .layout-preview.grid-2x2 {
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+        }
+
+        .layout-preview.grid-3x2 {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+        }
+
+        .layout-preview.solo {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        .layout-cell {
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--color-text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid;
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #3b82f6;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .guest-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .layout-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>
-                <span class="status-indicator status-inactive" id="statusIndicator"></span>
-                VDO.Ninja Multi-Guest Manager
-            </h1>
-            <p class="description">Manage multiple guests in your VDO.Ninja rooms with advanced controls</p>
-        </div>
-
-        <div class="section">
-            <h2 class="section-title">Room Management</h2>
-            <div id="roomControls">
-                <p style="color: var(--color-text-muted);">Loading room configuration...</p>
+            <div class="header-title">
+                <h1>
+                    <span class="status-indicator status-inactive" id="statusIndicator"></span>
+                    VDO.Ninja Multi-Guest Manager
+                </h1>
             </div>
         </div>
 
-        <div class="section">
-            <h2 class="section-title">Guest Control</h2>
-            <div id="guestControls">
-                <p style="color: var(--color-text-muted);">No guests connected</p>
+        <!-- Room Management Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3>🏠 Room Management</h3>
+            </div>
+            <div class="card-body">
+                <div id="roomSection">
+                    <!-- Create Room Form -->
+                    <div id="createRoomForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Room Name</label>
+                                <input type="text" id="roomNameInput" class="form-input" placeholder="My TikTok Stream">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Guests</label>
+                                <input type="number" id="maxGuestsInput" class="form-input" value="6" min="1" max="12">
+                            </div>
+                        </div>
+                        <button id="createRoomBtn" class="btn btn-primary">
+                            ✨ Create Room
+                        </button>
+                    </div>
+
+                    <!-- Active Room Info -->
+                    <div id="activeRoomInfo" style="display: none;">
+                        <div class="room-info">
+                            <div class="room-info-row">
+                                <span class="room-info-label">Room Name:</span>
+                                <span id="activeRoomName" class="room-info-value">-</span>
+                            </div>
+                            <div class="room-info-row">
+                                <span class="room-info-label">Director URL (for OBS):</span>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <span id="directorUrl" class="room-info-value">-</span>
+                                    <button class="copy-btn" onclick="copyToClipboard('directorUrl')">📋 Copy</button>
+                                </div>
+                            </div>
+                            <div class="room-info-row">
+                                <span class="room-info-label">Guest Invite URL:</span>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <span id="guestInviteUrl" class="room-info-value">-</span>
+                                    <button class="copy-btn" onclick="copyToClipboard('guestInviteUrl')">📋 Copy</button>
+                                </div>
+                            </div>
+                            <div class="room-info-row">
+                                <span class="room-info-label">Connected Guests:</span>
+                                <span id="guestCount">0 / 6</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <button id="closeRoomBtn" class="btn btn-danger">
+                                🔒 Close Room
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="section">
-            <h2 class="section-title">Available Features</h2>
-            <ul class="feature-list">
-                <li>Create and manage rooms</li>
-                <li>Add and remove guests</li>
-                <li>Audio and video control for each guest</li>
-                <li>Layout management</li>
-                <li>Real-time status monitoring</li>
-                <li>Multi-cam setup support</li>
-            </ul>
+        <!-- Guest Controls Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3>👥 Guest Controls</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button id="muteAllBtn" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.5rem 1rem;">
+                        🔇 Mute All
+                    </button>
+                    <button id="unmuteAllBtn" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.5rem 1rem;">
+                        🔊 Unmute All
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="guestsContainer">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👤</div>
+                        <p>No guests connected yet</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Share the Guest Invite URL to add guests to your room</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="info-box">
-            <p><strong>ℹ️ Note:</strong></p>
-            <p>This integration enables management of VDO.Ninja rooms directly from the dashboard.</p>
-            <p>API endpoints are available at <code>/api/vdoninja/*</code>.</p>
-            <p>Socket.io events are used for real-time updates.</p>
+        <!-- Layout Management Card -->
+        <div class="card">
+            <div class="card-header">
+                <h3>🎨 Layout Presets</h3>
+            </div>
+            <div class="card-body">
+                <div class="layout-grid">
+                    <div class="layout-btn" data-layout="Grid 2x2" onclick="changeLayout('Grid 2x2')">
+                        <div class="layout-preview grid-2x2">
+                            <div class="layout-cell"></div>
+                            <div class="layout-cell"></div>
+                            <div class="layout-cell"></div>
+                            <div class="layout-cell"></div>
+                        </div>
+                        <div>Grid 2x2</div>
+                    </div>
+                    <div class="layout-btn" data-layout="Grid 3x2" onclick="changeLayout('Grid 3x2')">
+                        <div class="layout-preview grid-3x2">
+                            <div class="layout-cell"></div>
+                            <div class="layout-cell"></div>
+                            <div class="layout-cell"></div>
+                            <div class="layout-cell"></div>
+                            <div class="layout-cell"></div>
+                            <div class="layout-cell"></div>
+                        </div>
+                        <div>Grid 3x2</div>
+                    </div>
+                    <div class="layout-btn" data-layout="Solo" onclick="changeLayout('Solo')">
+                        <div class="layout-preview solo">
+                            <div class="layout-cell"></div>
+                        </div>
+                        <div>Solo</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Alert -->
+        <div class="alert alert-info">
+            <strong>ℹ️ Quick Guide:</strong><br>
+            1. Create a room to get started<br>
+            2. Add the Director URL to OBS as a Browser Source (1920x1080)<br>
+            3. Share the Guest Invite URL with your guests<br>
+            4. Control guests in real-time from this dashboard
         </div>
     </div>
 
     <script>
         const socket = io();
-        
-        // Status-Indikator aktualisieren
-        function updateStatus(isActive) {
+        let activeRoom = null;
+        let guests = new Map();
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRoomStatus();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('createRoomBtn').addEventListener('click', createRoom);
+            document.getElementById('closeRoomBtn').addEventListener('click', closeRoom);
+            document.getElementById('muteAllBtn').addEventListener('click', muteAllGuests);
+            document.getElementById('unmuteAllBtn').addEventListener('click', unmuteAllGuests);
+
+            // Socket event listeners
+            socket.on('vdoninja:status', handleStatus);
+            socket.on('vdoninja:room-created', handleRoomCreated);
+            socket.on('vdoninja:room-closed', handleRoomClosed);
+            socket.on('vdoninja:guest-joined', handleGuestJoined);
+            socket.on('vdoninja:guest-left', handleGuestLeft);
+            socket.on('vdoninja:control-guest', handleGuestControl);
+            socket.on('vdoninja:layout-changed', handleLayoutChanged);
+        }
+
+        async function loadRoomStatus() {
+            try {
+                const response = await fetch('/api/vdoninja/status');
+                const data = await response.json();
+                if (data.success && data.status) {
+                    handleStatus({ success: true, status: data.status });
+                }
+            } catch (error) {
+                console.error('Failed to load room status:', error);
+            }
+        }
+
+        async function createRoom() {
+            const roomName = document.getElementById('roomNameInput').value.trim();
+            const maxGuests = parseInt(document.getElementById('maxGuestsInput').value);
+
+            if (!roomName) {
+                alert('Please enter a room name');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/vdoninja/rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roomName, maxGuests })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    console.log('Room created:', data.room);
+                } else {
+                    alert('Failed to create room: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error creating room:', error);
+                alert('Failed to create room');
+            }
+        }
+
+        async function closeRoom() {
+            if (!confirm('Are you sure you want to close this room?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/vdoninja/room/close', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    alert('Failed to close room: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error closing room:', error);
+                alert('Failed to close room');
+            }
+        }
+
+        async function muteAllGuests() {
+            try {
+                await fetch('/api/vdoninja/guests/mute-all', { method: 'POST' });
+            } catch (error) {
+                console.error('Error muting all guests:', error);
+            }
+        }
+
+        async function unmuteAllGuests() {
+            try {
+                await fetch('/api/vdoninja/guests/unmute-all', { method: 'POST' });
+            } catch (error) {
+                console.error('Error unmuting all guests:', error);
+            }
+        }
+
+        async function changeLayout(layoutName) {
+            try {
+                await fetch('/api/vdoninja/layout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ layout: layoutName, transition: 'fade' })
+                });
+            } catch (error) {
+                console.error('Error changing layout:', error);
+            }
+        }
+
+        async function controlGuest(slot, action, params = {}) {
+            try {
+                await fetch(`/api/vdoninja/guests/${slot}/control`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, ...params })
+                });
+            } catch (error) {
+                console.error('Error controlling guest:', error);
+            }
+        }
+
+        function handleStatus(data) {
+            if (data.success && data.status) {
+                const isActive = data.status.hasActiveRoom;
+                updateStatusIndicator(isActive);
+
+                if (isActive) {
+                    activeRoom = data.status.activeRoom;
+                    document.getElementById('createRoomForm').style.display = 'none';
+                    document.getElementById('activeRoomInfo').style.display = 'block';
+                    
+                    document.getElementById('activeRoomName').textContent = activeRoom.roomName;
+                    document.getElementById('directorUrl').textContent = activeRoom.directorUrl || 'N/A';
+                    document.getElementById('guestInviteUrl').textContent = activeRoom.guestInviteUrl || 'N/A';
+                    document.getElementById('guestCount').textContent = `${activeRoom.guestCount || 0} / ${activeRoom.maxGuests}`;
+
+                    // Load guests
+                    if (data.status.guests) {
+                        guests.clear();
+                        data.status.guests.forEach(guest => {
+                            guests.set(guest.slot, guest);
+                        });
+                        renderGuests();
+                    }
+                } else {
+                    activeRoom = null;
+                    document.getElementById('createRoomForm').style.display = 'block';
+                    document.getElementById('activeRoomInfo').style.display = 'none';
+                    guests.clear();
+                    renderGuests();
+                }
+            }
+        }
+
+        function handleRoomCreated(data) {
+            console.log('Room created event:', data);
+            loadRoomStatus();
+        }
+
+        function handleRoomClosed() {
+            console.log('Room closed event');
+            loadRoomStatus();
+        }
+
+        function handleGuestJoined(data) {
+            console.log('Guest joined:', data);
+            guests.set(data.slot, {
+                slot: data.slot,
+                name: data.guestName,
+                streamId: data.streamId,
+                audioEnabled: data.audioEnabled,
+                videoEnabled: data.videoEnabled,
+                volume: data.volume || 1.0
+            });
+            renderGuests();
+            updateGuestCount();
+        }
+
+        function handleGuestLeft(data) {
+            console.log('Guest left:', data);
+            guests.delete(data.slot);
+            renderGuests();
+            updateGuestCount();
+        }
+
+        function handleGuestControl(data) {
+            console.log('Guest control:', data);
+            const guest = guests.get(data.slot);
+            if (guest) {
+                if ('audioEnabled' in data) guest.audioEnabled = data.audioEnabled;
+                if ('videoEnabled' in data) guest.videoEnabled = data.videoEnabled;
+                if ('volume' in data) guest.volume = data.volume;
+                renderGuests();
+            }
+        }
+
+        function handleLayoutChanged(data) {
+            console.log('Layout changed:', data);
+            // Update active layout button
+            document.querySelectorAll('.layout-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.layout === data.layout) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        function renderGuests() {
+            const container = document.getElementById('guestsContainer');
+            
+            if (guests.size === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👤</div>
+                        <p>No guests connected yet</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Share the Guest Invite URL to add guests to your room</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const guestCards = Array.from(guests.values()).map(guest => `
+                <div class="guest-card">
+                    <div class="guest-header">
+                        <span class="guest-name">${guest.name}</span>
+                        <span class="guest-slot">Slot ${guest.slot}</span>
+                    </div>
+                    <div class="guest-controls">
+                        <button class="control-btn ${guest.audioEnabled ? 'active' : ''}" 
+                                onclick="toggleAudio(${guest.slot})">
+                            ${guest.audioEnabled ? '🔊' : '🔇'} Audio
+                        </button>
+                        <button class="control-btn ${guest.videoEnabled ? 'active' : ''}"
+                                onclick="toggleVideo(${guest.slot})">
+                            ${guest.videoEnabled ? '📹' : '📵'} Video
+                        </button>
+                        <button class="control-btn" onclick="soloGuest(${guest.slot})">
+                            ⭐ Solo
+                        </button>
+                        <button class="control-btn" onclick="kickGuest(${guest.slot})">
+                            ❌ Kick
+                        </button>
+                    </div>
+                    <div class="volume-control">
+                        <label class="form-label" style="margin-bottom: 0.25rem;">
+                            Volume: ${Math.round(guest.volume * 100)}%
+                        </label>
+                        <input type="range" class="volume-slider" 
+                               min="0" max="100" value="${guest.volume * 100}"
+                               onchange="setVolume(${guest.slot}, this.value / 100)">
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `<div class="guest-grid">${guestCards}</div>`;
+        }
+
+        function toggleAudio(slot) {
+            const guest = guests.get(slot);
+            if (!guest) return;
+            
+            if (guest.audioEnabled) {
+                controlGuest(slot, 'mute', { audioEnabled: false });
+            } else {
+                controlGuest(slot, 'unmute', { audioEnabled: true });
+            }
+        }
+
+        function toggleVideo(slot) {
+            const guest = guests.get(slot);
+            if (!guest) return;
+            
+            if (guest.videoEnabled) {
+                controlGuest(slot, 'mute', { videoEnabled: false });
+            } else {
+                controlGuest(slot, 'unmute', { videoEnabled: true });
+            }
+        }
+
+        function setVolume(slot, volume) {
+            controlGuest(slot, 'volume', { volume: parseFloat(volume) });
+        }
+
+        function soloGuest(slot) {
+            controlGuest(slot, 'solo', { duration: 10000 });
+        }
+
+        function kickGuest(slot) {
+            const guest = guests.get(slot);
+            if (!guest) return;
+            
+            if (confirm(`Kick ${guest.name}?`)) {
+                controlGuest(slot, 'kick', { reason: 'Kicked by host' });
+            }
+        }
+
+        function updateGuestCount() {
+            if (activeRoom) {
+                document.getElementById('guestCount').textContent = 
+                    `${guests.size} / ${activeRoom.maxGuests}`;
+            }
+        }
+
+        function updateStatusIndicator(isActive) {
             const indicator = document.getElementById('statusIndicator');
             if (isActive) {
                 indicator.classList.remove('status-inactive');
@@ -186,17 +930,25 @@
             }
         }
 
-        // VDO.Ninja-Status abrufen
-        socket.emit('vdoninja:get-status');
-        
-        socket.on('vdoninja:status', (data) => {
-            if (data.success && data.status) {
-                updateStatus(data.status.isActive || false);
-            }
-        });
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
 
-        // Initial als inaktiv markieren
-        updateStatus(false);
+        // Initial status check
+        socket.emit('vdoninja:get-status');
     </script>
 </body>
 </html>
