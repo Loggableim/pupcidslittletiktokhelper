@@ -301,7 +301,7 @@ class MultiCamPlugin {
     registerRoutes() {
         // UI route
         this.api.registerRoute('GET', '/multicam/ui', (req, res) => {
-            res.sendFile(this.api.getPluginDir() + '/ui.html');
+            res.sendFile(path.join(this.api.getPluginDir(), 'ui.html'));
         });
 
         // GET /api/multicam/config
