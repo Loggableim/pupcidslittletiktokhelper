@@ -395,18 +395,24 @@ class MultiCamPlugin {
         this.api.registerRoute('GET', '/api/multicam/gift-catalog', async (req, res) => {
             try {
                 const db = this.api.getDatabase();
+                
+                if (!db) {
+                    throw new Error('Database not available');
+                }
+
                 const stmt = db.prepare('SELECT id, name, diamond_count as coins FROM gift_catalog ORDER BY diamond_count DESC');
                 const gifts = stmt.all();
 
                 res.json({
                     success: true,
-                    gifts: gifts
+                    gifts: gifts || []
                 });
             } catch (error) {
                 this.api.log(`Multi-Cam: Failed to get gift catalog: ${error.message}`, 'error');
                 res.status(500).json({
                     success: false,
-                    error: error.message
+                    error: error.message,
+                    gifts: []
                 });
             }
         });

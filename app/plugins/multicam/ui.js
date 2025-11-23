@@ -8,6 +8,13 @@ let state = {
 let config = null;
 let giftCatalog = [];
 
+// Default OBS configuration
+const DEFAULT_OBS_CONFIG = {
+    host: '127.0.0.1',
+    port: 4455,
+    password: ''
+};
+
 // Socket.io Events
 socket.on('connect', () => {
     console.log('Socket connected');
@@ -124,11 +131,11 @@ async function loadConfig() {
 // Update connection settings in UI
 function updateConnectionSettings(obsConfig) {
     if (!obsConfig) {
-        obsConfig = { host: '127.0.0.1', port: 4455, password: '' };
+        obsConfig = DEFAULT_OBS_CONFIG;
     }
-    document.getElementById('obs-host').value = obsConfig.host || '127.0.0.1';
-    document.getElementById('obs-port').value = obsConfig.port || 4455;
-    document.getElementById('obs-password').value = obsConfig.password || '';
+    document.getElementById('obs-host').value = obsConfig.host || DEFAULT_OBS_CONFIG.host;
+    document.getElementById('obs-port').value = obsConfig.port || DEFAULT_OBS_CONFIG.port;
+    document.getElementById('obs-password').value = obsConfig.password || DEFAULT_OBS_CONFIG.password;
 }
 
 // Hot Buttons rendern
@@ -260,10 +267,15 @@ async function saveOBSSettings() {
         const port = parseInt(document.getElementById('obs-port').value);
         const password = document.getElementById('obs-password').value;
 
+        if (!config) {
+            alert('Configuration not loaded. Please refresh the page.');
+            return;
+        }
+
         const updatedConfig = {
             ...config,
             obs: {
-                ...config.obs,
+                ...(config.obs || {}),
                 host,
                 port,
                 password
@@ -362,12 +374,17 @@ async function addGiftMapping() {
             return;
         }
 
+        if (!config) {
+            alert('Configuration not loaded. Please refresh the page.');
+            return;
+        }
+
         const updatedConfig = {
             ...config,
             mapping: {
-                ...config.mapping,
+                ...(config.mapping || {}),
                 gifts: {
-                    ...config.mapping.gifts,
+                    ...(config.mapping?.gifts || {}),
                     [giftName]: {
                         action: 'switchScene',
                         target: targetScene,
@@ -386,7 +403,7 @@ async function addGiftMapping() {
         const data = await res.json();
         if (data.success) {
             config = data.config;
-            renderGiftMappings(config.mapping.gifts);
+            renderGiftMappings(config.mapping?.gifts || {});
             alert('Gift mapping added successfully!');
             
             // Reset form
@@ -409,13 +426,18 @@ async function removeGiftMapping(giftName) {
             return;
         }
 
-        const updatedGifts = { ...config.mapping.gifts };
+        if (!config) {
+            alert('Configuration not loaded. Please refresh the page.');
+            return;
+        }
+
+        const updatedGifts = { ...(config.mapping?.gifts || {}) };
         delete updatedGifts[giftName];
 
         const updatedConfig = {
             ...config,
             mapping: {
-                ...config.mapping,
+                ...(config.mapping || {}),
                 gifts: updatedGifts
             }
         };
@@ -429,7 +451,7 @@ async function removeGiftMapping(giftName) {
         const data = await res.json();
         if (data.success) {
             config = data.config;
-            renderGiftMappings(config.mapping.gifts);
+            renderGiftMappings(config.mapping?.gifts || {});
         } else {
             alert(`Failed to remove mapping: ${data.error}`);
         }
