@@ -161,6 +161,15 @@ Lists all available commands.
 
 ### Emitted by GCCE
 
+- `gcce:command_input` - Command input notification (shows when user types a command)
+  ```javascript
+  {
+      command: string,      // The command that was typed (e.g., "/help")
+      username: string,     // Username who typed the command
+      timestamp: number     // Timestamp of the command
+  }
+  ```
+
 - `gcce:command_result` - Command execution result
   ```javascript
   {
@@ -191,9 +200,10 @@ Height: 1080
 ```
 
 The overlay displays:
-- Command success/error messages
-- Help panels with command lists
-- Error notifications
+- Command input notifications (top right) - Shows when users type commands
+- Command success/error messages (bottom center)
+- Help panels with command lists (center)
+- Error notifications (top center)
 - Integration with plugin-specific overlays (e.g., StreamAlchemy)
 
 ## Configuration

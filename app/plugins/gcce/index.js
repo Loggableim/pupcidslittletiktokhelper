@@ -299,6 +299,11 @@ class GlobalChatCommandEngine {
                 rawData: data
             };
 
+            // Broadcast command input to overlay
+            if (this.pluginConfig.enableOverlayMessages) {
+                this.broadcastCommandInput(message, context);
+            }
+
             // Parse and execute
             const result = await this.parser.parse(message, context);
 
@@ -315,6 +320,19 @@ class GlobalChatCommandEngine {
         } catch (error) {
             this.api.log(`[GCCE] Error handling chat message: ${error.message}`, 'error');
         }
+    }
+
+    /**
+     * Broadcast command input to overlay
+     * @param {string} command - The command that was typed
+     * @param {Object} context - Execution context
+     */
+    broadcastCommandInput(command, context) {
+        this.api.emit('gcce:command_input', {
+            command: command,
+            username: context.username,
+            timestamp: context.timestamp
+        });
     }
 
     /**
