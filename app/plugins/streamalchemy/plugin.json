@@ -6,6 +6,9 @@
   "author": "Pup Cid",
   "entry": "index.js",
   "enabled": true,
+  "dependencies": {
+    "optional": ["gcce"]
+  },
   "permissions": [
     "socket.io",
     "routes",

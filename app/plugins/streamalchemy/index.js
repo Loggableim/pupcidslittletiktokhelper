@@ -587,35 +587,18 @@ class StreamAlchemyPlugin {
     }
 
     /**
-     * Handle chat commands (structure prepared for future implementation)
+     * Legacy chat command handler structure (kept for backward compatibility)
+     * Modern commands are handled via GCCE integration
      * @param {string} userId - User ID
      * @param {string} command - Command name
      * @param {Array} args - Command arguments
      */
     async handleChatCommand(userId, command, args) {
-        // TODO: Implement chat commands
-        // - /merge itemA itemB
-        // - /inventory
-        // - /alchemy help
-        
         this.api.log(`[STREAMALCHEMY] Chat command received: ${command} from ${userId}`, 'debug');
         
-        // Parser structure ready for future implementation
-        const commands = {
-            merge: async () => {
-                // Future: Manual crafting
-            },
-            inventory: async () => {
-                // Future: Show inventory in chat/overlay
-            },
-            help: async () => {
-                // Future: Show help text
-            }
-        };
-
-        if (commands[command]) {
-            await commands[command](args);
-        }
+        // Commands are now handled by GCCE
+        // This method kept for potential future direct command support
+        this.api.log('[STREAMALCHEMY] Use GCCE commands: /inventory, /inspect, /merge, /alchemy', 'info');
     }
 
     /**
