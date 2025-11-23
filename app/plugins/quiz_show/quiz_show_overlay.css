@@ -1,7 +1,11 @@
 /* ============================================
    Quiz Show Overlay - Professional HUD System
    Vollständig konfigurierbar, animiert, responsive
+   Improved theme support for day/night/contrast modes
    ============================================ */
+
+/* Import main application theme variables */
+@import url("/css/themes.css");
 
 /* ============================================
    CSS CUSTOM PROPERTIES - THEMES
@@ -93,15 +97,55 @@
     --grid-size: 10px;
 }
 
-/* Theme: Light */
-[data-theme="light"] {
+/* Theme: Light / Day Mode - Optimized for readability */
+[data-theme="light"],
+[data-theme="day"] {
     --theme-name: 'light';
-    --bg-card: rgba(255, 255, 255, 0.9);
-    --bg-glass: rgba(255, 255, 255, 0.75);
-    --text-primary: #1e293b;
-    --text-secondary: rgba(30, 41, 59, 0.8);
-    --text-tertiary: rgba(30, 41, 59, 0.6);
-    --border-color: rgba(59, 130, 246, 0.4);
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --bg-glass: rgba(255, 255, 255, 0.85);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    --border-color: rgba(15, 23, 42, 0.2);
+    --color-primary: #2563eb;
+    --color-primary-light: #3b82f6;
+    --color-primary-dark: #1d4ed8;
+    --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.2);
+    --glow-blue: 0 0 15px rgba(37, 99, 235, 0.3);
+    --glow-purple: 0 0 15px rgba(124, 58, 237, 0.3);
+    --glow-green: 0 0 15px rgba(5, 150, 105, 0.3);
+    --glow-gold: 0 0 15px rgba(217, 119, 6, 0.3);
+}
+
+/* Theme: High Contrast - Maximum readability for vision impaired */
+[data-theme="contrast"] {
+    --theme-name: 'contrast';
+    --bg-card: rgba(0, 0, 0, 0.95);
+    --bg-glass: rgba(26, 26, 26, 0.9);
+    --text-primary: #ffffff;
+    --text-secondary: #e5e5e5;
+    --text-tertiary: #b3b3b3;
+    --border-color: #4d4d4d;
+    --border-width: 3px;
+    --color-primary: #60a5fa;
+    --color-primary-light: #93c5fd;
+    --color-primary-dark: #3b82f6;
+    --color-secondary: #a78bfa;
+    --color-secondary-light: #c4b5fd;
+    --color-success: #34d399;
+    --color-success-light: #6ee7b7;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+    --shadow-sm: 0 2px 10px rgba(255, 255, 255, 0.1);
+    --shadow-md: 0 10px 40px rgba(255, 255, 255, 0.15);
+    --shadow-lg: 0 20px 60px rgba(255, 255, 255, 0.2);
+    --glow-blue: 0 0 25px rgba(96, 165, 250, 0.7);
+    --glow-purple: 0 0 25px rgba(167, 139, 250, 0.7);
+    --glow-green: 0 0 25px rgba(52, 211, 153, 0.7);
+    --glow-gold: 0 0 25px rgba(251, 191, 36, 0.7);
+    --glow-intensity: 1.5;
 }
 
 /* Theme: Neon */
