@@ -1066,6 +1066,25 @@ function renderPatternSteps() {
     renderPatternPreview();
 }
 
+function showStepForm() {
+    // Show the step form so user can configure the step
+    const stepForm = document.getElementById('stepForm');
+    if (stepForm) {
+        stepForm.classList.remove('step-form-hidden');
+    }
+    
+    // Reset form to default values
+    const typeSelect = document.getElementById('stepType');
+    const intensitySlider = document.getElementById('stepIntensity');
+    const durationInput = document.getElementById('stepDuration');
+    const intensityValue = document.getElementById('stepIntensityValue');
+    
+    if (typeSelect) typeSelect.value = 'shock';
+    if (intensitySlider) intensitySlider.value = 50;
+    if (durationInput) durationInput.value = 500;
+    if (intensityValue) intensityValue.textContent = 50;
+}
+
 function addPatternStep() {
     const typeSelect = document.getElementById('stepType');
     const intensitySlider = document.getElementById('stepIntensity');
@@ -1081,15 +1100,7 @@ function addPatternStep() {
     currentPatternSteps.push(step);
     renderPatternSteps();
 
-    // Reset form
-    if (intensitySlider) intensitySlider.value = 50;
-    if (durationInput) durationInput.value = 500;
-    
-    // Update slider value display
-    const intensityValue = document.getElementById('stepIntensityValue');
-    if (intensityValue) intensityValue.textContent = 50;
-
-    // Hide step form
+    // Hide step form after adding
     const stepForm = document.getElementById('stepForm');
     if (stepForm) {
         stepForm.classList.add('step-form-hidden');
@@ -2147,7 +2158,7 @@ function initializeEventDelegation() {
     if (addPatternStepBtn) {
         addPatternStepBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            addPatternStep();
+            showStepForm();
         });
     }
 
@@ -2541,6 +2552,7 @@ window.openShock = {
     savePatternModal,
     deletePattern,
     executePattern,
+    showStepForm,
     addPatternStep,
     removePatternStep,
     generateFromCurve,
