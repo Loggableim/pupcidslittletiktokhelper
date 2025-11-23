@@ -283,17 +283,262 @@
             transform: translateX(26px);
         }
 
-        /* Compact Mode */
+        /* Compact Mode - Everything fits on one page */
+        .compact-mode {
+            padding: 0.5rem !important;
+        }
+
         .compact-mode .card {
-            padding: 16px;
+            padding: 8px;
+            margin-bottom: 0;
+            border-radius: 8px;
+        }
+
+        .compact-mode .card:hover {
+            transform: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         }
 
         .compact-mode .metric-value {
-            font-size: 2rem;
+            font-size: 1.25rem;
         }
 
-        .compact-mode .chart-container {
+        /* Hide charts completely in compact mode */
+        .compact-mode .chart-container,
+        .compact-mode .chart-container-large {
+            display: none !important;
+        }
+
+        /* Much smaller circular progress */
+        .compact-mode .circular-progress {
+            width: 80px;
             height: 80px;
+        }
+
+        .compact-mode .circular-progress-text .metric-value {
+            font-size: 1rem;
+        }
+
+        .compact-mode .circular-progress-text .text-sm {
+            font-size: 0.65rem;
+        }
+
+        /* Thinner progress bars */
+        .compact-mode .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+        }
+
+        .compact-mode .progress-fill {
+            border-radius: 4px;
+        }
+
+        /* Compact header */
+        .compact-mode h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0;
+        }
+
+        .compact-mode h2 {
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .compact-mode h3 {
+            font-size: 0.75rem;
+        }
+
+        .compact-mode p {
+            font-size: 0.75rem;
+        }
+
+        /* Minimize all spacing */
+        .compact-mode .mb-8 {
+            margin-bottom: 0.5rem !important;
+        }
+
+        .compact-mode .mb-6 {
+            margin-bottom: 0.35rem !important;
+        }
+
+        .compact-mode .mb-4 {
+            margin-bottom: 0.25rem !important;
+        }
+
+        .compact-mode .mb-3 {
+            margin-bottom: 0.25rem !important;
+        }
+
+        .compact-mode .mb-2 {
+            margin-bottom: 0.15rem !important;
+        }
+
+        .compact-mode .mb-1 {
+            margin-bottom: 0.1rem !important;
+        }
+
+        .compact-mode .gap-6 {
+            gap: 0.35rem !important;
+        }
+
+        .compact-mode .gap-4 {
+            gap: 0.25rem !important;
+        }
+
+        .compact-mode .gap-3 {
+            gap: 0.25rem !important;
+        }
+
+        /* Hide expandable sections completely */
+        .compact-mode .collapsible {
+            display: none !important;
+        }
+
+        /* Hide toggle buttons */
+        .compact-mode [data-toggle] {
+            display: none !important;
+        }
+
+        /* Compact grid layouts */
+        .compact-mode .grid-cols-2 {
+            gap: 0.35rem;
+            font-size: 0.75rem;
+        }
+
+        .compact-mode .grid-cols-2 .text-gray-400 {
+            font-size: 0.7rem;
+        }
+
+        .compact-mode .grid-cols-2 .font-semibold {
+            font-size: 0.75rem;
+        }
+
+        /* Hide warnings in compact mode */
+        .compact-mode #warnings-section {
+            display: none !important;
+        }
+
+        /* Minimize processes table */
+        .compact-mode #processes-table tbody tr {
+            display: none;
+        }
+
+        .compact-mode #processes-table tbody tr:nth-child(-n+3) {
+            display: table-row;
+        }
+
+        .compact-mode .process-item,
+        .compact-mode tbody tr td {
+            padding: 2px 4px;
+            font-size: 0.7rem;
+        }
+
+        .compact-mode tbody tr th {
+            padding: 3px 4px;
+            font-size: 0.7rem;
+        }
+
+        /* Compact main grid - force 3 columns */
+        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.35rem;
+        }
+
+        /* Compact network display */
+        .compact-mode .text-2xl {
+            font-size: 1rem;
+        }
+
+        .compact-mode .text-xl {
+            font-size: 0.875rem;
+        }
+
+        /* Compact network stats grid */
+        .compact-mode .grid.grid-cols-2.gap-4 {
+            gap: 0.25rem;
+        }
+
+        .compact-mode .grid.grid-cols-2.gap-4 > div {
+            padding: 8px;
+        }
+
+        .compact-mode .text-center.p-4 {
+            padding: 8px !important;
+        }
+
+        /* Smaller text everywhere */
+        .compact-mode .text-sm {
+            font-size: 0.7rem;
+        }
+
+        .compact-mode .text-xs {
+            font-size: 0.65rem;
+        }
+
+        /* Compact buttons and controls */
+        .compact-mode .btn {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+        }
+
+        .compact-mode .flex.gap-3 {
+            gap: 0.5rem;
+        }
+
+        /* Make connection status compact */
+        .compact-mode #connection-status {
+            padding: 4px 12px;
+            font-size: 0.7rem;
+        }
+
+        .compact-mode .mt-6 {
+            margin-top: 0.5rem !important;
+        }
+
+        .compact-mode .mt-2 {
+            margin-top: 0.25rem !important;
+        }
+
+        /* Reduce all padding in stats sections */
+        .compact-mode .tooltip {
+            padding: 0;
+        }
+
+        /* Hide process list overflow container */
+        .compact-mode .process-list {
+            max-height: 150px;
+        }
+
+        /* Compact the overall processes card */
+        .compact-mode .overflow-x-auto {
+            margin-top: 0;
+        }
+
+        /* Reduce space in network section */
+        .compact-mode .grid.grid-cols-2.mb-4 {
+            margin-bottom: 0.25rem !important;
+        }
+
+        /* Make network section fit in the grid with CPU/RAM/GPU */
+        .compact-mode .grid.grid-cols-1.gap-6:has(> .card:nth-child(1) .circular-progress) + .grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 0.35rem !important;
+        }
+
+        /* Hide the entire processes section in compact mode */
+        .compact-mode .card:has(#processes-table) {
+            display: none !important;
+        }
+
+        /* Ensure 2x2 grid layout for main sections */
+        @media (min-width: 768px) {
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3:first-of-type {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .compact-mode .grid.grid-cols-1:not(:first-of-type) {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         /* Responsive Grid */
