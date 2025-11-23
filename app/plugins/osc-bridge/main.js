@@ -110,6 +110,11 @@ class OSCBridgePlugin {
     }
 
     registerRoutes() {
+        // UI route
+        this.api.registerRoute('GET', '/osc-bridge/ui', (req, res) => {
+            res.sendFile(path.join(this.api.getPluginDir(), 'ui.html'));
+        });
+
         // GET /api/osc/status - Status abrufen
         this.api.registerRoute('get', '/api/osc/status', (req, res) => {
             res.json({
