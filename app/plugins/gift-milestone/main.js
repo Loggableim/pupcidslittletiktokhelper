@@ -491,17 +491,18 @@ class GiftMilestonePlugin {
                         const filePath = path.join(this.uploadDir, req.file.filename);
                         if (fs.existsSync(filePath)) {
                             fs.unlinkSync(filePath);
+                            this.api.log(`🗑️ Cleaned up orphaned file: ${req.file.filename}`, 'info');
                         }
                         return res.status(404).json({ success: false, error: 'Tier not found' });
                     }
 
-                    if (type === 'gif') {
-                        tier.animation_gif_path = fileUrl;
-                    } else if (type === 'video') {
-                        tier.animation_video_path = fileUrl;
-                    } else if (type === 'audio') {
-                        tier.animation_audio_path = fileUrl;
-                    }
+                    // Map media type to field name
+                    const mediaFields = { 
+                        gif: 'animation_gif_path', 
+                        video: 'animation_video_path', 
+                        audio: 'animation_audio_path' 
+                    };
+                    tier[mediaFields[type]] = fileUrl;
                     
                     db.saveMilestoneTier(tier);
 
@@ -540,17 +541,19 @@ class GiftMilestonePlugin {
                     return res.status(404).json({ success: false, error: 'Tier not found' });
                 }
 
+                // Map media type to field name
+                const mediaFields = { 
+                    gif: 'animation_gif_path', 
+                    video: 'animation_video_path', 
+                    audio: 'animation_audio_path' 
+                };
+                
+                const fieldName = mediaFields[type];
                 let filePath = null;
 
-                if (type === 'gif' && tier.animation_gif_path) {
-                    filePath = path.join(this.uploadDir, tier.animation_gif_path.split('/').pop());
-                    tier.animation_gif_path = null;
-                } else if (type === 'video' && tier.animation_video_path) {
-                    filePath = path.join(this.uploadDir, tier.animation_video_path.split('/').pop());
-                    tier.animation_video_path = null;
-                } else if (type === 'audio' && tier.animation_audio_path) {
-                    filePath = path.join(this.uploadDir, tier.animation_audio_path.split('/').pop());
-                    tier.animation_audio_path = null;
+                if (tier[fieldName]) {
+                    filePath = path.join(this.uploadDir, tier[fieldName].split('/').pop());
+                    tier[fieldName] = null;
                 }
 
                 if (filePath && fs.existsSync(filePath)) {

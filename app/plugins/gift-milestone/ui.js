@@ -118,7 +118,7 @@ function displayUsers() {
 
 // Add tier
 function addTier() {
-    currentEditingTier = null;
+    currentEditingTier = null; // Clear any previous editing state
     document.getElementById('tierModalTitle').textContent = 'Neue Stufe hinzufügen';
     document.getElementById('tierName').value = '';
     document.getElementById('tierLevel').value = tiers.length + 1;
@@ -586,8 +586,9 @@ document.getElementById('select-tier-audio-btn').addEventListener('click', () =>
 });
 
 // Tier modal file upload handlers
-['tierGif', 'tierVideo', 'tierAudio'].forEach(typePrefix => {
-    const type = typePrefix.replace('tier', '').toLowerCase(); // 'gif', 'video', 'audio'
+const typeMap = { tierGif: 'gif', tierVideo: 'video', tierAudio: 'audio' };
+Object.keys(typeMap).forEach(typePrefix => {
+    const type = typeMap[typePrefix];
     const inputId = `${typePrefix}Input`;
     const previewId = `${typePrefix}Preview`;
     
@@ -620,13 +621,8 @@ document.getElementById('select-tier-audio-btn').addEventListener('click', () =>
                 preview.style.display = 'block';
                 
                 // Update currentEditingTier with new path
-                if (type === 'gif') {
-                    currentEditingTier.animation_gif_path = data.url;
-                } else if (type === 'video') {
-                    currentEditingTier.animation_video_path = data.url;
-                } else if (type === 'audio') {
-                    currentEditingTier.animation_audio_path = data.url;
-                }
+                const mediaPathField = `animation_${type}_path`;
+                currentEditingTier[mediaPathField] = data.url;
                 
                 showNotification(`${type.toUpperCase()} für Stufe erfolgreich hochgeladen`);
             } else {
