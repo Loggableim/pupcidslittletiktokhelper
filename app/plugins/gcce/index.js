@@ -39,9 +39,17 @@ class GlobalChatCommandEngine {
             // Load configuration
             await this.loadConfiguration();
 
+            // Create logger wrapper for compatibility
+            const logger = {
+                info: (msg) => this.api.log(msg, 'info'),
+                warn: (msg) => this.api.log(msg, 'warn'),
+                error: (msg) => this.api.log(msg, 'error'),
+                debug: (msg) => this.api.log(msg, 'debug')
+            };
+
             // Initialize core components
             this.permissionChecker = new PermissionChecker(this.api);
-            this.registry = new CommandRegistry(this.api);
+            this.registry = new CommandRegistry(logger);
             this.parser = new CommandParser(this.registry, this.permissionChecker, this.api);
 
             // Register built-in commands

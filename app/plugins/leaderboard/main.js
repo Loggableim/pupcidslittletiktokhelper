@@ -158,6 +158,11 @@ class LeaderboardPlugin {
             }
         });
 
+        // Serve UI HTML
+        this.api.registerRoute('GET', '/leaderboard/ui', (req, res) => {
+            res.sendFile(path.join(__dirname, 'ui.html'));
+        });
+
         // Serve overlay HTML
         this.api.registerRoute('GET', '/leaderboard/overlay', (req, res) => {
             res.sendFile(path.join(__dirname, 'public', 'overlay.html'));
