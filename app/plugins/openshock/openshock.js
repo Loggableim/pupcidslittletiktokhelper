@@ -456,9 +456,13 @@ function renderMappingList() {
                 </div>
                 <div class="mapping-detail-item">
                     <span class="mapping-detail-label">Action:</span>
-                    <span class="mapping-detail-value">${escapeHtml(mapping.action?.commandType || mapping.action?.type || 'Unknown')}</span>
+                    <span class="mapping-detail-value">${
+                        mapping.action?.type === 'pattern' 
+                            ? `🎵 Pattern: ${escapeHtml(patterns.find(p => p.id === mapping.action.patternId)?.name || mapping.action.patternId || 'Unknown')}`
+                            : escapeHtml(mapping.action?.commandType || mapping.action?.type || 'Unknown')
+                    }</span>
                 </div>
-                ${mapping.action?.intensity ? `
+                ${mapping.action?.type !== 'pattern' && mapping.action?.intensity ? `
                     <div class="mapping-detail-item">
                         <span class="mapping-detail-label">Intensity:</span>
                         <span class="mapping-detail-value">${mapping.action.intensity}%</span>
@@ -684,6 +688,9 @@ function openMappingModal(mappingId = null) {
     
     // Populate gift name select with catalog
     updateGiftNameSelect();
+    
+    // Populate pattern dropdown with available patterns
+    updateMappingPatternList();
 
     // Populate form - handle both frontend (trigger) and backend (eventType/conditions) format
     const nameInput = document.getElementById('mappingName');
@@ -763,15 +770,30 @@ function populateActionFields(action) {
     const intensityValue = document.getElementById('mappingIntensityValue');
     const durationSlider = document.getElementById('mappingDuration');
     const durationValue = document.getElementById('mappingDurationValue');
+    const patternSelect = document.getElementById('mappingPattern');
+    const deviceSelect = document.getElementById('mappingDevice');
 
     if (action) {
-        if (intensitySlider && action.intensity !== undefined) {
-            intensitySlider.value = action.intensity;
-            if (intensityValue) intensityValue.textContent = action.intensity;
-        }
-        if (durationSlider && action.duration !== undefined) {
-            durationSlider.value = action.duration;
-            if (durationValue) durationValue.textContent = action.duration;
+        // Handle pattern-type actions
+        if (action.type === 'pattern' && action.patternId) {
+            // Select the pattern in the dropdown
+            if (patternSelect) {
+                updateMappingPatternList(action.patternId);
+            }
+            // Select the device if specified
+            if (deviceSelect && action.deviceId) {
+                updateMappingDeviceList(action.deviceId);
+            }
+        } else {
+            // Handle command-type actions
+            if (intensitySlider && action.intensity !== undefined) {
+                intensitySlider.value = action.intensity;
+                if (intensityValue) intensityValue.textContent = action.intensity;
+            }
+            if (durationSlider && action.duration !== undefined) {
+                durationSlider.value = action.duration;
+                if (durationValue) durationValue.textContent = action.duration;
+            }
         }
     }
 }
@@ -788,9 +810,32 @@ async function saveMappingModal() {
     const deviceSelect = document.getElementById('mappingDevice');
     const intensitySlider = document.getElementById('mappingIntensity');
     const durationSlider = document.getElementById('mappingDuration');
+    const patternSelect = document.getElementById('mappingPattern');
 
     // Collect trigger data and convert to backend format
     const triggerData = collectTriggerData();
+    
+    // Check if a pattern is selected
+    const selectedPatternId = patternSelect?.value || '';
+    
+    let action;
+    if (selectedPatternId) {
+        // Create a pattern-type action
+        action = {
+            type: 'pattern',
+            patternId: selectedPatternId,
+            deviceId: deviceSelect?.value || ''
+        };
+    } else {
+        // Create a command-type action (single pulse)
+        action = {
+            type: 'command',
+            commandType: actionTypeSelect?.value || 'shock',
+            deviceId: deviceSelect?.value || '',
+            intensity: parseInt(intensitySlider?.value) || 50,
+            duration: parseInt(durationSlider?.value) || 1000
+        };
+    }
     
     const mapping = {
         name: nameInput?.value || 'Untitled Mapping',
@@ -802,13 +847,7 @@ async function saveMappingModal() {
             minCoins: triggerData.minCoins || 0,
             messagePattern: triggerData.messagePattern
         },
-        action: {
-            type: 'command', // Backend action type is 'command' for single commands
-            commandType: actionTypeSelect?.value || 'shock',
-            deviceId: deviceSelect?.value || '',
-            intensity: parseInt(intensitySlider?.value) || 50,
-            duration: parseInt(durationSlider?.value) || 1000
-        }
+        action: action
     };
 
     try {
@@ -1534,6 +1573,32 @@ function updateMappingDeviceList(selectedDeviceId = '') {
             option.selected = true;
         }
         deviceSelect.appendChild(option);
+    });
+}
+
+function updateMappingPatternList(selectedPatternId = '') {
+    const patternSelect = document.getElementById('mappingPattern');
+    
+    if (!patternSelect) return;
+    
+    // Clear existing options
+    patternSelect.innerHTML = '<option value="">None (Single pulse)</option>';
+    
+    // Add pattern options - include both preset and custom patterns
+    patterns.forEach(pattern => {
+        const option = document.createElement('option');
+        option.value = pattern.id;
+        option.textContent = pattern.name || pattern.id;
+        
+        // Add indicator for preset patterns
+        if (pattern.preset) {
+            option.textContent += ' ⭐';
+        }
+        
+        if (pattern.id === selectedPatternId) {
+            option.selected = true;
+        }
+        patternSelect.appendChild(option);
     });
 }
 
