@@ -317,56 +317,84 @@ function calculateWindForce() {
  * Apply color filter based on theme
  */
 function applyColorTheme(element, emoji = null) {
+    // Build the color filter
+    let colorFilter = '';
+    
     // Check for user-specific color first
     if (emoji && emoji.userColor) {
-        element.style.filter = `hue-rotate(${emoji.userColor}deg)`;
-        return;
-    }
-
-    if (config.rainbow_enabled) {
+        colorFilter = `hue-rotate(${emoji.userColor}deg)`;
+    } else if (config.rainbow_enabled) {
         // Rainbow takes precedence
         const hue = rainbowHueOffset % 360;
-        element.style.filter = `hue-rotate(${hue}deg)`;
-        return;
+        colorFilter = `hue-rotate(${hue}deg)`;
+    } else if (config.color_mode !== 'off') {
+        const intensity = config.color_intensity;
+        
+        switch (config.color_mode) {
+            case 'warm':
+                colorFilter = `sepia(${intensity * 0.8}) saturate(${1 + intensity * 0.5}) brightness(${1 + intensity * 0.2})`;
+                break;
+            case 'cool':
+                colorFilter = `hue-rotate(180deg) saturate(${1 + intensity}) brightness(${0.9 + intensity * 0.1})`;
+                break;
+            case 'neon':
+                colorFilter = `saturate(${2 + intensity * 2}) brightness(${1.2 + intensity * 0.3}) contrast(${1.2})`;
+                break;
+            case 'pastel':
+                colorFilter = `saturate(${0.5 + intensity * 0.3}) brightness(${1.1 + intensity * 0.2})`;
+                break;
+        }
     }
-
-    if (config.color_mode === 'off') {
-        element.style.filter = '';
-        return;
-    }
-
-    const intensity = config.color_intensity;
-    let filter = '';
-
-    switch (config.color_mode) {
-        case 'warm':
-            filter = `sepia(${intensity * 0.8}) saturate(${1 + intensity * 0.5}) brightness(${1 + intensity * 0.2})`;
-            break;
-        case 'cool':
-            filter = `hue-rotate(180deg) saturate(${1 + intensity}) brightness(${0.9 + intensity * 0.1})`;
-            break;
-        case 'neon':
-            filter = `saturate(${2 + intensity * 2}) brightness(${1.2 + intensity * 0.3}) contrast(${1.2})`;
-            break;
-        case 'pastel':
-            filter = `saturate(${0.5 + intensity * 0.3}) brightness(${1.1 + intensity * 0.2})`;
-            break;
-    }
-
-    element.style.filter = filter;
+    
+    // Store the color filter for later combination
+    element.setAttribute('data-color-filter', colorFilter);
+    
+    // Combine with pixel filter if it exists
+    combineFilters(element);
 }
 
 /**
  * Apply pixel effect
  */
 function applyPixelEffect(element) {
-    if (!config.pixel_enabled) {
+    let pixelFilter = '';
+    
+    if (config.pixel_enabled) {
+        // For images, use image-rendering
+        element.style.imageRendering = 'pixelated';
+        
+        // For text emojis, we need a different approach
+        // Use a combination of blur and contrast to create a pixelated effect
+        const pixelAmount = config.pixel_size || 4;
+        // The blur creates the pixelation, we adjust based on pixel_size
+        const blurAmount = pixelAmount * 0.5;
+        
+        // For text emojis, apply a subtle blur to simulate pixelation
+        if (!element.querySelector('img')) {
+            // Text emoji - apply filter-based pixelation
+            pixelFilter = `blur(${blurAmount}px) contrast(2)`;
+        }
+    } else {
         element.style.imageRendering = '';
-        return;
     }
+    
+    // Store the pixel filter for later combination
+    element.setAttribute('data-pixel-filter', pixelFilter);
+    
+    // Combine with color filter if it exists
+    combineFilters(element);
+}
 
-    element.style.imageRendering = 'pixelated';
-    // Additional pixelation can be done with canvas if needed
+/**
+ * Combine color and pixel filters
+ */
+function combineFilters(element) {
+    const colorFilter = element.getAttribute('data-color-filter') || '';
+    const pixelFilter = element.getAttribute('data-pixel-filter') || '';
+    
+    // Combine both filters
+    const filters = [colorFilter, pixelFilter].filter(f => f).join(' ');
+    element.style.filter = filters;
 }
 
 /**
@@ -566,10 +594,19 @@ function spawnEmoji(emoji, x, y, size, username = null, color = null) {
         }
     }
 
-    // Normalize x position (0-1 to px)
+    // Normalize x position (0-1 to px) with safety margins
     if (x >= 0 && x <= 1) {
-        x = x * canvasWidth;
+        // Add margin from edges to prevent emojis getting stuck
+        // Use the emoji size as the minimum margin
+        const margin = size;
+        const safeWidth = canvasWidth - (margin * 2);
+        x = margin + (x * safeWidth);
     }
+    
+    // Ensure x is within safe bounds
+    const minX = size;
+    const maxX = canvasWidth - size;
+    x = Math.max(minX, Math.min(maxX, x));
 
     // Create physics body
     const radius = size / 2;
