@@ -118,6 +118,7 @@ class DatabaseManager {
                 volume REAL DEFAULT 1.0,
                 animation_url TEXT,
                 animation_type TEXT DEFAULT 'none',
+                animation_volume REAL DEFAULT 1.0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -280,11 +281,30 @@ class DatabaseManager {
             )
         `);
 
+        // Run migrations for schema updates
+        this.runMigrations();
+
         // Default-Einstellungen setzen
         this.setDefaultSettings();
         this.initializeEmojiRainDefaults();
         this.initializeDefaultVDONinjaLayouts(); // PATCH: VDO.Ninja Default Layouts
         this.initializeMilestoneDefaults(); // Gift Milestone Celebration Plugin
+    }
+
+    runMigrations() {
+        // Migration: Add animation_volume column to gift_sounds table if it doesn't exist
+        try {
+            const tableInfo = this.db.prepare("PRAGMA table_info(gift_sounds)").all();
+            const hasAnimationVolume = tableInfo.some(col => col.name === 'animation_volume');
+            
+            if (!hasAnimationVolume) {
+                console.log('Running migration: Adding animation_volume column to gift_sounds table');
+                this.db.exec('ALTER TABLE gift_sounds ADD COLUMN animation_volume REAL DEFAULT 1.0');
+                console.log('Migration completed successfully');
+            }
+        } catch (error) {
+            console.error('Migration error:', error);
+        }
     }
 
     setDefaultSettings() {
