@@ -218,6 +218,24 @@
             display: block;
         }
 
+        .message {
+            padding: 12px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+        }
+
+        .message.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -344,7 +362,7 @@
 
                     <div class="form-group">
                         <label class="form-label">Overlay URL</label>
-                        <input type="text" class="form-input" value="http://localhost:3000/leaderboard/overlay" readonly>
+                        <input type="text" class="form-input" id="overlay-url" readonly>
                         <small style="color: var(--color-text-secondary);">Use this URL in OBS Browser Source</small>
                     </div>
 
@@ -477,6 +495,9 @@
         function updateConfigForm() {
             document.getElementById('display-limit').value = config.displayLimit || 10;
             document.getElementById('min-coins').value = config.minCoins || 0;
+            // Set overlay URL dynamically
+            const overlayUrl = `${window.location.protocol}//${window.location.host}/leaderboard/overlay`;
+            document.getElementById('overlay-url').value = overlayUrl;
         }
 
         // Handle form submission
@@ -537,15 +558,7 @@
         function showMessage(text, type) {
             const container = document.getElementById('message-container');
             const message = document.createElement('div');
-            message.className = type === 'success' ? 'success' : 'error';
-            message.style.cssText = `
-                padding: 12px;
-                margin-bottom: 16px;
-                border-radius: 8px;
-                background: ${type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'};
-                border: 1px solid ${type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};
-                color: ${type === 'success' ? '#10b981' : '#ef4444'};
-            `;
+            message.className = `message ${type}`;
             message.textContent = text;
             container.appendChild(message);
             
