@@ -199,7 +199,7 @@ class ThermalPrinterPlugin {
         try {
             const { uniqueId, giftName, giftId, diamonds, coins, repeatCount } = data;
             
-            // Filter: Minimum Coins
+            // Filter: Minimum Coins (inclusive - gifts with exactly minCoinsToPrint will be printed)
             const totalCoins = (coins || 0) * (repeatCount || 1);
             if (totalCoins < this.config.minCoinsToPrint) {
                 this.logger.debug(`[ThermalPrinter] Gift below minimum coins: ${totalCoins} < ${this.config.minCoinsToPrint}`);

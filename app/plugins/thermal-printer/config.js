@@ -60,8 +60,12 @@ module.exports = {
 
         // USB-Konfiguration
         if (config.printerType === 'usb') {
-            if (!config.usbVendorId || !config.usbProductId) {
-                errors.push('USB Vendor ID and Product ID are required for USB printers');
+            // Both IDs must be provided or both must be empty (for auto-detection)
+            const hasVendorId = config.usbVendorId && config.usbVendorId.trim() !== '';
+            const hasProductId = config.usbProductId && config.usbProductId.trim() !== '';
+            
+            if (hasVendorId !== hasProductId) {
+                errors.push('USB Vendor ID and Product ID must both be provided or both be empty for auto-detection');
             }
         }
 

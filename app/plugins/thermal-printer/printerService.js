@@ -13,6 +13,10 @@ const escpos = require('escpos');
 // Adapter werden dynamisch geladen je nach Konfiguration
 const path = require('path');
 
+// Printer type constants
+const PRINTER_TYPE_USB = 'usb';
+const PRINTER_TYPE_NETWORK = 'network';
+
 class PrinterService {
     constructor(logger) {
         this.logger = logger;
@@ -75,9 +79,9 @@ class PrinterService {
         try {
             this.logger.info(`[PrinterService] Connecting to ${this.config.printerType} printer...`);
             
-            if (this.config.printerType === 'usb') {
+            if (this.config.printerType === PRINTER_TYPE_USB) {
                 await this.connectUSB();
-            } else if (this.config.printerType === 'network') {
+            } else if (this.config.printerType === PRINTER_TYPE_NETWORK) {
                 await this.connectNetwork();
             } else {
                 throw new Error(`Unknown printer type: ${this.config.printerType}`);
@@ -107,7 +111,11 @@ class PrinterService {
             const vendorId = this.parseHexId(this.config.usbVendorId);
             const productId = this.parseHexId(this.config.usbProductId);
             
-            if (!vendorId || !productId) {
+            // Check if both IDs are provided (not just one)
+            const hasVendorId = this.config.usbVendorId && this.config.usbVendorId.trim() !== '';
+            const hasProductId = this.config.usbProductId && this.config.usbProductId.trim() !== '';
+            
+            if (!hasVendorId && !hasProductId) {
                 // Kein spezifischer Drucker angegeben, versuche ersten verfügbaren
                 this.device = new USB.USB();
             } else {
