@@ -203,6 +203,7 @@ async function saveTier() {
         if (data.success) {
             showNotification('Stufe gespeichert!');
             document.getElementById('tierModal').classList.remove('active');
+            currentEditingTier = null; // Clear editing state
             loadTiers();
         } else {
             showNotification(data.error, 'error');
@@ -210,6 +211,60 @@ async function saveTier() {
     } catch (error) {
         console.error('Error saving tier:', error);
         showNotification('Fehler beim Speichern', 'error');
+    }
+}
+
+// Auto-save tier when needed for media upload (for new tiers)
+async function autoSaveTierForUpload() {
+    // If already editing an existing tier, no need to auto-save
+    if (currentEditingTier && currentEditingTier.id) {
+        return true;
+    }
+    
+    // Validate and save tier first
+    const tierData = {
+        name: document.getElementById('tierName').value,
+        tier_level: parseInt(document.getElementById('tierLevel').value),
+        threshold: parseInt(document.getElementById('tierThreshold').value),
+        enabled: document.getElementById('tierEnabled').checked ? 1 : 0
+    };
+    
+    if (!tierData.name) {
+        showNotification('Bitte gib zuerst einen Stufen-Namen ein', 'error');
+        return false;
+    }
+    
+    if (tierData.threshold < 100) {
+        showNotification('Schwellenwert muss mindestens 100 sein', 'error');
+        return false;
+    }
+    
+    try {
+        const response = await fetch('/api/gift-milestone/tiers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tierData)
+        });
+        const data = await response.json();
+        if (data.success) {
+            // Set current editing tier with the new ID
+            currentEditingTier = {
+                id: data.tierId,
+                name: tierData.name,
+                tier_level: tierData.tier_level,
+                threshold: tierData.threshold,
+                enabled: tierData.enabled
+            };
+            showNotification('Stufe automatisch gespeichert für Medien-Upload');
+            return true;
+        } else {
+            showNotification(data.error, 'error');
+            return false;
+        }
+    } catch (error) {
+        console.error('Error auto-saving tier:', error);
+        showNotification('Fehler beim automatischen Speichern', 'error');
+        return false;
     }
 }
 
@@ -528,6 +583,62 @@ document.getElementById('select-tier-video-btn').addEventListener('click', () =>
 });
 document.getElementById('select-tier-audio-btn').addEventListener('click', () => {
     document.getElementById('tierAudioInput').click();
+});
+
+// Tier modal file upload handlers
+['tierGif', 'tierVideo', 'tierAudio'].forEach(typePrefix => {
+    const type = typePrefix.replace('tier', '').toLowerCase(); // 'gif', 'video', 'audio'
+    const inputId = `${typePrefix}Input`;
+    const previewId = `${typePrefix}Preview`;
+    
+    document.getElementById(inputId).addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Auto-save tier if it's new (doesn't have an ID yet)
+        if (!currentEditingTier || !currentEditingTier.id) {
+            const saved = await autoSaveTierForUpload();
+            if (!saved) {
+                e.target.value = '';
+                return;
+            }
+        }
+
+        const formData = new FormData();
+        formData.append(type, file);
+
+        try {
+            const response = await fetch(`/api/gift-milestone/tiers/${currentEditingTier.id}/upload/${type}`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (data.success) {
+                // Update preview
+                const preview = document.getElementById(previewId);
+                preview.textContent = `✅ ${data.filename}`;
+                preview.style.display = 'block';
+                
+                // Update currentEditingTier with new path
+                if (type === 'gif') {
+                    currentEditingTier.animation_gif_path = data.url;
+                } else if (type === 'video') {
+                    currentEditingTier.animation_video_path = data.url;
+                } else if (type === 'audio') {
+                    currentEditingTier.animation_audio_path = data.url;
+                }
+                
+                showNotification(`${type.toUpperCase()} für Stufe erfolgreich hochgeladen`);
+            } else {
+                showNotification(data.error, 'error');
+            }
+        } catch (error) {
+            console.error(`Error uploading tier ${type}:`, error);
+            showNotification(`Fehler beim Hochladen von ${type}`, 'error');
+        }
+
+        e.target.value = '';
+    });
 });
 
 // User management buttons
