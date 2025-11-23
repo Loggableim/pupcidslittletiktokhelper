@@ -64,11 +64,18 @@ module.exports = {
         model: 'dall-e-3',
         size: '1024x1024',
         quality: 'standard',
-        n: 1
+        n: 1,
+        style: 'vivid' // 'vivid' or 'natural'
     },
     
     /**
+     * Item generation mode
+     */
+    ITEM_GENERATION_MODE: 'auto', // 'auto' (AI), 'manual' (upload), 'hybrid' (both)
+    
+    /**
      * AI prompt templates for item generation
+     * These can be overridden via plugin configuration
      */
     PROMPTS: {
         BASE_ITEM: (giftName) => 
@@ -78,6 +85,14 @@ module.exports = {
         CRAFTED_ITEM: (itemAName, itemBName, rarityColor, auraEffect) =>
             `Combine ${itemAName} and ${itemBName} into a single unique crafted fantasy RPG item. ` +
             `Isometric view, transparent background, ${rarityColor} ${auraEffect}, highly detailed, game-ready icon.`
+    },
+    
+    /**
+     * Default custom prompt templates (empty = use default PROMPTS)
+     */
+    CUSTOM_PROMPTS: {
+        BASE_ITEM_TEMPLATE: '',
+        CRAFTED_ITEM_TEMPLATE: ''
     },
     
     /**

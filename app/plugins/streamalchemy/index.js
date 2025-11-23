@@ -76,7 +76,8 @@ class StreamAlchemyPlugin {
 
             // Initialize crafting service
             const openaiKey = process.env.OPENAI_API_KEY || this.pluginConfig?.openaiApiKey;
-            this.craftingService = new CraftingService(this.db, logger, openaiKey);
+            const customPrompts = this.pluginConfig?.customPrompts || null;
+            this.craftingService = new CraftingService(this.db, logger, openaiKey, customPrompts);
 
             // Register routes
             this.registerRoutes();
@@ -123,6 +124,16 @@ class StreamAlchemyPlugin {
                 openaiApiKey: null,
                 autoGenerateItems: true,
                 autoCrafting: true,
+                itemGenerationMode: config.ITEM_GENERATION_MODE,
+                customPrompts: {
+                    baseItemTemplate: config.CUSTOM_PROMPTS.BASE_ITEM_TEMPLATE,
+                    craftedItemTemplate: config.CUSTOM_PROMPTS.CRAFTED_ITEM_TEMPLATE
+                },
+                dalleConfig: { ...config.DALLE_CONFIG },
+                craftingWindowMs: config.CRAFTING_WINDOW_MS,
+                rarityTiers: { ...config.RARITY_TIERS },
+                animations: { ...config.ANIMATIONS },
+                rateLimit: { ...config.RATE_LIMIT },
                 ...this.pluginConfig
             };
 
@@ -170,6 +181,11 @@ class StreamAlchemyPlugin {
             try {
                 this.pluginConfig = { ...this.pluginConfig, ...req.body };
                 await this.api.setConfig('streamalchemy_config', this.pluginConfig);
+                
+                // Update crafting service with new custom prompts if provided
+                if (req.body.customPrompts) {
+                    this.craftingService.updateCustomPrompts(req.body.customPrompts);
+                }
                 
                 res.json({
                     success: true,
@@ -240,6 +256,93 @@ class StreamAlchemyPlugin {
                 res.json({
                     success: true,
                     items
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Create custom item (manual upload)
+        this.api.registerRoute('POST', '/api/streamalchemy/items', async (req, res) => {
+            try {
+                const { name, rarity, imageURL, coinValue, giftId } = req.body;
+                
+                // Validate required fields
+                if (!name || !rarity) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Name and rarity are required'
+                    });
+                }
+                
+                // Create item
+                const item = await this.db.createCustomItem({
+                    name,
+                    rarity,
+                    imageURL: imageURL || null,
+                    coinValue: coinValue || 0,
+                    giftId: giftId || null
+                });
+                
+                res.json({
+                    success: true,
+                    item
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Update item
+        this.api.registerRoute('PUT', '/api/streamalchemy/items/:itemId', async (req, res) => {
+            try {
+                const { itemId } = req.params;
+                const updates = req.body;
+                
+                const item = await this.db.updateItem(itemId, updates);
+                
+                if (!item) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Item not found'
+                    });
+                }
+                
+                res.json({
+                    success: true,
+                    item
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Delete item
+        this.api.registerRoute('DELETE', '/api/streamalchemy/items/:itemId', async (req, res) => {
+            try {
+                const { itemId } = req.params;
+                
+                const success = await this.db.deleteItem(itemId);
+                
+                if (!success) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Item not found'
+                    });
+                }
+                
+                res.json({
+                    success: true,
+                    message: 'Item deleted successfully'
                 });
             } catch (error) {
                 res.status(500).json({
