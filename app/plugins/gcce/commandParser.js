@@ -122,6 +122,11 @@ class CommandParser {
      * @returns {Object} Parsed structure { command, args, raw }
      */
     parseCommandStructure(message) {
+        // Input validation - prevent DoS with extremely long messages
+        if (message.length > 500) {
+            throw new Error('Command message is too long');
+        }
+        
         // Remove prefix
         const withoutPrefix = message.trim().substring(config.COMMAND_PREFIX.length);
         
@@ -257,9 +262,22 @@ class CommandParser {
      */
     cleanupRateLimits() {
         const now = Date.now();
-        
+        const maxEntries = 1000; // Prevent unbounded growth
+
+        // Remove expired entries
         for (const [userId, data] of this.userRateLimits.entries()) {
-            if (now > data.resetTime + 60000) {
+            if (now > data.resetTime) {
+                this.userRateLimits.delete(userId);
+            }
+        }
+        
+        // If still too large, remove oldest entries (LRU)
+        if (this.userRateLimits.size > maxEntries) {
+            const entries = Array.from(this.userRateLimits.entries())
+                .sort((a, b) => a[1].resetTime - b[1].resetTime);
+            
+            const toRemove = entries.slice(0, entries.length - maxEntries);
+            for (const [userId] of toRemove) {
                 this.userRateLimits.delete(userId);
             }
         }

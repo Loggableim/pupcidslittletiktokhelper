@@ -35,11 +35,18 @@ class StreamAlchemyPlugin {
         // Map<userId, Array<{gift, timestamp, item}>>
         this.giftBuffers = new Map();
         
+        // Processing queue to prevent race conditions
+        // Map<userId, Promise>
+        this.processingQueues = new Map();
+        
         // Rate limiting
         this.userRateLimits = new Map();
         
         // Configuration
         this.pluginConfig = null;
+        
+        // Track if commands are registered
+        this.commandsRegistered = false;
     }
 
     /**
@@ -72,8 +79,16 @@ class StreamAlchemyPlugin {
             // Start cleanup timer (remove old gift buffers)
             this.startCleanupTimer();
 
-            // Register commands with GCCE if available
+            // Register commands with GCCE if available (or wait for it)
             this.registerGCCECommands();
+            
+            // Also listen for GCCE ready event in case it loads later
+            this.api.registerSocket('gcce:ready', async () => {
+                if (!this.commandsRegistered) {
+                    this.api.log('[STREAMALCHEMY] GCCE became available, registering commands now', 'info');
+                    this.registerGCCECommands();
+                }
+            });
 
             this.api.log('✅ [STREAMALCHEMY] StreamAlchemy Plugin initialized successfully', 'info');
         } catch (error) {
@@ -286,28 +301,45 @@ class StreamAlchemyPlugin {
 
     /**
      * Process a single gift (generate item and check for crafting)
+     * Uses a queue to ensure sequential processing per user
      * @param {string} userId - User ID
      * @param {Object} gift - Gift object
      */
     async processGift(userId, gift) {
-        // Step 1: Generate or retrieve base item
-        const item = await this.craftingService.generateBaseItem(gift);
-
-        // Step 2: Add to user's gift buffer
-        const buffer = this.getOrCreateGiftBuffer(userId);
-        buffer.push({
-            gift,
-            item,
-            timestamp: Date.now()
-        });
-
-        // Step 3: Check for crafting opportunity
-        if (this.pluginConfig.autoCrafting && buffer.length >= 2) {
-            await this.attemptCrafting(userId);
-        } else {
-            // No crafting - just give the base item
-            await this.giveItemToUser(userId, item);
+        // Get or create processing queue for this user
+        if (!this.processingQueues.has(userId)) {
+            this.processingQueues.set(userId, Promise.resolve());
         }
+        
+        // Chain this processing to the user's queue
+        const currentQueue = this.processingQueues.get(userId);
+        const nextQueue = currentQueue.then(async () => {
+            try {
+                // Step 1: Generate or retrieve base item
+                const item = await this.craftingService.generateBaseItem(gift);
+
+                // Step 2: Add to user's gift buffer
+                const buffer = this.getOrCreateGiftBuffer(userId);
+                buffer.push({
+                    gift,
+                    item,
+                    timestamp: Date.now()
+                });
+
+                // Step 3: Check for crafting opportunity
+                if (this.pluginConfig.autoCrafting && buffer.length >= 2) {
+                    await this.attemptCrafting(userId);
+                } else {
+                    // No crafting - just give the base item
+                    await this.giveItemToUser(userId, item);
+                }
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Error processing gift for ${userId}: ${error.message}`, 'error');
+            }
+        });
+        
+        this.processingQueues.set(userId, nextQueue);
+        return nextQueue;
     }
 
     /**
@@ -488,12 +520,14 @@ class StreamAlchemyPlugin {
     }
 
     /**
-     * Clean up old entries from gift buffers
+     * Clean up old entries from gift buffers and rate limits
      */
     cleanupOldBuffers() {
         const now = Date.now();
         const maxAge = config.CRAFTING_WINDOW_MS * 2; // Keep buffers for 2x crafting window
+        const maxRateLimitEntries = 1000; // Prevent unbounded growth
 
+        // Clean up gift buffers
         for (const [userId, buffer] of this.giftBuffers.entries()) {
             // Filter out old entries
             const filtered = buffer.filter(entry => (now - entry.timestamp) <= maxAge);
@@ -507,10 +541,30 @@ class StreamAlchemyPlugin {
             }
         }
 
-        // Clean up old rate limit entries
+        // Clean up rate limit entries immediately when they expire
         for (const [userId, data] of this.userRateLimits.entries()) {
-            if (now > data.resetTime + 60000) {
+            if (now > data.resetTime) {
                 this.userRateLimits.delete(userId);
+            }
+        }
+        
+        // If rate limit map is still too large, remove oldest entries (LRU)
+        if (this.userRateLimits.size > maxRateLimitEntries) {
+            const entries = Array.from(this.userRateLimits.entries())
+                .sort((a, b) => a[1].resetTime - b[1].resetTime);
+            
+            const toRemove = entries.slice(0, entries.length - maxRateLimitEntries);
+            for (const [userId] of toRemove) {
+                this.userRateLimits.delete(userId);
+            }
+            
+            this.api.log(`[STREAMALCHEMY] Rate limit cleanup: removed ${toRemove.length} old entries`, 'debug');
+        }
+        
+        // Clean up processing queues for inactive users
+        for (const [userId] of this.processingQueues.entries()) {
+            if (!this.giftBuffers.has(userId)) {
+                this.processingQueues.delete(userId);
             }
         }
     }
@@ -551,11 +605,16 @@ class StreamAlchemyPlugin {
      * Register commands with GCCE (Global Chat Command Engine)
      */
     registerGCCECommands() {
+        // Skip if already registered
+        if (this.commandsRegistered) {
+            return;
+        }
+        
         // Try to get GCCE plugin from the plugin loader
         const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
         
         if (!gccePlugin || !gccePlugin.instance) {
-            this.api.log('[STREAMALCHEMY] GCCE not available - commands will not be registered', 'debug');
+            this.api.log('[STREAMALCHEMY] GCCE not available yet - will register when available', 'debug');
             return;
         }
 
@@ -610,6 +669,8 @@ class StreamAlchemyPlugin {
 
         // Register commands
         const result = gcce.registerCommandsForPlugin('streamalchemy', commands);
+        
+        this.commandsRegistered = result.registered.length > 0;
         
         this.api.log(`[STREAMALCHEMY] Registered ${result.registered.length} commands with GCCE`, 'info');
         if (result.failed.length > 0) {
@@ -686,6 +747,15 @@ class StreamAlchemyPlugin {
             const itemName = args.join(' ').toLowerCase();
             const userId = context.userId;
             
+            // Input validation - prevent DoS with long inputs
+            if (itemName.length > 100) {
+                return {
+                    success: false,
+                    message: 'Item name is too long. Please use a shorter search term.',
+                    displayOverlay: true
+                };
+            }
+            
             // Get user's inventory
             const inventory = await this.db.getUserInventory(userId);
             
@@ -743,6 +813,15 @@ class StreamAlchemyPlugin {
             const item1Name = args[0].toLowerCase();
             const item2Name = args[1].toLowerCase();
             const userId = context.userId;
+            
+            // Input validation - prevent DoS
+            if (item1Name.length > 100 || item2Name.length > 100) {
+                return {
+                    success: false,
+                    message: 'Item names are too long.',
+                    displayOverlay: true
+                };
+            }
 
             // Get user's inventory
             const inventory = await this.db.getUserInventory(userId);

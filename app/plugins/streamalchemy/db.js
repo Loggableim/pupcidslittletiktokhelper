@@ -24,6 +24,10 @@ class AlchemyDatabase {
         this.inventoryGlobalDb = null;
         this.userInventoryDb = null;
         this.initPromise = null;
+        
+        // Write queue to prevent concurrent write issues
+        this.globalWriteQueue = Promise.resolve();
+        this.userWriteQueue = Promise.resolve();
     }
 
     /**
@@ -57,6 +61,30 @@ class AlchemyDatabase {
         })();
 
         return this.initPromise;
+    }
+
+    // ==================== GLOBAL INVENTORY OPERATIONS ====================
+    
+    /**
+     * Queue a write operation to prevent race conditions
+     * @param {Promise} operation - Async operation to queue
+     * @param {string} queueType - 'global' or 'user'
+     * @returns {Promise} Result of the operation
+     */
+    async queueWrite(operation, queueType = 'global') {
+        const queue = queueType === 'global' ? 'globalWriteQueue' : 'userWriteQueue';
+        
+        // Chain the operation to the queue
+        this[queue] = this[queue].then(async () => {
+            try {
+                return await operation();
+            } catch (error) {
+                this.logger.error(`[ALCHEMY DB] Queued ${queueType} write failed: ${error.message}`);
+                throw error;
+            }
+        });
+        
+        return this[queue];
     }
 
     // ==================== GLOBAL INVENTORY OPERATIONS ====================
@@ -109,31 +137,33 @@ class AlchemyDatabase {
      * @returns {Object} Saved item
      */
     async saveItem(item) {
-        await this.init();
-        await this.inventoryGlobalDb.read();
-        
-        // Validate required fields
-        if (!item.itemId || !item.name) {
-            throw new Error('Item must have itemId and name');
-        }
+        return this.queueWrite(async () => {
+            await this.init();
+            await this.inventoryGlobalDb.read();
+            
+            // Validate required fields
+            if (!item.itemId || !item.name) {
+                throw new Error('Item must have itemId and name');
+            }
 
-        // Check if item already exists
-        const existingIndex = this.inventoryGlobalDb.data.items.findIndex(
-            i => i.itemId === item.itemId
-        );
+            // Check if item already exists
+            const existingIndex = this.inventoryGlobalDb.data.items.findIndex(
+                i => i.itemId === item.itemId
+            );
 
-        if (existingIndex >= 0) {
-            // Update existing item
-            this.inventoryGlobalDb.data.items[existingIndex] = item;
-            this.logger.debug(`[ALCHEMY DB] Updated item: ${item.name} (${item.itemId})`);
-        } else {
-            // Add new item
-            this.inventoryGlobalDb.data.items.push(item);
-            this.logger.info(`[ALCHEMY DB] Saved new item: ${item.name} (${item.itemId})`);
-        }
+            if (existingIndex >= 0) {
+                // Update existing item
+                this.inventoryGlobalDb.data.items[existingIndex] = item;
+                this.logger.debug(`[ALCHEMY DB] Updated item: ${item.name} (${item.itemId})`);
+            } else {
+                // Add new item
+                this.inventoryGlobalDb.data.items.push(item);
+                this.logger.info(`[ALCHEMY DB] Saved new item: ${item.name} (${item.itemId})`);
+            }
 
-        await this.inventoryGlobalDb.write();
-        return item;
+            await this.inventoryGlobalDb.write();
+            return item;
+        }, 'global');
     }
 
     /**
@@ -183,47 +213,49 @@ class AlchemyDatabase {
      * @returns {Object} Updated inventory entry
      */
     async updateUserInventory(userId, itemId, quantityChange = 1) {
-        await this.init();
-        await this.userInventoryDb.read();
+        return this.queueWrite(async () => {
+            await this.init();
+            await this.userInventoryDb.read();
 
-        // Find or create user inventory
-        let userInvIndex = this.userInventoryDb.data.userInventories.findIndex(
-            inv => inv.userId === userId
-        );
+            // Find or create user inventory
+            let userInvIndex = this.userInventoryDb.data.userInventories.findIndex(
+                inv => inv.userId === userId
+            );
 
-        if (userInvIndex === -1) {
-            // Create new user inventory
-            this.userInventoryDb.data.userInventories.push({
-                userId,
-                items: []
-            });
-            userInvIndex = this.userInventoryDb.data.userInventories.length - 1;
-        }
+            if (userInvIndex === -1) {
+                // Create new user inventory
+                this.userInventoryDb.data.userInventories.push({
+                    userId,
+                    items: []
+                });
+                userInvIndex = this.userInventoryDb.data.userInventories.length - 1;
+            }
 
-        const userInv = this.userInventoryDb.data.userInventories[userInvIndex];
-        
-        // Find or create item entry
-        let itemIndex = userInv.items.findIndex(item => item.itemId === itemId);
+            const userInv = this.userInventoryDb.data.userInventories[userInvIndex];
+            
+            // Find or create item entry
+            let itemIndex = userInv.items.findIndex(item => item.itemId === itemId);
 
-        if (itemIndex === -1) {
-            // First time receiving this item
-            userInv.items.push({
-                itemId,
-                quantity: quantityChange,
-                firstObtained: new Date().toISOString(),
-                lastObtained: new Date().toISOString()
-            });
-            itemIndex = userInv.items.length - 1;
-            this.logger.info(`[ALCHEMY DB] User ${userId} obtained new item ${itemId}`);
-        } else {
-            // Increment existing item
-            userInv.items[itemIndex].quantity += quantityChange;
-            userInv.items[itemIndex].lastObtained = new Date().toISOString();
-            this.logger.debug(`[ALCHEMY DB] User ${userId} item ${itemId} quantity: ${userInv.items[itemIndex].quantity}`);
-        }
+            if (itemIndex === -1) {
+                // First time receiving this item
+                userInv.items.push({
+                    itemId,
+                    quantity: quantityChange,
+                    firstObtained: new Date().toISOString(),
+                    lastObtained: new Date().toISOString()
+                });
+                itemIndex = userInv.items.length - 1;
+                this.logger.info(`[ALCHEMY DB] User ${userId} obtained new item ${itemId}`);
+            } else {
+                // Increment existing item
+                userInv.items[itemIndex].quantity += quantityChange;
+                userInv.items[itemIndex].lastObtained = new Date().toISOString();
+                this.logger.debug(`[ALCHEMY DB] User ${userId} item ${itemId} quantity: ${userInv.items[itemIndex].quantity}`);
+            }
 
-        await this.userInventoryDb.write();
-        return userInv.items[itemIndex];
+            await this.userInventoryDb.write();
+            return userInv.items[itemIndex];
+        }, 'user');
     }
 
     /**

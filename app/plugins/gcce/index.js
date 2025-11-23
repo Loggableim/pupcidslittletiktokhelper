@@ -61,6 +61,9 @@ class GlobalChatCommandEngine {
 
             // Try to integrate with StreamAlchemy if it exists
             this.integrateWithStreamAlchemy();
+            
+            // Emit ready event for plugins that may be waiting
+            this.api.emit('gcce:ready', { timestamp: Date.now() });
 
             this.api.log('✅ [GCCE] Global Chat Command Engine initialized successfully', 'info');
         } catch (error) {
