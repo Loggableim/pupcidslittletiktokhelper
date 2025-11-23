@@ -305,13 +305,16 @@ class CraftingService {
             'Mythic': '#9370DB'
         };
 
-        const color = colors[rarity] || colors.Common;
+        // Sanitize rarity input - only allow known values
+        const validRarities = ['Common', 'Rare', 'Legendary', 'Mythic'];
+        const sanitizedRarity = validRarities.includes(rarity) ? rarity : 'Common';
+        const color = colors[sanitizedRarity];
         
-        // Create a simple SVG data URL
+        // Create a simple SVG data URL (sanitized rarity already validated above)
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
             <rect fill="${color}" width="256" height="256" opacity="0.3"/>
             <circle cx="128" cy="128" r="80" fill="${color}" opacity="0.6"/>
-            <text x="128" y="140" font-family="Arial" font-size="24" fill="white" text-anchor="middle">${rarity}</text>
+            <text x="128" y="140" font-family="Arial" font-size="24" fill="white" text-anchor="middle">${sanitizedRarity}</text>
         </svg>`;
 
         return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;

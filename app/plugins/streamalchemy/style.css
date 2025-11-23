@@ -10,6 +10,9 @@
  * - Discovery popups
  * - Crafting animations
  * - Corner counters
+ * 
+ * NOTE: Fixed 1920x1080 dimensions are required for OBS Browser Source overlays.
+ * OBS uses fixed viewport sizes for consistent positioning across different scenes.
  */
 
 /* ===== GLOBAL STYLES ===== */
@@ -20,6 +23,7 @@
     box-sizing: border-box;
 }
 
+/* OBS Browser Source requires fixed dimensions for consistent overlay positioning */
 body {
     width: 1920px;
     height: 1080px;
@@ -36,6 +40,11 @@ body {
 /* ===== RARITY COLOR VARIABLES ===== */
 
 :root {
+    /* Overlay dimensions (configurable for different setups) */
+    --overlay-width: 1920px;
+    --overlay-height: 1080px;
+    
+    /* Rarity colors */
     --bronze-color: #CD7F32;
     --bronze-glow: rgba(205, 127, 50, 0.6);
     

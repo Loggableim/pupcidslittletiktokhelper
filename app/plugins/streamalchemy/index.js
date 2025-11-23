@@ -249,7 +249,13 @@ class StreamAlchemyPlugin {
         try {
             if (!this.pluginConfig.enabled) return;
 
+            // Validate user identification - fail fast if missing
             const userId = data.uniqueId || data.userId;
+            if (!userId) {
+                this.api.log('[STREAMALCHEMY] Gift event missing user identification', 'warn');
+                return;
+            }
+
             const gift = {
                 id: data.giftId,
                 name: data.giftName,
