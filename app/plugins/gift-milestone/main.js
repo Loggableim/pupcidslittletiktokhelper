@@ -455,6 +455,121 @@ class GiftMilestonePlugin {
             }
         });
 
+        // Upload tier-specific media files
+        this.api.registerRoute('post', '/api/gift-milestone/tiers/:id/upload/:type', (req, res) => {
+            const tierId = parseInt(req.params.id);
+            const type = req.params.type; // 'gif', 'video', or 'audio'
+
+            if (isNaN(tierId)) {
+                return res.status(400).json({ success: false, error: 'Invalid tier ID' });
+            }
+
+            if (!['gif', 'video', 'audio'].includes(type)) {
+                return res.status(400).json({ success: false, error: 'Invalid type. Must be gif, video, or audio' });
+            }
+
+            this.upload.single(type)(req, res, (err) => {
+                if (err) {
+                    this.api.log(`Error uploading tier ${type}: ${err.message}`, 'error');
+                    return res.status(500).json({ success: false, error: err.message });
+                }
+
+                try {
+                    if (!req.file) {
+                        return res.status(400).json({ success: false, error: 'No file uploaded' });
+                    }
+
+                    const fileUrl = `/gift-milestone/uploads/${req.file.filename}`;
+                    this.api.log(`📤 Tier ${tierId} ${type} uploaded: ${req.file.filename}`, 'info');
+
+                    // Update tier in database with file path
+                    const db = this.api.getDatabase();
+                    const tier = db.getMilestoneTier(tierId);
+                    
+                    if (!tier) {
+                        // Clean up uploaded file if tier doesn't exist
+                        const filePath = path.join(this.uploadDir, req.file.filename);
+                        if (fs.existsSync(filePath)) {
+                            fs.unlinkSync(filePath);
+                            this.api.log(`🗑️ Cleaned up orphaned file: ${req.file.filename}`, 'info');
+                        }
+                        return res.status(404).json({ success: false, error: 'Tier not found' });
+                    }
+
+                    // Map media type to field name
+                    const mediaFields = { 
+                        gif: 'animation_gif_path', 
+                        video: 'animation_video_path', 
+                        audio: 'animation_audio_path' 
+                    };
+                    tier[mediaFields[type]] = fileUrl;
+                    
+                    db.saveMilestoneTier(tier);
+
+                    res.json({
+                        success: true,
+                        message: `${type} uploaded successfully for tier`,
+                        url: fileUrl,
+                        filename: req.file.filename,
+                        size: req.file.size
+                    });
+                } catch (error) {
+                    this.api.log(`Error uploading tier ${type}: ${error.message}`, 'error');
+                    res.status(500).json({ success: false, error: error.message });
+                }
+            });
+        });
+
+        // Delete tier-specific media file
+        this.api.registerRoute('delete', '/api/gift-milestone/tiers/:id/media/:type', (req, res) => {
+            const tierId = parseInt(req.params.id);
+            const type = req.params.type; // 'gif', 'video', or 'audio'
+
+            if (isNaN(tierId)) {
+                return res.status(400).json({ success: false, error: 'Invalid tier ID' });
+            }
+
+            if (!['gif', 'video', 'audio'].includes(type)) {
+                return res.status(400).json({ success: false, error: 'Invalid type' });
+            }
+
+            try {
+                const db = this.api.getDatabase();
+                const tier = db.getMilestoneTier(tierId);
+                
+                if (!tier) {
+                    return res.status(404).json({ success: false, error: 'Tier not found' });
+                }
+
+                // Map media type to field name
+                const mediaFields = { 
+                    gif: 'animation_gif_path', 
+                    video: 'animation_video_path', 
+                    audio: 'animation_audio_path' 
+                };
+                
+                const fieldName = mediaFields[type];
+                let filePath = null;
+
+                if (tier[fieldName]) {
+                    filePath = path.join(this.uploadDir, tier[fieldName].split('/').pop());
+                    tier[fieldName] = null;
+                }
+
+                if (filePath && fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    this.api.log(`🗑️ Deleted tier ${tierId} ${type}`, 'info');
+                }
+
+                db.saveMilestoneTier(tier);
+
+                res.json({ success: true, message: `${type} deleted successfully from tier` });
+            } catch (error) {
+                this.api.log(`Error deleting tier ${type}: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // Per-User Milestone Routes
         this.api.registerRoute('get', '/api/gift-milestone/users', (req, res) => {
             try {
