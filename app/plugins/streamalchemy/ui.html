@@ -432,7 +432,7 @@
 
                     <div class="config-group">
                         <label class="config-label" for="craftingWindowMs">Crafting Zeitfenster (Millisekunden)</label>
-                        <div class="config-description">Zeit in der 2 Gifts gesendet werden müssen um zu craften</div>
+                        <div class="config-description">Zeit, in der 2 Gifts gesendet werden müssen, um zu craften</div>
                         <input type="number" id="craftingWindowMs" name="craftingWindowMs" min="1000" max="30000" step="1000" value="6000">
                     </div>
 
@@ -1033,38 +1033,100 @@
 
             const table = document.createElement('table');
             table.className = 'items-table';
-            table.innerHTML = `
-                <thead>
-                    <tr>
-                        <th>Bild</th>
-                        <th>Name</th>
-                        <th>Seltenheit</th>
-                        <th>Typ</th>
-                        <th>Münzen</th>
-                        <th>Erstellt</th>
-                        <th>Aktionen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${items.map(item => `
-                        <tr>
-                            <td>${item.imageURL ? `<img src="${item.imageURL}" class="item-image" alt="${item.name}">` : '📦'}</td>
-                            <td>${item.name}</td>
-                            <td><span class="rarity-badge rarity-${item.rarity}">${item.rarity}</span></td>
-                            <td>${item.isCrafted ? '🔨 Crafted' : '🎁 Base'}</td>
-                            <td>${item.coinValue}</td>
-                            <td>${new Date(item.createdAt).toLocaleString('de-DE')}</td>
-                            <td>
-                                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="editItem('${item.itemId}')">✏️</button>
-                                <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" onclick="deleteItem('${item.itemId}')">🗑️</button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            `;
             
+            // Create thead
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th>Bild</th>
+                    <th>Name</th>
+                    <th>Seltenheit</th>
+                    <th>Typ</th>
+                    <th>Münzen</th>
+                    <th>Erstellt</th>
+                    <th>Aktionen</th>
+                </tr>
+            `;
+            table.appendChild(thead);
+            
+            // Create tbody with proper DOM manipulation to avoid XSS
+            const tbody = document.createElement('tbody');
+            items.forEach(item => {
+                const tr = document.createElement('tr');
+                
+                // Image cell
+                const tdImage = document.createElement('td');
+                if (item.imageURL) {
+                    const img = document.createElement('img');
+                    img.src = escapeHtml(item.imageURL);
+                    img.alt = escapeHtml(item.name);
+                    img.className = 'item-image';
+                    tdImage.appendChild(img);
+                } else {
+                    tdImage.textContent = '📦';
+                }
+                tr.appendChild(tdImage);
+                
+                // Name cell
+                const tdName = document.createElement('td');
+                tdName.textContent = item.name;
+                tr.appendChild(tdName);
+                
+                // Rarity cell
+                const tdRarity = document.createElement('td');
+                const rarityBadge = document.createElement('span');
+                rarityBadge.className = `rarity-badge rarity-${escapeHtml(item.rarity)}`;
+                rarityBadge.textContent = item.rarity;
+                tdRarity.appendChild(rarityBadge);
+                tr.appendChild(tdRarity);
+                
+                // Type cell
+                const tdType = document.createElement('td');
+                tdType.textContent = item.isCrafted ? '🔨 Crafted' : '🎁 Base';
+                tr.appendChild(tdType);
+                
+                // Coins cell
+                const tdCoins = document.createElement('td');
+                tdCoins.textContent = item.coinValue;
+                tr.appendChild(tdCoins);
+                
+                // Created cell
+                const tdCreated = document.createElement('td');
+                tdCreated.textContent = new Date(item.createdAt).toLocaleString('de-DE');
+                tr.appendChild(tdCreated);
+                
+                // Actions cell
+                const tdActions = document.createElement('td');
+                
+                const btnEdit = document.createElement('button');
+                btnEdit.className = 'btn btn-secondary';
+                btnEdit.style.cssText = 'padding: 4px 8px; font-size: 0.75rem;';
+                btnEdit.textContent = '✏️';
+                btnEdit.onclick = () => editItem(item.itemId);
+                tdActions.appendChild(btnEdit);
+                
+                const btnDelete = document.createElement('button');
+                btnDelete.className = 'btn btn-danger';
+                btnDelete.style.cssText = 'padding: 4px 8px; font-size: 0.75rem; margin-left: 4px;';
+                btnDelete.textContent = '🗑️';
+                btnDelete.onclick = () => deleteItem(item.itemId);
+                tdActions.appendChild(btnDelete);
+                
+                tr.appendChild(tdActions);
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
             container.innerHTML = '';
             container.appendChild(table);
+        }
+
+        // HTML escape helper function
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return text;
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Create item modal
