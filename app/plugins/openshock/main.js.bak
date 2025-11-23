@@ -448,7 +448,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - CONFIG ============
 
         // Get Config (WITHOUT API-KEY for security!)
-        this.api.registerRoute('get', '/api/openshock/config', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/config', authMiddleware, (req, res) => {
             const safeConfig = {
                 ...this.config,
                 apiKey: this.config.apiKey ? '***' + this.config.apiKey.slice(-4) : '' // Mask API key
@@ -460,7 +460,7 @@ class OpenShockPlugin {
         });
 
         // Update Config
-        this.api.registerRoute('post', '/api/openshock/config', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/config', authMiddleware, async (req, res) => {
             try {
                 const newConfig = req.body;
 
@@ -541,7 +541,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - DEVICES ============
 
         // Get Devices
-        this.api.registerRoute('get', '/api/openshock/devices', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/devices', authMiddleware, (req, res) => {
             res.json({
                 success: true,
                 devices: this.devices
@@ -549,7 +549,7 @@ class OpenShockPlugin {
         });
 
         // Refresh Devices
-        this.api.registerRoute('post', '/api/openshock/devices/refresh', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/devices/refresh', authMiddleware, async (req, res) => {
             try {
                 await this.loadDevices();
 
@@ -569,7 +569,7 @@ class OpenShockPlugin {
         });
 
         // Get Single Device
-        this.api.registerRoute('get', '/api/openshock/devices/:id', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/devices/:id', authMiddleware, (req, res) => {
             const device = this.devices.find(d => d.id === req.params.id);
 
             if (!device) {
@@ -586,7 +586,7 @@ class OpenShockPlugin {
         });
 
         // Test Device
-        this.api.registerRoute('post', '/api/openshock/test/:deviceId', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/test/:deviceId', authMiddleware, async (req, res) => {
             try {
                 const { deviceId } = req.params;
                 const { type = 'vibrate', intensity = 30, duration = 1000 } = req.body;
@@ -690,7 +690,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - MAPPINGS ============
 
         // Get All Mappings
-        this.api.registerRoute('get', '/api/openshock/mappings', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/mappings', authMiddleware, (req, res) => {
             try {
                 const mappings = this.mappingEngine.getAllMappings();
                 res.json({
@@ -706,7 +706,7 @@ class OpenShockPlugin {
         });
 
         // Create Mapping
-        this.api.registerRoute('post', '/api/openshock/mappings', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/mappings', authMiddleware, async (req, res) => {
             try {
                 const mapping = req.body;
                 const addedMapping = this.mappingEngine.addMapping(mapping);
@@ -729,7 +729,7 @@ class OpenShockPlugin {
         });
 
         // Update Mapping
-        this.api.registerRoute('put', '/api/openshock/mappings/:id', async (req, res) => {
+        this.api.registerRoute('put', '/api/openshock/mappings/:id', authMiddleware, async (req, res) => {
             try {
                 const id = req.params.id;
                 const mapping = req.body;
@@ -753,7 +753,7 @@ class OpenShockPlugin {
         });
 
         // Delete Mapping
-        this.api.registerRoute('delete', '/api/openshock/mappings/:id', async (req, res) => {
+        this.api.registerRoute('delete', '/api/openshock/mappings/:id', authMiddleware, async (req, res) => {
             try {
                 const id = req.params.id;
 
@@ -776,7 +776,7 @@ class OpenShockPlugin {
         });
 
         // Import Mappings
-        this.api.registerRoute('post', '/api/openshock/mappings/import', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/mappings/import', authMiddleware, async (req, res) => {
             try {
                 const { mappings } = req.body;
 
@@ -810,7 +810,7 @@ class OpenShockPlugin {
         });
 
         // Export Mappings
-        this.api.registerRoute('get', '/api/openshock/mappings/export', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/mappings/export', authMiddleware, (req, res) => {
             try {
                 const mappings = this.mappingEngine.getAllMappings();
 
@@ -829,7 +829,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - PATTERNS ============
 
         // Get All Patterns
-        this.api.registerRoute('get', '/api/openshock/patterns', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/patterns', authMiddleware, (req, res) => {
             try {
                 const patterns = this.patternEngine.getAllPatterns();
                 res.json({
@@ -845,7 +845,7 @@ class OpenShockPlugin {
         });
 
         // Create Pattern
-        this.api.registerRoute('post', '/api/openshock/patterns', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/patterns', authMiddleware, async (req, res) => {
             try {
                 const pattern = req.body;
                 const addedPattern = this.patternEngine.addPattern(pattern);
@@ -868,7 +868,7 @@ class OpenShockPlugin {
         });
 
         // Update Pattern
-        this.api.registerRoute('put', '/api/openshock/patterns/:id', async (req, res) => {
+        this.api.registerRoute('put', '/api/openshock/patterns/:id', authMiddleware, async (req, res) => {
             try {
                 const id = req.params.id;
                 const pattern = req.body;
@@ -892,7 +892,7 @@ class OpenShockPlugin {
         });
 
         // Delete Pattern
-        this.api.registerRoute('delete', '/api/openshock/patterns/:id', async (req, res) => {
+        this.api.registerRoute('delete', '/api/openshock/patterns/:id', authMiddleware, async (req, res) => {
             try {
                 const id = req.params.id;
 
@@ -915,7 +915,7 @@ class OpenShockPlugin {
         });
 
         // Execute Pattern
-        this.api.registerRoute('post', '/api/openshock/patterns/execute', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/patterns/execute', authMiddleware, async (req, res) => {
             try {
                 const { patternId, deviceId, variables = {} } = req.body;
 
@@ -958,7 +958,7 @@ class OpenShockPlugin {
         });
 
         // Stop Pattern Execution
-        this.api.registerRoute('post', '/api/openshock/patterns/stop/:executionId', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/patterns/stop/:executionId', authMiddleware, async (req, res) => {
             try {
                 const { executionId } = req.params;
 
@@ -987,7 +987,7 @@ class OpenShockPlugin {
         });
 
         // Import Pattern
-        this.api.registerRoute('post', '/api/openshock/patterns/import', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/patterns/import', authMiddleware, async (req, res) => {
             try {
                 const pattern = req.body;
 
@@ -1011,7 +1011,7 @@ class OpenShockPlugin {
         });
 
         // Export Pattern
-        this.api.registerRoute('get', '/api/openshock/patterns/export/:id', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/patterns/export/:id', authMiddleware, (req, res) => {
             try {
                 const id = parseInt(req.params.id);
                 const pattern = this.patternEngine.getPattern(id);
@@ -1038,7 +1038,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - GIFT CATALOG ============
         
         // Get Gift Catalog
-        this.api.registerRoute('get', '/api/openshock/gift-catalog', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/gift-catalog', authMiddleware, (req, res) => {
             try {
                 const db = this.api.getDatabase();
                 const catalog = db.getGiftCatalog();
@@ -1059,7 +1059,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - SAFETY ============
 
         // Get Safety Settings
-        this.api.registerRoute('get', '/api/openshock/safety', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/safety', authMiddleware, (req, res) => {
             try {
                 const settings = this.safetyManager.getSettings();
                 res.json({
@@ -1075,7 +1075,7 @@ class OpenShockPlugin {
         });
 
         // Update Safety Settings
-        this.api.registerRoute('post', '/api/openshock/safety', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/safety', authMiddleware, async (req, res) => {
             try {
                 const settings = req.body;
 
@@ -1103,7 +1103,7 @@ class OpenShockPlugin {
         });
 
         // Emergency Stop
-        this.api.registerRoute('post', '/api/openshock/emergency-stop', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/emergency-stop', authMiddleware, async (req, res) => {
             try {
                 // Emergency Stop aktivieren
                 this.safetyManager.triggerEmergencyStop('Manual emergency stop triggered via API');
@@ -1139,7 +1139,7 @@ class OpenShockPlugin {
         });
 
         // Clear Emergency Stop
-        this.api.registerRoute('post', '/api/openshock/emergency-clear', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/emergency-clear', authMiddleware, async (req, res) => {
             try {
                 // Emergency Stop deaktivieren
                 this.safetyManager.clearEmergencyStop();
@@ -1167,7 +1167,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - QUEUE ============
 
         // Get Queue Status
-        this.api.registerRoute('get', '/api/openshock/queue/status', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/queue/status', authMiddleware, (req, res) => {
             try {
                 const status = this.queueManager.getQueueStatus();
                 res.json({
@@ -1183,7 +1183,7 @@ class OpenShockPlugin {
         });
 
         // Clear Queue
-        this.api.registerRoute('post', '/api/openshock/queue/clear', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/queue/clear', authMiddleware, async (req, res) => {
             try {
                 await this.queueManager.clearQueue();
 
@@ -1201,7 +1201,7 @@ class OpenShockPlugin {
         });
 
         // Remove Queue Item
-        this.api.registerRoute('delete', '/api/openshock/queue/:id', (req, res) => {
+        this.api.registerRoute('delete', '/api/openshock/queue/:id', authMiddleware, (req, res) => {
             try {
                 const id = req.params.id;
                 const removed = this.queueManager.removeItem(id);
@@ -1229,7 +1229,7 @@ class OpenShockPlugin {
         // ============ API ROUTES - STATS ============
 
         // Get Statistics
-        this.api.registerRoute('get', '/api/openshock/stats', (req, res) => {
+        this.api.registerRoute('get', '/api/openshock/stats', authMiddleware, (req, res) => {
             try {
                 const uptime = this.stats.startTime ? Date.now() - this.stats.startTime : 0;
                 const queueStatus = this.queueManager.getQueueStatus();
@@ -1258,7 +1258,7 @@ class OpenShockPlugin {
         });
 
         // Test Connection
-        this.api.registerRoute('post', '/api/openshock/test-connection', async (req, res) => {
+        this.api.registerRoute('post', '/api/openshock/test-connection', authMiddleware, async (req, res) => {
             try {
                 if (!this.openShockClient) {
                     return res.status(500).json({
