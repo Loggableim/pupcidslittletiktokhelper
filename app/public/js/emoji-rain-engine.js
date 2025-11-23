@@ -366,13 +366,18 @@ function applyPixelEffect(element) {
         // For text emojis, we need a different approach
         // Use a combination of blur and contrast to create a pixelated effect
         const pixelAmount = config.pixel_size || 4;
+        
+        // Constants for pixel effect tuning
+        const PIXEL_BLUR_MULTIPLIER = 0.5; // Adjust blur intensity based on pixel size
+        const PIXEL_CONTRAST = 2; // Contrast boost for pixelation effect
+        
         // The blur creates the pixelation, we adjust based on pixel_size
-        const blurAmount = pixelAmount * 0.5;
+        const blurAmount = pixelAmount * PIXEL_BLUR_MULTIPLIER;
         
         // For text emojis, apply a subtle blur to simulate pixelation
         if (!element.querySelector('img')) {
             // Text emoji - apply filter-based pixelation
-            pixelFilter = `blur(${blurAmount}px) contrast(2)`;
+            pixelFilter = `blur(${blurAmount}px) contrast(${PIXEL_CONTRAST})`;
         }
     } else {
         element.style.imageRendering = '';
@@ -601,12 +606,13 @@ function spawnEmoji(emoji, x, y, size, username = null, color = null) {
         const margin = size;
         const safeWidth = canvasWidth - (margin * 2);
         x = margin + (x * safeWidth);
+    } else {
+        // For absolute positions, ensure x is within safe bounds
+        const margin = size;
+        const minX = margin;
+        const maxX = canvasWidth - margin;
+        x = Math.max(minX, Math.min(maxX, x));
     }
-    
-    // Ensure x is within safe bounds
-    const minX = size;
-    const maxX = canvasWidth - size;
-    x = Math.max(minX, Math.min(maxX, x));
 
     // Create physics body
     const radius = size / 2;
