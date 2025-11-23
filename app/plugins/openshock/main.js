@@ -343,64 +343,6 @@ class OpenShockPlugin {
     _registerRoutes() {
         const pluginDir = __dirname;
 
-        // ============ AUTHENTICATION MIDDLEWARE ============
-
-        /**
-         * Authentication middleware for API endpoints
-         * Protects against unauthorized access to plugin controls
-         */
-        const authMiddleware = (req, res, next) => {
-            // Allow OPTIONS requests for CORS preflight
-            if (req.method === 'OPTIONS') {
-                return next();
-            }
-
-            // Check multiple authentication methods:
-            // 1. Session-based auth (if parent app provides it)
-            if (req.session && req.session.authenticated) {
-                return next();
-            }
-
-            // 2. API token in headers
-            const authHeader = req.headers['x-openshock-auth'];
-            if (authHeader && authHeader === this.config.apiAuthToken) {
-                return next();
-            }
-
-            // 3. Check if request is from localhost (development mode)
-            const isLocalhost = req.ip === '127.0.0.1' ||
-                               req.ip === '::1' ||
-                               req.ip === '::ffff:127.0.0.1' ||
-                               req.hostname === 'localhost';
-
-            // 4. Check referer/origin for same-origin requests
-            const referer = req.headers.referer || req.headers.origin || '';
-            const isSameOrigin = referer.includes(req.hostname) ||
-                                referer.includes('localhost') ||
-                                referer.includes('127.0.0.1');
-
-            // Allow localhost OR same-origin requests
-            if (isLocalhost && isSameOrigin) {
-                return next();
-            }
-
-            // If none of the auth methods succeed, deny access
-            this.api.log(`Unauthorized API access attempt from ${req.ip} to ${req.path}`, 'warn');
-            return res.status(401).json({
-                success: false,
-                error: 'Unauthorized. Please access the OpenShock panel through the main application UI.'
-            });
-        };
-
-        // Helper to wrap handlers with auth
-        const withAuth = (handler) => {
-            return async (req, res, next) => {
-                authMiddleware(req, res, () => {
-                    handler(req, res, next);
-                });
-            };
-        };
-
         // ============ UI ROUTES ============
 
         // Main UI
