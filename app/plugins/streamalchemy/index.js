@@ -72,6 +72,9 @@ class StreamAlchemyPlugin {
             // Start cleanup timer (remove old gift buffers)
             this.startCleanupTimer();
 
+            // Register commands with GCCE if available
+            this.registerGCCECommands();
+
             this.api.log('✅ [STREAMALCHEMY] StreamAlchemy Plugin initialized successfully', 'info');
         } catch (error) {
             this.api.log(`❌ [STREAMALCHEMY] Initialization failed: ${error.message}`, 'error');
@@ -545,10 +548,320 @@ class StreamAlchemyPlugin {
     }
 
     /**
+     * Register commands with GCCE (Global Chat Command Engine)
+     */
+    registerGCCECommands() {
+        // Try to get GCCE plugin from the plugin loader
+        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+        
+        if (!gccePlugin || !gccePlugin.instance) {
+            this.api.log('[STREAMALCHEMY] GCCE not available - commands will not be registered', 'debug');
+            return;
+        }
+
+        const gcce = gccePlugin.instance;
+
+        // Define StreamAlchemy commands
+        const commands = [
+            {
+                name: 'inventory',
+                description: 'View your alchemy inventory',
+                syntax: '/inventory',
+                permission: 'all',
+                enabled: true,
+                minArgs: 0,
+                maxArgs: 0,
+                category: 'Alchemy',
+                handler: async (args, context) => await this.handleInventoryCommand(args, context)
+            },
+            {
+                name: 'inspect',
+                description: 'Inspect an item in your inventory',
+                syntax: '/inspect <item_name>',
+                permission: 'all',
+                enabled: true,
+                minArgs: 1,
+                category: 'Alchemy',
+                handler: async (args, context) => await this.handleInspectCommand(args, context)
+            },
+            {
+                name: 'merge',
+                description: 'Manually merge two items (moderator only)',
+                syntax: '/merge <item1> <item2>',
+                permission: 'moderator',
+                enabled: true,
+                minArgs: 2,
+                maxArgs: 2,
+                category: 'Alchemy',
+                handler: async (args, context) => await this.handleMergeCommand(args, context)
+            },
+            {
+                name: 'alchemy',
+                description: 'View alchemy system information and help',
+                syntax: '/alchemy [help]',
+                permission: 'all',
+                enabled: true,
+                minArgs: 0,
+                maxArgs: 1,
+                category: 'Alchemy',
+                handler: async (args, context) => await this.handleAlchemyCommand(args, context)
+            }
+        ];
+
+        // Register commands
+        const result = gcce.registerCommandsForPlugin('streamalchemy', commands);
+        
+        this.api.log(`[STREAMALCHEMY] Registered ${result.registered.length} commands with GCCE`, 'info');
+        if (result.failed.length > 0) {
+            this.api.log(`[STREAMALCHEMY] Failed to register commands: ${result.failed.join(', ')}`, 'warn');
+        }
+    }
+
+    /**
+     * Handle /inventory command
+     */
+    async handleInventoryCommand(args, context) {
+        try {
+            const userId = context.userId;
+            const inventory = await this.db.getUserInventory(userId);
+
+            if (inventory.length === 0) {
+                return {
+                    success: true,
+                    message: `${context.username}, you don't have any items yet! Send gifts to start your collection.`,
+                    displayOverlay: true,
+                    data: {
+                        type: 'inventory_empty',
+                        username: context.username
+                    }
+                };
+            }
+
+            // Enrich with item details
+            const enrichedInventory = await Promise.all(
+                inventory.map(async entry => {
+                    const item = await this.db.getItemById(entry.itemId);
+                    return {
+                        ...entry,
+                        item
+                    };
+                })
+            );
+
+            // Emit to overlay
+            this.api.emit('streamalchemy:show_inventory', {
+                userId,
+                username: context.username,
+                inventory: enrichedInventory,
+                timestamp: Date.now()
+            });
+
+            return {
+                success: true,
+                message: `${context.username}, you have ${inventory.length} unique items! Check the overlay.`,
+                displayOverlay: true,
+                data: {
+                    type: 'inventory_display',
+                    username: context.username,
+                    itemCount: inventory.length,
+                    inventory: enrichedInventory
+                }
+            };
+
+        } catch (error) {
+            this.api.log(`[STREAMALCHEMY] Inventory command error: ${error.message}`, 'error');
+            return {
+                success: false,
+                error: 'Failed to retrieve your inventory. Please try again.',
+                displayOverlay: true
+            };
+        }
+    }
+
+    /**
+     * Handle /inspect command
+     */
+    async handleInspectCommand(args, context) {
+        try {
+            const itemName = args.join(' ').toLowerCase();
+            const userId = context.userId;
+            
+            // Get user's inventory
+            const inventory = await this.db.getUserInventory(userId);
+            
+            // Find item by name
+            let foundItem = null;
+            for (const entry of inventory) {
+                const item = await this.db.getItemById(entry.itemId);
+                if (item && item.name.toLowerCase().includes(itemName)) {
+                    foundItem = { ...item, quantity: entry.quantity };
+                    break;
+                }
+            }
+
+            if (!foundItem) {
+                return {
+                    success: false,
+                    error: `Item "${args.join(' ')}" not found in your inventory.`,
+                    displayOverlay: true
+                };
+            }
+
+            // Emit to overlay
+            this.api.emit('streamalchemy:inspect_item', {
+                userId,
+                username: context.username,
+                item: foundItem,
+                timestamp: Date.now()
+            });
+
+            return {
+                success: true,
+                message: `Inspecting ${foundItem.name} (${foundItem.rarity}) - Check the overlay!`,
+                displayOverlay: true,
+                data: {
+                    type: 'item_inspect',
+                    item: foundItem
+                }
+            };
+
+        } catch (error) {
+            this.api.log(`[STREAMALCHEMY] Inspect command error: ${error.message}`, 'error');
+            return {
+                success: false,
+                error: 'Failed to inspect item. Please try again.',
+                displayOverlay: true
+            };
+        }
+    }
+
+    /**
+     * Handle /merge command (moderator only)
+     */
+    async handleMergeCommand(args, context) {
+        try {
+            const item1Name = args[0].toLowerCase();
+            const item2Name = args[1].toLowerCase();
+            const userId = context.userId;
+
+            // Get user's inventory
+            const inventory = await this.db.getUserInventory(userId);
+
+            // Find both items
+            let item1 = null;
+            let item2 = null;
+
+            for (const entry of inventory) {
+                const item = await this.db.getItemById(entry.itemId);
+                if (item) {
+                    if (item.name.toLowerCase().includes(item1Name) && !item1) {
+                        item1 = item;
+                    } else if (item.name.toLowerCase().includes(item2Name) && !item2) {
+                        item2 = item;
+                    }
+                }
+            }
+
+            if (!item1) {
+                return {
+                    success: false,
+                    error: `Item "${args[0]}" not found in your inventory.`,
+                    displayOverlay: true
+                };
+            }
+
+            if (!item2) {
+                return {
+                    success: false,
+                    error: `Item "${args[1]}" not found in your inventory.`,
+                    displayOverlay: true
+                };
+            }
+
+            // Trigger crafting animation
+            this.broadcastCraftingStart(userId, item1, item2);
+
+            // Generate crafted item
+            const craftedItem = await this.craftingService.generateCraftedItem(item1, item2);
+
+            // Give crafted item to user
+            await this.giveItemToUser(userId, craftedItem);
+
+            // Broadcast complete
+            this.broadcastCraftingComplete(userId, craftedItem);
+
+            return {
+                success: true,
+                message: `Successfully merged ${item1.name} + ${item2.name} into ${craftedItem.name}!`,
+                displayOverlay: true,
+                data: {
+                    type: 'manual_merge',
+                    item1,
+                    item2,
+                    craftedItem
+                }
+            };
+
+        } catch (error) {
+            this.api.log(`[STREAMALCHEMY] Merge command error: ${error.message}`, 'error');
+            return {
+                success: false,
+                error: 'Failed to merge items. Please try again.',
+                displayOverlay: true
+            };
+        }
+    }
+
+    /**
+     * Handle /alchemy command
+     */
+    async handleAlchemyCommand(args, context) {
+        const stats = await this.db.getStats();
+        const craftingStats = this.craftingService.getStats();
+
+        if (args.length > 0 && args[0].toLowerCase() === 'help') {
+            // Show help information
+            return {
+                success: true,
+                message: 'StreamAlchemy: Transform gifts into RPG items! Send 2 gifts within 6 seconds to craft new items.',
+                displayOverlay: true,
+                data: {
+                    type: 'alchemy_help',
+                    commands: [
+                        '/inventory - View your items',
+                        '/inspect <item> - Inspect an item',
+                        '/alchemy - View system stats'
+                    ]
+                }
+            };
+        }
+
+        // Show statistics
+        return {
+            success: true,
+            message: `StreamAlchemy Stats: ${stats.totalItems} total items (${stats.craftedItems} crafted), ${stats.totalUsers} alchemists`,
+            displayOverlay: true,
+            data: {
+                type: 'alchemy_stats',
+                stats: {
+                    ...stats,
+                    ...craftingStats
+                }
+            }
+        };
+    }
+
+    /**
      * Clean up plugin resources
      */
     async destroy() {
         this.api.log('[STREAMALCHEMY] Shutting down StreamAlchemy Plugin...', 'info');
+
+        // Unregister commands from GCCE
+        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+        if (gccePlugin?.instance) {
+            gccePlugin.instance.unregisterCommandsForPlugin('streamalchemy');
+        }
 
         // Stop cleanup timer
         if (this.cleanupInterval) {
