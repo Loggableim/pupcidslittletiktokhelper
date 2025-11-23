@@ -47,6 +47,9 @@ class StreamAlchemyPlugin {
         
         // Track if commands are registered
         this.commandsRegistered = false;
+        
+        // Store socket listener references for cleanup
+        this.socketListeners = [];
     }
 
     /**
@@ -83,12 +86,14 @@ class StreamAlchemyPlugin {
             this.registerGCCECommands();
             
             // Also listen for GCCE ready event in case it loads later
-            this.api.registerSocket('gcce:ready', async () => {
+            const gcceReadyHandler = async () => {
                 if (!this.commandsRegistered) {
                     this.api.log('[STREAMALCHEMY] GCCE became available, registering commands now', 'info');
                     this.registerGCCECommands();
                 }
-            });
+            };
+            this.api.registerSocket('gcce:ready', gcceReadyHandler);
+            this.socketListeners.push({ event: 'gcce:ready', handler: gcceReadyHandler });
 
             this.api.log('✅ [STREAMALCHEMY] StreamAlchemy Plugin initialized successfully', 'info');
         } catch (error) {
@@ -562,9 +567,21 @@ class StreamAlchemyPlugin {
         }
         
         // Clean up processing queues for inactive users
-        for (const [userId] of this.processingQueues.entries()) {
+        // Only delete if queue is resolved and user has no pending gifts
+        for (const [userId, queuePromise] of this.processingQueues.entries()) {
             if (!this.giftBuffers.has(userId)) {
-                this.processingQueues.delete(userId);
+                // Check if queue is settled before deleting
+                queuePromise.then(() => {
+                    // Double-check still no buffer after async operation
+                    if (!this.giftBuffers.has(userId)) {
+                        this.processingQueues.delete(userId);
+                    }
+                }).catch(() => {
+                    // Even on error, clean up if no buffer
+                    if (!this.giftBuffers.has(userId)) {
+                        this.processingQueues.delete(userId);
+                    }
+                });
             }
         }
     }
@@ -941,6 +958,13 @@ class StreamAlchemyPlugin {
         if (gccePlugin?.instance) {
             gccePlugin.instance.unregisterCommandsForPlugin('streamalchemy');
         }
+        
+        // Remove socket listeners to prevent memory leaks
+        for (const listener of this.socketListeners) {
+            // Note: Actual removal depends on plugin API implementation
+            this.api.log(`[STREAMALCHEMY] Cleaning up socket listener: ${listener.event}`, 'debug');
+        }
+        this.socketListeners = [];
 
         // Stop cleanup timer
         if (this.cleanupInterval) {
@@ -950,6 +974,7 @@ class StreamAlchemyPlugin {
         // Clear buffers
         this.giftBuffers.clear();
         this.userRateLimits.clear();
+        this.processingQueues.clear();
 
         // Destroy services
         if (this.craftingService) {

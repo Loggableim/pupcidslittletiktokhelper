@@ -74,17 +74,25 @@ class AlchemyDatabase {
     async queueWrite(operation, queueType = 'global') {
         const queue = queueType === 'global' ? 'globalWriteQueue' : 'userWriteQueue';
         
-        // Chain the operation to the queue
-        this[queue] = this[queue].then(async () => {
+        // Create a promise for this specific operation
+        let operationResult;
+        const operationPromise = (async () => {
             try {
-                return await operation();
+                operationResult = await operation();
+                return operationResult;
             } catch (error) {
                 this.logger.error(`[ALCHEMY DB] Queued ${queueType} write failed: ${error.message}`);
                 throw error;
             }
-        });
+        })();
         
-        return this[queue];
+        // Chain to queue but don't propagate errors to queue chain
+        this[queue] = this[queue]
+            .then(() => operationPromise)
+            .catch(() => {}); // Swallow error to keep queue alive
+        
+        // Return the operation result (which may reject)
+        return operationPromise;
     }
 
     // ==================== GLOBAL INVENTORY OPERATIONS ====================
