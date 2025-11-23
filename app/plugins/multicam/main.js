@@ -299,6 +299,11 @@ class MultiCamPlugin {
      * Registriert Express-Routes
      */
     registerRoutes() {
+        // UI route
+        this.api.registerRoute('GET', '/multicam/ui', (req, res) => {
+            res.sendFile(this.api.getPluginDir() + '/ui.html');
+        });
+
         // GET /api/multicam/config
         this.api.registerRoute('GET', '/api/multicam/config', async (req, res) => {
             res.json({
