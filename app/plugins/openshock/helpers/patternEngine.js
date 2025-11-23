@@ -407,12 +407,21 @@ class PatternEngine {
       }
 
       const step = steps[i];
+      
+      // Execute the step - for pause steps this includes the wait
+      // For action steps (shock/vibrate/sound), this sends the command to the device
       await this._executeStep(step, deviceId, openShockClient, execution);
-
-      // Wait for step duration only (delay is handled in _executeStep)
-      const waitTime = step.duration || 0;
-      if (waitTime > 0) {
-        await this._sleep(waitTime, execution);
+      
+      // For action steps (not pause), wait for the device to complete execution
+      // The OpenShock API sends the command async, but the device takes time to execute
+      if (step.type !== 'pause') {
+        await this._sleep(step.duration, execution);
+      }
+      
+      // Additional delay between steps if specified (currently not used in presets)
+      const delay = step.delay || 0;
+      if (delay > 0) {
+        await this._sleep(delay, execution);
       }
     }
   }
