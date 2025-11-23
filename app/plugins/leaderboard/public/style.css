@@ -107,6 +107,7 @@ body {
     font-size: 22px;
     font-weight: 700;
     text-align: center;
+    color: #00ffff; /* Fallback color */
     background: linear-gradient(135deg, #00ffff, #ff00ff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

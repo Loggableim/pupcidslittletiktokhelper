@@ -216,14 +216,15 @@ class LeaderboardPlugin {
         this.api.registerTikTokEvent('gift', async (data) => {
             try {
                 // Robust handling of potentially undefined values
-                const userId = data.userId || data.uniqueId || 'unknown';
+                // userId should be the primary unique identifier
+                const userId = data.userId || data.user?.userId;
                 const nickname = data.nickname || data.username || 'Unknown User';
                 const uniqueId = data.uniqueId || '';
                 const profilePictureUrl = data.profilePictureUrl || '';
                 const diamondCount = data.diamondCount || data.coins || 0;
 
                 // Validate that we have meaningful data
-                if (userId === 'unknown' || diamondCount <= 0) {
+                if (!userId || diamondCount <= 0) {
                     this.api.log(`Invalid gift data received: ${JSON.stringify(data)}`, 'warn');
                     return;
                 }

@@ -10,6 +10,9 @@ class LeaderboardDatabase {
         this.saveTimeout = null;
         this.pendingWrites = new Map(); // userId -> data
         this.debounceDelay = 5000; // 5 seconds debounce
+        
+        // Prepare reusable statements for performance
+        this.insertStmt = null;
     }
 
     /**
@@ -50,11 +53,10 @@ class LeaderboardDatabase {
             `);
 
             // Initialize default config if not exists
-            const configStmt = this.db.prepare(`
+            this.db.prepare(`
                 INSERT OR IGNORE INTO leaderboard_config (id, top_count, min_coins_to_show)
                 VALUES (1, 10, 0)
-            `);
-            configStmt.run();
+            `).run();
 
             this.logger.info('[Leaderboard DB] Tables initialized successfully');
         } catch (error) {
@@ -150,22 +152,25 @@ class LeaderboardDatabase {
         }
 
         try {
-            const stmt = this.db.prepare(`
-                INSERT INTO leaderboard_alltime 
-                    (user_id, nickname, unique_id, profile_picture_url, total_coins, last_gift_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                ON CONFLICT(user_id) DO UPDATE SET
-                    nickname = excluded.nickname,
-                    unique_id = excluded.unique_id,
-                    profile_picture_url = excluded.profile_picture_url,
-                    total_coins = total_coins + excluded.total_coins,
-                    last_gift_at = CURRENT_TIMESTAMP,
-                    updated_at = CURRENT_TIMESTAMP
-            `);
+            // Initialize prepared statement if not already done
+            if (!this.insertStmt) {
+                this.insertStmt = this.db.prepare(`
+                    INSERT INTO leaderboard_alltime 
+                        (user_id, nickname, unique_id, profile_picture_url, total_coins, last_gift_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT(user_id) DO UPDATE SET
+                        nickname = excluded.nickname,
+                        unique_id = excluded.unique_id,
+                        profile_picture_url = excluded.profile_picture_url,
+                        total_coins = total_coins + excluded.total_coins,
+                        last_gift_at = CURRENT_TIMESTAMP,
+                        updated_at = CURRENT_TIMESTAMP
+                `);
+            }
 
             const transaction = this.db.transaction((writes) => {
                 for (const write of writes) {
-                    stmt.run(
+                    this.insertStmt.run(
                         write.userId,
                         write.nickname,
                         write.uniqueId,

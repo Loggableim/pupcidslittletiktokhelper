@@ -159,11 +159,11 @@ class LeaderboardOverlay {
             
             // Build entry HTML
             html += `
-                <div class="leaderboard-entry ${animationClass}" data-user-id="${userId}">
+                <div class="leaderboard-entry ${animationClass}" data-user-id="${this.escapeHtml(userId)}">
                     <div class="rank-badge ${rankClass}">
                         ${rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
                     </div>
-                    ${profilePic ? `<img src="${profilePic}" alt="${nickname}" class="profile-pic" onerror="this.style.display='none'">` : ''}
+                    ${profilePic && this.isValidUrl(profilePic) ? `<img src="${this.escapeHtml(profilePic)}" alt="${this.escapeHtml(nickname)}" class="profile-pic" onerror="this.style.display='none'">` : ''}
                     <div class="user-info">
                         <div class="username">${this.escapeHtml(nickname)}</div>
                         ${uniqueId ? `<div class="user-id">@${this.escapeHtml(uniqueId)}</div>` : ''}
@@ -216,6 +216,12 @@ class LeaderboardOverlay {
     }
 
     escapeHtml(text) {
+        // Handle null/undefined/non-string inputs
+        if (text === null || text === undefined) {
+            return '';
+        }
+        
+        const str = String(text);
         const map = {
             '&': '&amp;',
             '<': '&lt;',
@@ -223,7 +229,21 @@ class LeaderboardOverlay {
             '"': '&quot;',
             "'": '&#039;'
         };
-        return text.replace(/[&<>"']/g, m => map[m]);
+        return str.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    isValidUrl(url) {
+        // Basic URL validation for profile pictures
+        if (!url || typeof url !== 'string') {
+            return false;
+        }
+        try {
+            const parsedUrl = new URL(url);
+            // Only allow http/https protocols
+            return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+        } catch {
+            return false;
+        }
     }
 
     setupTabs() {
