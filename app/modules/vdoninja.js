@@ -435,6 +435,14 @@ class VDONinjaManager extends EventEmitter {
     }
 
     /**
+     * Get all guests (alias for getAllGuests)
+     * @returns {Array} Array of guest objects
+     */
+    getGuests() {
+        return this.getAllGuests();
+    }
+
+    /**
      * Get guest count
      * @returns {number} Number of connected guests
      */
@@ -506,6 +514,15 @@ class VDONinjaManager extends EventEmitter {
     }
 
     /**
+     * Get room by roomId
+     * @param {string} roomId - Room ID
+     * @returns {Object|null} Room object or null
+     */
+    getRoom(roomId) {
+        return this.db.getVDONinjaRoom(roomId);
+    }
+
+    /**
      * Delete room from database
      * @param {string} roomId - Room ID
      */
@@ -533,6 +550,14 @@ class VDONinjaManager extends EventEmitter {
     }
 
     /**
+     * Get all available layouts (alias for getAllLayouts)
+     * @returns {Array} Array of layout presets
+     */
+    getLayouts() {
+        return this.getAllLayouts();
+    }
+
+    /**
      * Save custom layout
      * @param {string} name - Layout name
      * @param {string} type - Layout type
@@ -543,6 +568,26 @@ class VDONinjaManager extends EventEmitter {
         const id = this.db.saveLayout(name, type, config);
         this.logger.info(`💾 Custom layout saved: ${name}`);
         return id;
+    }
+
+    /**
+     * Save layout (alias for saveCustomLayout)
+     * @param {string} name - Layout name
+     * @param {Object} config - Layout configuration
+     * @returns {number} Layout ID
+     */
+    saveLayout(name, config) {
+        // Default to 'custom' type
+        return this.saveCustomLayout(name, 'custom', config);
+    }
+
+    /**
+     * Delete layout
+     * @param {number} id - Layout ID
+     */
+    deleteLayout(id) {
+        this.db.deleteLayout(id);
+        this.logger.info(`🗑️ Layout deleted: ${id}`);
     }
 
     /**
@@ -558,6 +603,16 @@ class VDONinjaManager extends EventEmitter {
         }
 
         return this.db.getGuestEventHistory(guest.id, limit);
+    }
+
+    /**
+     * Get guest history (alias for getGuestEventHistory)
+     * @param {number} slot - Slot number
+     * @param {number} limit - Maximum number of events
+     * @returns {Array} Array of event objects
+     */
+    getGuestHistory(slot, limit = 100) {
+        return this.getGuestEventHistory(slot, limit);
     }
 
     /**
@@ -597,7 +652,9 @@ class VDONinjaManager extends EventEmitter {
                 roomName: this.activeRoom.roomName,
                 roomId: this.activeRoom.roomId,
                 maxGuests: this.activeRoom.maxGuests,
-                guestCount: this.guests.size
+                guestCount: this.guests.size,
+                directorUrl: this.activeRoom.directorUrl,
+                guestInviteUrl: this.activeRoom.guestInviteUrl
             } : null,
             currentLayout: this.currentLayout,
             guests: this.getAllGuests()
