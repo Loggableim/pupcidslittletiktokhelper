@@ -361,7 +361,7 @@ We welcome translation contributions! To contribute:
 
 ## Need Help?
 
-- **Documentation**: Check `llm_start_here.md`
+- **Documentation**: Check `../infos/llm_start_here.md`
 - **Issues**: Open a GitHub issue
 - **Questions**: Check existing translations for examples
 

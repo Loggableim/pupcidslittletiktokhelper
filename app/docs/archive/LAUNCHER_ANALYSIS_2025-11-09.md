@@ -253,7 +253,7 @@ function compareVersions(v1, v2) {
 
 ### Phase 4: Dokumentation
 - ✅ CHANGELOG.md aktualisieren
-- ✅ llm_start_here.md aktualisieren
+- ✅ infos/llm_start_here.md aktualisieren
 - ✅ llm_info erstellen
 
 ---
