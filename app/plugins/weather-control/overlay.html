@@ -161,8 +161,19 @@
         if (typeof gsap === 'undefined') {
             console.error('❌ GSAP library failed to load! Animations will not work.');
             console.error('Please ensure /gsap/gsap.min.js is accessible.');
-            // Show error message on screen
-            document.body.innerHTML += '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,0.9);color:white;padding:20px;border-radius:10px;font-family:monospace;text-align:center;z-index:99999;"><strong>⚠️ GSAP Loading Error</strong><br>The GSAP animation library failed to load.<br>Weather effects will not display.</div>';
+            // Show error message on screen using safe DOM manipulation
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,0.9);color:white;padding:20px;border-radius:10px;font-family:monospace;text-align:center;z-index:99999;';
+            const title = document.createElement('strong');
+            title.textContent = '⚠️ GSAP Loading Error';
+            errorDiv.appendChild(title);
+            errorDiv.appendChild(document.createElement('br'));
+            const msg1 = document.createTextNode('The GSAP animation library failed to load.');
+            errorDiv.appendChild(msg1);
+            errorDiv.appendChild(document.createElement('br'));
+            const msg2 = document.createTextNode('Weather effects will not display.');
+            errorDiv.appendChild(msg2);
+            document.body.appendChild(errorDiv);
         }
 
         // Configuration
@@ -188,42 +199,67 @@
         const connectionStatus = document.getElementById('connection-status');
 
         // Safe GSAP wrapper - fallback to setTimeout if GSAP not available
-        const safeGsap = {
-            to: (target, vars) => {
-                if (typeof gsap !== 'undefined') {
-                    return gsap.to(target, vars);
-                } else {
-                    // Fallback: apply properties directly without animation
-                    Object.keys(vars).forEach(key => {
-                        if (key !== 'duration' && key !== 'delay' && key !== 'ease' && key !== 'onComplete') {
-                            if (typeof target === 'object' && target !== null) {
-                                target[key] = vars[key];
+        const safeGsap = (() => {
+            // Helper function to apply properties to target
+            // GSAP-specific properties to exclude from direct assignment (GSAP 3.x)
+            const gsapProps = ['duration', 'delay', 'ease', 'onComplete', 'repeat', 'yoyo', 'stagger', 'yoyoEase', 'onStart', 'onUpdate', 'onRepeat', 'repeatDelay'];
+            
+            function applyProperties(target, vars) {
+                Object.keys(vars).forEach(key => {
+                    if (!gsapProps.includes(key)) {
+                        if (typeof target === 'object' && target !== null) {
+                            try {
+                                // Check if target is a DOM element with a style property
+                                if (target.style && typeof target.style === 'object') {
+                                    // Apply CSS properties via style
+                                    target.style[key] = vars[key];
+                                } else {
+                                    // Apply directly to object (for plain objects)
+                                    target[key] = vars[key];
+                                }
+                            } catch (error) {
+                                // Silently ignore invalid property assignments
+                                console.debug(`Could not apply property ${key} to target:`, error);
                             }
                         }
-                    });
-                    // Call onComplete if provided
-                    if (vars.onComplete && vars.delay) {
-                        setTimeout(vars.onComplete, vars.delay * 1000);
-                    } else if (vars.onComplete) {
-                        setTimeout(vars.onComplete, (vars.duration || 0) * 1000);
                     }
-                    return { kill: () => {} };
-                }
-            },
-            set: (target, vars) => {
-                if (typeof gsap !== 'undefined') {
-                    return gsap.set(target, vars);
-                } else {
-                    // Fallback: apply properties directly
-                    Object.keys(vars).forEach(key => {
-                        if (typeof target === 'object' && target !== null) {
-                            target[key] = vars[key];
-                        }
-                    });
-                    return { kill: () => {} };
-                }
+                });
             }
-        };
+            
+            return {
+                to: (target, vars) => {
+                    if (typeof gsap !== 'undefined') {
+                        return gsap.to(target, vars);
+                    } else {
+                        // Fallback: apply properties directly without animation
+                        // In the fallback, we skip the "animation" so we apply immediately
+                        // The delay represents when the animation would start, so we delay the property application
+                        const applyDelay = (vars.delay || 0) * 1000;
+                        
+                        setTimeout(() => {
+                            applyProperties(target, vars);
+                            
+                            // Call onComplete after duration (since animation is instant in fallback)
+                            if (vars.onComplete) {
+                                const completionDelay = (vars.duration || 0) * 1000;
+                                setTimeout(vars.onComplete, completionDelay);
+                            }
+                        }, applyDelay);
+                        
+                        return { kill: () => {} };
+                    }
+                },
+                set: (target, vars) => {
+                    if (typeof gsap !== 'undefined') {
+                        return gsap.set(target, vars);
+                    } else {
+                        // Fallback: apply properties directly
+                        applyProperties(target, vars);
+                        return { kill: () => {} };
+                    }
+                }
+            };
+        })();
 
         // Responsive canvas sizing with device pixel ratio support
         function resizeCanvas() {
