@@ -339,6 +339,23 @@ class MultiCamPlugin {
             res.json(result);
         });
 
+        // POST /api/multicam/connect-with-settings
+        this.api.registerRoute('POST', '/api/multicam/connect-with-settings', async (req, res) => {
+            const { host, port, password } = req.body;
+            
+            // Update config with new settings
+            this.config.obs = {
+                ...this.config.obs,
+                host: host || this.config.obs?.host || '127.0.0.1',
+                port: port || this.config.obs?.port || 4455,
+                password: password !== undefined ? password : (this.config.obs?.password || '')
+            };
+            this.api.setConfig('config', this.config);
+
+            const result = await this.connectOBS();
+            res.json(result);
+        });
+
         // POST /api/multicam/disconnect
         this.api.registerRoute('POST', '/api/multicam/disconnect', async (req, res) => {
             const result = await this.disconnectOBS();
@@ -372,6 +389,32 @@ class MultiCamPlugin {
                     locked: this.locked
                 }
             });
+        });
+
+        // GET /api/multicam/gift-catalog
+        this.api.registerRoute('GET', '/api/multicam/gift-catalog', async (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                
+                if (!db) {
+                    throw new Error('Database not available');
+                }
+
+                const stmt = db.prepare('SELECT id, name, diamond_count as coins FROM gift_catalog ORDER BY diamond_count DESC');
+                const gifts = stmt.all();
+
+                res.json({
+                    success: true,
+                    gifts: gifts || []
+                });
+            } catch (error) {
+                this.api.log(`Multi-Cam: Failed to get gift catalog: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message,
+                    gifts: []
+                });
+            }
         });
     }
 

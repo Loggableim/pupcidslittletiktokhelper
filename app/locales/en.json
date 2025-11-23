@@ -19,16 +19,9 @@
     "osc_bridge": "OSC-Bridge",
     "hybridshock": "HybridShock",
     "openshock": "OpenShock",
-    "goals": "Goals",
     "automations": "Automations",
-    "flows": "Flows",
     "overlays": "Overlays",
-    "soundboard": "Soundboard",
-    "emoji_rain": "Emoji Rain",
     "effects": "Interactive Effects",
-    "lastevent": "LastEvent",
-    "openshock": "OpenShock",
-    "hybridshock": "HybridShock",
     "vdoninja": "VDO.Ninja",
     "quiz_show": "Quiz Show",
     "viewer_xp": "Viewer XP",
@@ -55,8 +48,6 @@
     "tiktok_live_connection": "TikTok Live Connection",
     "connection_info": "Connection Information",
     "retrying": "Retrying",
-    "username_placeholder": "TikTok Username (without @)",
-    "tiktok_live_connection": "TikTok Live Connection",
     "quick_actions": "Quick Actions",
     "live_statistics": "Live Statistics",
     "event_feed": "Event Feed",
@@ -66,8 +57,7 @@
     "current_duration": "Current Duration",
     "detection_method": "Detection Method",
     "connection_diagnostics": "Connection Diagnostics",
-    "run_diagnostics": "Run Diagnostics",
-    "quick_actions": "Quick Actions",
+    "run_diagnostics": "Run Connection Diagnostics",
     "tts_action": "TTS",
     "soundboard_action": "Soundboard",
     "flows_action": "Flows",
@@ -83,7 +73,6 @@
     "clear_events": "Clear",
     "profile": "Profile",
     "global_settings": "Global Settings",
-    "run_diagnostics": "Run Connection Diagnostics",
     "diagnostics_result": "Diagnostics Result",
     "connection_health": "Connection Health",
     "stats": {
@@ -181,41 +170,25 @@
   },
   "plugins": {
     "title": "Plugin Manager",
-    "active_plugins": "Active Plugins",
-    "inactive_plugins": "Inactive Plugins",
-    "total_plugins": "Total Plugins",
-    "search_placeholder": "Search plugins...",
-    "sort_by": "Sort by",
+    "installed": "Installed",
+    "available": "Available",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "install": "Install",
+    "uninstall": "Uninstall",
+    "enable": "Enable",
+    "disable": "Disable",
+    "configure": "Configure",
+    "update_available": "Update Available",
+    "update": "Update",
+    "search_plugins": "Search Plugins",
     "filter_all": "All",
     "filter_enabled": "Enabled",
     "filter_disabled": "Disabled",
-    "upload_plugin": "Upload Plugin",
-    "reload_plugins": "Reload Plugins",
-    "reload_all_confirm": "Reload all plugins?",
-    "enable": "Enable",
-    "disable": "Disable",
-    "reload": "Reload",
-    "delete": "Delete",
-    "configure": "Configure",
-    "view_details": "View Details",
-    "no_plugins": "No plugins found",
-    "no_plugins_filter": "No plugins found matching the filter criteria.",
-    "no_description": "No description available",
-    "unknown_author": "Unknown",
-    "select_zip_file": "Please select a ZIP file",
-    "uploading": "Uploading...",
-    "upload_success": "Plugin uploaded successfully",
-    "upload_error": "Error uploading plugin",
-    "enable_error": "Error enabling plugin",
-    "disable_error": "Error disabling plugin",  
-    "reload_error": "Error reloading plugin",
-    "delete_error": "Error deleting plugin",
-    "delete_confirm": "Really delete plugin \"{name}\"?",
-    "load_error": "Error loading plugins: {error}",
-    "error_prefix": "Error: {error}",
-    "enable_failed": "Error enabling: {error}",
-    "disable_failed": "Error disabling: {error}",
-    "reload_failed": "Error reloading: {error}"
+    "sort_by": "Sort By",
+    "sort_name": "Name",
+    "sort_type": "Type",
+    "sort_author": "Author"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -309,16 +282,10 @@
     "create_goal": "Create Goal",
     "edit_goal": "Edit Goal",
     "delete_goal": "Delete Goal",
-    "goal_type": "Goal Type",
-    "goal_label": "Goal Label",
+    "goal_name": "Goal Name",
     "target_value": "Target Value",
     "current_value": "Current Value",
-    "progress": "Progress",
-    "coins": "Coins",
-    "followers": "Followers",
-    "likes": "Likes",
-    "gifts": "Gifts",
-    "gift_milestone": "Gift Milestone"
+    "reset_goal": "Reset Goal"
   },
   "profile": {
     "title": "User Profiles",
@@ -367,8 +334,6 @@
     "disabled": "Disabled",
     "active": "Active",
     "inactive": "Inactive",
-    "yes": "Yes",
-    "no": "No",
     "on": "On",
     "off": "Off",
     "actions": "Actions",
@@ -394,16 +359,6 @@
     "unauthorized": "Unauthorized",
     "rate_limit": "Too many requests. Please wait a moment.",
     "unknown_error": "An unknown error occurred"
-  },
-  "goals": {
-    "title": "Goals",
-    "create_goal": "Create Goal",
-    "edit_goal": "Edit Goal",
-    "delete_goal": "Delete Goal",
-    "goal_name": "Goal Name",
-    "target_value": "Target Value",
-    "current_value": "Current Value",
-    "reset_goal": "Reset Goal"
   },
   "tts": {
     "title": "Text-to-Speech",
@@ -551,28 +506,6 @@
       }
     }
   },
-  "plugins": {
-    "title": "Plugin Manager",
-    "installed": "Installed",
-    "available": "Available",
-    "enabled": "Enabled",
-    "disabled": "Disabled",
-    "install": "Install",
-    "uninstall": "Uninstall",
-    "enable": "Enable",
-    "disable": "Disable",
-    "configure": "Configure",
-    "update_available": "Update Available",
-    "update": "Update",
-    "search_plugins": "Search Plugins",
-    "filter_all": "All",
-    "filter_enabled": "Enabled",
-    "filter_disabled": "Disabled",
-    "sort_by": "Sort By",
-    "sort_name": "Name",
-    "sort_type": "Type",
-    "sort_author": "Author"
-  },
   "hud": {
     "goals": "Goals",
     "viewers": "Viewers",
@@ -635,5 +568,47 @@
     "loading": "Loading documentation...",
     "no_results": "No results found",
     "search": "Search"
+  },
+  "multicam": {
+    "title": "Multi-Cam Switcher",
+    "status": {
+      "disconnected": "Disconnected",
+      "connected": "Connected to OBS"
+    },
+    "safety_lock": "⚠️ SAFETY LOCK ACTIVE - Too many rapid switches detected. Waiting 60 seconds...",
+    "current_scene": "Current Scene",
+    "connection": {
+      "title": "OBS Connection",
+      "host": "Host",
+      "port": "Port",
+      "password": "Password",
+      "connect": "Connect OBS",
+      "disconnect": "Disconnect OBS",
+      "save_settings": "Save Settings"
+    },
+    "switcher": {
+      "title": "Scene Switcher",
+      "select_scene": "Select Scene...",
+      "switch": "Switch"
+    },
+    "hot_buttons": {
+      "title": "Hot Buttons"
+    },
+    "gift_mapping": {
+      "title": "Gift to Scene Mapping",
+      "description": "Select a gift and assign it to an OBS scene. When users send this gift, the scene will automatically switch.",
+      "select_gift": "Select Gift",
+      "select_scene": "Target Scene",
+      "select_scene_placeholder": "Select Scene...",
+      "min_coins": "Min Coins (optional)",
+      "add": "Add Mapping",
+      "refresh_gifts": "Refresh Gifts",
+      "current_mappings": "Current Mappings:",
+      "loading": "Loading gifts..."
+    },
+    "log": {
+      "title": "Activity Log",
+      "waiting": "Waiting for events..."
+    }
   }
 }

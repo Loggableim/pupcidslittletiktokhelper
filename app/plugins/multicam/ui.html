@@ -257,6 +257,56 @@
         .locked-banner.active {
             display: block;
         }
+
+        .gift-mapping-item {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gift-mapping-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex: 1;
+        }
+
+        .gift-mapping-info span {
+            font-size: 13px;
+        }
+
+        .gift-name {
+            color: #ffaa00;
+            font-weight: 600;
+        }
+
+        .scene-target {
+            color: #44ff44;
+        }
+
+        .coins-info {
+            color: #aaa;
+        }
+
+        .remove-mapping-btn {
+            background: #cc0000;
+            border-color: #cc0000;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .remove-mapping-btn:hover {
+            background: #dd0000;
+        }
+
+        .gift-mappings-empty {
+            color: #666;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -278,10 +328,25 @@
         </div>
 
         <div class="control-group">
-            <h2 data-i18n="multicam.connection.title">Connection</h2>
+            <h2 data-i18n="multicam.connection.title">OBS Connection</h2>
+            <div class="settings-grid" style="margin-bottom: 15px;">
+                <div class="setting-item">
+                    <label for="obs-host" data-i18n="multicam.connection.host">Host</label>
+                    <input type="text" id="obs-host" value="127.0.0.1" placeholder="127.0.0.1">
+                </div>
+                <div class="setting-item">
+                    <label for="obs-port" data-i18n="multicam.connection.port">Port</label>
+                    <input type="number" id="obs-port" value="4455" placeholder="4455">
+                </div>
+                <div class="setting-item">
+                    <label for="obs-password" data-i18n="multicam.connection.password">Password</label>
+                    <input type="password" id="obs-password" value="" placeholder="Optional">
+                </div>
+            </div>
             <div class="button-group">
                 <button class="success" id="obs-connect-btn" data-i18n="multicam.connection.connect">Connect OBS</button>
                 <button class="danger" id="obs-disconnect-btn" data-i18n="multicam.connection.disconnect">Disconnect OBS</button>
+                <button id="obs-save-settings-btn" data-i18n="multicam.connection.save_settings">Save Settings</button>
             </div>
         </div>
 
@@ -299,6 +364,43 @@
             <h2 data-i18n="multicam.hot_buttons.title">Hot Buttons</h2>
             <div class="hot-buttons" id="hotButtons">
                 <!-- Dynamically loaded -->
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h2 data-i18n="multicam.gift_mapping.title">Gift to Scene Mapping</h2>
+            <div style="margin-bottom: 15px;">
+                <p style="color: #aaa; font-size: 13px; margin-bottom: 10px;" data-i18n="multicam.gift_mapping.description">
+                    Select a gift and assign it to an OBS scene. When users send this gift, the scene will automatically switch.
+                </p>
+                <div class="settings-grid" style="margin-bottom: 15px;">
+                    <div class="setting-item">
+                        <label for="gift-select" data-i18n="multicam.gift_mapping.select_gift">Select Gift</label>
+                        <select id="gift-select">
+                            <option value="" data-i18n="multicam.gift_mapping.loading">Loading gifts...</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="gift-scene-select" data-i18n="multicam.gift_mapping.select_scene">Target Scene</label>
+                        <select id="gift-scene-select">
+                            <option value="" data-i18n="multicam.gift_mapping.select_scene_placeholder">Select Scene...</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="gift-min-coins" data-i18n="multicam.gift_mapping.min_coins">Min Coins (optional)</label>
+                        <input type="number" id="gift-min-coins" value="1" min="0" placeholder="0">
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="primary" id="add-gift-mapping-btn" data-i18n="multicam.gift_mapping.add">Add Mapping</button>
+                    <button id="refresh-gifts-btn" data-i18n="multicam.gift_mapping.refresh_gifts">Refresh Gifts</button>
+                </div>
+            </div>
+            <div id="gift-mappings-list" style="margin-top: 15px;">
+                <h3 style="font-size: 14px; color: #aaa; margin-bottom: 10px;" data-i18n="multicam.gift_mapping.current_mappings">Current Mappings:</h3>
+                <div id="gift-mappings-container" style="display: grid; gap: 10px;">
+                    <!-- Gift mappings will be loaded here -->
+                </div>
             </div>
         </div>
 
