@@ -104,11 +104,17 @@ async function loadConfig() {
     try {
         const res = await fetch('/api/multicam/config');
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.config) {
             config = data.config;
-            renderHotButtons(config.ui.hotButtons);
-            updateConnectionSettings(config.obs);
-            renderGiftMappings(config.mapping.gifts);
+            if (config.ui && config.ui.hotButtons) {
+                renderHotButtons(config.ui.hotButtons);
+            }
+            if (config.obs) {
+                updateConnectionSettings(config.obs);
+            }
+            if (config.mapping && config.mapping.gifts) {
+                renderGiftMappings(config.mapping.gifts);
+            }
         }
     } catch (error) {
         console.error('Failed to load config:', error);
@@ -117,6 +123,9 @@ async function loadConfig() {
 
 // Update connection settings in UI
 function updateConnectionSettings(obsConfig) {
+    if (!obsConfig) {
+        obsConfig = { host: '127.0.0.1', port: 4455, password: '' };
+    }
     document.getElementById('obs-host').value = obsConfig.host || '127.0.0.1';
     document.getElementById('obs-port').value = obsConfig.port || 4455;
     document.getElementById('obs-password').value = obsConfig.password || '';
@@ -313,7 +322,7 @@ function renderGiftMappings(mappings) {
     container.innerHTML = '';
 
     if (!mappings || Object.keys(mappings).length === 0) {
-        container.innerHTML = '<p style="color: #666; font-size: 13px;">No gift mappings configured yet.</p>';
+        container.innerHTML = '<p class="gift-mappings-empty">No gift mappings configured yet.</p>';
         return;
     }
 

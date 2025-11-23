@@ -346,9 +346,9 @@ class MultiCamPlugin {
             // Update config with new settings
             this.config.obs = {
                 ...this.config.obs,
-                host: host || this.config.obs.host,
-                port: port || this.config.obs.port,
-                password: password !== undefined ? password : this.config.obs.password
+                host: host || this.config.obs?.host || '127.0.0.1',
+                port: port || this.config.obs?.port || 4455,
+                password: password !== undefined ? password : (this.config.obs?.password || '')
             };
             this.api.setConfig('config', this.config);
 
