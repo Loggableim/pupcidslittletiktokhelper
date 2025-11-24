@@ -16,6 +16,7 @@ class PluginManager {
         this.currentFilter = 'all';
         this.currentSort = 'name';
         this.searchQuery = '';
+        this.compactMode = false;
         this.init();
     }
 
@@ -76,6 +77,35 @@ class PluginManager {
             sortSelect.addEventListener('change', (e) => {
                 this.currentSort = e.target.value;
                 this.applyFiltersAndSort();
+            });
+        }
+
+        // Compact mode toggle
+        const compactToggle = document.getElementById('compact-mode-toggle');
+        if (compactToggle) {
+            compactToggle.addEventListener('click', () => {
+                this.compactMode = !this.compactMode;
+                compactToggle.classList.toggle('active', this.compactMode);
+                
+                // Update icon based on mode
+                const icon = compactToggle.querySelector('i');
+                const text = compactToggle.querySelector('span');
+                if (icon && text) {
+                    if (this.compactMode) {
+                        icon.setAttribute('data-lucide', 'layout-grid');
+                        text.textContent = 'Normal';
+                    } else {
+                        icon.setAttribute('data-lucide', 'layout-list');
+                        text.textContent = 'Compact';
+                    }
+                    
+                    // Re-initialize Lucide icons
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }
+                
+                this.renderPlugins();
             });
         }
 
@@ -189,6 +219,20 @@ class PluginManager {
             return;
         }
 
+        // Render based on mode
+        if (this.compactMode) {
+            this.renderPluginsCompact();
+        } else {
+            this.renderPluginsNormal();
+        }
+    }
+
+    /**
+     * Renders plugins in normal card view
+     */
+    renderPluginsNormal() {
+        const container = document.getElementById('plugins-container');
+        container.className = 'space-y-4';
         container.innerHTML = this.filteredPlugins.map(plugin => this.renderPlugin(plugin)).join('');
 
         // Re-initialize Lucide icons
@@ -216,6 +260,115 @@ class PluginManager {
                 deleteBtn.addEventListener('click', () => this.deletePlugin(plugin.id));
             }
         });
+    }
+
+    /**
+     * Renders plugins in compact table view
+     */
+    renderPluginsCompact() {
+        const container = document.getElementById('plugins-container');
+        container.className = '';
+        
+        const tableHTML = `
+            <table class="plugin-compact-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Name</th>
+                        <th style="width: 10%;">Version</th>
+                        <th style="width: 10%;">Status</th>
+                        <th style="width: 15%;">Type</th>
+                        <th style="width: 15%;">Author</th>
+                        <th style="width: 25%; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.filteredPlugins.map(plugin => this.renderPluginCompact(plugin)).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        container.innerHTML = tableHTML;
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+
+        // Event-Listener für Buttons
+        this.filteredPlugins.forEach(plugin => {
+            const enableBtn = document.getElementById(`enable-${plugin.id}`);
+            const disableBtn = document.getElementById(`disable-${plugin.id}`);
+            const reloadBtn = document.getElementById(`reload-${plugin.id}`);
+            const deleteBtn = document.getElementById(`delete-${plugin.id}`);
+
+            if (enableBtn) {
+                enableBtn.addEventListener('click', () => this.enablePlugin(plugin.id));
+            }
+            if (disableBtn) {
+                disableBtn.addEventListener('click', () => this.disablePlugin(plugin.id));
+            }
+            if (reloadBtn) {
+                reloadBtn.addEventListener('click', () => this.reloadPlugin(plugin.id));
+            }
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => this.deletePlugin(plugin.id));
+            }
+        });
+    }
+
+    /**
+     * Renders a single plugin in compact table row format
+     */
+    renderPluginCompact(plugin) {
+        const statusBadge = plugin.enabled
+            ? '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; font-size: 0.7rem; font-weight: 600;"><i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> Active</span>'
+            : '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(107, 114, 128, 0.3); border: 1px solid rgba(107, 114, 128, 0.5); border-radius: 12px; font-size: 0.7rem; font-weight: 600;"><i data-lucide="pause-circle" style="width: 12px; height: 12px;"></i> Inactive</span>';
+
+        const actionButtons = plugin.enabled
+            ? `
+                <button id="reload-${plugin.id}" class="plugin-compact-btn" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                    <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
+                    Reload
+                </button>
+                <button id="disable-${plugin.id}" class="plugin-compact-btn" style="background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.3); color: #fbbf24;">
+                    <i data-lucide="pause" style="width: 12px; height: 12px;"></i>
+                    Disable
+                </button>
+            `
+            : `
+                <button id="enable-${plugin.id}" class="plugin-compact-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <i data-lucide="play" style="width: 12px; height: 12px;"></i>
+                    Enable
+                </button>
+            `;
+
+        return `
+            <tr>
+                <td>
+                    <div style="font-weight: 600; color: white; margin-bottom: 2px;">${this.escapeHtml(plugin.name)}</div>
+                    <div style="font-size: 0.75rem; color: #9ca3af; font-family: monospace;">${this.escapeHtml(plugin.id)}</div>
+                </td>
+                <td>
+                    <span style="padding: 2px 8px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; font-size: 0.7rem; color: #9ca3af; font-family: monospace;">v${this.escapeHtml(plugin.version)}</span>
+                </td>
+                <td>${statusBadge}</td>
+                <td>
+                    ${plugin.type ? `<span style="font-size: 0.75rem; color: #9ca3af;">${this.getTypeIcon(plugin.type)} ${this.escapeHtml(plugin.type)}</span>` : '<span style="color: #6b7280;">-</span>'}
+                </td>
+                <td>
+                    <span style="font-size: 0.75rem; color: #9ca3af;">${this.escapeHtml(plugin.author || 'Unknown')}</span>
+                </td>
+                <td>
+                    <div class="plugin-compact-actions">
+                        ${actionButtons}
+                        <button id="delete-${plugin.id}" class="plugin-compact-btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">
+                            <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
     }
 
     /**
