@@ -1615,6 +1615,10 @@ class CurveEditor {
         return Math.max(1, Math.min(100, Math.round(intensity)));
     }
 
+    calculateTotalDuration(steps) {
+        return steps.reduce((sum, s) => sum + s.duration + (s.delay || 0), 0);
+    }
+
     renderTimeline(steps) {
         const container = document.getElementById('curveTimelinePreview');
         if (!container) return;
@@ -1624,7 +1628,7 @@ class CurveEditor {
             return;
         }
         
-        const totalDuration = steps.reduce((sum, s) => sum + s.duration + (s.delay || 0), 0);
+        const totalDuration = this.calculateTotalDuration(steps);
         let currentTime = 0;
         
         const bars = steps.map(step => {
@@ -1638,7 +1642,7 @@ class CurveEditor {
             return `
                 <div class="timeline-bar timeline-${sanitizedType}"
                      style="left: ${startPercent}%; width: ${widthPercent}%;"
-                     title="${step.type} - ${step.intensity}% - ${step.duration}ms">
+                     title="${escapeHtml(step.type)} - ${step.intensity}% - ${step.duration}ms">
                 </div>
             `;
         }).join('');
@@ -1665,20 +1669,27 @@ class CurveEditor {
     }
 
     updateStats(steps) {
+        const stepCountEl = document.getElementById('stepCount');
+        const totalDurationEl = document.getElementById('totalDuration');
+        const avgIntensityEl = document.getElementById('avgIntensity');
+        const peakIntensityEl = document.getElementById('peakIntensity');
+        
         if (!steps || steps.length === 0) {
-            document.getElementById('totalDuration').textContent = '0ms';
-            document.getElementById('avgIntensity').textContent = '0%';
-            document.getElementById('peakIntensity').textContent = '0%';
+            if (stepCountEl) stepCountEl.textContent = '0';
+            if (totalDurationEl) totalDurationEl.textContent = '0ms';
+            if (avgIntensityEl) avgIntensityEl.textContent = '0%';
+            if (peakIntensityEl) peakIntensityEl.textContent = '0%';
             return;
         }
         
-        const totalDuration = steps.reduce((sum, s) => sum + s.duration + (s.delay || 0), 0);
+        const totalDuration = this.calculateTotalDuration(steps);
         const avgIntensity = Math.round(steps.reduce((sum, s) => sum + s.intensity, 0) / steps.length);
         const peakIntensity = Math.max(...steps.map(s => s.intensity));
         
-        document.getElementById('totalDuration').textContent = formatDuration(totalDuration);
-        document.getElementById('avgIntensity').textContent = avgIntensity + '%';
-        document.getElementById('peakIntensity').textContent = peakIntensity + '%';
+        if (stepCountEl) stepCountEl.textContent = steps.length;
+        if (totalDurationEl) totalDurationEl.textContent = formatDuration(totalDuration);
+        if (avgIntensityEl) avgIntensityEl.textContent = avgIntensity + '%';
+        if (peakIntensityEl) peakIntensityEl.textContent = peakIntensity + '%';
     }
 
     clear() {
