@@ -90,17 +90,19 @@ class PluginManager {
                 // Update icon based on mode
                 const icon = compactToggle.querySelector('i');
                 const text = compactToggle.querySelector('span');
-                if (this.compactMode) {
-                    icon.setAttribute('data-lucide', 'layout-grid');
-                    text.textContent = 'Normal';
-                } else {
-                    icon.setAttribute('data-lucide', 'layout-list');
-                    text.textContent = 'Compact';
-                }
-                
-                // Re-initialize Lucide icons
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
+                if (icon && text) {
+                    if (this.compactMode) {
+                        icon.setAttribute('data-lucide', 'layout-grid');
+                        text.textContent = 'Normal';
+                    } else {
+                        icon.setAttribute('data-lucide', 'layout-list');
+                        text.textContent = 'Compact';
+                    }
+                    
+                    // Re-initialize Lucide icons
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
                 }
                 
                 this.renderPlugins();
