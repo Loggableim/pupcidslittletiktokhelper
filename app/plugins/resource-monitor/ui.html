@@ -525,19 +525,77 @@
             gap: 0.35rem !important;
         }
 
-        /* Hide the entire processes section in compact mode */
+        /* Show processes section in compact mode with limited height */
         .compact-mode .card:has(#processes-table) {
-            display: none !important;
+            margin-top: 0.35rem;
         }
 
-        /* Ensure 2x2 grid layout for main sections */
+        .compact-mode .process-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* Compact mode: Make #app a grid container to manage all metric cards */
         @media (min-width: 768px) {
-            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3:first-of-type {
+            .compact-mode #app {
+                display: grid;
                 grid-template-columns: repeat(2, 1fr);
+                gap: 0.35rem;
             }
 
-            .compact-mode .grid.grid-cols-1:not(:first-of-type) {
-                grid-template-columns: repeat(2, 1fr);
+            /* Header section spans both columns */
+            .compact-mode #app > .mb-8:first-child {
+                grid-column: 1 / -1;
+            }
+
+            /* Warnings section (if exists) spans both columns */
+            .compact-mode #app > #warnings-section {
+                grid-column: 1 / -1;
+            }
+
+            /* Main metrics grid becomes display: contents to release its children */
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 {
+                display: contents;
+            }
+
+            /* Position individual metric cards in the app grid */
+            /* CPU Card - Position 1 (top-left) */
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(1) {
+                grid-column: 1;
+                grid-row: 3;
+            }
+
+            /* RAM Card - Position 3 (bottom-left) */
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(2) {
+                grid-column: 1;
+                grid-row: 4;
+            }
+
+            /* GPU Card - Position 2 (top-right) */
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(3) {
+                grid-column: 2;
+                grid-row: 3;
+            }
+
+            /* Network grid also becomes display: contents */
+            .compact-mode #network-grid {
+                display: contents;
+            }
+
+            /* Network card - Position 4 (bottom-right) */
+            .compact-mode #network-grid > .card {
+                grid-column: 2;
+                grid-row: 4;
+            }
+
+            /* Processes section spans both columns */
+            .compact-mode #app > .card:has(#processes-table) {
+                grid-column: 1 / -1;
+            }
+
+            /* Connection status spans both columns */
+            .compact-mode #app > .mt-6.text-center {
+                grid-column: 1 / -1;
             }
         }
 
@@ -933,7 +991,7 @@
         </div>
 
         <!-- Second Row: Network Card -->
-        <div class="grid grid-cols-1 gap-6 mb-6">
+        <div class="grid grid-cols-1 gap-6 mb-6" id="network-grid">
             <!-- Network Card -->
             <div class="card">
                 <div class="flex justify-between items-start mb-4">
