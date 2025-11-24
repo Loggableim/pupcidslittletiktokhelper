@@ -169,7 +169,6 @@ func (l *Launcher) runLauncher() {
 	l.updateProgress(90, "Starte Tool...")
 	time.Sleep(500 * time.Millisecond)
 	l.updateProgress(100, "Tool wird gestartet...")
-	time.Sleep(1 * time.Second)
 	
 	// Start the tool
 	err = l.startTool()
@@ -179,12 +178,14 @@ func (l *Launcher) runLauncher() {
 		os.Exit(1)
 	}
 	
-	// Wait a moment then redirect to dashboard
-	time.Sleep(2 * time.Second)
+	// Wait for the dashboard to be ready before redirecting
+	time.Sleep(5 * time.Second)
+	l.updateProgress(100, "Weiterleitung zum Dashboard...")
+	time.Sleep(500 * time.Millisecond)
 	l.sendRedirect()
 	
-	// Keep server running for a bit to allow redirect
-	time.Sleep(3 * time.Second)
+	// Keep server running to allow redirect to complete
+	time.Sleep(5 * time.Second)
 	os.Exit(0)
 }
 
@@ -217,14 +218,25 @@ func main() {
         }
         
         body {
-            width: 1536px;
-            height: 1024px;
+            width: 100vw;
+            height: 100vh;
+            background-color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .launcher-container {
+            width: 80vw;
+            height: 80vh;
             background-image: url(/bg);
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            overflow: hidden;
             position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
         
         .progress-container {
@@ -268,10 +280,12 @@ func main() {
     </style>
 </head>
 <body>
-    <div class="progress-container">
-        <div class="status-text" id="status">Initialisiere...</div>
-        <div class="progress-bar-bg">
-            <div class="progress-bar-fill" id="progressBar">0%</div>
+    <div class="launcher-container">
+        <div class="progress-container">
+            <div class="status-text" id="status">Initialisiere...</div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar">0%</div>
+            </div>
         </div>
     </div>
     
@@ -283,7 +297,11 @@ func main() {
             
             // Handle redirect
             if (data.redirect) {
-                window.location.href = data.redirect;
+                evtSource.close();
+                // Wait a moment for the dashboard to be ready, then redirect
+                setTimeout(function() {
+                    window.location.replace(data.redirect);
+                }, 2000);
                 return;
             }
             
