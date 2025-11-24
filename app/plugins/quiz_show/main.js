@@ -126,11 +126,30 @@ class QuizShowPlugin {
                     category TEXT DEFAULT 'Allgemein',
                     difficulty INTEGER DEFAULT 2,
                     info TEXT DEFAULT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    package_id INTEGER DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (package_id) REFERENCES question_packages(id) ON DELETE SET NULL
                 );
 
                 CREATE TABLE IF NOT EXISTS categories (
                     name TEXT PRIMARY KEY NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS question_packages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    question_count INTEGER NOT NULL DEFAULT 0,
+                    is_selected BOOLEAN DEFAULT FALSE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS openai_config (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    api_key TEXT DEFAULT NULL,
+                    model TEXT DEFAULT 'gpt-4o-mini',
+                    default_package_size INTEGER DEFAULT 10,
+                    temperature REAL DEFAULT 0.7
                 );
 
                 CREATE TABLE IF NOT EXISTS leaderboard_seasons (
@@ -165,7 +184,9 @@ class QuizShowPlugin {
 
                 CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
                 CREATE INDEX IF NOT EXISTS idx_questions_difficulty ON questions(difficulty);
+                CREATE INDEX IF NOT EXISTS idx_questions_package ON questions(package_id);
                 CREATE INDEX IF NOT EXISTS idx_leaderboard_season ON leaderboard_entries(season_id);
+                CREATE INDEX IF NOT EXISTS idx_package_category ON question_packages(category);
             `);
 
             // Ensure default season exists
@@ -190,6 +211,13 @@ class QuizShowPlugin {
                     .run('#3b82f6', '#8b5cf6');
             }
 
+            // Initialize OpenAI config if not exists
+            const openaiConfig = this.db.prepare('SELECT id FROM openai_config WHERE id = 1').get();
+            if (!openaiConfig) {
+                this.db.prepare('INSERT INTO openai_config (id, api_key, model, default_package_size, temperature) VALUES (1, NULL, ?, ?, ?)')
+                    .run('gpt-4o-mini', 10, 0.7);
+            }
+
             // Migrate schema if needed
             await this.migrateSchema();
 
@@ -209,10 +237,17 @@ class QuizShowPlugin {
             // Check if info column exists in questions table
             const columns = this.db.pragma('table_info(questions)');
             const hasInfoColumn = columns.some(col => col.name === 'info');
+            const hasPackageIdColumn = columns.some(col => col.name === 'package_id');
             
             if (!hasInfoColumn) {
                 this.api.log('Adding info column to questions table...', 'info');
                 this.db.exec('ALTER TABLE questions ADD COLUMN info TEXT DEFAULT NULL');
+                this.api.log('Schema migration completed', 'info');
+            }
+
+            if (!hasPackageIdColumn) {
+                this.api.log('Adding package_id column to questions table...', 'info');
+                this.db.exec('ALTER TABLE questions ADD COLUMN package_id INTEGER DEFAULT NULL');
                 this.api.log('Schema migration completed', 'info');
             }
         } catch (error) {
@@ -335,7 +370,8 @@ class QuizShowPlugin {
                     correct: q.correct,
                     category: q.category,
                     difficulty: q.difficulty,
-                    info: q.info
+                    info: q.info,
+                    package_id: q.package_id
                 }));
 
                 // Get active season leaderboard
@@ -350,11 +386,24 @@ class QuizShowPlugin {
                     `).all(activeSeason.id);
                 }
 
+                // Get question packages
+                const packages = this.db.prepare(`
+                    SELECT id, name, category, question_count, is_selected, created_at 
+                    FROM question_packages 
+                    ORDER BY created_at DESC
+                `).all();
+
+                // Get OpenAI config status
+                const openaiConfig = this.db.prepare('SELECT api_key FROM openai_config WHERE id = 1').get();
+                const hasOpenAIKey = !!openaiConfig?.api_key;
+
                 res.json({
                     success: true,
                     config: this.config,
                     questions: formattedQuestions,
                     leaderboard,
+                    packages,
+                    hasOpenAIKey,
                     gameState: {
                         ...this.gameState,
                         answers: Array.from(this.gameState.answers.entries()),
@@ -871,6 +920,259 @@ class QuizShowPlugin {
                 res.status(500).json({ success: false, error: error.message });
             }
         });
+
+        // ============================================
+        // OpenAI Configuration Routes
+        // ============================================
+
+        // Get OpenAI configuration
+        this.api.registerRoute('get', '/api/quiz-show/openai/config', (req, res) => {
+            try {
+                const config = this.db.prepare('SELECT api_key, model, default_package_size, temperature FROM openai_config WHERE id = 1').get();
+                
+                // Don't send the full API key to the client, just indicate if it's set
+                const response = {
+                    hasApiKey: !!config?.api_key,
+                    apiKeyPreview: config?.api_key ? `${config.api_key.substring(0, 7)}...${config.api_key.substring(config.api_key.length - 4)}` : null,
+                    model: config?.model || 'gpt-4o-mini',
+                    defaultPackageSize: config?.default_package_size || 10,
+                    temperature: config?.temperature || 0.7
+                };
+
+                res.json({ success: true, config: response });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update OpenAI configuration
+        this.api.registerRoute('post', '/api/quiz-show/openai/config', async (req, res) => {
+            try {
+                const { apiKey, model, defaultPackageSize, temperature } = req.body;
+
+                if (apiKey !== undefined) {
+                    // Test the API key if provided
+                    if (apiKey) {
+                        const OpenAIQuizService = require('./openai-service');
+                        const service = new OpenAIQuizService(apiKey, model || 'gpt-4o-mini');
+                        const isValid = await service.testApiKey();
+                        
+                        if (!isValid) {
+                            return res.status(400).json({ success: false, error: 'Ungültiger API-Schlüssel' });
+                        }
+                    }
+
+                    this.db.prepare('UPDATE openai_config SET api_key = ? WHERE id = 1').run(apiKey || null);
+                }
+
+                if (model !== undefined) {
+                    this.db.prepare('UPDATE openai_config SET model = ? WHERE id = 1').run(model);
+                }
+
+                if (defaultPackageSize !== undefined) {
+                    this.db.prepare('UPDATE openai_config SET default_package_size = ? WHERE id = 1').run(defaultPackageSize);
+                }
+
+                if (temperature !== undefined) {
+                    this.db.prepare('UPDATE openai_config SET temperature = ? WHERE id = 1').run(temperature);
+                }
+
+                res.json({ success: true, message: 'Konfiguration gespeichert' });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ============================================
+        // Question Package Routes
+        // ============================================
+
+        // Get all question packages
+        this.api.registerRoute('get', '/api/quiz-show/packages', (req, res) => {
+            try {
+                const packages = this.db.prepare(`
+                    SELECT id, name, category, question_count, is_selected, created_at 
+                    FROM question_packages 
+                    ORDER BY created_at DESC
+                `).all();
+
+                res.json({ success: true, packages });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Generate question package with OpenAI
+        this.api.registerRoute('post', '/api/quiz-show/packages/generate', async (req, res) => {
+            try {
+                const { category, packageSize, packageName } = req.body;
+
+                if (!category) {
+                    return res.status(400).json({ success: false, error: 'Kategorie erforderlich' });
+                }
+
+                // Get OpenAI config
+                const config = this.db.prepare('SELECT api_key, model, temperature FROM openai_config WHERE id = 1').get();
+                
+                if (!config || !config.api_key) {
+                    return res.status(400).json({ success: false, error: 'OpenAI API-Schlüssel nicht konfiguriert' });
+                }
+
+                // Get existing questions for this category to avoid duplicates
+                const existingQuestions = this.db.prepare(`
+                    SELECT question FROM questions WHERE category = ?
+                `).all(category).map(q => q.question);
+
+                // Generate questions using OpenAI
+                const OpenAIQuizService = require('./openai-service');
+                const service = new OpenAIQuizService(config.api_key, config.model);
+                
+                const size = packageSize || config.default_package_size || 10;
+                const questions = await service.generateQuestions(category, size, existingQuestions);
+
+                if (questions.length === 0) {
+                    return res.status(500).json({ success: false, error: 'Keine Fragen generiert' });
+                }
+
+                // Create question package
+                const name = packageName || `${category} - ${new Date().toLocaleDateString('de-DE')}`;
+                const packageResult = this.db.prepare(`
+                    INSERT INTO question_packages (name, category, question_count) 
+                    VALUES (?, ?, ?)
+                `).run(name, category, questions.length);
+
+                const packageId = packageResult.lastInsertRowid;
+
+                // Insert questions with package reference
+                const insertQuestion = this.db.prepare(`
+                    INSERT INTO questions (question, answers, correct, category, difficulty, info, package_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `);
+
+                const insertMany = this.db.transaction((questions) => {
+                    for (const q of questions) {
+                        insertQuestion.run(
+                            q.question,
+                            JSON.stringify(q.answers),
+                            q.correct,
+                            q.category,
+                            q.difficulty,
+                            q.info,
+                            packageId
+                        );
+                    }
+                });
+
+                insertMany(questions);
+
+                // Add category if it doesn't exist
+                this.db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)').run(category);
+
+                // Broadcast update
+                const allQuestions = this.db.prepare('SELECT * FROM questions').all().map(q => ({
+                    id: q.id,
+                    question: q.question,
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty,
+                    info: q.info,
+                    package_id: q.package_id
+                }));
+                this.api.emit('quiz-show:questions-updated', allQuestions);
+
+                res.json({ 
+                    success: true, 
+                    package: {
+                        id: packageId,
+                        name,
+                        category,
+                        question_count: questions.length
+                    },
+                    questions 
+                });
+            } catch (error) {
+                this.api.log('Error generating question package: ' + error.message, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Toggle package selection
+        this.api.registerRoute('post', '/api/quiz-show/packages/:id/toggle', (req, res) => {
+            try {
+                const packageId = parseInt(req.params.id);
+                
+                const pkg = this.db.prepare('SELECT is_selected FROM question_packages WHERE id = ?').get(packageId);
+                
+                if (!pkg) {
+                    return res.status(404).json({ success: false, error: 'Paket nicht gefunden' });
+                }
+
+                const newState = !pkg.is_selected;
+                this.db.prepare('UPDATE question_packages SET is_selected = ? WHERE id = ?').run(newState ? 1 : 0, packageId);
+
+                res.json({ success: true, isSelected: newState });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Delete question package
+        this.api.registerRoute('delete', '/api/quiz-show/packages/:id', (req, res) => {
+            try {
+                const packageId = parseInt(req.params.id);
+                
+                // Delete questions in this package
+                this.db.prepare('DELETE FROM questions WHERE package_id = ?').run(packageId);
+                
+                // Delete package
+                const result = this.db.prepare('DELETE FROM question_packages WHERE id = ?').run(packageId);
+
+                if (result.changes === 0) {
+                    return res.status(404).json({ success: false, error: 'Paket nicht gefunden' });
+                }
+
+                // Broadcast update
+                const allQuestions = this.db.prepare('SELECT * FROM questions').all().map(q => ({
+                    id: q.id,
+                    question: q.question,
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty,
+                    info: q.info,
+                    package_id: q.package_id
+                }));
+                this.api.emit('quiz-show:questions-updated', allQuestions);
+
+                res.json({ success: true });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get questions from a specific package
+        this.api.registerRoute('get', '/api/quiz-show/packages/:id/questions', (req, res) => {
+            try {
+                const packageId = parseInt(req.params.id);
+                
+                const questions = this.db.prepare(`
+                    SELECT * FROM questions WHERE package_id = ?
+                `).all(packageId).map(q => ({
+                    id: q.id,
+                    question: q.question,
+                    answers: JSON.parse(q.answers),
+                    correct: q.correct,
+                    category: q.category,
+                    difficulty: q.difficulty,
+                    info: q.info
+                }));
+
+                res.json({ success: true, questions });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
     }
 
     getDefaultHUDConfig() {
@@ -1026,9 +1328,20 @@ class QuizShowPlugin {
     async startRound() {
         // Get questions from database
         let questions;
-        if (this.config.categoryFilter && this.config.categoryFilter !== 'Alle') {
+        
+        // Check if any packages are selected
+        const selectedPackages = this.db.prepare('SELECT id FROM question_packages WHERE is_selected = 1').all();
+        
+        if (selectedPackages.length > 0) {
+            // Get questions from selected packages
+            const packageIds = selectedPackages.map(p => p.id);
+            const placeholders = packageIds.map(() => '?').join(',');
+            questions = this.db.prepare(`SELECT * FROM questions WHERE package_id IN (${placeholders})`).all(...packageIds);
+        } else if (this.config.categoryFilter && this.config.categoryFilter !== 'Alle') {
+            // Fallback to category filter if no packages selected
             questions = this.db.prepare('SELECT * FROM questions WHERE category = ?').all(this.config.categoryFilter);
         } else {
+            // Get all questions
             questions = this.db.prepare('SELECT * FROM questions').all();
         }
 
