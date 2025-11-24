@@ -43,6 +43,16 @@ func (l *Launcher) updateProgress(value int, status string) {
 	}
 }
 
+func (l *Launcher) sendRedirect() {
+	msg := `{"redirect": "http://localhost:8080"}`
+	for client := range l.clients {
+		select {
+		case client <- msg:
+		default:
+		}
+	}
+}
+
 func (l *Launcher) checkNodeJS() error {
 	nodePath, err := exec.LookPath("node")
 	if err != nil {
@@ -140,7 +150,7 @@ func (l *Launcher) runLauncher() {
 	if !l.checkNodeModules() {
 		l.updateProgress(40, "Installiere Abhängigkeiten...")
 		time.Sleep(500 * time.Millisecond)
-		l.updateProgress(45, "Dies kann beim ersten Start einige Minuten dauern...")
+		l.updateProgress(45, "HINWEIS: npm install kann einige Minuten dauern, bitte das Fenster offen halten und warten")
 		
 		err = l.installDependencies()
 		if err != nil {
@@ -169,8 +179,12 @@ func (l *Launcher) runLauncher() {
 		os.Exit(1)
 	}
 	
-	// Close the launcher after a delay
+	// Wait a moment then redirect to dashboard
 	time.Sleep(2 * time.Second)
+	l.sendRedirect()
+	
+	// Keep server running for a bit to allow redirect
+	time.Sleep(3 * time.Second)
 	os.Exit(0)
 }
 
@@ -266,6 +280,14 @@ func main() {
         
         evtSource.onmessage = function(event) {
             const data = JSON.parse(event.data);
+            
+            // Handle redirect
+            if (data.redirect) {
+                window.location.href = data.redirect;
+                return;
+            }
+            
+            // Handle progress updates
             const progressBar = document.getElementById('progressBar');
             const statusText = document.getElementById('status');
             
