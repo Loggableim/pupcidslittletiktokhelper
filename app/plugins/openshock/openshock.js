@@ -1216,11 +1216,31 @@ async function savePatternModal() {
 
         if (!response.ok) throw new Error('Failed to save pattern');
 
+        const result = await response.json();
+        const savedPatternId = result.id || patternId;
+
         await loadPatterns();
         renderPatternList();
         closeModal('patternModal');
 
         showNotification(`Pattern ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        
+        // Check if we need to return to mapping modal
+        const shouldReturn = sessionStorage.getItem('returnToMappingModal');
+        if (shouldReturn === 'true') {
+            // Update the stored mapping state with the new/updated pattern ID
+            const stateJson = sessionStorage.getItem('mappingModalState');
+            if (stateJson) {
+                const state = JSON.parse(stateJson);
+                state.patternId = savedPatternId;
+                sessionStorage.setItem('mappingModalState', JSON.stringify(state));
+            }
+            
+            // Restore mapping modal
+            setTimeout(() => {
+                restoreMappingModal();
+            }, 300);
+        }
     } catch (error) {
         console.error('[OpenShock] Error saving pattern:', error);
         showNotification('Error saving pattern', 'error');
@@ -1600,6 +1620,171 @@ function updateMappingPatternList(selectedPatternId = '') {
         }
         patternSelect.appendChild(option);
     });
+    
+    // Update pattern preview if a pattern is selected
+    updateMappingPatternPreview(selectedPatternId);
+}
+
+function updateMappingPatternPreview(patternId) {
+    const previewBox = document.getElementById('mappingPatternPreview');
+    const stepsContainer = document.getElementById('mappingPatternSteps');
+    const editButton = document.getElementById('editPatternFromMapping');
+    
+    if (!previewBox || !stepsContainer) return;
+    
+    if (!patternId) {
+        // No pattern selected - hide preview and edit button
+        previewBox.style.display = 'none';
+        if (editButton) editButton.style.display = 'none';
+        return;
+    }
+    
+    // Find the pattern
+    const pattern = patterns.find(p => p.id === patternId);
+    if (!pattern) {
+        previewBox.style.display = 'none';
+        if (editButton) editButton.style.display = 'none';
+        return;
+    }
+    
+    // Show edit button (but disable for preset patterns)
+    if (editButton) {
+        editButton.style.display = 'inline-flex';
+        if (pattern.preset) {
+            editButton.disabled = true;
+            editButton.title = 'Preset patterns cannot be edited';
+        } else {
+            editButton.disabled = false;
+            editButton.title = 'Edit this pattern';
+        }
+    }
+    
+    // Render pattern steps
+    if (pattern.steps && pattern.steps.length > 0) {
+        const stepsHtml = pattern.steps.map((step, index) => `
+            <div class="pattern-step-item">
+                <span class="pattern-step-number">${index + 1}.</span>
+                <span class="pattern-step-type">${escapeHtml(step.type)}</span>
+                <div class="pattern-step-details">
+                    <span class="pattern-step-detail">
+                        <span>💪</span>
+                        <span>${step.intensity}%</span>
+                    </span>
+                    <span class="pattern-step-detail">
+                        <span>⏱️</span>
+                        <span>${step.duration}ms</span>
+                    </span>
+                    ${step.delay ? `
+                        <span class="pattern-step-detail">
+                            <span>⏸️</span>
+                            <span>${step.delay}ms</span>
+                        </span>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        stepsContainer.innerHTML = stepsHtml;
+        previewBox.style.display = 'block';
+    } else {
+        stepsContainer.innerHTML = '<p class="text-muted" style="margin: 0; font-size: 0.85em;">No steps defined</p>';
+        previewBox.style.display = 'block';
+    }
+}
+
+function openPatternEditorFromMapping(patternId = null) {
+    const mappingModal = document.getElementById('mappingModal');
+    
+    // Store that we came from mapping modal
+    if (mappingModal) {
+        sessionStorage.setItem('returnToMappingModal', 'true');
+        // Store current mapping state
+        const mappingState = {
+            name: document.getElementById('mappingName')?.value,
+            enabled: document.getElementById('mappingEnabled')?.checked,
+            eventType: document.getElementById('mappingEventType')?.value,
+            actionType: document.getElementById('mappingActionType')?.value,
+            deviceId: document.getElementById('mappingDevice')?.value,
+            intensity: document.getElementById('mappingIntensity')?.value,
+            duration: document.getElementById('mappingDuration')?.value,
+            patternId: document.getElementById('mappingPattern')?.value,
+            giftName: document.getElementById('mappingGiftName')?.value,
+            giftNameSelect: document.getElementById('mappingGiftNameSelect')?.value,
+            minCoins: document.getElementById('mappingMinCoins')?.value,
+            messagePattern: document.getElementById('mappingMessagePattern')?.value,
+            editingId: mappingModal.dataset.editingId
+        };
+        sessionStorage.setItem('mappingModalState', JSON.stringify(mappingState));
+    }
+    
+    // Close mapping modal
+    closeModal('mappingModal');
+    
+    // Open pattern modal
+    openPatternModal(patternId);
+}
+
+function restoreMappingModal() {
+    const shouldReturn = sessionStorage.getItem('returnToMappingModal');
+    if (shouldReturn !== 'true') return;
+    
+    // Clear the flag
+    sessionStorage.removeItem('returnToMappingModal');
+    
+    // Get stored state
+    const stateJson = sessionStorage.getItem('mappingModalState');
+    if (!stateJson) return;
+    
+    const state = JSON.parse(stateJson);
+    sessionStorage.removeItem('mappingModalState');
+    
+    // Reopen mapping modal with stored state
+    const editingId = state.editingId || null;
+    openMappingModal(editingId);
+    
+    // Wait a bit for modal to be fully rendered, then restore state
+    setTimeout(() => {
+        if (state.name) document.getElementById('mappingName').value = state.name;
+        if (state.enabled !== undefined) document.getElementById('mappingEnabled').checked = state.enabled;
+        if (state.eventType) document.getElementById('mappingEventType').value = state.eventType;
+        if (state.actionType) document.getElementById('mappingActionType').value = state.actionType;
+        if (state.deviceId) {
+            const deviceSelect = document.getElementById('mappingDevice');
+            if (deviceSelect) deviceSelect.value = state.deviceId;
+        }
+        if (state.intensity) {
+            const slider = document.getElementById('mappingIntensity');
+            const value = document.getElementById('mappingIntensityValue');
+            if (slider) slider.value = state.intensity;
+            if (value) value.textContent = state.intensity;
+        }
+        if (state.duration) {
+            const slider = document.getElementById('mappingDuration');
+            const value = document.getElementById('mappingDurationValue');
+            if (slider) slider.value = state.duration;
+            if (value) value.textContent = state.duration;
+        }
+        
+        // Restore pattern selection after patterns are loaded
+        if (state.patternId) {
+            const patternSelect = document.getElementById('mappingPattern');
+            if (patternSelect) {
+                patternSelect.value = state.patternId;
+                updateMappingPatternPreview(state.patternId);
+            }
+        }
+        
+        if (state.giftName) document.getElementById('mappingGiftName').value = state.giftName;
+        if (state.giftNameSelect) document.getElementById('mappingGiftNameSelect').value = state.giftNameSelect;
+        if (state.minCoins) document.getElementById('mappingMinCoins').value = state.minCoins;
+        if (state.messagePattern) document.getElementById('mappingMessagePattern').value = state.messagePattern;
+        
+        // Trigger event type change to show correct conditions
+        const eventTypeSelect = document.getElementById('mappingEventType');
+        if (eventTypeSelect) {
+            eventTypeSelect.dispatchEvent(new Event('change'));
+        }
+    }, 100);
 }
 
 async function executeTestShock() {
@@ -1817,6 +2002,19 @@ function closeModal(modalId) {
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = '';
+    }
+}
+
+function closePatternModalAndMaybeReturnToMapping() {
+    closeModal('patternModal');
+    
+    // Check if we should return to mapping modal
+    const shouldReturn = sessionStorage.getItem('returnToMappingModal');
+    if (shouldReturn === 'true') {
+        // Wait a bit for the pattern modal to close, then restore mapping modal
+        setTimeout(() => {
+            restoreMappingModal();
+        }, 300);
     }
 }
 
@@ -2188,7 +2386,7 @@ function initializeEventDelegation() {
     if (closePatternModalBtn) {
         closePatternModalBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            closeModal('patternModal');
+            closePatternModalAndMaybeReturnToMapping();
         });
     }
 
@@ -2204,7 +2402,7 @@ function initializeEventDelegation() {
     if (cancelPatternBtn) {
         cancelPatternBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            closeModal('patternModal');
+            closePatternModalAndMaybeReturnToMapping();
         });
     }
 
@@ -2270,6 +2468,36 @@ function initializeEventDelegation() {
     if (stepIntensitySlider && stepIntensityValue) {
         stepIntensitySlider.addEventListener('input', (e) => {
             stepIntensityValue.textContent = e.target.value;
+        });
+    }
+
+    // Pattern selection change in mapping modal
+    const mappingPatternSelect = document.getElementById('mappingPattern');
+    if (mappingPatternSelect) {
+        mappingPatternSelect.addEventListener('change', (e) => {
+            updateMappingPatternPreview(e.target.value);
+        });
+    }
+
+    // Create pattern from mapping button
+    const createPatternFromMappingBtn = document.getElementById('createPatternFromMapping');
+    if (createPatternFromMappingBtn) {
+        createPatternFromMappingBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openPatternEditorFromMapping();
+        });
+    }
+
+    // Edit pattern from mapping button
+    const editPatternFromMappingBtn = document.getElementById('editPatternFromMapping');
+    if (editPatternFromMappingBtn) {
+        editPatternFromMappingBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const patternSelect = document.getElementById('mappingPattern');
+            const patternId = patternSelect ? patternSelect.value : '';
+            if (patternId) {
+                openPatternEditorFromMapping(patternId);
+            }
         });
     }
 
@@ -2614,6 +2842,10 @@ window.openShock = {
     refreshDevices,
     updateTestShockDeviceList,
     updateMappingDeviceList,
+    updateMappingPatternList,
+    updateMappingPatternPreview,
+    openPatternEditorFromMapping,
+    restoreMappingModal,
     executeTestShock,
     clearQueue,
     testDevice,
