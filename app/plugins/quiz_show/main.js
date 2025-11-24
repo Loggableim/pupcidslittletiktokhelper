@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 
 class QuizShowPlugin {
     constructor(api) {
@@ -1439,8 +1440,8 @@ class QuizShowPlugin {
             
             // Call TTS plugin via HTTP API
             try {
-                const axios = require('axios');
-                await axios.post('http://localhost:' + (process.env.PORT || 3000) + '/api/tts/speak', {
+                const port = process.env.PORT || 3000;
+                await axios.post(`http://localhost:${port}/api/tts/speak`, {
                     text: ttsText,
                     userId: 'quiz-show',
                     username: 'Quiz Show',

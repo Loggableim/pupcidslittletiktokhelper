@@ -1134,6 +1134,11 @@
         try {
             // Load available TTS voices from the TTS plugin
             const response = await fetch('/api/tts/voices?engine=all');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const data = await response.json();
             
             if (data.success && data.voices) {
