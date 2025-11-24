@@ -315,28 +315,12 @@
                 <div class="card-header">
                     <h2 class="card-title">Pattern Curve Generator</h2>
                 </div>
-                <div class="grid-3">
-                    <div class="form-group">
-                        <label class="form-label">Curve Type</label>
-                        <select class="form-select" id="curveType">
-                            <option value="linear">Linear</option>
-                            <option value="exponential">Exponential</option>
-                            <option value="sine">Sine Wave</option>
-                            <option value="pulse">Pulse</option>
-                            <option value="ramp-up">Ramp Up</option>
-                            <option value="ramp-down">Ramp Down</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Duration (ms)</label>
-                        <input type="number" class="form-input" id="curveDuration" value="5000" min="300" step="100">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Max Intensity</label>
-                        <input type="number" class="form-input" id="curveMaxIntensity" value="50" min="1" max="100">
-                    </div>
+                <p class="text-muted mb-3">
+                    Create custom patterns by drawing intensity curves over time. Each action type (shock, vibrate, beep) has a unique color for easy identification.
+                </p>
+                <div class="btn-group">
+                    <button class="btn btn-primary btn-lg" id="openCurveEditor">🎨 Open Visual Curve Editor</button>
                 </div>
-                <button class="btn btn-primary" id="generateCurve">🎨 Generate Pattern</button>
             </div>
         </div>
 
@@ -648,6 +632,151 @@
             <div class="modal-footer">
                 <button class="btn btn-primary" id="savePatternBtn">💾 Save Pattern</button>
                 <button class="btn btn-secondary" id="cancelPatternBtn">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Visual Curve Editor -->
+    <div id="curveEditorModal" class="modal">
+        <div class="modal-content modal-content-large">
+            <div class="modal-header">
+                <h2 class="modal-title">🎨 Visual Pattern Curve Editor</h2>
+                <button class="modal-close" id="closeCurveEditor">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Action Type Selector -->
+                <div class="form-group">
+                    <label class="form-label">Action Type</label>
+                    <div class="btn-group">
+                        <button class="btn btn-action active" data-action="shock">⚡ Shock</button>
+                        <button class="btn btn-action" data-action="vibrate">📳 Vibrate</button>
+                        <button class="btn btn-action" data-action="sound">🔔 Beep</button>
+                    </div>
+                    <p class="text-muted form-help-text">Select the action type for your pattern. The color will change based on your selection.</p>
+                </div>
+
+                <!-- Canvas -->
+                <div class="form-group">
+                    <label class="form-label">Draw Your Pattern</label>
+                    <div class="curve-canvas-container">
+                        <canvas id="curveCanvas" width="800" height="400"></canvas>
+                        <div class="curve-info">
+                            <span>Intensity: <strong id="currentIntensity">0</strong>%</span>
+                            <span>Time: <strong id="currentTime">0</strong>ms</span>
+                        </div>
+                    </div>
+                    <p class="text-muted form-help-text">Click and drag on the canvas to draw your intensity curve over time.</p>
+                </div>
+
+                <!-- Controls Row 1 -->
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Pattern Name</label>
+                        <input type="text" class="form-input" id="curvePatternName" placeholder="My Custom Pattern">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Template Curves</label>
+                        <select class="form-select" id="curveTemplate">
+                            <option value="custom">Custom (Draw your own)</option>
+                            <option value="linear-up">Linear Ramp Up</option>
+                            <option value="linear-down">Linear Ramp Down</option>
+                            <option value="exponential-up">Exponential Ramp Up</option>
+                            <option value="exponential-down">Exponential Ramp Down</option>
+                            <option value="sine">Sine Wave</option>
+                            <option value="pulse">Pulse Wave</option>
+                            <option value="sawtooth">Sawtooth Wave</option>
+                            <option value="triangle">Triangle Wave</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Controls Row 2: Intensity Range -->
+                <div class="grid-2">
+                    <div class="form-group">
+                        <div class="slider-label">
+                            <span class="form-label">Min Intensity</span>
+                            <span class="slider-value" id="minIntensityValue">10%</span>
+                        </div>
+                        <input type="range" id="minIntensity" min="0" max="100" value="10" step="5">
+                    </div>
+                    <div class="form-group">
+                        <div class="slider-label">
+                            <span class="form-label">Max Intensity</span>
+                            <span class="slider-value" id="maxIntensityValue">80%</span>
+                        </div>
+                        <input type="range" id="maxIntensity" min="0" max="100" value="80" step="5">
+                    </div>
+                </div>
+
+                <!-- Controls Row 3: Timing -->
+                <div class="grid-3">
+                    <div class="form-group">
+                        <div class="slider-label">
+                            <span class="form-label">Step Duration</span>
+                            <span class="slider-value" id="stepDurationValue">500ms</span>
+                        </div>
+                        <input type="range" id="stepDurationSlider" min="100" max="2000" value="500" step="50">
+                    </div>
+                    <div class="form-group">
+                        <div class="slider-label">
+                            <span class="form-label">Step Delay</span>
+                            <span class="slider-value" id="stepDelayValue">100ms</span>
+                        </div>
+                        <input type="range" id="stepDelaySlider" min="0" max="1000" value="100" step="50">
+                    </div>
+                    <div class="form-group">
+                        <div class="slider-label">
+                            <span class="form-label">Resolution (Steps)</span>
+                            <span class="slider-value" id="resolutionValue">20</span>
+                        </div>
+                        <input type="range" id="resolutionSlider" min="5" max="50" value="20" step="1">
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="btn-group mb-3">
+                    <button class="btn btn-secondary" id="applyTemplate">📋 Apply Template</button>
+                    <button class="btn btn-secondary" id="clearCanvas">🗑️ Clear Canvas</button>
+                    <button class="btn btn-secondary" id="undoStep">↩️ Undo</button>
+                </div>
+
+                <!-- Preview Stats -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="modal-title-small">Pattern Statistics</h3>
+                    </div>
+                    <div class="grid-4">
+                        <div class="stat-card">
+                            <div class="stat-label">Steps</div>
+                            <div class="stat-value" id="stepCount">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Duration</div>
+                            <div class="stat-value" id="totalDuration">0ms</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Intensity</div>
+                            <div class="stat-value" id="avgIntensity">0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Peak Intensity</div>
+                            <div class="stat-value" id="peakIntensity">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Preview -->
+                <div class="form-group mt-3">
+                    <label class="form-label">Timeline Preview</label>
+                    <div id="curveTimelinePreview" class="pattern-timeline">
+                        <div class="timeline-empty">Draw on the canvas above to create your pattern</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="saveCurvePattern">💾 Save Pattern</button>
+                <button class="btn btn-info" id="previewCurvePattern">👁️ Preview</button>
+                <button class="btn btn-secondary" id="cancelCurveEditor">❌ Cancel</button>
             </div>
         </div>
     </div>

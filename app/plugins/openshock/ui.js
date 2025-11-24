@@ -1615,29 +1615,47 @@ class CurveEditor {
         return Math.max(1, Math.min(100, Math.round(intensity)));
     }
 
+    calculateTotalDuration(steps) {
+        return steps.reduce((sum, s) => sum + s.duration + (s.delay || 0), 0);
+    }
+
     renderTimeline(steps) {
         const container = document.getElementById('curveTimelinePreview');
-        container.innerHTML = '';
+        if (!container) return;
         
         if (steps.length === 0) {
             container.innerHTML = '<div class="timeline-empty">Draw on the canvas above to create your pattern</div>';
             return;
         }
         
-        steps.forEach((step, index) => {
-            const stepEl = document.createElement('div');
-            stepEl.className = `timeline-step timeline-step-${step.type}`;
-            stepEl.style.height = `${step.intensity}%`;
-            stepEl.title = `Step ${index + 1}: ${step.type} ${step.intensity}% for ${step.duration}ms`;
+        const totalDuration = this.calculateTotalDuration(steps);
+        let currentTime = 0;
+        
+        const bars = steps.map(step => {
+            const startPercent = (currentTime / totalDuration) * 100;
+            const widthPercent = (step.duration / totalDuration) * 100;
+            currentTime += step.duration + (step.delay || 0);
             
-            stepEl.innerHTML = `
-                <div class="timeline-step-icon">${this.getActionIcon(step.type)}</div>
-                <div class="timeline-step-intensity">${step.intensity}%</div>
-                <div class="timeline-step-duration">${step.duration}ms</div>
+            // Sanitize step.type for CSS class
+            const sanitizedType = (step.type || '').replace(/[^a-zA-Z0-9-]/g, '');
+            
+            return `
+                <div class="timeline-bar timeline-${sanitizedType}"
+                     style="left: ${startPercent}%; width: ${widthPercent}%;"
+                     title="${escapeHtml(step.type)} - ${step.intensity}% - ${step.duration}ms">
+                </div>
             `;
-            
-            container.appendChild(stepEl);
-        });
+        }).join('');
+        
+        container.innerHTML = `
+            <div class="timeline">
+                ${bars}
+            </div>
+            <div class="timeline-labels">
+                <span>0ms</span>
+                <span>${formatDuration(totalDuration)}</span>
+            </div>
+        `;
     }
 
     getActionIcon(type) {
@@ -1651,13 +1669,27 @@ class CurveEditor {
     }
 
     updateStats(steps) {
-        const totalDuration = steps.reduce((sum, s) => sum + s.duration + s.delay, 0);
+        const stepCountEl = document.getElementById('stepCount');
+        const totalDurationEl = document.getElementById('totalDuration');
+        const avgIntensityEl = document.getElementById('avgIntensity');
+        const peakIntensityEl = document.getElementById('peakIntensity');
+        
+        if (!steps || steps.length === 0) {
+            if (stepCountEl) stepCountEl.textContent = '0';
+            if (totalDurationEl) totalDurationEl.textContent = '0ms';
+            if (avgIntensityEl) avgIntensityEl.textContent = '0%';
+            if (peakIntensityEl) peakIntensityEl.textContent = '0%';
+            return;
+        }
+        
+        const totalDuration = this.calculateTotalDuration(steps);
         const avgIntensity = Math.round(steps.reduce((sum, s) => sum + s.intensity, 0) / steps.length);
         const peakIntensity = Math.max(...steps.map(s => s.intensity));
         
-        document.getElementById('totalDuration').textContent = totalDuration;
-        document.getElementById('avgIntensity').textContent = avgIntensity;
-        document.getElementById('peakIntensity').textContent = peakIntensity;
+        if (stepCountEl) stepCountEl.textContent = steps.length;
+        if (totalDurationEl) totalDurationEl.textContent = formatDuration(totalDuration);
+        if (avgIntensityEl) avgIntensityEl.textContent = avgIntensity + '%';
+        if (peakIntensityEl) peakIntensityEl.textContent = peakIntensity + '%';
     }
 
     clear() {
