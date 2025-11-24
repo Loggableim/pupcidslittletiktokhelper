@@ -15,35 +15,35 @@ Ein einfach zu bedienendes Tool für TikTok LIVE Streaming mit Overlays, Alerts,
 ### Installation & Start
 
 #### Windows:
-1. Doppelklick auf `start.exe`
-2. Das war's! Das Tool installiert automatisch alle benötigten Abhängigkeiten und startet sich
-
-**Alternative:** Nutze `start.bat` wenn die .exe Datei aus irgendeinem Grund nicht funktioniert
+1. Doppelklick auf `launcher.exe` (Grafischer Launcher mit Hintergrundbild und Fortschrittsanzeige)
+2. Das war's! Der Launcher installiert automatisch alle benötigten Abhängigkeiten und öffnet das Dashboard
 
 #### Linux:
 1. Doppelklick auf `start-linux` (oder im Terminal: `./start-linux`)
 2. Das war's! Das Tool installiert automatisch alle benötigten Abhängigkeiten und startet sich
 
-**Alternative:** Nutze `start.sh` wenn die Binary nicht funktioniert
-
 #### Mac:
 1. Doppelklick auf `start-mac` (oder im Terminal: `./start-mac`)
 2. Das war's! Das Tool installiert automatisch alle benötigten Abhängigkeiten und startet sich
-
-**Alternative:** Nutze `start.sh` wenn die Binary nicht funktioniert
 
 ---
 
 ## 📖 Was macht der Launcher?
 
-Der Launcher (`start.exe` für Windows, `start-linux` für Linux, `start-mac` für Mac) übernimmt automatisch:
+Der Launcher (`launcher.exe` für Windows, `start-linux` für Linux, `start-mac` für Mac) übernimmt automatisch:
 
 ✅ Prüft ob Node.js installiert ist  
 ✅ Installiert alle benötigten Abhängigkeiten (beim ersten Start)  
 ✅ Startet das Tool  
 ✅ Öffnet automatisch das Dashboard im Browser  
 
-**Hinweis:** Falls die ausführbaren Dateien (.exe, start-linux, start-mac) Probleme machen, gibt es Fallback-Skripte: `start.bat` (Windows) und `start.sh` (Linux/Mac)  
+### Features des grafischen Launchers (launcher.exe):
+
+- **Hintergrundbild**: Zeigt das Hintergrundbild `launcherbg.png` in voller Größe an
+- **Fortschrittsbalken**: Prozentualer Fortschrittsbalken im unteren linken Bereich
+- **Status-Updates**: Zeigt aktuelle Status-Meldungen während des Startvorgangs
+- **Auto-Redirect**: Leitet automatisch zum Dashboard weiter, sobald das Tool gestartet ist
+- **Hinweise**: Zeigt wichtige Hinweise (z.B. "npm install kann einige Minuten dauern")  
 
 ---
 
