@@ -523,9 +523,24 @@
 
                 <div class="form-group">
                     <label class="form-label">Pattern (optional)</label>
-                    <select class="form-select" id="mappingPattern">
-                        <option value="">None (Single pulse)</option>
-                    </select>
+                    <div class="pattern-selector-group">
+                        <select class="form-select" id="mappingPattern">
+                            <option value="">None (Single pulse)</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-secondary" id="createPatternFromMapping" title="Create new pattern">
+                            ➕
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" id="editPatternFromMapping" title="Edit selected pattern" style="display: none;">
+                            ✏️
+                        </button>
+                    </div>
+                    <div id="mappingPatternPreview" class="pattern-preview-box" style="display: none;">
+                        <div class="pattern-preview-header">
+                            <strong>Pattern Steps:</strong>
+                        </div>
+                        <div id="mappingPatternSteps" class="pattern-steps-list">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Cooldowns -->

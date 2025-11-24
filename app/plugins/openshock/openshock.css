@@ -1315,3 +1315,81 @@ input[type="range"]::-moz-range-thumb {
         gap: 8px;
     }
 }
+
+/* Pattern Selector Group */
+.pattern-selector-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pattern-selector-group .form-select {
+    flex: 1;
+}
+
+.pattern-selector-group .btn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 38px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Pattern Preview Box */
+.pattern-preview-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.pattern-preview-header {
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.pattern-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pattern-step-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.pattern-step-number {
+    font-weight: bold;
+    color: #4CAF50;
+    min-width: 20px;
+}
+
+.pattern-step-type {
+    font-weight: 600;
+    text-transform: capitalize;
+    color: #2196F3;
+    min-width: 60px;
+}
+
+.pattern-step-details {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pattern-step-detail {
+    display: flex;
+    gap: 4px;
+}
