@@ -535,34 +535,68 @@
             overflow-y: auto;
         }
 
-        /* Compact mode layout: 2x2 grid for main metrics */
-        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 {
-            /* Create 2x2 grid: CPU/GPU in row 1, RAM/Network in row 2 */
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            grid-template-rows: auto auto !important;
-        }
+        /* Compact mode: Make #app a grid container to manage all metric cards */
+        @media (min-width: 768px) {
+            .compact-mode #app {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.35rem;
+            }
 
-        /* Reorder the cards: CPU (1), GPU (2), RAM (3) becomes CPU, GPU, RAM, Network */
-        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(1) {
-            order: 1; /* CPU - top left */
-        }
+            /* Header section spans both columns */
+            .compact-mode #app > .mb-8:first-child {
+                grid-column: 1 / -1;
+            }
 
-        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(3) {
-            order: 2; /* GPU - top right */
-        }
+            /* Warnings section (if exists) spans both columns */
+            .compact-mode #app > #warnings-section {
+                grid-column: 1 / -1;
+            }
 
-        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(2) {
-            order: 3; /* RAM - bottom left */
-        }
+            /* Main metrics grid becomes display: contents to release its children */
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 {
+                display: contents;
+            }
 
-        /* Move network card into the main grid in compact mode */
-        .compact-mode #app > div:nth-of-type(3) {
-            display: contents;
-        }
+            /* Position individual metric cards in the app grid */
+            /* CPU Card - Position 1 (top-left) */
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(1) {
+                grid-column: 1;
+                grid-row: 3;
+            }
 
-        .compact-mode #app > div:nth-of-type(3) > .card {
-            order: 4; /* Network - bottom right */
+            /* RAM Card - Position 3 (bottom-left) */  
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(2) {
+                grid-column: 1;
+                grid-row: 4;
+            }
+
+            /* GPU Card - Position 2 (top-right) */
+            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(3) {
+                grid-column: 2;
+                grid-row: 3;
+            }
+
+            /* Network grid also becomes display: contents */
+            .compact-mode #network-grid {
+                display: contents;
+            }
+
+            /* Network card - Position 4 (bottom-right) */
+            .compact-mode #network-grid > .card {
+                grid-column: 2;
+                grid-row: 4;
+            }
+
+            /* Processes section spans both columns */
+            .compact-mode #app > .card:has(#processes-table) {
+                grid-column: 1 / -1;
+            }
+
+            /* Connection status spans both columns */
+            .compact-mode #app > .mt-6.text-center {
+                grid-column: 1 / -1;
+            }
         }
 
         /* Responsive Grid */
@@ -957,7 +991,7 @@
         </div>
 
         <!-- Second Row: Network Card -->
-        <div class="grid grid-cols-1 gap-6 mb-6">
+        <div class="grid grid-cols-1 gap-6 mb-6" id="network-grid">
             <!-- Network Card -->
             <div class="card">
                 <div class="flex justify-between items-start mb-4">
