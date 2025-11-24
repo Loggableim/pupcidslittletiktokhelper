@@ -173,9 +173,46 @@ class LeaderboardPlugin {
             res.sendFile(path.join(__dirname, 'public', 'style.css'));
         });
 
+        // Serve theme CSS dynamically based on query parameter or config
+        this.api.registerRoute('GET', '/leaderboard/theme.css', (req, res) => {
+            const theme = req.query.theme || this.dbModule.getConfig()?.theme || 'neon';
+            const themePath = path.join(__dirname, 'public', 'themes', `${theme}.css`);
+            const fs = require('fs');
+            
+            // Check if theme file exists
+            if (fs.existsSync(themePath)) {
+                res.sendFile(themePath);
+            } else {
+                // Fallback to neon theme
+                res.sendFile(path.join(__dirname, 'public', 'themes', 'neon.css'));
+            }
+        });
+
         // Serve overlay JS
         this.api.registerRoute('GET', '/leaderboard/script.js', (req, res) => {
             res.sendFile(path.join(__dirname, 'public', 'script.js'));
+        });
+
+        // Test/Preview mode - returns mock data
+        this.api.registerRoute('GET', '/api/plugins/leaderboard/test-data', (req, res) => {
+            try {
+                const mockSessionData = this.generateMockData('session');
+                const mockAlltimeData = this.generateMockData('alltime');
+                
+                res.json({
+                    success: true,
+                    session: {
+                        data: mockSessionData,
+                        startTime: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+                    },
+                    alltime: {
+                        data: mockAlltimeData
+                    }
+                });
+            } catch (error) {
+                this.api.log(`Error generating test data: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
         });
 
         this.api.log('API routes registered', 'info');
@@ -320,6 +357,58 @@ class LeaderboardPlugin {
             },
             alltime: {
                 data: alltimeBoard
+            }
+        });
+    }
+
+    /**
+     * Generate mock data for testing/preview
+     */
+    generateMockData(type) {
+        const names = [
+            { nickname: 'GamingLegend', uniqueId: 'gaming_legend', coins: 15000 },
+            { nickname: 'StreamQueen', uniqueId: 'stream_queen', coins: 12500 },
+            { nickname: 'CoolViewer99', uniqueId: 'cool_viewer_99', coins: 10800 },
+            { nickname: 'TikTokFan', uniqueId: 'tiktok_fan', coins: 8500 },
+            { nickname: 'SuperSupporter', uniqueId: 'super_supporter', coins: 7200 },
+            { nickname: 'NightOwl', uniqueId: 'night_owl', coins: 6100 },
+            { nickname: 'DailyWatcher', uniqueId: 'daily_watcher', coins: 5500 },
+            { nickname: 'GiftMaster', uniqueId: 'gift_master', coins: 4800 },
+            { nickname: 'TopFan', uniqueId: 'top_fan', coins: 3900 },
+            { nickname: 'LoyalFollower', uniqueId: 'loyal_follower', coins: 2700 }
+        ];
+
+        const profilePics = [
+            'https://picsum.photos/100/100?random=1',
+            'https://picsum.photos/100/100?random=2',
+            'https://picsum.photos/100/100?random=3',
+            'https://picsum.photos/100/100?random=4',
+            'https://picsum.photos/100/100?random=5'
+        ];
+
+        return names.map((user, index) => {
+            const baseData = {
+                rank: index + 1,
+                user_id: `mock_user_${index + 1}`,
+                userId: `mock_user_${index + 1}`,
+                nickname: user.nickname,
+                unique_id: user.uniqueId,
+                uniqueId: user.uniqueId,
+                profile_picture_url: profilePics[index % profilePics.length],
+                profilePictureUrl: profilePics[index % profilePics.length]
+            };
+
+            if (type === 'session') {
+                return {
+                    ...baseData,
+                    coins: user.coins
+                };
+            } else {
+                return {
+                    ...baseData,
+                    total_coins: user.coins * 3,
+                    totalCoins: user.coins * 3
+                };
             }
         });
     }

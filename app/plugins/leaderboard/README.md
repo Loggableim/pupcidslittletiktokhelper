@@ -8,12 +8,24 @@ A real-time leaderboard plugin for "Pup Cid's Little TikTok Helper" that tracks 
   - **Session Leaderboard**: In-memory tracking of top gifters for the current streaming session
   - **All-Time Leaderboard**: Persistent database storage for historical top contributors
   
+- **5 Theme Designs**: Choose from multiple visual styles for your overlay:
+  - **Neon/Cyberpunk**: Cyan & magenta with glowing effects (default)
+  - **Elegant/Minimalist**: Clean white/gray aesthetic
+  - **Gaming/Esports**: Bold red/orange energy theme
+  - **Royal/Crown**: Purple & gold regal theme with sparkles
+  - **Modern Gradient**: Vibrant blue/teal gradients
+
+- **Preview/Test Mode**: Test overlay designs with mock data before going live
+- **Enhanced Animations**: 
+  - Special overtake animations when someone moves up in rank
+  - Crown (👑) for #1, medals for #2-3 (🥈🥉)
+  - Rank-up celebration effects for big jumps
+  
 - **Real-Time Updates**: WebSocket-based live updates to the overlay
 - **Performance Optimized**: Debounced database writes (5-second delay) to minimize disk I/O during gift spam
 - **Robust Data Handling**: Protection against undefined values in gift payloads
 - **Dynamic User Updates**: Automatically updates nicknames and profile pictures when users change them
 - **Session Management**: Admin command to reset the current session
-- **Modern UI**: Neon/dark theme overlay with smooth CSS animations
 - **OBS Compatible**: Transparent background perfect for OBS Browser Source
 
 ## Installation
@@ -21,6 +33,18 @@ A real-time leaderboard plugin for "Pup Cid's Little TikTok Helper" that tracks 
 The plugin is automatically loaded when the server starts. No manual installation required.
 
 ## Usage
+
+### Configuration Panel
+
+Access the configuration panel at: `http://localhost:3000/leaderboard/ui`
+
+Features:
+- View current session and all-time leaderboards
+- Configure display settings (limit, minimum coins)
+- **Select overlay theme** from 5 different designs
+- Toggle overtake animations on/off
+- **Preview overlay** with test data
+- Reset session data
 
 ### OBS Overlay Setup
 
@@ -31,11 +55,69 @@ The plugin is automatically loaded when the server starts. No manual installatio
 5. Check "Shutdown source when not visible" for better performance
 6. Click OK
 
+### Testing/Preview Mode
+
+To preview different themes with mock data:
+1. Go to `http://localhost:3000/leaderboard/ui`
+2. Select a theme from the dropdown
+3. Click "Preview Overlay" button
+4. A new window will open showing the overlay with animated test data
+5. Watch the simulated rank changes to see overtake animations
+
+Alternatively, access preview mode directly:
+```
+http://localhost:3000/leaderboard/overlay?preview=true&theme=neon
+```
+
+Replace `neon` with: `elegant`, `gaming`, `royal`, or `gradient`
+
 ### Overlay Features
 
 The overlay has two tabs that can be switched manually:
 - **🔥 Current Session**: Shows top gifters for the current streaming session
 - **👑 All Time Champions**: Shows the all-time top contributors
+
+## Theme Customization
+
+### Available Themes
+
+1. **Neon/Cyberpunk** (`neon`)
+   - Colors: Cyan & Magenta
+   - Style: Dark background with glowing neon effects
+   - Best for: Futuristic/tech streams
+
+2. **Elegant/Minimalist** (`elegant`)
+   - Colors: White & Gray
+   - Style: Clean, professional look
+   - Best for: Professional/business streams
+
+3. **Gaming/Esports** (`gaming`)
+   - Colors: Red & Orange
+   - Style: Bold, energetic design
+   - Best for: Gaming streams
+
+4. **Royal/Crown** (`royal`)
+   - Colors: Purple & Gold
+   - Style: Regal with sparkle effects
+   - Best for: Luxury/prestige themes
+
+5. **Modern Gradient** (`gradient`)
+   - Colors: Blue & Teal
+   - Style: Smooth gradients and modern design
+   - Best for: Contemporary/artistic streams
+
+### Selecting a Theme
+
+**Method 1: Configuration Panel** (Recommended)
+1. Go to `http://localhost:3000/leaderboard/ui`
+2. Navigate to the "Settings" tab
+3. Select your preferred theme from the "Overlay Theme" dropdown
+4. Click "Save Settings"
+
+**Method 2: URL Parameter** (For testing)
+```
+http://localhost:3000/leaderboard/overlay?theme=royal
+```
 
 ### API Endpoints
 
@@ -56,6 +138,12 @@ Returns the all-time top gifters.
 GET /api/plugins/leaderboard/combined?limit=10
 ```
 Returns both session and all-time leaderboards in a single response.
+
+#### Get Test/Preview Data
+```
+GET /api/plugins/leaderboard/test-data
+```
+Returns mock leaderboard data for testing and preview purposes.
 
 #### Get User Stats
 ```
@@ -82,15 +170,23 @@ Content-Type: application/json
 
 {
   "top_count": 10,
-  "min_coins_to_show": 0
+  "min_coins_to_show": 0,
+  "theme": "neon",
+  "show_animations": 1
 }
 ```
+
+**New Configuration Options:**
+- `theme`: Choose from `neon`, `elegant`, `gaming`, `royal`, or `gradient`
+- `show_animations`: Enable (1) or disable (0) overtake animations
 
 ## Configuration
 
 The plugin stores configuration in the database:
 - `top_count`: Maximum number of entries to display (default: 10)
 - `min_coins_to_show`: Minimum coins required to appear on leaderboard (default: 0)
+- `theme`: Visual theme for the overlay (default: 'neon')
+- `show_animations`: Enable/disable overtake animations (default: 1/enabled)
 
 ## Database Schema
 
@@ -150,12 +246,33 @@ Stores plugin configuration:
 
 ## Customization
 
-### Styling
-Edit `/plugins/leaderboard/public/style.css` to customize:
-- Colors (neon cyan/magenta theme by default)
-- Animations (rank change effects, slide-ins)
-- Layout (dimensions, spacing)
-- Font styles
+### Styling Themes
+
+The plugin now includes 5 pre-built themes located in `/plugins/leaderboard/public/themes/`:
+- `neon.css` - Cyberpunk cyan/magenta theme
+- `elegant.css` - Minimalist white/gray theme
+- `gaming.css` - Esports red/orange theme
+- `royal.css` - Regal purple/gold theme
+- `gradient.css` - Modern blue/teal gradient theme
+
+To create a custom theme:
+1. Copy one of the existing theme files
+2. Modify colors, backgrounds, and effects
+3. Save with a new name (e.g., `mytheme.css`)
+4. Add the theme to the theme selector in `ui.html`
+
+### Animations
+
+**Overtake Animations** (can be toggled via config):
+- `rank-up`: Smooth shake animation when moving up
+- `rank-up-big`: Enhanced celebration for jumping 2+ ranks
+- `rank-down`: Fade effect when moving down
+- `new-entry`: Slide-in animation for new entries
+
+**Special Effects**:
+- Crown (👑) automatically displayed for rank #1
+- Medal icons (🥈🥉) for ranks #2 and #3
+- Sparkle effects on royal theme for top 3
 
 ### Auto-Rotation
 Enable automatic tab rotation in `script.js`:
@@ -181,9 +298,24 @@ Tabs will rotate every 30 seconds.
 1. Reduce `top_count` to show fewer entries
 2. Increase `debounceDelay` in db.js for less frequent writes
 3. Set `min_coins_to_show` to filter out small contributors
+4. Disable animations via `show_animations: 0` in config
+
+### Theme not loading
+1. Check browser console for CSS loading errors
+2. Verify theme name matches available themes
+3. Clear browser cache and refresh
+4. Ensure theme file exists in `/plugins/leaderboard/public/themes/`
 
 ## Version History
 
+- **v1.1.0** (2025-11-24)
+  - Added 5 theme designs (neon, elegant, gaming, royal, gradient)
+  - Implemented preview/test mode with mock data
+  - Enhanced overtake animations (rank-up, rank-up-big)
+  - Added crown and medal icons for top 3
+  - Theme selection in configuration UI
+  - Animation toggle option
+  
 - **v1.0.0** (2025-11-23)
   - Initial release
   - Session and all-time tracking

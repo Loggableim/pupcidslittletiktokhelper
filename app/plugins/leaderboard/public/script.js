@@ -16,6 +16,10 @@ class LeaderboardOverlay {
     }
 
     init() {
+        // Check if we're in preview mode
+        const urlParams = new URLSearchParams(window.location.search);
+        this.previewMode = urlParams.get('preview') === 'true';
+        
         // Connect to Socket.io
         this.connectSocket();
         
@@ -23,7 +27,11 @@ class LeaderboardOverlay {
         this.setupTabs();
         
         // Initial data fetch
-        this.fetchInitialData();
+        if (this.previewMode) {
+            this.fetchTestData();
+        } else {
+            this.fetchInitialData();
+        }
         
         // Auto-rotate tabs every 30 seconds (optional - can be disabled)
         this.enableAutoRotate = false; // Set to true to enable auto-rotation
@@ -33,6 +41,12 @@ class LeaderboardOverlay {
     }
 
     connectSocket() {
+        // Skip socket connection in preview mode
+        if (this.previewMode) {
+            console.log('Preview mode - socket connection skipped');
+            return;
+        }
+        
         this.socket = io();
         
         // Listen for leaderboard updates
@@ -70,6 +84,52 @@ class LeaderboardOverlay {
             }
         } catch (error) {
             console.error('Error fetching initial data:', error);
+        }
+    }
+
+    async fetchTestData() {
+        try {
+            const response = await fetch('/api/plugins/leaderboard/test-data');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.handleLeaderboardUpdate(result);
+                
+                // In preview mode, periodically simulate rank changes
+                setInterval(() => {
+                    this.simulateRankChanges();
+                }, 5000); // Update every 5 seconds to show animations
+            }
+        } catch (error) {
+            console.error('Error fetching test data:', error);
+        }
+    }
+
+    simulateRankChanges() {
+        // Randomly adjust coins to simulate overtaking
+        if (this.sessionData.length > 0) {
+            const randomIndex = Math.floor(Math.random() * Math.min(5, this.sessionData.length));
+            const coinBoost = Math.floor(Math.random() * 3000) + 1000;
+            
+            // Clone and modify session data
+            const newData = [...this.sessionData];
+            if (newData[randomIndex]) {
+                newData[randomIndex] = {
+                    ...newData[randomIndex],
+                    coins: newData[randomIndex].coins + coinBoost
+                };
+                
+                // Re-sort by coins
+                newData.sort((a, b) => b.coins - a.coins);
+                
+                // Update ranks
+                newData.forEach((entry, index) => {
+                    entry.rank = index + 1;
+                });
+                
+                this.updateSessionData(newData);
+                this.renderLeaderboard('session', this.sessionData);
+            }
         }
     }
 
@@ -138,18 +198,33 @@ class LeaderboardOverlay {
             const profilePic = entry.profile_picture_url || entry.profilePictureUrl || '';
             const coins = entry.total_coins || entry.coins || 0;
             
-            // Determine rank class
+            // Determine rank icon/badge
+            let rankDisplay = '';
             let rankClass = 'rank-other';
-            if (rank === 1) rankClass = 'rank-1';
-            else if (rank === 2) rankClass = 'rank-2';
-            else if (rank === 3) rankClass = 'rank-3';
+            if (rank === 1) {
+                rankClass = 'rank-1';
+                rankDisplay = '👑'; // Crown for leader
+            } else if (rank === 2) {
+                rankClass = 'rank-2';
+                rankDisplay = '🥈'; // Silver medal
+            } else if (rank === 3) {
+                rankClass = 'rank-3';
+                rankDisplay = '🥉'; // Bronze medal
+            } else {
+                rankDisplay = rank;
+            }
             
-            // Determine animation class
+            // Determine animation class for overtaking
             let animationClass = '';
             const previousRank = previousRanks.get(userId);
             if (previousRank !== undefined) {
                 if (previousRank > rank) {
+                    // Moved up in ranking - overtook someone!
                     animationClass = 'rank-up';
+                    // Add extra celebration for big jumps
+                    if (previousRank - rank >= 2) {
+                        animationClass = 'rank-up-big';
+                    }
                 } else if (previousRank < rank) {
                     animationClass = 'rank-down';
                 }
@@ -159,9 +234,9 @@ class LeaderboardOverlay {
             
             // Build entry HTML
             html += `
-                <div class="leaderboard-entry ${animationClass}" data-user-id="${this.escapeHtml(userId)}">
+                <div class="leaderboard-entry ${animationClass}" data-user-id="${this.escapeHtml(userId)}" data-rank="${rank}">
                     <div class="rank-badge ${rankClass}">
-                        ${rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
+                        ${rankDisplay}
                     </div>
                     ${profilePic && this.isValidUrl(profilePic) ? `<img src="${this.escapeHtml(profilePic)}" alt="${this.escapeHtml(nickname)}" class="profile-pic" onerror="this.style.display='none'">` : ''}
                     <div class="user-info">

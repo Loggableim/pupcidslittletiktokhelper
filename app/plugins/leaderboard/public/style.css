@@ -1,4 +1,4 @@
-/* Leaderboard Overlay - Neon/Dark Theme */
+/* Leaderboard Overlay - Base Styles */
 * {
     margin: 0;
     padding: 0;
@@ -16,20 +16,16 @@ body {
     width: 450px;
     min-height: 600px;
     max-height: 800px;
-    background: rgba(10, 10, 20, 0.95);
-    border: 2px solid rgba(0, 255, 255, 0.3);
     border-radius: 20px;
-    box-shadow: 0 0 40px rgba(0, 255, 255, 0.2),
-                inset 0 0 30px rgba(0, 255, 255, 0.05);
     backdrop-filter: blur(10px);
     overflow: hidden;
+    /* Theme-specific background, border, and box-shadow are in theme files */
 }
 
 /* Tab Navigation */
 .tabs {
     display: flex;
-    background: rgba(15, 15, 30, 0.8);
-    border-bottom: 2px solid rgba(0, 255, 255, 0.2);
+    /* Theme-specific background and border-bottom are in theme files */
 }
 
 .tab-btn {
@@ -37,7 +33,6 @@ body {
     padding: 15px 20px;
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.5);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -47,17 +42,7 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
-}
-
-.tab-btn:hover {
-    color: rgba(0, 255, 255, 0.8);
-    background: rgba(0, 255, 255, 0.05);
-}
-
-.tab-btn.active {
-    color: #00ffff;
-    background: rgba(0, 255, 255, 0.1);
-    text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+    /* Theme-specific colors are in theme files */
 }
 
 .tab-btn.active::after {
@@ -67,8 +52,7 @@ body {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, transparent, #00ffff, transparent);
-    box-shadow: 0 0 10px #00ffff;
+    /* Theme-specific background and box-shadow are in theme files */
 }
 
 .tab-icon {
@@ -107,13 +91,8 @@ body {
     font-size: 22px;
     font-weight: 700;
     text-align: center;
-    color: #00ffff; /* Fallback color */
-    background: linear-gradient(135deg, #00ffff, #ff00ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
     margin-bottom: 10px;
-    text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    /* Theme-specific colors, gradients, and text-shadow are in theme files */
 }
 
 .session-info {
@@ -153,11 +132,10 @@ body {
     display: flex;
     align-items: center;
     padding: 12px 15px;
-    background: rgba(20, 20, 40, 0.6);
-    border: 1px solid rgba(0, 255, 255, 0.2);
     border-radius: 12px;
     transition: all 0.3s ease;
     animation: slideIn 0.4s ease;
+    /* Theme-specific background and border are in theme files */
 }
 
 @keyframes slideIn {
@@ -172,10 +150,8 @@ body {
 }
 
 .leaderboard-entry:hover {
-    background: rgba(0, 255, 255, 0.1);
-    border-color: rgba(0, 255, 255, 0.4);
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
     transform: translateX(5px);
+    /* Theme-specific background, border-color, and box-shadow are in theme files */
 }
 
 /* Rank Badge */
@@ -211,9 +187,7 @@ body {
 }
 
 .rank-other {
-    background: rgba(0, 255, 255, 0.1);
-    color: #00ffff;
-    border: 1px solid rgba(0, 255, 255, 0.3);
+    /* Theme-specific background, color, and border are in theme files */
 }
 
 /* Profile Picture */
@@ -222,9 +196,9 @@ body {
     height: 45px;
     border-radius: 50%;
     margin-right: 12px;
-    border: 2px solid rgba(0, 255, 255, 0.3);
     object-fit: cover;
     flex-shrink: 0;
+    /* Theme-specific border is in theme files */
 }
 
 /* User Info */
@@ -236,11 +210,12 @@ body {
 .username {
     font-size: 15px;
     font-weight: 600;
-    color: #fff;
     margin-bottom: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    /* Theme-specific color is in theme files (defaults to #fff) */
+    color: #fff;
 }
 
 .user-id {
@@ -261,31 +236,73 @@ body {
 .coins-amount {
     font-size: 18px;
     font-weight: 700;
-    color: #00ffff;
-    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    /* Theme-specific color and text-shadow are in theme files */
 }
 
 .coins-label {
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.5);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    /* Theme-specific color is in theme files (defaults to rgba(255, 255, 255, 0.5)) */
+    color: rgba(255, 255, 255, 0.5);
 }
 
 /* Rank Change Animation */
 .leaderboard-entry.rank-up {
-    animation: rankUp 0.6s ease;
+    animation: rankUp 0.8s ease;
 }
 
 @keyframes rankUp {
-    0%, 100% {
-        transform: translateX(0);
+    0% {
+        transform: translateX(0) scale(1);
     }
-    25% {
+    20% {
+        transform: translateX(-15px) scale(1.08);
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+    }
+    40% {
+        transform: translateX(15px) scale(1.08);
+    }
+    60% {
         transform: translateX(-10px) scale(1.05);
     }
+    80% {
+        transform: translateX(5px) scale(1.02);
+    }
+    100% {
+        transform: translateX(0) scale(1);
+    }
+}
+
+.leaderboard-entry.rank-up-big {
+    animation: rankUpBig 1s ease;
+}
+
+@keyframes rankUpBig {
+    0% {
+        transform: translateX(0) scale(1) rotate(0deg);
+    }
+    15% {
+        transform: translateX(-20px) scale(1.15) rotate(-5deg);
+        box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+    }
+    30% {
+        transform: translateX(20px) scale(1.15) rotate(5deg);
+    }
+    45% {
+        transform: translateX(-15px) scale(1.1) rotate(-3deg);
+    }
+    60% {
+        transform: translateX(15px) scale(1.1) rotate(3deg);
+    }
     75% {
-        transform: translateX(10px) scale(1.05);
+        transform: translateX(-5px) scale(1.05) rotate(-1deg);
+    }
+    90% {
+        transform: translateX(5px) scale(1.02) rotate(1deg);
+    }
+    100% {
+        transform: translateX(0) scale(1) rotate(0deg);
     }
 }
 
@@ -309,14 +326,14 @@ body {
 
 @keyframes newEntry {
     0% {
-        transform: scale(0.8);
+        transform: scale(0.8) translateY(-20px);
         opacity: 0;
     }
     50% {
-        transform: scale(1.1);
+        transform: scale(1.1) translateY(0);
     }
     100% {
-        transform: scale(1);
+        transform: scale(1) translateY(0);
         opacity: 1;
     }
 }
@@ -332,12 +349,12 @@ body {
 }
 
 .leaderboard-panel::-webkit-scrollbar-thumb {
-    background: rgba(0, 255, 255, 0.3);
     border-radius: 10px;
+    /* Theme-specific background is in theme files */
 }
 
 .leaderboard-panel::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 255, 255, 0.5);
+    /* Theme-specific background is in theme files */
 }
 
 /* Glow effect for top 3 */
