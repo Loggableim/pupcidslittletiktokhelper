@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
@@ -97,7 +96,6 @@ func (lw *LauncherWindow) updateProgress(value int, status string) {
 		lw.progressBar.SetValue(value)
 		lw.statusLabel.SetText(status)
 	})
-	time.Sleep(100 * time.Millisecond)
 }
 
 func (lw *LauncherWindow) showError(title, message string) {
@@ -169,7 +167,6 @@ func (lw *LauncherWindow) runLauncher() {
 		lw.updateProgress(0, "FEHLER: Node.js ist nicht installiert!")
 		lw.showError("Fehler", "Node.js ist nicht installiert!\n\nBitte installiere Node.js von:\nhttps://nodejs.org\n\nEmpfohlen: LTS Version 18 oder 20")
 		os.Exit(1)
-		return
 	}
 	
 	lw.updateProgress(10, "Node.js gefunden...")
@@ -184,7 +181,6 @@ func (lw *LauncherWindow) runLauncher() {
 		lw.updateProgress(25, "FEHLER: app Verzeichnis nicht gefunden")
 		lw.showError("Fehler", fmt.Sprintf("app Verzeichnis nicht gefunden in %s", filepath.Dir(lw.appDir)))
 		os.Exit(1)
-		return
 	}
 	
 	lw.updateProgress(30, "App-Verzeichnis gefunden...")
@@ -201,7 +197,6 @@ func (lw *LauncherWindow) runLauncher() {
 			lw.updateProgress(45, fmt.Sprintf("FEHLER: %v", err))
 			lw.showError("Fehler", fmt.Sprintf("Installation fehlgeschlagen: %v", err))
 			os.Exit(1)
-			return
 		}
 		
 		lw.updateProgress(80, "Installation abgeschlossen!")
@@ -211,18 +206,13 @@ func (lw *LauncherWindow) runLauncher() {
 	
 	// Phase 4: Start tool (80-100%)
 	lw.updateProgress(90, "Starte Tool...")
-	
-	time.Sleep(500 * time.Millisecond)
 	lw.updateProgress(100, "Tool wird gestartet...")
-	
-	time.Sleep(1 * time.Second)
 	
 	// Start the tool
 	err = lw.startTool()
 	if err != nil {
 		lw.showError("Fehler", fmt.Sprintf("Fehler beim Starten: %v", err))
 		os.Exit(1)
-		return
 	}
 	
 	// Close the launcher window
