@@ -79,9 +79,9 @@
 }
 
 /* Animated gradient border for top entries */
-.rank-1 .leaderboard-entry,
-.rank-2 .leaderboard-entry,
-.rank-3 .leaderboard-entry {
+.leaderboard-entry[data-rank="1"],
+.leaderboard-entry[data-rank="2"],
+.leaderboard-entry[data-rank="3"] {
     background-size: 200% 200%;
     animation: gradientShift 4s ease infinite;
 }
