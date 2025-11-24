@@ -1237,9 +1237,12 @@ async function savePatternModal() {
 
         const result = await response.json();
         // For new patterns, get the ID from the response; for edits, use the existing ID
-        const savedPatternId = result.id || (isEdit ? patternId : null);
+        // Use explicit checks to handle 0 as a valid ID
+        const savedPatternId = result.id !== undefined && result.id !== null 
+            ? result.id 
+            : (isEdit ? patternId : null);
         
-        if (!savedPatternId && !isEdit) {
+        if (savedPatternId == null && !isEdit) {
             console.warn('[OpenShock] Pattern saved but no ID returned from server');
         }
 
@@ -1253,7 +1256,7 @@ async function savePatternModal() {
         const shouldReturn = sessionStorage.getItem('returnToMappingModal');
         if (shouldReturn === 'true') {
             // Update the stored mapping state with the new/updated pattern ID
-            if (savedPatternId) {
+            if (savedPatternId != null) {
                 const stateJson = sessionStorage.getItem('mappingModalState');
                 if (stateJson) {
                     const state = JSON.parse(stateJson);
