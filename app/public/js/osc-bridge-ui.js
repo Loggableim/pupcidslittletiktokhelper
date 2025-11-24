@@ -375,6 +375,54 @@ function deleteCustomPreset(presetId) {
 
 // ========== GIFT MAPPINGS ==========
 let giftMappings = [];
+let giftCatalog = [];
+
+async function loadGiftCatalog() {
+    try {
+        const response = await fetch('/api/gift-catalog');
+        const data = await response.json();
+        
+        if (data.success) {
+            giftCatalog = data.catalog || [];
+            populateGiftCatalogSelector();
+        }
+    } catch (error) {
+        console.error('Error loading gift catalog:', error);
+        giftCatalog = [];
+    }
+}
+
+function populateGiftCatalogSelector() {
+    const selector = document.getElementById('gift-catalog-selector');
+    
+    if (!selector) return;
+    
+    // Clear existing options except the first one
+    selector.innerHTML = '<option value="">-- Select a gift from catalogue or enter manually below --</option>';
+    
+    if (giftCatalog.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = '(No gifts in catalogue - update catalogue from main dashboard)';
+        option.disabled = true;
+        selector.appendChild(option);
+        return;
+    }
+    
+    // Add gifts to selector, sorted by diamond count (most expensive first)
+    giftCatalog
+        .sort((a, b) => (b.diamond_count || 0) - (a.diamond_count || 0))
+        .forEach(gift => {
+            const option = document.createElement('option');
+            option.value = JSON.stringify({ id: gift.id, name: gift.name });
+            
+            // Format: "Rose (💎 1) - ID: 5655"
+            const diamondCount = gift.diamond_count || 0;
+            option.textContent = `${gift.name} (💎 ${diamondCount}) - ID: ${gift.id}`;
+            
+            selector.appendChild(option);
+        });
+}
 
 async function loadGiftMappings() {
     try {
@@ -621,7 +669,39 @@ async function switchToAvatar(avatarId, avatarName) {
 // Initialize gift mappings and avatars on page load
 if (typeof window !== 'undefined') {
     window.addEventListener('DOMContentLoaded', () => {
+        loadGiftCatalog();
         loadGiftMappings();
         loadAvatars();
+        
+        // Add event listener for gift catalog selector
+        const catalogSelector = document.getElementById('gift-catalog-selector');
+        if (catalogSelector) {
+            catalogSelector.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    try {
+                        const selectedGift = JSON.parse(e.target.value);
+                        document.getElementById('new-gift-id').value = selectedGift.id;
+                        document.getElementById('new-gift-name').value = selectedGift.name;
+                    } catch (error) {
+                        console.error('Error parsing selected gift:', error);
+                    }
+                }
+            });
+        }
+        
+        // Add event listener for refresh catalogue button
+        const refreshBtn = document.getElementById('refresh-gift-catalog');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                const originalText = '🔄 Refresh Catalogue';
+                refreshBtn.textContent = '⏳ Loading...';
+                refreshBtn.disabled = true;
+                
+                await loadGiftCatalog();
+                
+                refreshBtn.textContent = originalText;
+                refreshBtn.disabled = false;
+            });
+        }
     });
 }
