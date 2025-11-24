@@ -105,12 +105,38 @@ class QuizShowPlugin {
 
     async initDatabase() {
         try {
-            const dbPath = path.join(__dirname, 'data', 'quiz_show.db');
+            // Use ConfigPathManager to get persistent storage path
+            const ConfigPathManager = require('../../modules/config-path-manager');
+            const configPathManager = new ConfigPathManager();
             
-            // Ensure data directory exists
-            const dataDir = path.join(__dirname, 'data');
-            if (!fs.existsSync(dataDir)) {
-                fs.mkdirSync(dataDir, { recursive: true });
+            // Ensure plugin data directory exists
+            const pluginDataDir = configPathManager.getPluginDataDir('quiz_show');
+            if (!fs.existsSync(pluginDataDir)) {
+                fs.mkdirSync(pluginDataDir, { recursive: true });
+            }
+            
+            const dbPath = path.join(pluginDataDir, 'quiz_show.db');
+            
+            // Migrate old database if exists
+            const oldDbPath = path.join(__dirname, 'data', 'quiz_show.db');
+            const oldDataDir = path.join(__dirname, 'data');
+            
+            if (fs.existsSync(oldDataDir) && !fs.existsSync(dbPath)) {
+                this.api.log('Migrating quiz show database to user folder...', 'info');
+                // Copy only database files to new location for security
+                const files = fs.readdirSync(oldDataDir);
+                for (const file of files) {
+                    // Only migrate database files (.db, .db-shm, .db-wal)
+                    if (file.endsWith('.db') || file.endsWith('.db-shm') || file.endsWith('.db-wal')) {
+                        const oldFilePath = path.join(oldDataDir, file);
+                        const newFilePath = path.join(pluginDataDir, file);
+                        if (!fs.existsSync(newFilePath)) {
+                            fs.copyFileSync(oldFilePath, newFilePath);
+                            this.api.log(`Migrated ${file}`, 'info');
+                        }
+                    }
+                }
+                this.api.log('Database migration completed', 'info');
             }
 
             // Initialize database with WAL mode for better concurrency
@@ -149,8 +175,7 @@ class QuizShowPlugin {
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     api_key TEXT DEFAULT NULL,
                     model TEXT DEFAULT 'gpt-5-mini',
-                    default_package_size INTEGER DEFAULT 10,
-                    temperature REAL DEFAULT 0.7
+                    default_package_size INTEGER DEFAULT 10
                 );
 
                 CREATE TABLE IF NOT EXISTS leaderboard_seasons (
@@ -215,8 +240,8 @@ class QuizShowPlugin {
             // Initialize OpenAI config if not exists
             const openaiConfig = this.db.prepare('SELECT id FROM openai_config WHERE id = 1').get();
             if (!openaiConfig) {
-                this.db.prepare('INSERT INTO openai_config (id, api_key, model, default_package_size, temperature) VALUES (1, NULL, ?, ?, ?)')
-                    .run('gpt-5-mini', 10, 0.7);
+                this.db.prepare('INSERT INTO openai_config (id, api_key, model, default_package_size) VALUES (1, NULL, ?, ?)')
+                    .run('gpt-5-mini', 10);
             }
 
             // Migrate schema if needed
@@ -250,6 +275,43 @@ class QuizShowPlugin {
                 this.api.log('Adding package_id column to questions table...', 'info');
                 this.db.exec('ALTER TABLE questions ADD COLUMN package_id INTEGER DEFAULT NULL');
                 this.api.log('Schema migration completed', 'info');
+            }
+
+            // Remove temperature column from openai_config if it exists
+            const openaiColumns = this.db.pragma('table_info(openai_config)');
+            const hasTempColumn = openaiColumns.some(col => col.name === 'temperature');
+            
+            if (hasTempColumn) {
+                this.api.log('Removing temperature column from openai_config (not supported by GPT-5 models)...', 'info');
+                
+                // SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
+                // Use a transaction for atomicity
+                try {
+                    this.db.exec('BEGIN TRANSACTION');
+                    
+                    this.db.exec(`
+                        CREATE TABLE openai_config_new (
+                            id INTEGER PRIMARY KEY CHECK (id = 1),
+                            api_key TEXT DEFAULT NULL,
+                            model TEXT DEFAULT 'gpt-5-mini',
+                            default_package_size INTEGER DEFAULT 10
+                        )
+                    `);
+                    
+                    this.db.exec(`
+                        INSERT INTO openai_config_new (id, api_key, model, default_package_size)
+                        SELECT id, api_key, model, default_package_size FROM openai_config
+                    `);
+                    
+                    this.db.exec('DROP TABLE openai_config');
+                    this.db.exec('ALTER TABLE openai_config_new RENAME TO openai_config');
+                    
+                    this.db.exec('COMMIT');
+                    this.api.log('Temperature column removed successfully', 'info');
+                } catch (error) {
+                    this.db.exec('ROLLBACK');
+                    throw error;
+                }
             }
         } catch (error) {
             this.api.log('Error during schema migration: ' + error.message, 'warn');
@@ -929,15 +991,14 @@ class QuizShowPlugin {
         // Get OpenAI configuration
         this.api.registerRoute('get', '/api/quiz-show/openai/config', (req, res) => {
             try {
-                const config = this.db.prepare('SELECT api_key, model, default_package_size, temperature FROM openai_config WHERE id = 1').get();
+                const config = this.db.prepare('SELECT api_key, model, default_package_size FROM openai_config WHERE id = 1').get();
                 
                 // Don't send the full API key to the client, just indicate if it's set
                 const response = {
                     hasApiKey: !!config?.api_key,
                     apiKeyPreview: config?.api_key ? `${config.api_key.substring(0, 7)}...${config.api_key.substring(config.api_key.length - 4)}` : null,
                     model: config?.model || 'gpt-5-mini',
-                    defaultPackageSize: config?.default_package_size || 10,
-                    temperature: config?.temperature || 0.7
+                    defaultPackageSize: config?.default_package_size || 10
                 };
 
                 res.json({ success: true, config: response });
@@ -949,7 +1010,7 @@ class QuizShowPlugin {
         // Update OpenAI configuration
         this.api.registerRoute('post', '/api/quiz-show/openai/config', async (req, res) => {
             try {
-                const { apiKey, model, defaultPackageSize, temperature } = req.body;
+                const { apiKey, model, defaultPackageSize } = req.body;
 
                 if (apiKey !== undefined) {
                     // Test the API key if provided
@@ -972,10 +1033,6 @@ class QuizShowPlugin {
 
                 if (defaultPackageSize !== undefined) {
                     this.db.prepare('UPDATE openai_config SET default_package_size = ? WHERE id = 1').run(defaultPackageSize);
-                }
-
-                if (temperature !== undefined) {
-                    this.db.prepare('UPDATE openai_config SET temperature = ? WHERE id = 1').run(temperature);
                 }
 
                 res.json({ success: true, message: 'Konfiguration gespeichert' });
@@ -1013,7 +1070,7 @@ class QuizShowPlugin {
                 }
 
                 // Get OpenAI config
-                const config = this.db.prepare('SELECT api_key, model, temperature FROM openai_config WHERE id = 1').get();
+                const config = this.db.prepare('SELECT api_key, model FROM openai_config WHERE id = 1').get();
                 
                 if (!config || !config.api_key) {
                     return res.status(400).json({ success: false, error: 'OpenAI API-Schlüssel nicht konfiguriert' });
