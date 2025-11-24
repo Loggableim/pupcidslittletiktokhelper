@@ -1115,30 +1115,58 @@ function showStepForm() {
     const typeSelect = document.getElementById('stepType');
     const intensitySlider = document.getElementById('stepIntensity');
     const durationInput = document.getElementById('stepDuration');
+    const delayInput = document.getElementById('stepDelay');
     const intensityValue = document.getElementById('stepIntensityValue');
     
     if (typeSelect) typeSelect.value = 'shock';
     if (intensitySlider) intensitySlider.value = 50;
     if (durationInput) durationInput.value = 500;
+    if (delayInput) delayInput.value = 0;
     if (intensityValue) intensityValue.textContent = 50;
+    
+    // Show/hide intensity based on step type
+    updateStepFormVisibility();
+}
+
+function updateStepFormVisibility() {
+    const typeSelect = document.getElementById('stepType');
+    const intensityGroup = document.getElementById('stepIntensityGroup');
+    
+    if (typeSelect && intensityGroup) {
+        // Hide intensity for pause steps
+        if (typeSelect.value === 'pause') {
+            intensityGroup.style.display = 'none';
+        } else {
+            intensityGroup.style.display = 'block';
+        }
+    }
 }
 
 function addPatternStep() {
     const typeSelect = document.getElementById('stepType');
     const intensitySlider = document.getElementById('stepIntensity');
     const durationInput = document.getElementById('stepDuration');
+    const delayInput = document.getElementById('stepDelay');
 
     const step = {
         type: typeSelect?.value || 'shock',
         intensity: parseInt(intensitySlider?.value) || 50,
         duration: parseInt(durationInput?.value) || 500,
-        delay: 0
+        delay: parseInt(delayInput?.value) || 0
     };
 
     currentPatternSteps.push(step);
     renderPatternSteps();
 
-    // Hide step form after adding
+    // Reset form values
+    if (intensitySlider) intensitySlider.value = 50;
+    if (durationInput) durationInput.value = 500;
+    if (delayInput) delayInput.value = 0;
+    
+    const intensityValue = document.getElementById('stepIntensityValue');
+    if (intensityValue) intensityValue.textContent = 50;
+
+    // Hide step form after adding (optional - could keep it open for adding multiple steps)
     const stepForm = document.getElementById('stepForm');
     if (stepForm) {
         stepForm.classList.add('step-form-hidden');
@@ -2289,6 +2317,14 @@ function initializeEventDelegation() {
     if (stepIntensitySlider && stepIntensityValue) {
         stepIntensitySlider.addEventListener('input', (e) => {
             stepIntensityValue.textContent = e.target.value;
+        });
+    }
+
+    // Step type change handler to show/hide intensity field
+    const stepTypeSelect = document.getElementById('stepType');
+    if (stepTypeSelect) {
+        stepTypeSelect.addEventListener('change', () => {
+            updateStepFormVisibility();
         });
     }
 
