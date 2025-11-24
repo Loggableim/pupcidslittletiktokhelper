@@ -280,6 +280,58 @@
         .log-entry.error {
             color: var(--color-accent-danger);
         }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+
+        .mapping-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .mapping-table th,
+        .mapping-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .mapping-table th {
+            background: var(--color-bg-secondary);
+            font-weight: 600;
+            color: var(--color-text-secondary);
+        }
+
+        .mapping-table tbody tr:hover {
+            background: var(--color-bg-hover);
+        }
+
+        .btn-small {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+
+        .add-item-form {
+            background: var(--color-bg-secondary);
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--color-text-muted);
+        }
     </style>
 </head>
 <body>
@@ -438,6 +490,130 @@
                 <div id="presets-container" class="vrchat-params">
                     <!-- Presets werden hier dynamisch eingefügt -->
                 </div>
+            </div>
+        </div>
+
+        <!-- Gift Mappings Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">🎁 Gift Catalogue Mappings</h2>
+                <button class="btn btn-success btn-small" onclick="saveGiftMappings()">Save Mappings</button>
+            </div>
+
+            <div class="info-box">
+                <h4>Gift-to-Action Mapping</h4>
+                <p>Link TikTok gifts to VRChat OSC actions. When a viewer sends a specific gift, the mapped action will be triggered automatically.</p>
+            </div>
+
+            <div class="table-container">
+                <table class="mapping-table" id="gift-mappings-table">
+                    <thead>
+                        <tr>
+                            <th>Gift ID</th>
+                            <th>Gift Name</th>
+                            <th>Action</th>
+                            <th>Parameters</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gift-mappings-tbody">
+                        <tr>
+                            <td colspan="5" class="empty-state">No gift mappings configured yet. Add one below.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="add-item-form">
+                <h4 style="margin-top: 0;">Add New Gift Mapping</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Gift ID</label>
+                        <input type="number" class="form-control" id="new-gift-id" placeholder="5655">
+                    </div>
+                    <div class="form-group">
+                        <label>Gift Name</label>
+                        <input type="text" class="form-control" id="new-gift-name" placeholder="Rose">
+                    </div>
+                    <div class="form-group">
+                        <label>Action</label>
+                        <select class="form-control" id="new-gift-action">
+                            <option value="wave">Wave</option>
+                            <option value="celebrate">Celebrate</option>
+                            <option value="dance">Dance</option>
+                            <option value="hearts">Hearts</option>
+                            <option value="confetti">Confetti</option>
+                            <option value="emote">Emote Slot</option>
+                            <option value="avatar">Switch Avatar</option>
+                            <option value="custom_parameter">Custom Parameter</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Duration (ms)</label>
+                        <input type="number" class="form-control" id="new-gift-duration" value="2000" placeholder="2000">
+                    </div>
+                    <div class="form-group">
+                        <label>Emote Slot (0-7)</label>
+                        <input type="number" class="form-control" id="new-gift-slot" value="0" min="0" max="7">
+                    </div>
+                    <div class="form-group">
+                        <label>Avatar ID / Parameter Name</label>
+                        <input type="text" class="form-control" id="new-gift-param" placeholder="avtr_... or ParameterName">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="addGiftMapping()">Add Mapping</button>
+            </div>
+        </div>
+
+        <!-- Avatar Management Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">👤 Avatar Management</h2>
+                <button class="btn btn-success btn-small" onclick="saveAvatars()">Save Avatars</button>
+            </div>
+
+            <div class="info-box">
+                <h4>VRChat Avatar List</h4>
+                <p>Manage your VRChat avatars. Avatar IDs can be found in VRChat logs or using tools like VRCLens.</p>
+            </div>
+
+            <div class="table-container">
+                <table class="mapping-table" id="avatars-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Avatar ID</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="avatars-tbody">
+                        <tr>
+                            <td colspan="4" class="empty-state">No avatars configured yet. Add one below.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="add-item-form">
+                <h4 style="margin-top: 0;">Add New Avatar</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Avatar Name</label>
+                        <input type="text" class="form-control" id="new-avatar-name" placeholder="My Avatar">
+                    </div>
+                    <div class="form-group">
+                        <label>Avatar ID</label>
+                        <input type="text" class="form-control" id="new-avatar-id" placeholder="avtr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>Description (optional)</label>
+                        <input type="text" class="form-control" id="new-avatar-desc" placeholder="Casual avatar">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="addAvatar()">Add Avatar</button>
             </div>
         </div>
 

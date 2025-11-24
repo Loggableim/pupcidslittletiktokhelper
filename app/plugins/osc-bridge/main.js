@@ -73,6 +73,9 @@ class OSCBridgePlugin {
             // Socket.IO Events registrieren
             this.registerSocketEvents();
 
+            // TikTok Gift Event registrieren für Gift-Mappings
+            this.registerTikTokGiftHandler();
+
             // Automatisch starten wenn enabled
             if (this.config.enabled) {
                 await this.start();
@@ -105,7 +108,9 @@ class OSCBridgePlugin {
             allowedIPs: ['127.0.0.1', '::1'],
             autoRetryOnError: true,
             retryDelay: 5000,
-            maxPacketSize: 65536
+            maxPacketSize: 65536,
+            giftMappings: [], // Array of {giftId, giftName, action, params}
+            avatars: [] // Array of {id, name, avatarId, description}
         };
     }
 
@@ -215,6 +220,62 @@ class OSCBridgePlugin {
             const { slot, duration } = req.body;
             this.triggerEmote(slot || 0, duration || 2000);
             res.json({ success: true, action: 'emote', slot, duration });
+        });
+
+        // Avatar switching
+        this.api.registerRoute('post', '/api/osc/vrchat/avatar', (req, res) => {
+            const { avatarId, avatarName } = req.body;
+            if (!avatarId) {
+                return res.status(400).json({ success: false, error: 'Avatar ID is required' });
+            }
+            this.switchAvatar(avatarId, avatarName);
+            res.json({ success: true, action: 'avatar_switch', avatarId, avatarName });
+        });
+
+        // Gift Mappings Management
+        this.api.registerRoute('get', '/api/osc/gift-mappings', async (req, res) => {
+            const config = await this.api.getConfig('config') || this.getDefaultConfig();
+            res.json({
+                success: true,
+                mappings: config.giftMappings || []
+            });
+        });
+
+        this.api.registerRoute('post', '/api/osc/gift-mappings', async (req, res) => {
+            const { mappings } = req.body;
+            
+            if (!Array.isArray(mappings)) {
+                return res.status(400).json({ success: false, error: 'Mappings must be an array' });
+            }
+
+            this.config.giftMappings = mappings;
+            await this.api.setConfig('config', this.config);
+            
+            this.logger.info(`✅ Updated ${mappings.length} gift mappings`);
+            res.json({ success: true, mappings });
+        });
+
+        // Avatar Management
+        this.api.registerRoute('get', '/api/osc/avatars', async (req, res) => {
+            const config = await this.api.getConfig('config') || this.getDefaultConfig();
+            res.json({
+                success: true,
+                avatars: config.avatars || []
+            });
+        });
+
+        this.api.registerRoute('post', '/api/osc/avatars', async (req, res) => {
+            const { avatars } = req.body;
+            
+            if (!Array.isArray(avatars)) {
+                return res.status(400).json({ success: false, error: 'Avatars must be an array' });
+            }
+
+            this.config.avatars = avatars;
+            await this.api.setConfig('config', this.config);
+            
+            this.logger.info(`✅ Updated ${avatars.length} avatars`);
+            res.json({ success: true, avatars });
         });
     }
 
@@ -529,6 +590,174 @@ class OSCBridgePlugin {
     // Expose für Flow-System
     getOSCBridge() {
         return this;
+    }
+
+    /**
+     * Register TikTok gift event handler for gift-to-action mappings
+     */
+    registerTikTokGiftHandler() {
+        try {
+            this.api.registerTikTokEvent('gift', (giftData) => {
+                this.handleGiftEvent(giftData);
+            });
+            this.logger.info('✅ TikTok gift event handler registered for OSC-Bridge');
+        } catch (error) {
+            this.logger.error('Failed to register TikTok gift event handler. TikTok integration may not be available:', error);
+        }
+    }
+
+    /**
+     * Handle incoming TikTok gift event and execute mapped actions
+     */
+    async handleGiftEvent(giftData) {
+        // Validate gift data
+        if (!giftData || (!giftData.giftId && !giftData.giftName)) {
+            this.logger.warn('Invalid gift data received:', giftData);
+            return;
+        }
+
+        if (!this.isRunning) {
+            return; // OSC-Bridge not active
+        }
+
+        if (!this.config.giftMappings || this.config.giftMappings.length === 0) {
+            return; // No mappings configured
+        }
+
+        const giftId = giftData.giftId;
+        const giftName = giftData.giftName;
+
+        // Find matching gift mapping - prioritize exact matches over partial
+        let mapping = null;
+        
+        // First try exact match (both ID and name)
+        if (giftId && giftName) {
+            mapping = this.config.giftMappings.find(m => 
+                m.giftId === giftId && m.giftName === giftName
+            );
+        }
+        
+        // Then try ID-only match
+        if (!mapping && giftId) {
+            mapping = this.config.giftMappings.find(m => 
+                m.giftId === giftId && !m.giftName
+            );
+        }
+        
+        // Finally try name-only match
+        if (!mapping && giftName) {
+            mapping = this.config.giftMappings.find(m => 
+                m.giftName === giftName && !m.giftId
+            );
+        }
+
+        if (!mapping) {
+            return; // No mapping for this gift
+        }
+
+        this.logger.info(`🎁 Gift mapping triggered: ${giftName} (${giftId}) → ${mapping.action}`);
+        this.logToFile('GIFT', `Gift ${giftName} (${giftId}) triggered action ${mapping.action}`);
+
+        try {
+            // Execute the mapped action
+            switch (mapping.action) {
+                case 'wave':
+                    this.wave(mapping.params?.duration || 2000);
+                    break;
+                case 'celebrate':
+                    this.celebrate(mapping.params?.duration || 3000);
+                    break;
+                case 'dance':
+                    this.dance(mapping.params?.duration || 5000);
+                    break;
+                case 'hearts':
+                    this.hearts(mapping.params?.duration || 2000);
+                    break;
+                case 'confetti':
+                    this.confetti(mapping.params?.duration || 3000);
+                    break;
+                case 'emote':
+                    this.triggerEmote(mapping.params?.slot || 0, mapping.params?.duration || 2000);
+                    break;
+                case 'avatar':
+                    if (mapping.params?.avatarId) {
+                        this.switchAvatar(mapping.params.avatarId, mapping.params?.avatarName);
+                    }
+                    break;
+                case 'custom_parameter':
+                    if (mapping.params?.parameterName) {
+                        this.triggerAvatarParameter(
+                            mapping.params.parameterName,
+                            mapping.params?.value !== undefined ? mapping.params.value : 1,
+                            mapping.params?.duration || 1000
+                        );
+                    }
+                    break;
+                default:
+                    this.logger.warn(`Unknown action in gift mapping: ${mapping.action}`);
+            }
+
+            // Emit event for tracking
+            this.api.emit('osc:gift-triggered', {
+                giftId,
+                giftName,
+                action: mapping.action,
+                params: mapping.params,
+                username: giftData.uniqueId,
+                timestamp: new Date()
+            });
+
+        } catch (error) {
+            this.logger.error(`Error executing gift mapping for ${giftName}:`, error);
+            this.logToFile('ERROR', `Gift mapping execution failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Switch VRChat avatar via OSC
+     * @param {string} avatarId - VRChat avatar ID (avtr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+     * @param {string} avatarName - Optional avatar name for logging
+     */
+    switchAvatar(avatarId, avatarName = null) {
+        if (!this.isRunning) {
+            this.logger.warn('OSC-Bridge not running, cannot switch avatar');
+            return false;
+        }
+
+        // Validate avatar ID format
+        if (typeof avatarId !== 'string') {
+            this.logger.error('Avatar ID must be a string');
+            return false;
+        }
+
+        if (!avatarId.startsWith('avtr_')) {
+            this.logger.warn(`Avatar ID should start with "avtr_", got: ${avatarId}`);
+        }
+
+        try {
+            // VRChat avatar switching uses /avatar/change with avatar ID as string
+            const address = '/avatar/change';
+            this.send(address, avatarId);
+
+            const logMsg = avatarName 
+                ? `Avatar switched to: ${avatarName} (${avatarId})`
+                : `Avatar switched to: ${avatarId}`;
+            
+            this.logger.info(`👤 ${logMsg}`);
+            this.logToFile('AVATAR', logMsg);
+
+            this.api.emit('osc:avatar-switched', {
+                avatarId,
+                avatarName,
+                timestamp: new Date()
+            });
+
+            return true;
+        } catch (error) {
+            this.logger.error('Avatar switch error:', error);
+            this.logToFile('ERROR', `Avatar switch failed: ${error.message}`);
+            return false;
+        }
     }
 
     async destroy() {

@@ -827,6 +827,42 @@ class ActionRegistry {
             }
         });
 
+        this.register('osc:vrchat:avatar', {
+            name: 'VRChat: Switch Avatar',
+            description: 'Switch to a different avatar in VRChat',
+            category: 'osc',
+            icon: 'user',
+            fields: [
+                { name: 'avatarId', label: 'Avatar ID', type: 'text', required: true, placeholder: 'avtr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+                { name: 'avatarName', label: 'Avatar Name (optional)', type: 'text', placeholder: 'My Avatar' }
+            ],
+            executor: async (action, context, services) => {
+                const osc = services.osc;
+                if (!osc) {
+                    services.logger?.warn('OSC service not available');
+                    throw new Error('OSC service not available');
+                }
+                
+                if (!action.avatarId) {
+                    throw new Error('Avatar ID is required. Format: avtr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+                }
+
+                if (!action.avatarId.startsWith('avtr_')) {
+                    services.logger?.warn(`Avatar ID should start with "avtr_", got: ${action.avatarId}`);
+                }
+                
+                services.logger?.info(`👤 VRChat: Switching to avatar ${action.avatarName || action.avatarId}`);
+                
+                if (typeof osc.switchAvatar === 'function') {
+                    osc.switchAvatar(action.avatarId, action.avatarName);
+                } else if (typeof osc.send === 'function') {
+                    osc.send('/avatar/change', action.avatarId);
+                } else {
+                    throw new Error('OSC service not available');
+                }
+            }
+        });
+
 
         // Delay Action
         this.register('delay:wait', {

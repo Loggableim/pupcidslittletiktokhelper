@@ -143,8 +143,9 @@ plugins/<plugin-id>/
 
 **Dateien:**
 - `plugin.json`: Metadata
-- `main.js`: OSC UDP-Server/Client, VRChat-Parameter-Handler, Flow-Integration
-- `ui.html`: Admin-Panel (Status, Config, Parameter-Tester)
+- `main.js`: OSC UDP-Server/Client, VRChat-Parameter-Handler, Flow-Integration, Gift-Mappings, Avatar-Switching
+- `ui.html`: Admin-Panel (Status, Config, Parameter-Tester, Gift-Mappings, Avatar-Management)
+- `locales/`: Internationalisierung (DE/EN)
 
 **Konfiguration:** Plugin-Settings im Dashboard
 
@@ -152,6 +153,8 @@ plugins/<plugin-id>/
 - Dauerhaft aktiv (kein Auto-Shutdown)
 - VRChat-Standard-Parameter (/avatar/parameters/*, /world/*)
 - Bidirektionale Kommunikation (Senden & Empfangen)
+- **Gift Catalogue Mappings**: TikTok-Geschenke mit OSC-Aktionen verknüpfen
+- **Avatar Switching**: VRChat-Avatar via OSC wechseln (/avatar/change)
 - Standardports: 9000 (Send), 9001 (Receive)
 - Nur lokale IPs erlaubt (Sicherheit)
 - Vollständiges Logging (oscBridge.log)
@@ -165,6 +168,7 @@ plugins/<plugin-id>/
 - `/avatar/parameters/Hearts`: Hearts-Effekt
 - `/avatar/parameters/Confetti`: Confetti-Effekt
 - `/avatar/parameters/EmoteSlot0-7`: Emote-Slots
+- `/avatar/change`: Avatar-Wechsel (String: avtr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 
 **API-Endpoints:**
 - `GET /api/osc/status`: Status abrufen
@@ -180,21 +184,58 @@ plugins/<plugin-id>/
 - `POST /api/osc/vrchat/hearts`: Hearts triggern
 - `POST /api/osc/vrchat/confetti`: Confetti triggern
 - `POST /api/osc/vrchat/emote`: Emote triggern
+- `POST /api/osc/vrchat/avatar`: Avatar wechseln (avatarId, avatarName)
+- `GET /api/osc/gift-mappings`: Gift-Mappings abrufen
+- `POST /api/osc/gift-mappings`: Gift-Mappings speichern
+- `GET /api/osc/avatars`: Avatar-Liste abrufen
+- `POST /api/osc/avatars`: Avatar-Liste speichern
 
 **Socket.io Events (emittiert):**
 - `osc:status`: Status-Update (isRunning, stats, config)
 - `osc:sent`: OSC-Nachricht gesendet
 - `osc:received`: OSC-Nachricht empfangen
+- `osc:gift-triggered`: Gift-Mapping ausgelöst
+- `osc:avatar-switched`: Avatar gewechselt
 
-**Flow-Actions:**
-- `osc_send`: Beliebige OSC-Nachricht senden
-- `osc_vrchat_wave`: Wave-Geste triggern
-- `osc_vrchat_celebrate`: Celebrate-Animation triggern
-- `osc_vrchat_dance`: Dance triggern
-- `osc_vrchat_hearts`: Hearts-Effekt triggern
-- `osc_vrchat_confetti`: Confetti-Effekt triggern
-- `osc_vrchat_emote`: Emote-Slot triggern
-- `osc_vrchat_parameter`: Custom Avatar-Parameter triggern
+**Flow-Actions (IFTTT):**
+- `osc:send`: Beliebige OSC-Nachricht senden
+- `osc:vrchat:wave`: Wave-Geste triggern
+- `osc:vrchat:celebrate`: Celebrate-Animation triggern
+- `osc:vrchat:dance`: Dance triggern
+- `osc:vrchat:hearts`: Hearts-Effekt triggern
+- `osc:vrchat:confetti`: Confetti-Effekt triggern
+- `osc:vrchat:emote`: Emote-Slot triggern (slot: 0-7)
+- `osc:vrchat:avatar`: Avatar wechseln (avatarId, avatarName)
+
+**Gift Mappings:**
+TikTok-Geschenke können direkt mit VRChat-Aktionen verknüpft werden:
+- Konfiguration über UI oder API
+- Unterstützte Aktionen: wave, celebrate, dance, hearts, confetti, emote, avatar, custom_parameter
+- Automatische Ausführung bei Gift-Empfang
+- Parameter anpassbar (duration, slot, avatarId, parameterName, value)
+
+**Beispiel Gift Mapping:**
+```json
+{
+  "giftId": 5655,
+  "giftName": "Rose",
+  "action": "hearts",
+  "params": { "duration": 2000 }
+}
+```
+
+**Beispiel Avatar Mapping:**
+```json
+{
+  "giftId": 9999,
+  "giftName": "Galaxy",
+  "action": "avatar",
+  "params": { 
+    "avatarId": "avtr_12345678-1234-1234-1234-123456789abc",
+    "avatarName": "My Favorite Avatar"
+  }
+}
+```
 
 **Beispiel-Flows:**
 ```json
@@ -202,7 +243,7 @@ plugins/<plugin-id>/
   "trigger_type": "gift",
   "trigger_condition": { "operator": ">=", "field": "coins", "value": 5000 },
   "actions": [
-    { "type": "osc_vrchat_celebrate", "duration": 3000 }
+    { "type": "osc:vrchat:celebrate", "duration": 3000 }
   ]
 }
 ```
@@ -212,16 +253,21 @@ plugins/<plugin-id>/
   "trigger_type": "chat",
   "trigger_condition": { "operator": "contains", "field": "message", "value": "/wave" },
   "actions": [
-    { "type": "osc_vrchat_wave", "duration": 2000 }
+    { "type": "osc:vrchat:wave", "duration": 2000 }
   ]
 }
 ```
 
 ```json
 {
-  "trigger_type": "follow",
+  "trigger_type": "gift",
+  "trigger_condition": { "operator": "==", "field": "giftName", "value": "Galaxy" },
   "actions": [
-    { "type": "osc_vrchat_hearts", "duration": 2000 }
+    { 
+      "type": "osc:vrchat:avatar", 
+      "avatarId": "avtr_12345678-1234-1234-1234-123456789abc",
+      "avatarName": "Galaxy Avatar"
+    }
   ]
 }
 ```
