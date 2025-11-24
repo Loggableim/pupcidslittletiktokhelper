@@ -1617,27 +1617,47 @@ class CurveEditor {
 
     renderTimeline(steps) {
         const container = document.getElementById('curveTimelinePreview');
-        container.innerHTML = '';
+        if (!container) return;
         
         if (steps.length === 0) {
             container.innerHTML = '<div class="timeline-empty">Draw on the canvas above to create your pattern</div>';
             return;
         }
         
-        steps.forEach((step, index) => {
-            const stepEl = document.createElement('div');
-            stepEl.className = `timeline-step timeline-step-${step.type}`;
-            stepEl.style.height = `${step.intensity}%`;
-            stepEl.title = `Step ${index + 1}: ${step.type} ${step.intensity}% for ${step.duration}ms`;
+        const totalDuration = steps.reduce((sum, s) => sum + s.duration + (s.delay || 0), 0);
+        let currentTime = 0;
+        
+        const bars = steps.map(step => {
+            const startPercent = (currentTime / totalDuration) * 100;
+            const widthPercent = (step.duration / totalDuration) * 100;
+            currentTime += step.duration + (step.delay || 0);
             
-            stepEl.innerHTML = `
-                <div class="timeline-step-icon">${this.getActionIcon(step.type)}</div>
-                <div class="timeline-step-intensity">${step.intensity}%</div>
-                <div class="timeline-step-duration">${step.duration}ms</div>
+            // Sanitize step.type for CSS class
+            const sanitizedType = (step.type || '').replace(/[^a-zA-Z0-9-]/g, '');
+            
+            return `
+                <div class="timeline-bar timeline-${sanitizedType}"
+                     style="left: ${startPercent}%; width: ${widthPercent}%;"
+                     title="${step.type} - ${step.intensity}% - ${step.duration}ms">
+                </div>
             `;
-            
-            container.appendChild(stepEl);
-        });
+        }).join('');
+        
+        container.innerHTML = `
+            <div class="timeline">
+                ${bars}
+            </div>
+            <div class="timeline-labels">
+                <span>0ms</span>
+                <span>${this.formatDuration(totalDuration)}</span>
+            </div>
+        `;
+    }
+
+    formatDuration(ms) {
+        if (ms < 1000) return `${ms}ms`;
+        if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+        return `${(ms / 60000).toFixed(1)}m`;
     }
 
     getActionIcon(type) {
