@@ -524,6 +524,19 @@ app.get('/api/update/instructions', apiLimiter, (req, res) => {
     });
 });
 
+/**
+ * GET /CHANGELOG.txt - Serves the changelog file
+ */
+app.get('/CHANGELOG.txt', (req, res) => {
+    const changelogPath = path.join(__dirname, '..', 'CHANGELOG.txt');
+    res.sendFile(changelogPath, (err) => {
+        if (err) {
+            logger.error(`Failed to serve CHANGELOG.txt: ${err.message}`);
+            res.status(404).send('Changelog not found');
+        }
+    });
+});
+
 // ========== AUTO-START ROUTES ==========
 
 /**
