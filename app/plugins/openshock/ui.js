@@ -1671,13 +1671,20 @@ class CurveEditor {
     }
 
     updateStats(steps) {
-        const totalDuration = steps.reduce((sum, s) => sum + s.duration + s.delay, 0);
+        if (!steps || steps.length === 0) {
+            document.getElementById('totalDuration').textContent = '0ms';
+            document.getElementById('avgIntensity').textContent = '0%';
+            document.getElementById('peakIntensity').textContent = '0%';
+            return;
+        }
+        
+        const totalDuration = steps.reduce((sum, s) => sum + s.duration + (s.delay || 0), 0);
         const avgIntensity = Math.round(steps.reduce((sum, s) => sum + s.intensity, 0) / steps.length);
         const peakIntensity = Math.max(...steps.map(s => s.intensity));
         
-        document.getElementById('totalDuration').textContent = totalDuration;
-        document.getElementById('avgIntensity').textContent = avgIntensity;
-        document.getElementById('peakIntensity').textContent = peakIntensity;
+        document.getElementById('totalDuration').textContent = this.formatDuration(totalDuration);
+        document.getElementById('avgIntensity').textContent = avgIntensity + '%';
+        document.getElementById('peakIntensity').textContent = peakIntensity + '%';
     }
 
     clear() {
