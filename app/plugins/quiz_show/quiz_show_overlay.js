@@ -96,12 +96,50 @@
     // ============================================
 
     document.addEventListener('DOMContentLoaded', () => {
+        syncApplicationTheme();
         initializeSocketListeners();
         loadHUDConfig();
         initializeDragAndDrop();
         preloadAnimations();
         console.log('Quiz Show Overlay initialized');
     });
+
+    // ============================================
+    // THEME SYNCHRONIZATION
+    // ============================================
+
+    function syncApplicationTheme() {
+        // Read the application theme from localStorage (set by ThemeManager)
+        const appTheme = localStorage.getItem('dashboard-theme') || 'night';
+        const overlay = document.getElementById('overlay-container');
+        
+        if (overlay) {
+            // Map application themes to overlay themes
+            const themeMapping = {
+                'night': 'dark',
+                'day': 'day',
+                'contrast': 'contrast'
+            };
+            
+            const mappedTheme = themeMapping[appTheme] || 'dark';
+            
+            // Apply the application theme to the overlay
+            overlay.setAttribute('data-theme', mappedTheme);
+            
+            console.log('Application theme synced:', appTheme, '->', mappedTheme);
+        }
+        
+        // Listen for theme changes from localStorage (when changed in parent window)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'dashboard-theme' && e.newValue) {
+                const newTheme = themeMapping[e.newValue] || 'dark';
+                if (overlay) {
+                    overlay.setAttribute('data-theme', newTheme);
+                    console.log('Theme updated from storage:', e.newValue, '->', newTheme);
+                }
+            }
+        });
+    }
 
     // ============================================
     // CONFIGURATION LOADING
@@ -143,8 +181,23 @@
         const root = document.documentElement;
         const overlay = document.getElementById('overlay-container');
 
-        // Apply Theme
-        overlay.setAttribute('data-theme', hudConfig.theme);
+        // Apply Theme - Only apply HUD-specific themes (neon, gold)
+        // For standard themes (dark, day, contrast), let the application theme take precedence
+        const hudSpecificThemes = ['neon', 'gold'];
+        const appTheme = localStorage.getItem('dashboard-theme') || 'night';
+        
+        if (hudSpecificThemes.includes(hudConfig.theme)) {
+            // Apply HUD-specific custom theme
+            overlay.setAttribute('data-theme', hudConfig.theme);
+        } else {
+            // Use application theme
+            const themeMapping = {
+                'night': 'dark',
+                'day': 'day',
+                'contrast': 'contrast'
+            };
+            overlay.setAttribute('data-theme', themeMapping[appTheme] || 'dark');
+        }
 
         // Apply Colors
         if (hudConfig.colors) {
