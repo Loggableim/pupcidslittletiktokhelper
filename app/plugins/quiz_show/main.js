@@ -148,7 +148,7 @@ class QuizShowPlugin {
                 CREATE TABLE IF NOT EXISTS openai_config (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     api_key TEXT DEFAULT NULL,
-                    model TEXT DEFAULT 'gpt-4o-mini',
+                    model TEXT DEFAULT 'gpt-5-mini',
                     default_package_size INTEGER DEFAULT 10,
                     temperature REAL DEFAULT 0.7
                 );
@@ -216,7 +216,7 @@ class QuizShowPlugin {
             const openaiConfig = this.db.prepare('SELECT id FROM openai_config WHERE id = 1').get();
             if (!openaiConfig) {
                 this.db.prepare('INSERT INTO openai_config (id, api_key, model, default_package_size, temperature) VALUES (1, NULL, ?, ?, ?)')
-                    .run('gpt-4o-mini', 10, 0.7);
+                    .run('gpt-5-mini', 10, 0.7);
             }
 
             // Migrate schema if needed
@@ -935,7 +935,7 @@ class QuizShowPlugin {
                 const response = {
                     hasApiKey: !!config?.api_key,
                     apiKeyPreview: config?.api_key ? `${config.api_key.substring(0, 7)}...${config.api_key.substring(config.api_key.length - 4)}` : null,
-                    model: config?.model || 'gpt-4o-mini',
+                    model: config?.model || 'gpt-5-mini',
                     defaultPackageSize: config?.default_package_size || 10,
                     temperature: config?.temperature || 0.7
                 };
@@ -955,7 +955,7 @@ class QuizShowPlugin {
                     // Test the API key if provided
                     if (apiKey) {
                         const OpenAIQuizService = require('./openai-service');
-                        const service = new OpenAIQuizService(apiKey, model || 'gpt-4o-mini');
+                        const service = new OpenAIQuizService(apiKey, model || 'gpt-5-mini');
                         const isValid = await service.testApiKey();
                         
                         if (!isValid) {

@@ -3,6 +3,7 @@ const TikTokEngine = require('./engines/tiktok-engine');
 const GoogleEngine = require('./engines/google-engine');
 const SpeechifyEngine = require('./engines/speechify-engine');
 const ElevenLabsEngine = require('./engines/elevenlabs-engine');
+const OpenAIEngine = require('./engines/openai-engine');
 const LanguageDetector = require('./utils/language-detector');
 const ProfanityFilter = require('./utils/profanity-filter');
 const PermissionManager = require('./utils/permission-manager');
@@ -33,7 +34,8 @@ class TTSPlugin {
             tiktok: new TikTokEngine(this.logger, { sessionId: this.config.tiktokSessionId }),
             google: null, // Initialized if API key is available
             speechify: null, // Initialized if API key is available
-            elevenlabs: null // Initialized if API key is available
+            elevenlabs: null, // Initialized if API key is available
+            openai: null // Initialized if API key is available
         };
 
         // Initialize Google engine if API key is configured
@@ -74,6 +76,20 @@ class TTSPlugin {
             this._logDebug('INIT', 'ElevenLabs TTS engine NOT initialized', { hasApiKey: false });
         }
 
+        // Initialize OpenAI engine if API key is configured
+        if (this.config.openaiApiKey) {
+            this.engines.openai = new OpenAIEngine(
+                this.config.openaiApiKey,
+                this.logger,
+                this.config
+            );
+            this.logger.info('TTS: ✅ OpenAI TTS engine initialized');
+            this._logDebug('INIT', 'OpenAI TTS engine initialized', { hasApiKey: true });
+        } else {
+            this.logger.info('TTS: ⚠️  OpenAI TTS engine NOT initialized (no API key)');
+            this._logDebug('INIT', 'OpenAI TTS engine NOT initialized', { hasApiKey: false });
+        }
+
         // Initialize utilities
         this.languageDetector = new LanguageDetector(this.logger, {
             confidenceThreshold: this.config.languageConfidenceThreshold,
@@ -91,10 +107,11 @@ class TTSPlugin {
         // Define fallback chains for each engine
         // Each engine has a preferred order of fallback engines based on quality and reliability
         this.fallbackChains = {
-            'google': ['elevenlabs', 'speechify', 'tiktok'],      // Google → Premium → Fallback
-            'elevenlabs': ['speechify', 'google', 'tiktok'],      // Premium → Good → Free
-            'speechify': ['elevenlabs', 'google', 'tiktok'],      // Speechify → Premium → Good → Free
-            'tiktok': ['elevenlabs', 'speechify', 'google']       // Free → Premium → Good
+            'google': ['openai', 'elevenlabs', 'speechify', 'tiktok'],      // Google → OpenAI → Premium → Fallback
+            'elevenlabs': ['openai', 'speechify', 'google', 'tiktok'],      // Premium → OpenAI → Good → Free
+            'speechify': ['openai', 'elevenlabs', 'google', 'tiktok'],      // Speechify → OpenAI → Premium → Good → Free
+            'openai': ['elevenlabs', 'google', 'speechify', 'tiktok'],      // OpenAI → Premium → Good → Free
+            'tiktok': ['openai', 'elevenlabs', 'speechify', 'google']       // Free → OpenAI → Premium → Good
         };
 
         this._logDebug('INIT', 'TTS Plugin initialized', {
@@ -242,6 +259,7 @@ class TTSPlugin {
             googleApiKey: null,
             speechifyApiKey: null,
             elevenlabsApiKey: null,
+            openaiApiKey: null,
             tiktokSessionId: null,
             enabledForChat: true,
             autoLanguageDetection: true,
@@ -283,6 +301,7 @@ class TTSPlugin {
                     googleApiKey: this.config.googleApiKey ? '***HIDDEN***' : null,
                     speechifyApiKey: this.config.speechifyApiKey ? '***REDACTED***' : null,
                     elevenlabsApiKey: this.config.elevenlabsApiKey ? '***REDACTED***' : null,
+                    openaiApiKey: this.config.openaiApiKey ? '***REDACTED***' : null,
                     tiktokSessionId: this.config.tiktokSessionId ? '***HIDDEN***' : null
                 }
             });
@@ -306,6 +325,8 @@ class TTSPlugin {
                             engineVoices = await this.engines.speechify.getVoices();
                         } else if (updates.defaultEngine === 'elevenlabs' && this.engines.elevenlabs) {
                             engineVoices = await this.engines.elevenlabs.getVoices();
+                        } else if (updates.defaultEngine === 'openai' && this.engines.openai) {
+                            engineVoices = OpenAIEngine.getVoices();
                         }
                     } catch (error) {
                         this._logDebug('config', 'Failed to fetch voices for validation', { error: error.message });
@@ -325,7 +346,7 @@ class TTSPlugin {
 
                 // Update config (skip API keys and SessionID - they have dedicated handling below)
                 Object.keys(updates).forEach(key => {
-                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey' && key !== 'speechifyApiKey' && key !== 'elevenlabsApiKey' && key !== 'tiktokSessionId') {
+                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey' && key !== 'speechifyApiKey' && key !== 'elevenlabsApiKey' && key !== 'openaiApiKey' && key !== 'tiktokSessionId') {
                         this.config[key] = updates[key];
                     }
                 });
@@ -376,6 +397,19 @@ class TTSPlugin {
                         this.logger.info('ElevenLabs TTS engine initialized via config update');
                     } else {
                         this.engines.elevenlabs.setApiKey(updates.elevenlabsApiKey);
+                    }
+                }
+
+                // Update OpenAI API key if provided (and not the placeholder)
+                if (updates.openaiApiKey && updates.openaiApiKey !== '***REDACTED***') {
+                    this.config.openaiApiKey = updates.openaiApiKey;
+                    if (!this.engines.openai) {
+                        this.engines.openai = new OpenAIEngine(
+                            updates.openaiApiKey,
+                            this.logger,
+                            this.config
+                        );
+                        this.logger.info('OpenAI TTS engine initialized via config update');
                     }
                 }
 
@@ -438,6 +472,10 @@ class TTSPlugin {
                     this.logger.error('Failed to load ElevenLabs voices', { error: error.message });
                     voices.elevenlabs = {};
                 }
+            }
+
+            if ((engine === 'all' || engine === 'openai') && this.engines.openai) {
+                voices.openai = OpenAIEngine.getVoices();
             }
 
             res.json({ success: true, voices });
