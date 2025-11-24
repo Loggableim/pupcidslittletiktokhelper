@@ -1,5 +1,3 @@
-// +build windows
-
 package main
 
 import (
@@ -7,108 +5,83 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"syscall"
-
-	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
 )
 
-type LauncherWindow struct {
-	*walk.MainWindow
-	progressBar *walk.ProgressBar
-	statusLabel *walk.Label
-	nodePath    string
-	appDir      string
+const (
+	colorReset  = "\033[0m"
+	colorCyan   = "\033[36m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorRed    = "\033[31m"
+	colorBold   = "\033[1m"
+)
+
+type Launcher struct {
+	nodePath string
+	appDir   string
 }
 
-func main() {
-	launcher := &LauncherWindow{}
+func NewLauncher() *Launcher {
+	return &Launcher{}
+}
+
+func (l *Launcher) printHeader() {
+	fmt.Println(colorCyan + colorBold)
+	fmt.Println("╔════════════════════════════════════════════════════╗")
+	fmt.Println("║     TikTok Stream Tool - Grafischer Launcher      ║")
+	fmt.Println("╚════════════════════════════════════════════════════╝")
+	fmt.Println(colorReset)
+}
+
+func (l *Launcher) drawProgressBar(percent int, status string) {
+	barWidth := 50
+	filled := int(float64(barWidth) * float64(percent) / 100.0)
+	empty := barWidth - filled
 	
-	// Get executable directory and app directory
-	exePath, err := os.Executable()
-	if err != nil {
-		walk.MsgBox(nil, "Fehler", fmt.Sprintf("Kann Programmverzeichnis nicht ermitteln: %v", err), walk.MsgBoxIconError)
-		os.Exit(1)
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", empty)
+	
+	// Clear previous lines
+	fmt.Print("\033[2K\r") // Clear current line
+	fmt.Print("\033[1A\033[2K\r") // Move up and clear
+	fmt.Print("\033[1A\033[2K\r") // Move up and clear
+	
+	// Print status
+	fmt.Printf("%s%s%s\n", colorBold, status, colorReset)
+	
+	// Print progress bar
+	if percent < 50 {
+		fmt.Printf("[%s%s%s] %3d%%\n", colorYellow, bar, colorReset, percent)
+	} else if percent < 100 {
+		fmt.Printf("[%s%s%s] %3d%%\n", colorCyan, bar, colorReset, percent)
+	} else {
+		fmt.Printf("[%s%s%s] %3d%%\n", colorGreen, bar, colorReset, percent)
 	}
-	
-	exeDir := filepath.Dir(exePath)
-	launcher.appDir = filepath.Join(exeDir, "app")
-	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.png")
-	
-	// Load background image for icon
-	var bgIcon *walk.Icon
-	if _, err := os.Stat(bgImagePath); err == nil {
-		if bmp, err := walk.NewBitmapFromFile(bgImagePath); err == nil {
-			bgIcon, _ = walk.NewIconFromBitmap(bmp)
-		}
-	}
-	
-	// Create main window - simple layout without nested composites to avoid TTM_ADDTOOL error
-	if err := (MainWindow{
-		AssignTo: &launcher.MainWindow,
-		Title:    "TikTok Stream Tool - Launcher",
-		Icon:     bgIcon,
-		Size:     Size{Width: 600, Height: 200},
-		Layout:   VBox{Margins: Margins{Left: 20, Top: 20, Right: 20, Bottom: 20}},
-		Children: []Widget{
-			VSpacer{},
-			Label{
-				AssignTo: &launcher.statusLabel,
-				Text:     "Initialisiere...",
-				Font:     Font{PointSize: 11, Bold: true},
-			},
-			ProgressBar{
-				AssignTo: &launcher.progressBar,
-				MinValue: 0,
-				MaxValue: 100,
-				Value:    0,
-			},
-			VSpacer{},
-		},
-	}.Create()); err != nil {
-		walk.MsgBox(nil, "Fehler", fmt.Sprintf("Fehler beim Erstellen des Fensters: %v", err), walk.MsgBoxIconError)
-		os.Exit(1)
-	}
-	
-	// Start launcher process
-	go launcher.runLauncher()
-	
-	launcher.Run()
+	fmt.Println()
 }
 
-func (lw *LauncherWindow) updateProgress(value int, status string) {
-	lw.Synchronize(func() {
-		lw.progressBar.SetValue(value)
-		lw.statusLabel.SetText(status)
-	})
-}
-
-func (lw *LauncherWindow) showError(title, message string) {
-	lw.Synchronize(func() {
-		walk.MsgBox(lw, title, message, walk.MsgBoxIconError)
-	})
-}
-
-func (lw *LauncherWindow) checkNodeJS() error {
+func (l *Launcher) checkNodeJS() error {
 	nodePath, err := exec.LookPath("node")
 	if err != nil {
 		return fmt.Errorf("Node.js ist nicht installiert")
 	}
-	lw.nodePath = nodePath
+	l.nodePath = nodePath
 	return nil
 }
 
-func (lw *LauncherWindow) getNodeVersion() string {
-	cmd := exec.Command(lw.nodePath, "--version")
+func (l *Launcher) getNodeVersion() string {
+	cmd := exec.Command(l.nodePath, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		return "unknown"
 	}
-	return string(output)
+	return strings.TrimSpace(string(output))
 }
 
-func (lw *LauncherWindow) checkNodeModules() bool {
-	nodeModulesPath := filepath.Join(lw.appDir, "node_modules")
+func (l *Launcher) checkNodeModules() bool {
+	nodeModulesPath := filepath.Join(l.appDir, "node_modules")
 	info, err := os.Stat(nodeModulesPath)
 	if err != nil {
 		return false
@@ -116,15 +89,17 @@ func (lw *LauncherWindow) checkNodeModules() bool {
 	return info.IsDir()
 }
 
-func (lw *LauncherWindow) installDependencies() error {
-	cmd := exec.Command("cmd", "/C", "npm", "install")
-	cmd.Dir = lw.appDir
-	
-	// Hide console window for npm install
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
+func (l *Launcher) installDependencies() error {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/C", "npm", "install")
+	} else {
+		cmd = exec.Command("npm", "install")
 	}
+	
+	cmd.Dir = l.appDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	
 	err := cmd.Run()
 	if err != nil {
@@ -134,74 +109,122 @@ func (lw *LauncherWindow) installDependencies() error {
 	return nil
 }
 
-func (lw *LauncherWindow) startTool() error {
-	launchJS := filepath.Join(lw.appDir, "launch.js")
-	cmd := exec.Command(lw.nodePath, launchJS)
-	cmd.Dir = lw.appDir
+func (l *Launcher) startTool() error {
+	launchJS := filepath.Join(l.appDir, "launch.js")
+	cmd := exec.Command(l.nodePath, launchJS)
+	cmd.Dir = l.appDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 	
-	// Start the process detached
-	return cmd.Start()
+	return cmd.Run()
 }
 
-func (lw *LauncherWindow) runLauncher() {
-	// Phase 1: Check Node.js (0-20%)
-	lw.updateProgress(0, "Prüfe Node.js Installation...")
+func (l *Launcher) run() error {
+	// Initial spacing
+	fmt.Println("\n\n")
 	
-	err := lw.checkNodeJS()
+	// Phase 1: Check Node.js (0-20%)
+	l.drawProgressBar(0, "Prüfe Node.js Installation...")
+	
+	err := l.checkNodeJS()
 	if err != nil {
-		lw.updateProgress(0, "FEHLER: Node.js ist nicht installiert!")
-		lw.showError("Fehler", "Node.js ist nicht installiert!\n\nBitte installiere Node.js von:\nhttps://nodejs.org\n\nEmpfohlen: LTS Version 18 oder 20")
-		os.Exit(1)
+		l.drawProgressBar(0, colorRed+"FEHLER: Node.js ist nicht installiert!"+colorReset)
+		fmt.Println()
+		fmt.Println(colorYellow + "Bitte installiere Node.js von:" + colorReset)
+		fmt.Println("https://nodejs.org")
+		fmt.Println()
+		fmt.Println(colorYellow + "Empfohlen: Node.js LTS Version 18 oder 20" + colorReset)
+		fmt.Println()
+		return err
 	}
 	
-	lw.updateProgress(10, "Node.js gefunden...")
+	l.drawProgressBar(10, "Node.js gefunden...")
 	
-	version := lw.getNodeVersion()
-	lw.updateProgress(20, fmt.Sprintf("Node.js Version: %s", version))
+	version := l.getNodeVersion()
+	l.drawProgressBar(20, fmt.Sprintf("Node.js Version: %s", version))
 	
 	// Phase 2: Find directories (20-30%)
-	lw.updateProgress(25, "Prüfe App-Verzeichnis...")
+	l.drawProgressBar(25, "Prüfe App-Verzeichnis...")
 	
-	if _, err := os.Stat(lw.appDir); os.IsNotExist(err) {
-		lw.updateProgress(25, "FEHLER: app Verzeichnis nicht gefunden")
-		lw.showError("Fehler", fmt.Sprintf("app Verzeichnis nicht gefunden in %s", filepath.Dir(lw.appDir)))
-		os.Exit(1)
+	if _, err := os.Stat(l.appDir); os.IsNotExist(err) {
+		l.drawProgressBar(25, colorRed+"FEHLER: app Verzeichnis nicht gefunden"+colorReset)
+		fmt.Println()
+		fmt.Printf("%sApp-Verzeichnis erwartet in: %s%s\n", colorYellow, l.appDir, colorReset)
+		fmt.Println()
+		return err
 	}
 	
-	lw.updateProgress(30, "App-Verzeichnis gefunden...")
+	l.drawProgressBar(30, "App-Verzeichnis gefunden...")
 	
 	// Phase 3: Check and install dependencies (30-80%)
-	lw.updateProgress(30, "Prüfe Abhängigkeiten...")
+	l.drawProgressBar(30, "Prüfe Abhängigkeiten...")
 	
-	if !lw.checkNodeModules() {
-		lw.updateProgress(40, "Installiere Abhängigkeiten...")
-		lw.updateProgress(45, "Dies kann beim ersten Start einige Minuten dauern...")
+	if !l.checkNodeModules() {
+		l.drawProgressBar(40, "Installiere Abhängigkeiten...")
+		l.drawProgressBar(45, "Dies kann beim ersten Start einige Minuten dauern...")
 		
-		err = lw.installDependencies()
+		err = l.installDependencies()
 		if err != nil {
-			lw.updateProgress(45, fmt.Sprintf("FEHLER: %v", err))
-			lw.showError("Fehler", fmt.Sprintf("Installation fehlgeschlagen: %v", err))
-			os.Exit(1)
+			l.drawProgressBar(45, colorRed+fmt.Sprintf("FEHLER: %v", err)+colorReset)
+			fmt.Println()
+			return err
 		}
 		
-		lw.updateProgress(80, "Installation abgeschlossen!")
+		l.drawProgressBar(80, "Installation abgeschlossen!")
 	} else {
-		lw.updateProgress(80, "Abhängigkeiten bereits installiert...")
+		l.drawProgressBar(80, "Abhängigkeiten bereits installiert...")
 	}
 	
 	// Phase 4: Start tool (80-100%)
-	lw.updateProgress(90, "Starte Tool...")
-	lw.updateProgress(100, "Tool wird gestartet...")
+	l.drawProgressBar(90, "Starte Tool...")
+	l.drawProgressBar(100, colorGreen+"Tool wird gestartet..."+colorReset)
+	
+	fmt.Println()
+	fmt.Println(colorCyan + "═══════════════════════════════════════════════════" + colorReset)
+	fmt.Println()
 	
 	// Start the tool
-	err = lw.startTool()
+	return l.startTool()
+}
+
+func main() {
+	// Enable ANSI color support on Windows 10+
+	if runtime.GOOS == "windows" {
+		kernel32 := syscall.NewLazyDLL("kernel32.dll")
+		setConsoleMode := kernel32.NewProc("SetConsoleMode")
+		getStdHandle := kernel32.NewProc("GetStdHandle")
+		
+		handle, _, _ := getStdHandle.Call(uintptr(^uint32(10))) // STD_OUTPUT_HANDLE (-11 as unsigned)
+		setConsoleMode.Call(handle, 0x0001|0x0002|0x0004)      // ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING
+	}
+	
+	launcher := NewLauncher()
+	
+	// Get executable directory
+	exePath, err := os.Executable()
 	if err != nil {
-		lw.showError("Fehler", fmt.Sprintf("Fehler beim Starten: %v", err))
+		fmt.Printf("%sFehler: Kann Programmverzeichnis nicht ermitteln: %v%s\n", colorRed, err, colorReset)
+		pause()
 		os.Exit(1)
 	}
 	
-	// Close the launcher window
-	lw.Synchronize(func() {
-		lw.Close()
-	})
+	exeDir := filepath.Dir(exePath)
+	launcher.appDir = filepath.Join(exeDir, "app")
+	
+	// Print header
+	launcher.printHeader()
+	
+	// Run launcher
+	err = launcher.run()
+	if err != nil {
+		pause()
+		os.Exit(1)
+	}
+}
+
+func pause() {
+	fmt.Println()
+	fmt.Print("Drücke Enter zum Beenden...")
+	fmt.Scanln()
 }
