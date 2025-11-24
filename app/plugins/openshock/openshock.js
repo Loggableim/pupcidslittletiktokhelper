@@ -429,48 +429,67 @@ function renderMappingList() {
         return;
     }
 
-    const html = mappings.map(mapping => `
-        <div class="mapping-card ${mapping.enabled ? '' : 'disabled'}">
-            <div class="mapping-header">
-                <h3 class="mapping-title">${escapeHtml(mapping.name)}</h3>
-                <div class="btn-group">
-                    <label class="switch">
-                        <input type="checkbox" ${mapping.enabled ? 'checked' : ''}
-                               data-mapping-id="${escapeHtml(mapping.id)}" class="toggle-mapping-checkbox">
-                        <span class="slider"></span>
-                    </label>
-                    <button data-mapping-id="${escapeHtml(mapping.id)}"
-                            class="btn btn-sm btn-secondary edit-mapping-btn">
-                        ✏️
-                    </button>
-                    <button data-mapping-id="${escapeHtml(mapping.id)}"
-                            class="btn btn-sm btn-danger delete-mapping-btn">
-                        🗑️
-                    </button>
-                </div>
-            </div>
-            <div class="mapping-details">
-                <div class="mapping-detail-item">
-                    <span class="mapping-detail-label">Trigger:</span>
-                    <span class="mapping-detail-value">${escapeHtml(mapping.eventType || mapping.trigger?.type || 'Unknown')}</span>
-                </div>
-                <div class="mapping-detail-item">
-                    <span class="mapping-detail-label">Action:</span>
-                    <span class="mapping-detail-value">${
-                        mapping.action?.type === 'pattern' 
-                            ? `🎵 Pattern: ${escapeHtml(patterns.find(p => p.id === mapping.action.patternId)?.name || mapping.action.patternId || 'Unknown')}`
-                            : escapeHtml(mapping.action?.commandType || mapping.action?.type || 'Unknown')
-                    }</span>
-                </div>
-                ${mapping.action?.type !== 'pattern' && mapping.action?.intensity ? `
+    const html = mappings.map(mapping => {
+        // Get pattern details if this mapping uses a pattern
+        let patternDetails = '';
+        if (mapping.action?.type === 'pattern' && mapping.action.patternId) {
+            const pattern = patterns.find(p => p.id === mapping.action.patternId);
+            if (pattern) {
+                const stepCount = pattern.steps?.length || 0;
+                const duration = calculatePatternDuration(pattern.steps || []);
+                patternDetails = `
                     <div class="mapping-detail-item">
-                        <span class="mapping-detail-label">Intensity:</span>
-                        <span class="mapping-detail-value">${mapping.action.intensity}%</span>
+                        <span class="mapping-detail-label">Pattern Details:</span>
+                        <span class="mapping-detail-value">${stepCount} steps, ${formatDuration(duration)}</span>
                     </div>
-                ` : ''}
+                `;
+            }
+        }
+
+        return `
+            <div class="mapping-card ${mapping.enabled ? '' : 'disabled'}">
+                <div class="mapping-header">
+                    <h3 class="mapping-title">${escapeHtml(mapping.name)}</h3>
+                    <div class="btn-group">
+                        <label class="switch">
+                            <input type="checkbox" ${mapping.enabled ? 'checked' : ''}
+                                   data-mapping-id="${escapeHtml(mapping.id)}" class="toggle-mapping-checkbox">
+                            <span class="slider"></span>
+                        </label>
+                        <button data-mapping-id="${escapeHtml(mapping.id)}"
+                                class="btn btn-sm btn-secondary edit-mapping-btn">
+                            ✏️
+                        </button>
+                        <button data-mapping-id="${escapeHtml(mapping.id)}"
+                                class="btn btn-sm btn-danger delete-mapping-btn">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+                <div class="mapping-details">
+                    <div class="mapping-detail-item">
+                        <span class="mapping-detail-label">Trigger:</span>
+                        <span class="mapping-detail-value">${escapeHtml(mapping.eventType || mapping.trigger?.type || 'Unknown')}</span>
+                    </div>
+                    <div class="mapping-detail-item">
+                        <span class="mapping-detail-label">Action:</span>
+                        <span class="mapping-detail-value">${
+                            mapping.action?.type === 'pattern' 
+                                ? `🎵 Pattern: ${escapeHtml(patterns.find(p => p.id === mapping.action.patternId)?.name || mapping.action.patternId || 'Unknown')}`
+                                : escapeHtml(mapping.action?.commandType || mapping.action?.type || 'Unknown')
+                        }</span>
+                    </div>
+                    ${mapping.action?.type !== 'pattern' && mapping.action?.intensity ? `
+                        <div class="mapping-detail-item">
+                            <span class="mapping-detail-label">Intensity:</span>
+                            <span class="mapping-detail-value">${mapping.action.intensity}%</span>
+                        </div>
+                    ` : ''}
+                    ${patternDetails}
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     container.innerHTML = html;
 }
