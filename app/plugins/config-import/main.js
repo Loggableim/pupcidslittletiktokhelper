@@ -134,16 +134,37 @@ class ConfigImportPlugin {
             // Resolve to absolute path to prevent directory traversal
             const absolutePath = path.resolve(cleanPath);
 
-            // Additional security check: Ensure the path doesn't contain suspicious patterns
-            // that might indicate an attempt to escape the file system
-            const suspiciousPatterns = [
-                /\.\.[\/\\]/,  // Directory traversal attempts
-                /[<>:"|?*]/,   // Invalid filename characters (except on Unix where : is valid in paths)
-            ];
+            // Check for directory traversal attempts
+            if (/\.\.[\/\\]/.test(cleanPath)) {
+                this.api.log(`Directory traversal attempt detected: ${cleanPath}`, 'warn');
+                return null;
+            }
 
-            for (const pattern of suspiciousPatterns) {
-                if (pattern.test(cleanPath)) {
-                    this.api.log(`Suspicious path pattern detected: ${cleanPath}`, 'warn');
+            // Platform-specific invalid character checks
+            const os = require('os');
+            const platform = os.platform();
+            
+            if (platform === 'win32') {
+                // On Windows, check for invalid characters but allow colon for drive letters
+                // Valid Windows path: C:\path or \\network\path
+                // Invalid characters in Windows paths: < > " | ? *
+                // Colon is only valid after a single letter (drive letter)
+                if (/[<>"|?*]/.test(cleanPath)) {
+                    this.api.log(`Invalid path characters detected: ${cleanPath}`, 'warn');
+                    return null;
+                }
+                
+                // Check for invalid colon usage (colon should only appear after drive letter)
+                const invalidColonPattern = /(?:^[^A-Za-z]:)|(?:[A-Za-z]:[^\\])|(?:[^A-Za-z]:)|(?::.*:)/;
+                if (invalidColonPattern.test(cleanPath)) {
+                    this.api.log(`Invalid colon usage in path: ${cleanPath}`, 'warn');
+                    return null;
+                }
+            } else {
+                // On Unix-like systems (Linux, macOS), check for invalid characters
+                // Colon is valid in paths on Unix-like systems
+                if (/[<>"|?*]/.test(cleanPath)) {
+                    this.api.log(`Invalid path characters detected: ${cleanPath}`, 'warn');
                     return null;
                 }
             }
