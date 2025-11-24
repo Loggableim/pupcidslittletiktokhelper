@@ -1337,6 +1337,12 @@ class CurveEditor {
         
         this.ctx = this.canvas.getContext('2d');
         
+        // Fix canvas dimensions to match display size
+        // This ensures the coordinate system matches the actual display
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+        
         // Event listeners for drawing
         this.canvas.addEventListener('mousedown', this.startDrawing.bind(this));
         this.canvas.addEventListener('mousemove', this.draw.bind(this));
@@ -1694,6 +1700,12 @@ class CurveEditor {
 
     clear() {
         this.curvePoints = [];
+        // Reset canvas dimensions to match display size
+        if (this.canvas) {
+            const rect = this.canvas.getBoundingClientRect();
+            this.canvas.width = rect.width;
+            this.canvas.height = rect.height;
+        }
         this.drawGrid();
         document.getElementById('curveTimelinePreview').innerHTML = '<div class="timeline-empty">Draw on the canvas above to create your pattern</div>';
         document.getElementById('stepCount').textContent = '0';
