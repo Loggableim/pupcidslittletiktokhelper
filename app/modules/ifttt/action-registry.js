@@ -844,7 +844,11 @@ class ActionRegistry {
                 }
                 
                 if (!action.avatarId) {
-                    throw new Error('Avatar ID is required');
+                    throw new Error('Avatar ID is required. Format: avtr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+                }
+
+                if (!action.avatarId.startsWith('avtr_')) {
+                    services.logger?.warn(`Avatar ID should start with "avtr_", got: ${action.avatarId}`);
                 }
                 
                 services.logger?.info(`👤 VRChat: Switching to avatar ${action.avatarName || action.avatarId}`);

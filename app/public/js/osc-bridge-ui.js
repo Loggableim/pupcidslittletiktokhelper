@@ -401,12 +401,17 @@ function renderGiftMappings() {
     }
     
     tbody.innerHTML = giftMappings.map((mapping, index) => {
-        const params = JSON.stringify(mapping.params || {});
+        // Escape HTML to prevent XSS
+        const escapedGiftId = (mapping.giftId || '-').toString().replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const escapedGiftName = (mapping.giftName || '-').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const escapedAction = (mapping.action || '-').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const params = JSON.stringify(mapping.params || {}).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
         return `
             <tr>
-                <td>${mapping.giftId || '-'}</td>
-                <td>${mapping.giftName || '-'}</td>
-                <td>${mapping.action}</td>
+                <td>${escapedGiftId}</td>
+                <td>${escapedGiftName}</td>
+                <td>${escapedAction}</td>
                 <td><code style="font-size: 11px;">${params}</code></td>
                 <td>
                     <button class="btn btn-danger btn-small" onclick="removeGiftMapping(${index})">Remove</button>
@@ -511,10 +516,10 @@ function renderAvatars() {
     }
     
     tbody.innerHTML = avatars.map((avatar, index) => {
-        // Escape HTML to prevent XSS
-        const escapedName = avatar.name.replace(/'/g, '&apos;').replace(/"/g, '&quot;');
-        const escapedId = avatar.avatarId.replace(/'/g, '&apos;').replace(/"/g, '&quot;');
-        const escapedDesc = (avatar.description || '-').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Escape HTML to prevent XSS - consistently escape all HTML entities
+        const escapedName = avatar.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+        const escapedId = avatar.avatarId.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+        const escapedDesc = (avatar.description || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
         
         return `
             <tr>

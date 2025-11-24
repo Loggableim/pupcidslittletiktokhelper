@@ -600,8 +600,9 @@ class OSCBridgePlugin {
             this.api.registerTikTokEvent('gift', (giftData) => {
                 this.handleGiftEvent(giftData);
             });
+            this.logger.info('✅ TikTok gift event handler registered for OSC-Bridge');
         } catch (error) {
-            this.logger.error('Failed to register TikTok gift event handler:', error);
+            this.logger.error('Failed to register TikTok gift event handler. TikTok integration may not be available:', error);
         }
     }
 
@@ -721,6 +722,16 @@ class OSCBridgePlugin {
         if (!this.isRunning) {
             this.logger.warn('OSC-Bridge not running, cannot switch avatar');
             return false;
+        }
+
+        // Validate avatar ID format
+        if (typeof avatarId !== 'string') {
+            this.logger.error('Avatar ID must be a string');
+            return false;
+        }
+
+        if (!avatarId.startsWith('avtr_')) {
+            this.logger.warn(`Avatar ID should start with "avtr_", got: ${avatarId}`);
         }
 
         try {
