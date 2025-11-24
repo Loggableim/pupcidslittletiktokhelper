@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 
 class QuizShowPlugin {
     constructor(api) {
@@ -147,7 +148,7 @@ class QuizShowPlugin {
                 CREATE TABLE IF NOT EXISTS openai_config (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     api_key TEXT DEFAULT NULL,
-                    model TEXT DEFAULT 'gpt-5.1-nano',
+                    model TEXT DEFAULT 'gpt-4o-mini',
                     default_package_size INTEGER DEFAULT 10,
                     temperature REAL DEFAULT 0.7
                 );
@@ -215,7 +216,7 @@ class QuizShowPlugin {
             const openaiConfig = this.db.prepare('SELECT id FROM openai_config WHERE id = 1').get();
             if (!openaiConfig) {
                 this.db.prepare('INSERT INTO openai_config (id, api_key, model, default_package_size, temperature) VALUES (1, NULL, ?, ?, ?)')
-                    .run('gpt-5.1-nano', 10, 0.7);
+                    .run('gpt-4o-mini', 10, 0.7);
             }
 
             // Migrate schema if needed
@@ -934,7 +935,7 @@ class QuizShowPlugin {
                 const response = {
                     hasApiKey: !!config?.api_key,
                     apiKeyPreview: config?.api_key ? `${config.api_key.substring(0, 7)}...${config.api_key.substring(config.api_key.length - 4)}` : null,
-                    model: config?.model || 'gpt-5.1-nano',
+                    model: config?.model || 'gpt-4o-mini',
                     defaultPackageSize: config?.default_package_size || 10,
                     temperature: config?.temperature || 0.7
                 };
@@ -954,7 +955,7 @@ class QuizShowPlugin {
                     // Test the API key if provided
                     if (apiKey) {
                         const OpenAIQuizService = require('./openai-service');
-                        const service = new OpenAIQuizService(apiKey, model || 'gpt-5.1-nano');
+                        const service = new OpenAIQuizService(apiKey, model || 'gpt-4o-mini');
                         const isValid = await service.testApiKey();
                         
                         if (!isValid) {
@@ -1425,10 +1426,32 @@ class QuizShowPlugin {
         // TTS announcement if enabled
         if (this.config.ttsEnabled) {
             const ttsText = `Neue Frage: ${question.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
-            this.api.emit('core:tts-speak', {
-                text: ttsText,
-                voice: this.config.ttsVoice || 'default'
-            });
+            
+            // Parse voice format: "engine:voiceId" or "default"
+            let engine = null;
+            let voiceId = null;
+            
+            const voiceConfig = this.config.ttsVoice || 'default';
+            if (voiceConfig !== 'default' && voiceConfig.includes(':')) {
+                const parts = voiceConfig.split(':');
+                engine = parts[0];
+                voiceId = parts[1];
+            }
+            
+            // Call TTS plugin via HTTP API
+            try {
+                const port = process.env.PORT || 3000;
+                await axios.post(`http://localhost:${port}/api/tts/speak`, {
+                    text: ttsText,
+                    userId: 'quiz-show',
+                    username: 'Quiz Show',
+                    voiceId: voiceId,
+                    engine: engine,
+                    source: 'quiz-show'
+                });
+            } catch (error) {
+                this.api.log(`TTS error: ${error.message}`, 'error');
+            }
         }
 
         // Broadcast to overlay and UI

@@ -24,6 +24,7 @@
         initializeEventListeners();
         initializeSocketListeners();
         loadInitialState();
+        loadTTSVoices(); // Load available TTS voices
     });
 
     // Tab Navigation
@@ -1129,6 +1130,83 @@
         }
     }
     
+    async function loadTTSVoices() {
+        try {
+            // Load available TTS voices from the TTS plugin
+            const response = await fetch('/api/tts/voices?engine=all');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.voices) {
+                const ttsVoiceSelect = document.getElementById('ttsVoice');
+                if (!ttsVoiceSelect) return;
+                
+                // Store current value
+                const currentValue = ttsVoiceSelect.value;
+                
+                // Build options array
+                let options = '<option value="default">Standard (System)</option>';
+                
+                // Add TikTok voices (free, German available)
+                if (data.voices.tiktok) {
+                    const germanVoices = Object.entries(data.voices.tiktok)
+                        .filter(([key, voice]) => voice.language && voice.language.toLowerCase().includes('de'))
+                        .map(([key, voice]) => `<option value="tiktok:${key}">TikTok: ${voice.name || key}</option>`)
+                        .join('');
+                    if (germanVoices) {
+                        options += '<optgroup label="TikTok (Kostenlos)">' + germanVoices + '</optgroup>';
+                    }
+                }
+                
+                // Add Google voices if available
+                if (data.voices.google) {
+                    const germanVoices = Object.entries(data.voices.google)
+                        .filter(([key, voice]) => key.startsWith('de-DE'))
+                        .map(([key, voice]) => `<option value="google:${key}">Google: ${voice.name || key}</option>`)
+                        .join('');
+                    if (germanVoices) {
+                        options += '<optgroup label="Google Cloud TTS">' + germanVoices + '</optgroup>';
+                    }
+                }
+                
+                // Add Speechify voices if available
+                if (data.voices.speechify) {
+                    const germanVoices = Object.entries(data.voices.speechify)
+                        .filter(([key, voice]) => voice.language && voice.language.toLowerCase().includes('de'))
+                        .map(([key, voice]) => `<option value="speechify:${key}">Speechify: ${voice.name || key}</option>`)
+                        .join('');
+                    if (germanVoices) {
+                        options += '<optgroup label="Speechify">' + germanVoices + '</optgroup>';
+                    }
+                }
+                
+                // Add ElevenLabs voices if available
+                if (data.voices.elevenlabs) {
+                    const voices = Object.entries(data.voices.elevenlabs)
+                        .map(([key, voice]) => `<option value="elevenlabs:${key}">ElevenLabs: ${voice.name || key}</option>`)
+                        .join('');
+                    if (voices) {
+                        options += '<optgroup label="ElevenLabs">' + voices + '</optgroup>';
+                    }
+                }
+                
+                ttsVoiceSelect.innerHTML = options;
+                
+                // Restore previous value if it still exists
+                if (currentValue && Array.from(ttsVoiceSelect.options).some(opt => opt.value === currentValue)) {
+                    ttsVoiceSelect.value = currentValue;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading TTS voices:', error);
+            // Keep default hardcoded options if loading fails
+        }
+    }
+    
     async function createNewSeason() {
         const seasonName = prompt('Name der neuen Saison:', `Saison ${new Date().getFullYear()}`);
         if (!seasonName) return;
@@ -1214,7 +1292,7 @@
                 }
 
                 // Update form fields
-                document.getElementById('openaiModel').value = config.model || 'gpt-5.1-nano';
+                document.getElementById('openaiModel').value = config.model || 'gpt-4o-mini';
                 document.getElementById('defaultPackageSize').value = config.defaultPackageSize || 10;
                 document.getElementById('packageSize').value = config.defaultPackageSize || 10;
             }
@@ -1483,9 +1561,23 @@
                 // Update questions list to show only these questions
                 currentState.questions = data.questions;
                 updateQuestionsList();
+                
+                // Show message indicating filtered view
+                const packageInfo = currentState.packages?.find(p => p.id === packageId);
+                const packageName = packageInfo?.name || 'Paket';
+                showMessage(`Anzeige von ${data.questions.length} Fragen aus "${packageName}"`, 'success');
+                
+                // Scroll to questions list
+                const questionsList = document.getElementById('questionsList');
+                if (questionsList) {
+                    questionsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } else {
+                showMessage('Fehler beim Laden der Fragen: ' + (data.error || 'Unbekannter Fehler'), 'error');
             }
         } catch (error) {
             console.error('Error viewing package questions:', error);
+            showMessage('Fehler beim Laden der Fragen', 'error');
         }
     }
 

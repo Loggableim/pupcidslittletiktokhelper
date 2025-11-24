@@ -1,7 +1,7 @@
 const OpenAI = require('openai');
 
 class OpenAIQuizService {
-    constructor(apiKey, model = 'gpt-5.1-nano') {
+    constructor(apiKey, model = 'gpt-4o-mini') {
         this.client = new OpenAI({ apiKey });
         this.model = model;
     }
