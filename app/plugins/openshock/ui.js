@@ -2059,6 +2059,15 @@ function initializeEventDelegation() {
         });
     }
 
+    // Header emergency stop button
+    const headerEmergencyStopBtn = document.getElementById('headerEmergencyStop');
+    if (headerEmergencyStopBtn) {
+        headerEmergencyStopBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerEmergencyStop();
+        });
+    }
+
     // Patterns tab buttons
     const addPatternBtn = document.getElementById('addPattern');
     if (addPatternBtn) {

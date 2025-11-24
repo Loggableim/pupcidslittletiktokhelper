@@ -15,10 +15,15 @@
                 <h1>⚡ OpenShock Control Panel</h1>
                 <p class="text-muted header-subtitle">TikTok Live Integration mit OpenShock API</p>
             </div>
-            <div id="connection-status">
-                <div class="status-badge status-disconnected">
-                    <span class="status-dot"></span>
-                    <span>Getrennt</span>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <button id="headerEmergencyStop" class="btn btn-danger" title="Emergency Stop - Immediately stops all shocks and disables further commands">
+                    🛑 EMERGENCY STOP
+                </button>
+                <div id="connection-status">
+                    <div class="status-badge status-disconnected">
+                        <span class="status-dot"></span>
+                        <span>Getrennt</span>
+                    </div>
                 </div>
             </div>
         </header>
