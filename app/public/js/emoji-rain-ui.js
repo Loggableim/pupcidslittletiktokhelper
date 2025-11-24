@@ -292,6 +292,7 @@ async function saveConfig() {
 }
 
 // Test emoji rain with debouncing
+const TEST_BUTTON_COOLDOWN_MS = 1000; // 1 second cooldown
 let testEmojiRainInProgress = false;
 async function testEmojiRain() {
     // Prevent rapid clicks by checking if a test is already in progress
@@ -337,7 +338,7 @@ async function testEmojiRain() {
                 testButton.style.opacity = '1';
                 testButton.style.cursor = 'pointer';
             }
-        }, 1000); // 1 second cooldown
+        }, TEST_BUTTON_COOLDOWN_MS);
     }
 }
 

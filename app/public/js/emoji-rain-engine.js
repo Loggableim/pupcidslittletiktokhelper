@@ -803,16 +803,19 @@ function handleSpawnEvent(data) {
     const now = performance.now();
     const timeSinceLastSpawn = now - lastSpawnTime;
     
-    // If we're spawning too quickly, queue the event
-    if (timeSinceLastSpawn < MIN_SPAWN_INTERVAL_MS && spawnQueue.length < MAX_SPAWN_QUEUE_SIZE) {
-        spawnQueue.push({ emoji, x, y, actualCount, username, color, isBurst });
-        console.log(`⏸️ [SPAWN] Queued spawn event (queue size: ${spawnQueue.length})`);
-        return;
-    }
-    
     // If queue is full, warn and drop the event
     if (spawnQueue.length >= MAX_SPAWN_QUEUE_SIZE) {
         console.warn(`⚠️ [SPAWN] Queue full (${MAX_SPAWN_QUEUE_SIZE}), dropping spawn event`);
+        return;
+    }
+    
+    // If we're spawning too quickly, queue the event
+    if (timeSinceLastSpawn < MIN_SPAWN_INTERVAL_MS) {
+        spawnQueue.push({ emoji, x, y, actualCount, username, color, isBurst });
+        // Only log queue size every 10 events to reduce console spam
+        if (spawnQueue.length % 10 === 0 || debugMode) {
+            console.log(`⏸️ [SPAWN] Queued spawn event (queue size: ${spawnQueue.length})`);
+        }
         return;
     }
 
