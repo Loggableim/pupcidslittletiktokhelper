@@ -1649,15 +1649,9 @@ class CurveEditor {
             </div>
             <div class="timeline-labels">
                 <span>0ms</span>
-                <span>${this.formatDuration(totalDuration)}</span>
+                <span>${formatDuration(totalDuration)}</span>
             </div>
         `;
-    }
-
-    formatDuration(ms) {
-        if (ms < 1000) return `${ms}ms`;
-        if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-        return `${(ms / 60000).toFixed(1)}m`;
     }
 
     getActionIcon(type) {
@@ -1682,7 +1676,7 @@ class CurveEditor {
         const avgIntensity = Math.round(steps.reduce((sum, s) => sum + s.intensity, 0) / steps.length);
         const peakIntensity = Math.max(...steps.map(s => s.intensity));
         
-        document.getElementById('totalDuration').textContent = this.formatDuration(totalDuration);
+        document.getElementById('totalDuration').textContent = formatDuration(totalDuration);
         document.getElementById('avgIntensity').textContent = avgIntensity + '%';
         document.getElementById('peakIntensity').textContent = peakIntensity + '%';
     }
