@@ -13,6 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 class ConfigImportPlugin {
     constructor(api) {
@@ -134,16 +135,59 @@ class ConfigImportPlugin {
             // Resolve to absolute path to prevent directory traversal
             const absolutePath = path.resolve(cleanPath);
 
-            // Additional security check: Ensure the path doesn't contain suspicious patterns
-            // that might indicate an attempt to escape the file system
-            const suspiciousPatterns = [
-                /\.\.[\/\\]/,  // Directory traversal attempts
-                /[<>:"|?*]/,   // Invalid filename characters (except on Unix where : is valid in paths)
-            ];
+            // Check for directory traversal attempts
+            if (/\.\.[\/\\]/.test(cleanPath)) {
+                this.api.log(`Directory traversal attempt detected: ${cleanPath}`, 'warn');
+                return null;
+            }
 
-            for (const pattern of suspiciousPatterns) {
-                if (pattern.test(cleanPath)) {
-                    this.api.log(`Suspicious path pattern detected: ${cleanPath}`, 'warn');
+            // Platform-specific invalid character checks
+            const platform = os.platform();
+            
+            if (platform === 'win32') {
+                // On Windows, validate path format and check for invalid characters
+                // Valid Windows path examples: C:\path, D:\path\to\folder, \\network\share
+                // Invalid characters in Windows paths: < > " | ? *
+                
+                if (/[<>"|?*]/.test(cleanPath)) {
+                    this.api.log(`Invalid path characters detected: ${cleanPath}`, 'warn');
+                    return null;
+                }
+                
+                // Validate colon usage in Windows paths
+                // Colons are only valid in two contexts:
+                // 1. After a single drive letter (e.g., C:)
+                // 2. In UNC paths (which don't have colons)
+                
+                // Check if path has any colons
+                const colonCount = (cleanPath.match(/:/g) || []).length;
+                
+                if (colonCount > 0) {
+                    // Should have exactly one colon, and it should be after a drive letter
+                    if (colonCount > 1) {
+                        this.api.log(`Multiple colons in path not allowed: ${cleanPath}`, 'warn');
+                        return null;
+                    }
+                    
+                    // Colon should be at position 1 (after drive letter) like "C:"
+                    const colonPosition = cleanPath.indexOf(':');
+                    if (colonPosition !== 1) {
+                        this.api.log(`Colon must follow drive letter: ${cleanPath}`, 'warn');
+                        return null;
+                    }
+                    
+                    // Character before colon should be a letter A-Z or a-z
+                    const driveChar = cleanPath.charAt(0);
+                    if (!/[A-Za-z]/.test(driveChar)) {
+                        this.api.log(`Invalid drive letter: ${cleanPath}`, 'warn');
+                        return null;
+                    }
+                }
+            } else {
+                // On Unix-like systems (Linux, macOS), check for invalid characters
+                // Colon is valid in paths on Unix-like systems
+                if (/[<>"|?*]/.test(cleanPath)) {
+                    this.api.log(`Invalid path characters detected: ${cleanPath}`, 'warn');
                     return null;
                 }
             }
