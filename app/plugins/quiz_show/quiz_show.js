@@ -1151,6 +1151,21 @@
                 // Build options array
                 let options = '<option value="default">Standard (System)</option>';
                 
+                // Add OpenAI voices if available (GPT-4o Mini TTS recommended)
+                if (data.voices.openai) {
+                    const voices = Object.entries(data.voices.openai)
+                        .map(([key, voice]) => {
+                            const label = `OpenAI: ${voice.name || key}`;
+                            // Mark GPT-4o Mini TTS voices as recommended
+                            const recommended = key.includes('gpt-4o-mini-tts') ? ' (Empfohlen)' : '';
+                            return `<option value="openai:${key}">${label}${recommended}</option>`;
+                        })
+                        .join('');
+                    if (voices) {
+                        options += '<optgroup label="OpenAI TTS (Premium)">' + voices + '</optgroup>';
+                    }
+                }
+                
                 // Add TikTok voices (free, German available)
                 if (data.voices.tiktok) {
                     const germanVoices = Object.entries(data.voices.tiktok)
@@ -1292,7 +1307,7 @@
                 }
 
                 // Update form fields
-                document.getElementById('openaiModel').value = config.model || 'gpt-4o-mini';
+                document.getElementById('openaiModel').value = config.model || 'gpt-5-mini';
                 document.getElementById('defaultPackageSize').value = config.defaultPackageSize || 10;
                 document.getElementById('packageSize').value = config.defaultPackageSize || 10;
             }
