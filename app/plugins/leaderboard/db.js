@@ -47,6 +47,8 @@ class LeaderboardDatabase {
                     session_start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
                     top_count INTEGER DEFAULT 10,
                     min_coins_to_show INTEGER DEFAULT 0,
+                    theme TEXT DEFAULT 'neon',
+                    show_animations INTEGER DEFAULT 1,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
@@ -54,8 +56,8 @@ class LeaderboardDatabase {
 
             // Initialize default config if not exists
             this.db.prepare(`
-                INSERT OR IGNORE INTO leaderboard_config (id, top_count, min_coins_to_show)
-                VALUES (1, 10, 0)
+                INSERT OR IGNORE INTO leaderboard_config (id, top_count, min_coins_to_show, theme, show_animations)
+                VALUES (1, 10, 0, 'neon', 1)
             `).run();
 
             this.logger.info('[Leaderboard DB] Tables initialized successfully');
@@ -85,10 +87,15 @@ class LeaderboardDatabase {
         try {
             const stmt = this.db.prepare(`
                 UPDATE leaderboard_config 
-                SET top_count = ?, min_coins_to_show = ?, updated_at = CURRENT_TIMESTAMP
+                SET top_count = ?, min_coins_to_show = ?, theme = ?, show_animations = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = 1
             `);
-            stmt.run(config.top_count || 10, config.min_coins_to_show || 0);
+            stmt.run(
+                config.top_count || 10, 
+                config.min_coins_to_show || 0,
+                config.theme || 'neon',
+                config.show_animations !== undefined ? (config.show_animations ? 1 : 0) : 1
+            );
             this.logger.info('[Leaderboard DB] Config updated');
         } catch (error) {
             this.logger.error(`[Leaderboard DB] Failed to update config: ${error.message}`);

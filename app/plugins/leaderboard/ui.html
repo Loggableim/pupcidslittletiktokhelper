@@ -159,7 +159,12 @@
             color: var(--color-text-primary);
         }
 
-        .form-input {
+        .form-label input[type="checkbox"] {
+            margin-right: 8px;
+            width: auto;
+        }
+
+        .form-input, select.form-input {
             width: 100%;
             padding: 10px 12px;
             background: var(--color-bg-secondary);
@@ -361,12 +366,41 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="form-label" for="theme-select">Overlay Theme</label>
+                        <select class="form-input" id="theme-select" name="theme">
+                            <option value="neon">Neon/Cyberpunk (Cyan & Magenta)</option>
+                            <option value="elegant">Elegant/Minimalist (Clean White)</option>
+                            <option value="gaming">Gaming/Esports (Red & Orange)</option>
+                            <option value="royal">Royal/Crown (Purple & Gold)</option>
+                            <option value="gradient">Modern Gradient (Blue & Teal)</option>
+                        </select>
+                        <small style="color: var(--color-text-secondary);">Choose the visual style for your overlay</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="show-animations" name="showAnimations" checked>
+                            Enable Overtake Animations
+                        </label>
+                        <small style="color: var(--color-text-secondary);">Show special effects when someone moves up in rank</small>
+                    </div>
+
+                    <div class="form-group">
                         <label class="form-label">Overlay URL</label>
                         <input type="text" class="form-input" id="overlay-url" readonly>
                         <small style="color: var(--color-text-secondary);">Use this URL in OBS Browser Source</small>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                    <div class="form-group">
+                        <label class="form-label">Preview URL (Test Mode with Mock Data)</label>
+                        <input type="text" class="form-input" id="preview-url" readonly>
+                        <small style="color: var(--color-text-secondary);">Use this URL to preview different themes with test data</small>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                        <button type="button" class="btn btn-secondary" id="preview-btn">Preview Overlay</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -493,11 +527,18 @@
 
         // Update config form
         function updateConfigForm() {
-            document.getElementById('display-limit').value = config.displayLimit || 10;
-            document.getElementById('min-coins').value = config.minCoins || 0;
+            document.getElementById('display-limit').value = config.displayLimit || config.top_count || 10;
+            document.getElementById('min-coins').value = config.minCoins || config.min_coins_to_show || 0;
+            document.getElementById('theme-select').value = config.theme || 'neon';
+            document.getElementById('show-animations').checked = config.showAnimations !== undefined ? config.showAnimations : (config.show_animations !== 0);
+            
             // Set overlay URL dynamically
             const overlayUrl = `${window.location.protocol}//${window.location.host}/leaderboard/overlay`;
             document.getElementById('overlay-url').value = overlayUrl;
+            
+            // Set preview URL
+            const previewUrl = `${window.location.protocol}//${window.location.host}/leaderboard/overlay?preview=true&theme=${config.theme || 'neon'}`;
+            document.getElementById('preview-url').value = previewUrl;
         }
 
         // Handle form submission
@@ -507,7 +548,12 @@
             const formData = new FormData(e.target);
             const newConfig = {
                 displayLimit: parseInt(formData.get('displayLimit')),
-                minCoins: parseInt(formData.get('minCoins'))
+                minCoins: parseInt(formData.get('minCoins')),
+                top_count: parseInt(formData.get('displayLimit')),
+                min_coins_to_show: parseInt(formData.get('minCoins')),
+                theme: formData.get('theme'),
+                showAnimations: document.getElementById('show-animations').checked,
+                show_animations: document.getElementById('show-animations').checked ? 1 : 0
             };
 
             try {
@@ -521,6 +567,7 @@
                 if (data.success) {
                     showMessage('Configuration saved successfully!', 'success');
                     config = newConfig;
+                    updateConfigForm();
                 } else {
                     showMessage('Failed to save configuration', 'error');
                 }
@@ -528,6 +575,13 @@
                 console.error('Failed to save config:', error);
                 showMessage('Failed to save configuration', 'error');
             }
+        });
+
+        // Preview button handler
+        document.getElementById('preview-btn').addEventListener('click', () => {
+            const theme = document.getElementById('theme-select').value;
+            const previewUrl = `${window.location.protocol}//${window.location.host}/leaderboard/overlay?preview=true&theme=${theme}`;
+            window.open(previewUrl, '_blank', 'width=500,height=850');
         });
 
         // Reset session
