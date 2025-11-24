@@ -35,50 +35,35 @@ func main() {
 	launcher.appDir = filepath.Join(exeDir, "app")
 	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.png")
 	
-	// Load background image
-	var bgImage *walk.Bitmap
+	// Load background image for icon
+	var bgIcon *walk.Icon
 	if _, err := os.Stat(bgImagePath); err == nil {
-		bgImage, _ = walk.NewBitmapFromFile(bgImagePath)
+		if bmp, err := walk.NewBitmapFromFile(bgImagePath); err == nil {
+			bgIcon, _ = walk.NewIconFromBitmap(bmp)
+		}
 	}
 	
-	// Create main window
-	var imageView *walk.ImageView
+	// Create main window - simple layout without nested composites to avoid TTM_ADDTOOL error
 	if err := (MainWindow{
 		AssignTo: &launcher.MainWindow,
 		Title:    "TikTok Stream Tool - Launcher",
-		Size:     Size{Width: 1536, Height: 1024},
-		Layout:   VBox{MarginsZero: true, SpacingZero: true},
+		Icon:     bgIcon,
+		Size:     Size{Width: 600, Height: 200},
+		Layout:   VBox{Margins: Margins{Left: 20, Top: 20, Right: 20, Bottom: 20}},
 		Children: []Widget{
-			Composite{
-				Layout: VBox{MarginsZero: true, SpacingZero: true},
-				Children: []Widget{
-					ImageView{
-						AssignTo: &imageView,
-						Image:    bgImage,
-						Mode:     ImageViewModeStretch,
-					},
-				},
+			VSpacer{},
+			Label{
+				AssignTo: &launcher.statusLabel,
+				Text:     "Initialisiere...",
+				Font:     Font{PointSize: 11, Bold: true},
 			},
-			Composite{
-				Layout: VBox{
-					Margins: Margins{Left: 50, Top: 0, Right: 886, Bottom: 150},
-				},
-				Children: []Widget{
-					VSpacer{},
-					Label{
-						AssignTo:  &launcher.statusLabel,
-						Text:      "Initialisiere...",
-						TextColor: walk.RGB(255, 255, 255),
-						Font:      Font{PointSize: 12, Bold: true},
-					},
-					ProgressBar{
-						AssignTo: &launcher.progressBar,
-						MinValue: 0,
-						MaxValue: 100,
-						Value:    0,
-					},
-				},
+			ProgressBar{
+				AssignTo: &launcher.progressBar,
+				MinValue: 0,
+				MaxValue: 100,
+				Value:    0,
 			},
+			VSpacer{},
 		},
 	}.Create()); err != nil {
 		walk.MsgBox(nil, "Fehler", fmt.Sprintf("Fehler beim Erstellen des Fensters: %v", err), walk.MsgBoxIconError)
@@ -137,7 +122,7 @@ func (lw *LauncherWindow) installDependencies() error {
 	
 	// Hide console window for npm install
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow: true,
+		HideWindow:    true,
 		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
 	}
 	
