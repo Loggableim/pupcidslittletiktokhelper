@@ -98,6 +98,78 @@
             border-color: var(--color-accent-primary);
         }
 
+        /* Compact Mode Styles */
+        .plugin-compact-table {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .plugin-compact-table thead {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .plugin-compact-table th {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #9ca3af;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .plugin-compact-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.875rem;
+            color: #d1d5db;
+        }
+
+        .plugin-compact-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .plugin-compact-table tbody tr:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .plugin-compact-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .plugin-compact-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .plugin-compact-btn {
+            padding: 0.375rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .plugin-compact-btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+
+        #compact-mode-toggle.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
         /* Topbar Language Switcher - Theme-Aware */
         .topbar-language-switcher {
             position: relative;
@@ -1668,6 +1740,10 @@
                                     <option value="type">Sort by Type</option>
                                     <option value="author">Sort by Author</option>
                                 </select>
+                                <button id="compact-mode-toggle" style="padding: 0.75rem 1.25rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #9ca3af; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;">
+                                    <i data-lucide="layout-list" style="width: 16px; height: 16px;"></i>
+                                    <span>Compact</span>
+                                </button>
                             </div>
                         </div>
 
