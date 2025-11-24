@@ -693,13 +693,13 @@ if (typeof window !== 'undefined') {
         const refreshBtn = document.getElementById('refresh-gift-catalog');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', async () => {
-                const icon = refreshBtn.textContent;
+                const originalText = '🔄 Refresh Catalogue';
                 refreshBtn.textContent = '⏳ Loading...';
                 refreshBtn.disabled = true;
                 
                 await loadGiftCatalog();
                 
-                refreshBtn.textContent = icon;
+                refreshBtn.textContent = originalText;
                 refreshBtn.disabled = false;
             });
         }
