@@ -1337,9 +1337,6 @@ class CurveEditor {
         
         this.ctx = this.canvas.getContext('2d');
         
-        // Update canvas dimensions to match display size
-        this.updateCanvasDimensions();
-        
         // Event listeners for drawing
         this.canvas.addEventListener('mousedown', this.startDrawing.bind(this));
         this.canvas.addEventListener('mousemove', this.draw.bind(this));
@@ -1351,7 +1348,11 @@ class CurveEditor {
         this.canvas.addEventListener('touchmove', this.handleTouch.bind(this));
         this.canvas.addEventListener('touchend', this.stopDrawing.bind(this));
         
-        this.drawGrid();
+        // Update canvas dimensions after the next render to ensure CSS is applied
+        requestAnimationFrame(() => {
+            this.updateCanvasDimensions();
+            this.drawGrid();
+        });
     }
 
     updateCanvasDimensions() {
