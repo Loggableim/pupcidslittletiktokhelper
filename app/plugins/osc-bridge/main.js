@@ -596,15 +596,25 @@ class OSCBridgePlugin {
      * Register TikTok gift event handler for gift-to-action mappings
      */
     registerTikTokGiftHandler() {
-        this.api.registerTikTokEvent('gift', (giftData) => {
-            this.handleGiftEvent(giftData);
-        });
+        try {
+            this.api.registerTikTokEvent('gift', (giftData) => {
+                this.handleGiftEvent(giftData);
+            });
+        } catch (error) {
+            this.logger.error('Failed to register TikTok gift event handler:', error);
+        }
     }
 
     /**
      * Handle incoming TikTok gift event and execute mapped actions
      */
     async handleGiftEvent(giftData) {
+        // Validate gift data
+        if (!giftData || (!giftData.giftId && !giftData.giftName)) {
+            this.logger.warn('Invalid gift data received:', giftData);
+            return;
+        }
+
         if (!this.isRunning) {
             return; // OSC-Bridge not active
         }
@@ -616,10 +626,29 @@ class OSCBridgePlugin {
         const giftId = giftData.giftId;
         const giftName = giftData.giftName;
 
-        // Find matching gift mapping
-        const mapping = this.config.giftMappings.find(m => 
-            m.giftId === giftId || m.giftName === giftName
-        );
+        // Find matching gift mapping - prioritize exact matches over partial
+        let mapping = null;
+        
+        // First try exact match (both ID and name)
+        if (giftId && giftName) {
+            mapping = this.config.giftMappings.find(m => 
+                m.giftId === giftId && m.giftName === giftName
+            );
+        }
+        
+        // Then try ID-only match
+        if (!mapping && giftId) {
+            mapping = this.config.giftMappings.find(m => 
+                m.giftId === giftId && !m.giftName
+            );
+        }
+        
+        // Finally try name-only match
+        if (!mapping && giftName) {
+            mapping = this.config.giftMappings.find(m => 
+                m.giftName === giftName && !m.giftId
+            );
+        }
 
         if (!mapping) {
             return; // No mapping for this gift

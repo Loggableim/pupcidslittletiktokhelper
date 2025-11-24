@@ -425,7 +425,7 @@ function addGiftMapping() {
     const param = document.getElementById('new-gift-param').value;
     
     if (!giftId && !giftName) {
-        alert('Please enter either Gift ID or Gift Name');
+        alert('Please enter either Gift ID or Gift Name (or both for exact match)');
         return;
     }
     
@@ -511,18 +511,29 @@ function renderAvatars() {
     }
     
     tbody.innerHTML = avatars.map((avatar, index) => {
+        // Escape HTML to prevent XSS
+        const escapedName = avatar.name.replace(/'/g, '&apos;').replace(/"/g, '&quot;');
+        const escapedId = avatar.avatarId.replace(/'/g, '&apos;').replace(/"/g, '&quot;');
+        const escapedDesc = (avatar.description || '-').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
         return `
             <tr>
-                <td>${avatar.name}</td>
-                <td><code style="font-size: 11px;">${avatar.avatarId}</code></td>
-                <td>${avatar.description || '-'}</td>
+                <td>${escapedName}</td>
+                <td><code style="font-size: 11px;">${escapedId}</code></td>
+                <td>${escapedDesc}</td>
                 <td>
-                    <button class="btn btn-primary btn-small" onclick="switchToAvatar('${avatar.avatarId}', '${avatar.name}')">Switch</button>
+                    <button class="btn btn-primary btn-small" data-avatar-id="${escapedId}" data-avatar-name="${escapedName}" onclick="switchToAvatarByData(this)">Switch</button>
                     <button class="btn btn-danger btn-small" onclick="removeAvatar(${index})">Remove</button>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+function switchToAvatarByData(button) {
+    const avatarId = button.getAttribute('data-avatar-id');
+    const avatarName = button.getAttribute('data-avatar-name');
+    switchToAvatar(avatarId, avatarName);
 }
 
 function addAvatar() {
