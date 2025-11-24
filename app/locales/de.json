@@ -32,6 +32,7 @@
     "streamalchemy": "Stream-Alchemie",
     "gcce": "Globale Chat-Befehls-Engine",
     "thermal_printer": "Thermaldrucker",
+    "config_import": "Konfiguration Importieren",
     "plugins": "Plugin-Manager",
     "wiki": "Wiki",
     "settings": "Einstellungen"

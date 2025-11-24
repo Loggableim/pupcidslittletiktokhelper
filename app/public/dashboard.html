@@ -516,6 +516,10 @@
                     <i data-lucide="printer"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.thermal_printer">Thermal Printer</span>
                 </a>
+                <a href="#" class="sidebar-item" data-view="config-import" data-plugin="config-import">
+                    <i data-lucide="download"></i>
+                    <span class="sidebar-item-text" data-i18n="navigation.config_import">Config Import</span>
+                </a>
 
                 <a href="#" class="sidebar-item" data-view="plugins">
                     <i data-lucide="plug"></i>
@@ -1616,6 +1620,25 @@
                         </div>
                         <div class="iframe-container">
                             <iframe src="/thermal-printer/ui" title="Thermal Printer"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: Config Import -->
+                <div id="view-config-import" class="content-view" data-plugin="config-import">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="download"></i>
+                                <span data-i18n="navigation.config_import">Config Import</span>
+                            </h2>
+                            <a href="/config-import/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe src="/config-import/ui" title="Config Import"></iframe>
                         </div>
                     </section>
                 </div>

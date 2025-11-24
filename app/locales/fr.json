@@ -27,6 +27,7 @@
     "streamalchemy": "Alchimie de Stream",
     "gcce": "Moteur de Commandes de Chat Global",
     "thermal_printer": "Imprimante Thermique",
+    "config_import": "Importer la Configuration",
     "plugin_manager": "Gestionnaire de Plugins",
     "plugins": "Gestionnaire de Plugins",
     "automations": "Automatisations",
