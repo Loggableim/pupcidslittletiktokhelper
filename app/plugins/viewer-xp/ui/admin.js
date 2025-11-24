@@ -281,6 +281,352 @@ document.getElementById('settings-tab').addEventListener('shown.bs.tab', () => {
   loadGeneralSettings();
 });
 
+document.getElementById('level-config-tab').addEventListener('shown.bs.tab', () => {
+  loadLevelConfig();
+});
+
+// Level Configuration Functions
+let currentLevelConfigs = [];
+
+async function loadLevelConfig() {
+  try {
+    const response = await fetch('/api/viewer-xp/settings');
+    const settings = await response.json();
+    
+    const levelType = settings.levelType || 'exponential';
+    document.getElementById('levelType').value = levelType;
+    handleLevelTypeChange(levelType);
+    
+    // Load saved values
+    if (settings.xpPerLevel) document.getElementById('xpPerLevel').value = settings.xpPerLevel;
+    if (settings.baseXP) document.getElementById('baseXP').value = settings.baseXP;
+    if (settings.logMultiplier) document.getElementById('logMultiplier').value = settings.logMultiplier;
+    if (settings.maxLevel) document.getElementById('maxLevel').value = settings.maxLevel;
+    
+    // Load custom level configs if custom type
+    if (levelType === 'custom') {
+      const configResponse = await fetch('/api/viewer-xp/level-config');
+      const configs = await configResponse.json();
+      displayCustomLevelConfigs(configs);
+    }
+  } catch (error) {
+    console.error('Error loading level config:', error);
+  }
+}
+
+function handleLevelTypeChange(type) {
+  // Hide all type-specific settings
+  document.getElementById('linearSettings').style.display = 'none';
+  document.getElementById('exponentialSettings').style.display = 'none';
+  document.getElementById('logarithmicSettings').style.display = 'none';
+  document.getElementById('customLevelCard').style.display = 'none';
+  
+  // Show relevant settings
+  if (type === 'linear') {
+    document.getElementById('linearSettings').style.display = 'block';
+  } else if (type === 'exponential') {
+    document.getElementById('exponentialSettings').style.display = 'block';
+  } else if (type === 'logarithmic') {
+    document.getElementById('logarithmicSettings').style.display = 'block';
+  } else if (type === 'custom') {
+    document.getElementById('customLevelCard').style.display = 'block';
+  }
+}
+
+document.getElementById('levelType').addEventListener('change', (e) => {
+  handleLevelTypeChange(e.target.value);
+});
+
+document.getElementById('generateLevels').addEventListener('click', async () => {
+  const levelType = document.getElementById('levelType').value;
+  const maxLevel = parseInt(document.getElementById('maxLevel').value);
+  
+  const settings = { maxLevel };
+  
+  if (levelType === 'linear') {
+    settings.xpPerLevel = parseInt(document.getElementById('xpPerLevel').value);
+  } else if (levelType === 'exponential') {
+    settings.baseXP = parseInt(document.getElementById('baseXP').value);
+  } else if (levelType === 'logarithmic') {
+    settings.multiplier = parseInt(document.getElementById('logMultiplier').value);
+  }
+  
+  try {
+    const response = await fetch('/api/viewer-xp/level-config/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: levelType, settings })
+    });
+    
+    currentLevelConfigs = await response.json();
+    
+    if (levelType === 'custom') {
+      displayCustomLevelConfigs(currentLevelConfigs);
+    }
+    
+    displayLevelPreview(currentLevelConfigs);
+  } catch (error) {
+    console.error('Error generating levels:', error);
+    alert('Error generating level configuration');
+  }
+});
+
+document.getElementById('applyLevelConfig').addEventListener('click', async () => {
+  if (currentLevelConfigs.length === 0) {
+    alert('Please generate a level configuration first');
+    return;
+  }
+  
+  const levelType = document.getElementById('levelType').value;
+  
+  try {
+    // Save level type and related settings
+    const settings = {
+      levelType,
+      maxLevel: parseInt(document.getElementById('maxLevel').value)
+    };
+    
+    if (levelType === 'linear') {
+      settings.xpPerLevel = parseInt(document.getElementById('xpPerLevel').value);
+    } else if (levelType === 'exponential') {
+      settings.baseXP = parseInt(document.getElementById('baseXP').value);
+    } else if (levelType === 'logarithmic') {
+      settings.logMultiplier = parseInt(document.getElementById('logMultiplier').value);
+    }
+    
+    await fetch('/api/viewer-xp/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    
+    // Save custom level configs if custom type
+    if (levelType === 'custom') {
+      await fetch('/api/viewer-xp/level-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configs: currentLevelConfigs })
+      });
+    }
+    
+    alert('Level configuration applied successfully! Viewer levels will be recalculated on next XP award.');
+    loadStats();
+  } catch (error) {
+    console.error('Error applying level config:', error);
+    alert('Error applying configuration');
+  }
+});
+
+function displayCustomLevelConfigs(configs) {
+  const tbody = document.getElementById('customLevelsTable');
+  tbody.innerHTML = '';
+  
+  configs.forEach(config => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${config.level}</td>
+      <td>
+        <input type="number" class="form-control form-control-sm" 
+          value="${config.xp_required}" 
+          data-level="${config.level}" 
+          data-field="xp_required">
+      </td>
+      <td>
+        <input type="text" class="form-control form-control-sm" 
+          value="${config.custom_title || ''}" 
+          data-level="${config.level}" 
+          data-field="custom_title">
+      </td>
+      <td>
+        <input type="color" class="form-control form-control-sm" 
+          value="${config.custom_color || '#FFFFFF'}" 
+          data-level="${config.level}" 
+          data-field="custom_color">
+      </td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="removeLevel(${config.level})">Remove</button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+  
+  // Update currentLevelConfigs when inputs change
+  tbody.querySelectorAll('input').forEach(input => {
+    input.addEventListener('change', () => {
+      const level = parseInt(input.getAttribute('data-level'));
+      const field = input.getAttribute('data-field');
+      const config = currentLevelConfigs.find(c => c.level === level);
+      if (config) {
+        if (field === 'xp_required') {
+          config.xp_required = parseInt(input.value);
+        } else {
+          config[field] = input.value;
+        }
+      }
+    });
+  });
+}
+
+function displayLevelPreview(configs) {
+  const tbody = document.getElementById('levelPreviewTable');
+  tbody.innerHTML = '';
+  
+  const displayConfigs = configs.slice(0, 20); // Show first 20 levels
+  
+  displayConfigs.forEach((config, index) => {
+    const prevXP = index > 0 ? configs[index - 1].xp_required : 0;
+    const diff = config.xp_required - prevXP;
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>Level ${config.level}</td>
+      <td>${config.xp_required.toLocaleString()} XP</td>
+      <td>+${diff.toLocaleString()} XP</td>
+      <td>
+        <div class="xp-bar-mini">
+          <div class="xp-bar-fill" style="width: ${(config.level / configs.length) * 100}%"></div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+  
+  if (configs.length > 20) {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td colspan="4" class="text-center">... and ${configs.length - 20} more levels</td>`;
+    tbody.appendChild(row);
+  }
+}
+
+document.getElementById('addLevelRow').addEventListener('click', () => {
+  const maxLevel = currentLevelConfigs.length > 0 
+    ? Math.max(...currentLevelConfigs.map(c => c.level)) + 1 
+    : 1;
+  
+  const lastXP = currentLevelConfigs.length > 0
+    ? currentLevelConfigs[currentLevelConfigs.length - 1].xp_required
+    : 0;
+  
+  currentLevelConfigs.push({
+    level: maxLevel,
+    xp_required: lastXP + 1000
+  });
+  
+  displayCustomLevelConfigs(currentLevelConfigs);
+  displayLevelPreview(currentLevelConfigs);
+});
+
+function removeLevel(level) {
+  currentLevelConfigs = currentLevelConfigs.filter(c => c.level !== level);
+  displayCustomLevelConfigs(currentLevelConfigs);
+  displayLevelPreview(currentLevelConfigs);
+}
+
+// Import/Export Functions
+document.getElementById('exportDataBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('exportStatus');
+  statusEl.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Exporting...';
+  
+  try {
+    const response = await fetch('/api/viewer-xp/export');
+    const data = await response.json();
+    
+    // Create download
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `viewer-xp-export-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    statusEl.innerHTML = '<div class="alert alert-success">Export completed successfully!</div>';
+  } catch (error) {
+    console.error('Error exporting data:', error);
+    statusEl.innerHTML = '<div class="alert alert-danger">Error exporting data</div>';
+  }
+});
+
+document.getElementById('importDataBtn').addEventListener('click', async () => {
+  const fileInput = document.getElementById('importFile');
+  const statusEl = document.getElementById('importStatus');
+  
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert('Please select a file to import');
+    return;
+  }
+  
+  statusEl.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Importing...';
+  
+  try {
+    const file = fileInput.files[0];
+    const text = await file.text();
+    const data = JSON.parse(text);
+    
+    const response = await fetch('/api/viewer-xp/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      statusEl.innerHTML = '<div class="alert alert-success">Import completed successfully!</div>';
+      loadStats();
+      loadLeaderboard();
+    } else {
+      statusEl.innerHTML = '<div class="alert alert-danger">Error importing data</div>';
+    }
+  } catch (error) {
+    console.error('Error importing data:', error);
+    statusEl.innerHTML = '<div class="alert alert-danger">Error importing data: ' + error.message + '</div>';
+  }
+});
+
+document.getElementById('loadHistoryBtn').addEventListener('click', async () => {
+  const username = document.getElementById('historyUsername').value;
+  
+  if (!username) {
+    alert('Please enter a username');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/viewer-xp/history/${username}?limit=100`);
+    const history = await response.json();
+    
+    const container = document.getElementById('historyContainer');
+    const tbody = document.getElementById('historyTable');
+    
+    if (history.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center">No history found for this user</td></tr>';
+      container.style.display = 'block';
+      return;
+    }
+    
+    tbody.innerHTML = '';
+    history.forEach(entry => {
+      const details = entry.details ? JSON.parse(entry.details) : {};
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${new Date(entry.timestamp).toLocaleString()}</td>
+        <td><span class="badge bg-primary">${entry.action_type}</span></td>
+        <td>+${entry.amount} XP</td>
+        <td>${details.reason || details.message || '-'}</td>
+      `;
+      tbody.appendChild(row);
+    });
+    
+    container.style.display = 'block';
+  } catch (error) {
+    console.error('Error loading history:', error);
+    alert('Error loading viewer history');
+  }
+});
+
 // Initial load
 loadStats();
 loadLeaderboard();

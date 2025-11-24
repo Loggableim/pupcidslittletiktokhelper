@@ -78,6 +78,10 @@ class ViewerXPPlugin extends EventEmitter {
       res.sendFile(path.join(__dirname, 'overlays', 'leaderboard.html'));
     });
 
+    this.api.registerRoute('GET', '/overlay/viewer-xp/level-up', (req, res) => {
+      res.sendFile(path.join(__dirname, 'overlays', 'level-up.html'));
+    });
+
     // Serve main UI (redirects to admin)
     this.api.registerRoute('GET', '/viewer-xp/ui', (req, res) => {
       res.sendFile(path.join(__dirname, 'ui.html'));
@@ -209,6 +213,78 @@ class ViewerXPPlugin extends EventEmitter {
         res.json({ success: true });
       } catch (error) {
         this.api.log(`Error updating settings: ${error.message}`, 'error');
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // API: Get level configurations
+    this.api.registerRoute('GET', '/api/viewer-xp/level-config', (req, res) => {
+      try {
+        const configs = this.db.getAllLevelConfigs();
+        res.json(configs);
+      } catch (error) {
+        this.api.log(`Error getting level config: ${error.message}`, 'error');
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // API: Set level configurations
+    this.api.registerRoute('POST', '/api/viewer-xp/level-config', (req, res) => {
+      try {
+        const { configs } = req.body;
+        this.db.setLevelConfig(configs);
+        res.json({ success: true });
+      } catch (error) {
+        this.api.log(`Error setting level config: ${error.message}`, 'error');
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // API: Generate level configurations
+    this.api.registerRoute('POST', '/api/viewer-xp/level-config/generate', (req, res) => {
+      try {
+        const { type, settings } = req.body;
+        const configs = this.db.generateLevelConfigs(type, settings);
+        res.json(configs);
+      } catch (error) {
+        this.api.log(`Error generating level config: ${error.message}`, 'error');
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // API: Get viewer history
+    this.api.registerRoute('GET', '/api/viewer-xp/history/:username', (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit) || 50;
+        const history = this.db.getViewerHistory(req.params.username, limit);
+        res.json(history);
+      } catch (error) {
+        this.api.log(`Error getting viewer history: ${error.message}`, 'error');
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // API: Export viewer data
+    this.api.registerRoute('GET', '/api/viewer-xp/export', (req, res) => {
+      try {
+        const data = this.db.exportViewerData();
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="viewer-xp-export-${Date.now()}.json"`);
+        res.json(data);
+      } catch (error) {
+        this.api.log(`Error exporting data: ${error.message}`, 'error');
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // API: Import viewer data
+    this.api.registerRoute('POST', '/api/viewer-xp/import', (req, res) => {
+      try {
+        const data = req.body;
+        this.db.importViewerData(data);
+        res.json({ success: true, message: 'Data imported successfully' });
+      } catch (error) {
+        this.api.log(`Error importing data: ${error.message}`, 'error');
         res.status(500).json({ error: error.message });
       }
     });
