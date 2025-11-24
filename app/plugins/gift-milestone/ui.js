@@ -71,9 +71,9 @@ function displayTiers() {
                 </div>
             </div>
             <div class="tier-actions">
-                <button class="small-button test-tier-btn" onclick="testTier(${tier.id})">🧪 Test</button>
-                <button class="small-button edit-btn" onclick="editTier(${tier.id})">✏️ Bearbeiten</button>
-                <button class="small-button delete-btn" onclick="deleteTier(${tier.id})">🗑️ Löschen</button>
+                <button class="small-button test-tier-btn" data-tier-id="${tier.id}">🧪 Test</button>
+                <button class="small-button edit-btn" data-tier-id="${tier.id}">✏️ Bearbeiten</button>
+                <button class="small-button delete-btn" data-tier-id="${tier.id}">🗑️ Löschen</button>
             </div>
         </div>
     `).join('');
@@ -109,7 +109,7 @@ function displayUsers() {
                 </div>
             </div>
             <div class="user-actions">
-                <button class="small-button delete-btn" onclick="deleteUser('${user.user_id}')">🗑️ Zurücksetzen</button>
+                <button class="small-button delete-btn delete-user-btn" data-user-id="${user.user_id}">🗑️ Zurücksetzen</button>
             </div>
         </div>
     `;
@@ -645,6 +645,36 @@ document.getElementById('resetAllUsersButton').addEventListener('click', deleteA
 document.getElementById('tierModal').addEventListener('click', (e) => {
     if (e.target.id === 'tierModal') {
         document.getElementById('tierModal').classList.remove('active');
+    }
+});
+
+// Event delegation for tier action buttons
+document.getElementById('tiersList').addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+    
+    const tierId = button.getAttribute('data-tier-id');
+    if (!tierId) return;
+    
+    if (button.classList.contains('test-tier-btn')) {
+        testTier(parseInt(tierId));
+    } else if (button.classList.contains('edit-btn')) {
+        editTier(parseInt(tierId));
+    } else if (button.classList.contains('delete-btn')) {
+        deleteTier(parseInt(tierId));
+    }
+});
+
+// Event delegation for user action buttons
+document.getElementById('userStatsList').addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+    
+    if (button.classList.contains('delete-user-btn')) {
+        const userId = button.getAttribute('data-user-id');
+        if (userId) {
+            deleteUser(userId);
+        }
     }
 });
 
