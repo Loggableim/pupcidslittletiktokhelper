@@ -1020,7 +1020,10 @@
             const wrapper = document.getElementById('directorIframeWrapper');
             const btn = document.getElementById('toggleIframeBtn');
             
-            if (wrapper.style.display === 'none') {
+            // Check if wrapper is currently hidden
+            const isHidden = wrapper.offsetParent === null;
+            
+            if (isHidden) {
                 wrapper.style.display = 'block';
                 btn.textContent = '▼ Hide';
             } else {
