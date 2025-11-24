@@ -195,7 +195,7 @@ function createBoundaries() {
  * Handle collision events
  */
 function handleCollision(event) {
-    if (config.effect === 'none' || !config.bounce_enabled) return;
+    if (config.effect === 'none') return;
 
     event.pairs.forEach(pair => {
         if (pair.bodyA.label === 'ground' || pair.bodyB.label === 'ground') {
@@ -222,11 +222,15 @@ function handleCollision(event) {
 function triggerBounceEffect(emoji) {
     if (!emoji.element || config.effect === 'none') return;
     
+    // Both 'bounce' and 'bubble' use the same bubbleBlop animation
+    // The difference is in the physics settings, not the animation
+    const animationName = 'bubbleBlop';
+    
     // Reset animation to trigger it again properly
     emoji.element.style.animation = 'none';
     // Force reflow
     void emoji.element.offsetWidth;
-    emoji.element.style.animation = 'bubbleBlop 0.4s ease-out';
+    emoji.element.style.animation = `${animationName} 0.4s ease-out`;
     
     // Clean up animation after it completes
     if (emoji.bounceAnimationTimeout) {
@@ -360,27 +364,29 @@ function applyPixelEffect(element) {
     let pixelFilter = '';
     
     if (config.pixel_enabled) {
-        // For images, use image-rendering
-        element.style.imageRendering = 'pixelated';
-        
-        // For text emojis, we need a different approach
-        // Use a combination of blur and contrast to create a pixelated effect
-        const pixelAmount = config.pixel_size || 4;
-        
-        // Constants for pixel effect tuning
-        const PIXEL_BLUR_MULTIPLIER = 0.5; // Adjust blur intensity based on pixel size
-        const PIXEL_CONTRAST = 2; // Contrast boost for pixelation effect
-        
-        // The blur creates the pixelation, we adjust based on pixel_size
-        const blurAmount = pixelAmount * PIXEL_BLUR_MULTIPLIER;
-        
-        // For text emojis, apply a subtle blur to simulate pixelation
-        if (!element.querySelector('img')) {
-            // Text emoji - apply filter-based pixelation
+        // For images, use image-rendering on the img element
+        const img = element.querySelector('img');
+        if (img) {
+            img.style.imageRendering = 'pixelated';
+        } else {
+            // For text emojis, apply filter-based pixelation
+            const pixelAmount = config.pixel_size || 4;
+            
+            // Constants for pixel effect tuning
+            const PIXEL_BLUR_MULTIPLIER = 0.5; // Adjust blur intensity based on pixel size
+            const PIXEL_CONTRAST = 2; // Contrast boost for pixelation effect
+            
+            // The blur creates the pixelation, we adjust based on pixel_size
+            const blurAmount = pixelAmount * PIXEL_BLUR_MULTIPLIER;
+            
             pixelFilter = `blur(${blurAmount}px) contrast(${PIXEL_CONTRAST})`;
         }
     } else {
-        element.style.imageRendering = '';
+        // Clear image-rendering when pixel mode is disabled
+        const img = element.querySelector('img');
+        if (img) {
+            img.style.imageRendering = '';
+        }
     }
     
     // Store the pixel filter for later combination
@@ -613,6 +619,18 @@ function spawnEmoji(emoji, x, y, size, username = null, color = null) {
         const maxX = canvasWidth - margin;
         x = Math.max(minX, Math.min(maxX, x));
     }
+    
+    // Ensure x and y are valid numbers
+    if (isNaN(x) || !isFinite(x)) {
+        console.error(`⚠️ [SPAWN] Invalid x position: ${x}, using canvasWidth/2`);
+        x = canvasWidth / 2;
+    }
+    if (isNaN(y) || !isFinite(y)) {
+        console.error(`⚠️ [SPAWN] Invalid y position: ${y}, using 0`);
+        y = 0;
+    }
+    
+    console.log(`⚙️ [SPAWN] Spawning emoji at position (${x.toFixed(2)}, ${y.toFixed(2)}) with size ${size}`);
 
     // Create physics body
     const radius = size / 2;
