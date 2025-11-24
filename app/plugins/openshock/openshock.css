@@ -1012,3 +1012,306 @@ input[type="range"]::-moz-range-thumb {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 }
+
+/* ====================================================================
+   VISUAL CURVE EDITOR STYLES
+   ==================================================================== */
+
+.modal-xl {
+    max-width: 1400px;
+    width: 95%;
+}
+
+.curve-editor-toolbar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding: 16px;
+    background: var(--color-bg-secondary, #1f2937);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-action {
+    padding: 8px 16px;
+    border: 2px solid transparent;
+    background: rgba(147, 197, 253, 0.1);
+    color: var(--color-text-primary, #f9fafb);
+    transition: all 0.2s;
+}
+
+.btn-action:hover {
+    background: rgba(147, 197, 253, 0.2);
+    border-color: rgba(147, 197, 253, 0.3);
+}
+
+.btn-action.active {
+    background: var(--color-accent-primary, #60a5fa);
+    border-color: var(--color-accent-primary, #60a5fa);
+    color: white;
+}
+
+.curve-editor-canvas-container {
+    background: #0a0e1a;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 2px solid var(--color-border, #374151);
+}
+
+.canvas-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.canvas-info {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+}
+
+.canvas-info span {
+    color: var(--color-text-muted, #9ca3af);
+}
+
+.canvas-controls {
+    display: flex;
+    gap: 8px;
+}
+
+#curveCanvas {
+    display: block;
+    width: 100%;
+    height: 400px;
+    background: #000;
+    border-radius: 8px;
+    cursor: crosshair;
+    border: 1px solid var(--color-border, #374151);
+}
+
+.canvas-footer {
+    text-align: center;
+    margin-top: 8px;
+}
+
+.axis-label {
+    font-size: 12px;
+    color: var(--color-text-muted, #9ca3af);
+    font-weight: 600;
+}
+
+.curve-editor-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    padding: 16px;
+    background: var(--color-bg-secondary, #1f2937);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dual-slider {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.slider-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.slider-label-sm {
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 40px;
+}
+
+.slider-value-sm {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-accent-primary, #60a5fa);
+    min-width: 50px;
+    text-align: right;
+}
+
+.form-range {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #374151 0%, #60a5fa 100%);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--color-accent-primary, #60a5fa);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.form-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--color-accent-primary, #60a5fa);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.curve-editor-timeline {
+    background: var(--color-bg-secondary, #1f2937);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.timeline-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--color-accent-primary, #60a5fa);
+}
+
+.timeline-preview {
+    background: #0a0e1a;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 120px;
+    margin-bottom: 12px;
+    border: 1px solid var(--color-border, #374151);
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    align-items: flex-end;
+}
+
+.timeline-empty {
+    width: 100%;
+    text-align: center;
+    color: var(--color-text-muted, #9ca3af);
+    font-size: 14px;
+    margin: auto;
+}
+
+.timeline-step {
+    flex: 0 0 auto;
+    min-width: 40px;
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 4px;
+}
+
+.timeline-step:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.timeline-step-shock {
+    background: linear-gradient(to top, #ef4444, #fca5a5);
+}
+
+.timeline-step-vibrate {
+    background: linear-gradient(to top, #8b5cf6, #c4b5fd);
+}
+
+.timeline-step-sound {
+    background: linear-gradient(to top, #10b981, #6ee7b7);
+}
+
+.timeline-step-pause {
+    background: linear-gradient(to top, #6b7280, #9ca3af);
+}
+
+.timeline-step-icon {
+    font-size: 16px;
+    text-align: center;
+}
+
+.timeline-step-intensity {
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    color: white;
+}
+
+.timeline-step-duration {
+    font-size: 9px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.timeline-stats {
+    display: flex;
+    gap: 20px;
+    justify-content: space-around;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border, #374151);
+    font-size: 14px;
+}
+
+.timeline-stats span {
+    color: var(--color-text-muted, #9ca3af);
+}
+
+.timeline-stats strong {
+    color: var(--color-text-primary, #f9fafb);
+}
+
+/* Responsive adjustments for curve editor */
+@media (max-width: 768px) {
+    .modal-xl {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .curve-editor-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .toolbar-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .curve-editor-controls {
+        grid-template-columns: 1fr;
+    }
+
+    #curveCanvas {
+        height: 300px;
+    }
+
+    .timeline-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+}

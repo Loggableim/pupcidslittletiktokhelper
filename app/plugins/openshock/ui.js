@@ -1308,46 +1308,489 @@ async function executePattern(id, deviceId) {
     }
 }
 
-function generateFromCurve() {
-    // Open curve generator modal
-    const curveType = prompt('Enter curve type (linear, exponential, sine, pulse):');
-    if (!curveType) return;
+// ====================================================================
+// VISUAL CURVE EDITOR
+// ====================================================================
 
-    const steps = parseInt(prompt('Enter number of steps (5-20):', '10'));
-    if (!steps || steps < 5 || steps > 20) return;
+class CurveEditor {
+    constructor() {
+        this.canvas = null;
+        this.ctx = null;
+        this.curvePoints = [];
+        this.isDrawing = false;
+        this.currentAction = 'shock';
+        this.resolution = 20;
+        this.minIntensity = 10;
+        this.maxIntensity = 80;
+        this.stepDuration = 500;
+        this.stepDelay = 100;
+        this.gridSpacing = 50;
+        this.patternName = '';
+        
+        this.initialize();
+    }
 
-    const duration = parseInt(prompt('Enter step duration (ms):', '500'));
-    if (!duration) return;
+    initialize() {
+        // Canvas setup
+        this.canvas = document.getElementById('curveCanvas');
+        if (!this.canvas) return;
+        
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Event listeners for drawing
+        this.canvas.addEventListener('mousedown', this.startDrawing.bind(this));
+        this.canvas.addEventListener('mousemove', this.draw.bind(this));
+        this.canvas.addEventListener('mouseup', this.stopDrawing.bind(this));
+        this.canvas.addEventListener('mouseleave', this.stopDrawing.bind(this));
+        
+        // Touch support
+        this.canvas.addEventListener('touchstart', this.handleTouch.bind(this));
+        this.canvas.addEventListener('touchmove', this.handleTouch.bind(this));
+        this.canvas.addEventListener('touchend', this.stopDrawing.bind(this));
+        
+        this.drawGrid();
+    }
 
-    // Generate pattern based on curve
-    currentPatternSteps = [];
-
-    for (let i = 0; i < steps; i++) {
-        let intensity;
-        const progress = i / (steps - 1);
-
-        if (curveType === 'linear') {
-            intensity = Math.round(10 + (progress * 90));
-        } else if (curveType === 'exponential') {
-            intensity = Math.round(10 + (Math.pow(progress, 2) * 90));
-        } else if (curveType === 'sine') {
-            intensity = Math.round(50 + (Math.sin(progress * Math.PI * 2) * 40));
-        } else if (curveType === 'pulse') {
-            intensity = i % 2 === 0 ? 80 : 20;
-        } else {
-            intensity = 50;
+    drawGrid() {
+        if (!this.ctx) return;
+        
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        
+        // Clear canvas
+        this.ctx.fillStyle = '#000';
+        this.ctx.fillRect(0, 0, width, height);
+        
+        // Draw grid
+        this.ctx.strokeStyle = '#1f2937';
+        this.ctx.lineWidth = 1;
+        
+        // Vertical lines
+        for (let x = 0; x <= width; x += this.gridSpacing) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, height);
+            this.ctx.stroke();
         }
+        
+        // Horizontal lines
+        for (let y = 0; y <= height; y += this.gridSpacing) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(width, y);
+            this.ctx.stroke();
+        }
+        
+        // Draw axis labels
+        this.ctx.fillStyle = '#6b7280';
+        this.ctx.font = '12px sans-serif';
+        
+        // Y-axis labels (intensity)
+        for (let i = 0; i <= 100; i += 25) {
+            const y = height - (i / 100) * height;
+            this.ctx.fillText(i + '%', 5, y);
+        }
+        
+        // X-axis labels (time)
+        const totalTime = this.resolution * this.stepDuration;
+        for (let i = 0; i <= 5; i++) {
+            const x = (i / 5) * width;
+            const time = Math.round((i / 5) * totalTime);
+            this.ctx.fillText(time + 'ms', x, height - 5);
+        }
+        
+        // Redraw curve if exists
+        if (this.curvePoints.length > 0) {
+            this.redrawCurve();
+        }
+    }
 
-        currentPatternSteps.push({
-            type: 'shock',
-            intensity: Math.min(100, Math.max(1, intensity)),
-            duration,
-            delay: 100
+    startDrawing(e) {
+        this.isDrawing = true;
+        this.curvePoints = [];
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        this.addPoint(x, y);
+    }
+
+    draw(e) {
+        if (!this.isDrawing) return;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        this.addPoint(x, y);
+        this.redrawCurve();
+        this.updateCursorInfo(x, y);
+    }
+
+    stopDrawing() {
+        if (this.isDrawing) {
+            this.isDrawing = false;
+            this.generatePreview();
+        }
+    }
+
+    handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        
+        if (e.type === 'touchstart') {
+            this.isDrawing = true;
+            this.curvePoints = [];
+        }
+        
+        if (this.isDrawing && touch) {
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            this.addPoint(x, y);
+            this.redrawCurve();
+            this.updateCursorInfo(x, y);
+        }
+    }
+
+    addPoint(x, y) {
+        // Constrain within canvas
+        x = Math.max(0, Math.min(this.canvas.width, x));
+        y = Math.max(0, Math.min(this.canvas.height, y));
+        
+        this.curvePoints.push({ x, y });
+    }
+
+    redrawCurve() {
+        this.drawGrid();
+        
+        if (this.curvePoints.length < 2) return;
+        
+        // Draw the curve
+        this.ctx.strokeStyle = this.getActionColor();
+        this.ctx.lineWidth = 3;
+        this.ctx.lineJoin = 'round';
+        this.ctx.lineCap = 'round';
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.curvePoints[0].x, this.curvePoints[0].y);
+        
+        for (let i = 1; i < this.curvePoints.length; i++) {
+            this.ctx.lineTo(this.curvePoints[i].x, this.curvePoints[i].y);
+        }
+        
+        this.ctx.stroke();
+        
+        // Draw points
+        this.ctx.fillStyle = this.getActionColor();
+        for (const point of this.curvePoints) {
+            this.ctx.beginPath();
+            this.ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+    }
+
+    getActionColor() {
+        switch (this.currentAction) {
+            case 'shock': return '#ef4444';
+            case 'vibrate': return '#8b5cf6';
+            case 'sound': return '#10b981';
+            default: return '#60a5fa';
+        }
+    }
+
+    updateCursorInfo(x, y) {
+        const intensity = Math.round((1 - y / this.canvas.height) * 100);
+        const time = Math.round((x / this.canvas.width) * this.resolution * this.stepDuration);
+        
+        document.getElementById('currentIntensity').textContent = intensity;
+        document.getElementById('currentTime').textContent = time;
+    }
+
+    applyTemplate(templateType) {
+        this.curvePoints = [];
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const points = 50;
+        
+        for (let i = 0; i < points; i++) {
+            const progress = i / (points - 1);
+            const x = progress * width;
+            let intensity;
+            
+            switch (templateType) {
+                case 'linear-up':
+                    intensity = progress;
+                    break;
+                case 'linear-down':
+                    intensity = 1 - progress;
+                    break;
+                case 'exponential-up':
+                    intensity = Math.pow(progress, 2);
+                    break;
+                case 'exponential-down':
+                    intensity = Math.pow(1 - progress, 2);
+                    break;
+                case 'sine':
+                    intensity = (Math.sin(progress * Math.PI * 2) + 1) / 2;
+                    break;
+                case 'pulse':
+                    intensity = Math.floor(progress * 10) % 2 === 0 ? 0.8 : 0.2;
+                    break;
+                case 'sawtooth':
+                    intensity = (progress * 4) % 1;
+                    break;
+                case 'triangle':
+                    intensity = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+                    break;
+                default:
+                    continue;
+            }
+            
+            const y = height - (intensity * height);
+            this.curvePoints.push({ x, y });
+        }
+        
+        this.redrawCurve();
+        this.generatePreview();
+    }
+
+    generatePreview() {
+        if (this.curvePoints.length < 2) {
+            document.getElementById('stepCount').textContent = '0';
+            return;
+        }
+        
+        const steps = this.sampleCurve(this.resolution);
+        document.getElementById('stepCount').textContent = steps.length;
+        
+        // Update timeline preview
+        this.renderTimeline(steps);
+        
+        // Update stats
+        this.updateStats(steps);
+    }
+
+    sampleCurve(numSamples) {
+        if (this.curvePoints.length < 2) return [];
+        
+        const steps = [];
+        const width = this.canvas.width;
+        
+        for (let i = 0; i < numSamples; i++) {
+            const targetX = (i / numSamples) * width;
+            const intensity = this.getIntensityAtX(targetX);
+            
+            steps.push({
+                type: this.currentAction,
+                intensity: Math.round(intensity),
+                duration: this.stepDuration,
+                delay: this.stepDelay
+            });
+        }
+        
+        return steps;
+    }
+
+    getIntensityAtX(targetX) {
+        // Find the closest points
+        let closestPoint = null;
+        let minDist = Infinity;
+        
+        for (const point of this.curvePoints) {
+            const dist = Math.abs(point.x - targetX);
+            if (dist < minDist) {
+                minDist = dist;
+                closestPoint = point;
+            }
+        }
+        
+        if (!closestPoint) return 50;
+        
+        // Convert Y to intensity
+        const rawIntensity = (1 - closestPoint.y / this.canvas.height) * 100;
+        
+        // Apply min/max constraints
+        const intensity = this.minIntensity + (rawIntensity / 100) * (this.maxIntensity - this.minIntensity);
+        
+        return Math.max(1, Math.min(100, Math.round(intensity)));
+    }
+
+    renderTimeline(steps) {
+        const container = document.getElementById('curveTimelinePreview');
+        container.innerHTML = '';
+        
+        if (steps.length === 0) {
+            container.innerHTML = '<div class="timeline-empty">Draw on the canvas above to create your pattern</div>';
+            return;
+        }
+        
+        steps.forEach((step, index) => {
+            const stepEl = document.createElement('div');
+            stepEl.className = `timeline-step timeline-step-${step.type}`;
+            stepEl.style.height = `${step.intensity}%`;
+            stepEl.title = `Step ${index + 1}: ${step.type} ${step.intensity}% for ${step.duration}ms`;
+            
+            stepEl.innerHTML = `
+                <div class="timeline-step-icon">${this.getActionIcon(step.type)}</div>
+                <div class="timeline-step-intensity">${step.intensity}%</div>
+                <div class="timeline-step-duration">${step.duration}ms</div>
+            `;
+            
+            container.appendChild(stepEl);
         });
     }
 
+    getActionIcon(type) {
+        switch (type) {
+            case 'shock': return '⚡';
+            case 'vibrate': return '📳';
+            case 'sound': return '🔔';
+            case 'pause': return '⏸️';
+            default: return '●';
+        }
+    }
+
+    updateStats(steps) {
+        const totalDuration = steps.reduce((sum, s) => sum + s.duration + s.delay, 0);
+        const avgIntensity = Math.round(steps.reduce((sum, s) => sum + s.intensity, 0) / steps.length);
+        const peakIntensity = Math.max(...steps.map(s => s.intensity));
+        
+        document.getElementById('totalDuration').textContent = totalDuration;
+        document.getElementById('avgIntensity').textContent = avgIntensity;
+        document.getElementById('peakIntensity').textContent = peakIntensity;
+    }
+
+    clear() {
+        this.curvePoints = [];
+        this.drawGrid();
+        document.getElementById('curveTimelinePreview').innerHTML = '<div class="timeline-empty">Draw on the canvas above to create your pattern</div>';
+        document.getElementById('stepCount').textContent = '0';
+        document.getElementById('totalDuration').textContent = '0';
+        document.getElementById('avgIntensity').textContent = '0';
+        document.getElementById('peakIntensity').textContent = '0';
+    }
+
+    getPattern() {
+        const steps = this.sampleCurve(this.resolution);
+        return {
+            name: this.patternName || 'Custom Curve Pattern',
+            description: `Generated from visual curve editor (${this.currentAction})`,
+            steps: steps
+        };
+    }
+}
+
+// Global curve editor instance
+let curveEditor = null;
+
+function openCurveEditor() {
+    const modal = document.getElementById('curveEditorModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    
+    // Initialize curve editor if not already
+    if (!curveEditor) {
+        curveEditor = new CurveEditor();
+    } else {
+        curveEditor.clear();
+    }
+    
+    // Load current settings
+    document.getElementById('curvePatternName').value = '';
+    document.getElementById('minIntensity').value = 10;
+    document.getElementById('maxIntensity').value = 80;
+    document.getElementById('stepDurationSlider').value = 500;
+    document.getElementById('stepDelaySlider').value = 100;
+    document.getElementById('resolutionSlider').value = 20;
+    
+    updateCurveEditorUI();
+}
+
+function closeCurveEditor() {
+    const modal = document.getElementById('curveEditorModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function updateCurveEditorUI() {
+    // Update slider values
+    document.getElementById('minIntensityValue').textContent = document.getElementById('minIntensity').value + '%';
+    document.getElementById('maxIntensityValue').textContent = document.getElementById('maxIntensity').value + '%';
+    document.getElementById('stepDurationValue').textContent = document.getElementById('stepDurationSlider').value + 'ms';
+    document.getElementById('stepDelayValue').textContent = document.getElementById('stepDelaySlider').value + 'ms';
+    document.getElementById('resolutionValue').textContent = document.getElementById('resolutionSlider').value;
+    
+    if (curveEditor) {
+        curveEditor.minIntensity = parseInt(document.getElementById('minIntensity').value);
+        curveEditor.maxIntensity = parseInt(document.getElementById('maxIntensity').value);
+        curveEditor.stepDuration = parseInt(document.getElementById('stepDurationSlider').value);
+        curveEditor.stepDelay = parseInt(document.getElementById('stepDelaySlider').value);
+        curveEditor.resolution = parseInt(document.getElementById('resolutionSlider').value);
+        curveEditor.generatePreview();
+    }
+}
+
+function saveCurvePattern() {
+    if (!curveEditor || curveEditor.curvePoints.length < 2) {
+        showNotification('Please draw a curve first', 'error');
+        return;
+    }
+    
+    const patternName = document.getElementById('curvePatternName').value.trim();
+    if (!patternName) {
+        showNotification('Please enter a pattern name', 'error');
+        return;
+    }
+    
+    curveEditor.patternName = patternName;
+    const pattern = curveEditor.getPattern();
+    
+    // Add to pattern modal
+    currentPatternSteps = pattern.steps;
+    currentPatternName = pattern.name;
+    currentPatternDescription = pattern.description;
+    
+    // Close curve editor and open pattern modal to save
+    closeCurveEditor();
+    openPatternModal('add');
+    
+    // Populate the pattern modal
+    document.getElementById('patternName').value = pattern.name;
+    document.getElementById('patternDescription').value = pattern.description;
     renderPatternSteps();
-    showNotification('Pattern generated from curve', 'success');
+    
+    showNotification('Pattern loaded into editor. Click Save to store it.', 'success');
+}
+
+function previewCurvePattern() {
+    if (!curveEditor || curveEditor.curvePoints.length < 2) {
+        showNotification('Please draw a curve first', 'error');
+        return;
+    }
+    
+    const pattern = curveEditor.getPattern();
+    
+    // Show preview notification
+    showNotification(`Preview: ${pattern.steps.length} steps, ${pattern.steps.reduce((s, step) => s + step.duration + step.delay, 0)}ms total`, 'info');
+}
+
+function applyCurveTemplate() {
+    const template = document.getElementById('curveTemplate').value;
+    if (template === 'custom') {
+        showNotification('Select a template type first', 'info');
+        return;
+    }
+    
+    if (curveEditor) {
+        curveEditor.applyTemplate(template);
+    }
+}
+
+function generateFromCurve() {
+    // Redirect to the new visual curve editor
+    openCurveEditor();
 }
 
 // ====================================================================
@@ -2206,6 +2649,118 @@ function initializeEventDelegation() {
         });
     }
 
+    // ====================================================================
+    // CURVE EDITOR EVENT LISTENERS
+    // ====================================================================
+
+    const openCurveEditorBtn = document.getElementById('openCurveEditor');
+    if (openCurveEditorBtn) {
+        openCurveEditorBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openCurveEditor();
+        });
+    }
+
+    const closeCurveEditorBtn = document.getElementById('closeCurveEditor');
+    if (closeCurveEditorBtn) {
+        closeCurveEditorBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeCurveEditor();
+        });
+    }
+
+    const cancelCurveEditorBtn = document.getElementById('cancelCurveEditor');
+    if (cancelCurveEditorBtn) {
+        cancelCurveEditorBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeCurveEditor();
+        });
+    }
+
+    const saveCurvePatternBtn = document.getElementById('saveCurvePattern');
+    if (saveCurvePatternBtn) {
+        saveCurvePatternBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            saveCurvePattern();
+        });
+    }
+
+    const previewCurvePatternBtn = document.getElementById('previewCurvePattern');
+    if (previewCurvePatternBtn) {
+        previewCurvePatternBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            previewCurvePattern();
+        });
+    }
+
+    const applyTemplateBtn = document.getElementById('applyTemplate');
+    if (applyTemplateBtn) {
+        applyTemplateBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            applyCurveTemplate();
+        });
+    }
+
+    const clearCanvasBtn = document.getElementById('clearCanvas');
+    if (clearCanvasBtn) {
+        clearCanvasBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (curveEditor) curveEditor.clear();
+        });
+    }
+
+    const undoStepBtn = document.getElementById('undoStep');
+    if (undoStepBtn) {
+        undoStepBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (curveEditor && curveEditor.curvePoints.length > 0) {
+                // Remove last 10% of points
+                const removeCount = Math.max(1, Math.floor(curveEditor.curvePoints.length * 0.1));
+                curveEditor.curvePoints.splice(-removeCount);
+                curveEditor.redrawCurve();
+                curveEditor.generatePreview();
+            }
+        });
+    }
+
+    // Action type buttons
+    document.querySelectorAll('.btn-action').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.btn-action').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (curveEditor) {
+                curveEditor.currentAction = btn.dataset.action;
+            }
+        });
+    });
+
+    // Slider event listeners for curve editor
+    const minIntensitySlider = document.getElementById('minIntensity');
+    if (minIntensitySlider) {
+        minIntensitySlider.addEventListener('input', updateCurveEditorUI);
+    }
+
+    const maxIntensitySlider = document.getElementById('maxIntensity');
+    if (maxIntensitySlider) {
+        maxIntensitySlider.addEventListener('input', updateCurveEditorUI);
+    }
+
+    const stepDurationSlider = document.getElementById('stepDurationSlider');
+    if (stepDurationSlider) {
+        stepDurationSlider.addEventListener('input', updateCurveEditorUI);
+    }
+
+    const stepDelaySlider = document.getElementById('stepDelaySlider');
+    if (stepDelaySlider) {
+        stepDelaySlider.addEventListener('input', updateCurveEditorUI);
+    }
+
+    const resolutionSlider = document.getElementById('resolutionSlider');
+    if (resolutionSlider) {
+        resolutionSlider.addEventListener('input', updateCurveEditorUI);
+    }
+
     // Modal buttons
     const closeMappingModalBtn = document.getElementById('closeMappingModal');
     if (closeMappingModalBtn) {
@@ -2676,7 +3231,13 @@ window.openShock = {
     saveSafetyConfig,
     triggerEmergencyStop,
     clearEmergencyStop,
-    switchTab
+    switchTab,
+    // Curve Editor functions
+    openCurveEditor,
+    closeCurveEditor,
+    saveCurvePattern,
+    previewCurvePattern,
+    applyCurveTemplate
 };
 
 console.log('[OpenShock] Plugin UI loaded and ready');
