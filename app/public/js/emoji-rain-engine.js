@@ -232,15 +232,14 @@ function handleCollision(event) {
 function triggerBounceEffect(emoji) {
     if (!emoji.element || config.effect === 'none') return;
     
-    // Both 'bounce' and 'bubble' use the same bubbleBlop animation
+    // Both 'bounce' and 'bubble' effects use the same bubbleBlop animation
     // The difference is in the physics settings, not the animation
-    const animationName = 'bubbleBlop';
     
     // Reset animation to trigger it again properly
     emoji.element.style.animation = 'none';
     // Force reflow
     void emoji.element.offsetWidth;
-    emoji.element.style.animation = `${animationName} 0.4s ease-out`;
+    emoji.element.style.animation = 'bubbleBlop 0.4s ease-out';
     
     // Clean up animation after it completes
     if (emoji.bounceAnimationTimeout) {
