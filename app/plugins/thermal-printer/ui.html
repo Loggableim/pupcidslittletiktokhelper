@@ -1,111 +1,328 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thermal Printer - Configuration</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/themes.css">
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body {
-            background-color: #1a1a2e;
-            color: #eaeaea;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+        }
+
         .container {
             max-width: 900px;
-            margin-top: 30px;
+            margin: 0 auto;
         }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--color-bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--color-border);
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
         .card {
-            background-color: #16213e;
-            border: 1px solid #0f3460;
-            margin-bottom: 20px;
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
         }
+
         .card-header {
-            background-color: #0f3460;
-            border-bottom: 1px solid #533483;
+            background: var(--color-bg-secondary);
+            border-bottom: 1px solid var(--color-border);
+            padding: 1rem 1.5rem;
         }
-        .status-badge {
-            font-size: 14px;
-            padding: 8px 15px;
+
+        .card-header h5 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .btn-primary {
-            background-color: #533483;
-            border-color: #533483;
+
+        .card-body {
+            padding: 1.5rem;
         }
-        .btn-primary:hover {
-            background-color: #6a4199;
-            border-color: #6a4199;
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
-        .form-label {
-            font-weight: 500;
-        }
+
         .stats-box {
-            background-color: #0f3460;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 10px;
+            background: var(--color-bg-tertiary);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
         }
+
         .stats-label {
-            color: #999;
-            font-size: 12px;
+            color: var(--color-text-muted);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
         }
+
         .stats-value {
-            color: #eaeaea;
-            font-size: 24px;
-            font-weight: bold;
+            color: var(--color-text-primary);
+            font-size: 1.5rem;
+            font-weight: 700;
         }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: var(--color-accent-success);
+            color: white;
+        }
+
+        .badge-warning {
+            background: var(--color-accent-warning);
+            color: white;
+        }
+
+        .badge-danger {
+            background: var(--color-accent-danger);
+            color: white;
+        }
+
+        .badge-secondary {
+            background: var(--color-bg-tertiary);
+            color: var(--color-text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .form-control,
+        .form-select {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            background: var(--color-input-bg);
+            border: 1px solid var(--color-input-border);
+            border-radius: 8px;
+            color: var(--color-input-text);
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--color-input-focus);
+            box-shadow: 0 0 0 3px var(--color-active-bg);
+        }
+
+        .form-control::placeholder {
+            color: var(--color-input-placeholder);
+        }
+
+        .form-text {
+            display: block;
+            margin-top: 0.375rem;
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .form-check-input {
+            width: 1.125rem;
+            height: 1.125rem;
+            margin-right: 0.625rem;
+            cursor: pointer;
+            accent-color: var(--color-accent-primary);
+        }
+
+        .form-check-label {
+            color: var(--color-text-primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .form-switch .form-check-input {
+            width: 2.5rem;
+            height: 1.25rem;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%28255,255,255,1%29'/%3e%3c/svg%3e");
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--color-accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: var(--color-accent-success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background: var(--color-btn-secondary-bg);
+            color: var(--color-btn-secondary-text);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-btn-secondary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .section-divider {
+            border: none;
+            border-top: 1px solid var(--color-border);
+            margin: 1.5rem 0;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        /* Icons using simple unicode symbols */
+        .icon-printer::before { content: "🖨️ "; }
+        .icon-activity::before { content: "📊 "; }
+        .icon-settings::before { content: "⚙️ "; }
+        .icon-plug::before { content: "🔌 "; }
+        .icon-filter::before { content: "🔍 "; }
+        .icon-format::before { content: "📝 "; }
+        .icon-sliders::before { content: "🎚️ "; }
+        .icon-save::before { content: "💾 "; }
+        .icon-test::before { content: "▶️ "; }
+        .icon-back::before { content: "← "; }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1><i class="bi bi-printer"></i> Thermal Printer Configuration</h1>
+        <div class="header">
+            <h1><span class="icon-printer"></span>Thermal Printer Configuration</h1>
             <a href="/" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Dashboard
+                <span class="icon-back"></span>Back to Dashboard
             </a>
         </div>
 
         <!-- Status Card -->
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-activity"></i> Status</h5>
+                <h5><span class="icon-activity"></span>Status</h5>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="stats-box">
-                            <div class="stats-label">Connection Status</div>
-                            <div class="stats-value" id="connection-status">
-                                <span class="badge status-badge bg-secondary">Loading...</span>
-                            </div>
+                <div class="stats-grid">
+                    <div class="stats-box">
+                        <div class="stats-label">Connection Status</div>
+                        <div class="stats-value" id="connection-status">
+                            <span class="status-badge badge-secondary">Loading...</span>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="stats-box">
-                            <div class="stats-label">Queue Size</div>
-                            <div class="stats-value" id="queue-size">0</div>
-                        </div>
+                    <div class="stats-box">
+                        <div class="stats-label">Queue Size</div>
+                        <div class="stats-value" id="queue-size">0</div>
                     </div>
                 </div>
-                <div class="row mt-3">
-                    <div class="col-md-4">
-                        <div class="stats-box">
-                            <div class="stats-label">Printed Jobs</div>
-                            <div class="stats-value" id="printed-jobs">0</div>
-                        </div>
+                <div class="stats-grid">
+                    <div class="stats-box">
+                        <div class="stats-label">Printed Jobs</div>
+                        <div class="stats-value" id="printed-jobs">0</div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="stats-box">
-                            <div class="stats-label">Failed Jobs</div>
-                            <div class="stats-value" id="failed-jobs">0</div>
-                        </div>
+                    <div class="stats-box">
+                        <div class="stats-label">Failed Jobs</div>
+                        <div class="stats-value" id="failed-jobs">0</div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="stats-box">
-                            <div class="stats-label">Uptime</div>
-                            <div class="stats-value" id="uptime">0s</div>
-                        </div>
+                    <div class="stats-box">
+                        <div class="stats-label">Uptime</div>
+                        <div class="stats-value" id="uptime">0s</div>
                     </div>
                 </div>
             </div>
@@ -114,12 +331,12 @@
         <!-- Configuration Form -->
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-gear"></i> Configuration</h5>
+                <h5><span class="icon-settings"></span>Configuration</h5>
             </div>
             <div class="card-body">
                 <form id="config-form">
                     <!-- Enable/Disable -->
-                    <div class="mb-3">
+                    <div class="form-group">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="enabled">
                             <label class="form-check-label" for="enabled">
@@ -128,12 +345,12 @@
                         </div>
                     </div>
 
-                    <hr>
+                    <hr class="section-divider">
 
                     <!-- Printer Connection -->
-                    <h6 class="mb-3"><i class="bi bi-plug"></i> Printer Connection</h6>
+                    <h6 class="section-title"><span class="icon-plug"></span>Printer Connection</h6>
                     
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="printerType" class="form-label">Printer Type</label>
                         <select class="form-select" id="printerType">
                             <option value="usb">USB</option>
@@ -143,36 +360,36 @@
 
                     <!-- USB Settings -->
                     <div id="usb-settings">
-                        <div class="mb-3">
+                        <div class="form-group">
                             <label for="usbVendorId" class="form-label">USB Vendor ID</label>
                             <input type="text" class="form-control" id="usbVendorId" placeholder="0x04b8">
-                            <small class="form-text text-muted">e.g., 0x04b8 for Epson (leave empty for auto-detect)</small>
+                            <small class="form-text">e.g., 0x04b8 for Epson (leave empty for auto-detect)</small>
                         </div>
-                        <div class="mb-3">
+                        <div class="form-group">
                             <label for="usbProductId" class="form-label">USB Product ID</label>
                             <input type="text" class="form-control" id="usbProductId" placeholder="0x0e15">
-                            <small class="form-text text-muted">e.g., 0x0e15 for TM-T20 (leave empty for auto-detect)</small>
+                            <small class="form-text">e.g., 0x0e15 for TM-T20 (leave empty for auto-detect)</small>
                         </div>
                     </div>
 
                     <!-- Network Settings -->
                     <div id="network-settings" style="display: none;">
-                        <div class="mb-3">
+                        <div class="form-group">
                             <label for="networkHost" class="form-label">Network Host/IP</label>
                             <input type="text" class="form-control" id="networkHost" placeholder="192.168.1.100">
                         </div>
-                        <div class="mb-3">
+                        <div class="form-group">
                             <label for="networkPort" class="form-label">Network Port</label>
                             <input type="number" class="form-control" id="networkPort" placeholder="9100" min="1" max="65535">
                         </div>
                     </div>
 
-                    <hr>
+                    <hr class="section-divider">
 
                     <!-- Event Filters -->
-                    <h6 class="mb-3"><i class="bi bi-filter"></i> Event Filters</h6>
+                    <h6 class="section-title"><span class="icon-filter"></span>Event Filters</h6>
                     
-                    <div class="mb-3">
+                    <div class="form-group">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="printChats">
                             <label class="form-check-label" for="printChats">Print Chat Messages</label>
@@ -191,13 +408,13 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="minCoinsToPrint" class="form-label">Minimum Coins to Print (Gifts)</label>
                         <input type="number" class="form-control" id="minCoinsToPrint" min="0">
-                        <small class="form-text text-muted">Only print gifts with at least this many coins (saves paper)</small>
+                        <small class="form-text">Only print gifts with at least this many coins (saves paper)</small>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="ignoreBotCommands">
                             <label class="form-check-label" for="ignoreBotCommands">
@@ -206,25 +423,25 @@
                         </div>
                     </div>
 
-                    <hr>
+                    <hr class="section-divider">
 
                     <!-- Formatting -->
-                    <h6 class="mb-3"><i class="bi bi-align-left"></i> Formatting</h6>
+                    <h6 class="section-title"><span class="icon-format"></span>Formatting</h6>
                     
-                    <div class="mb-3">
+                    <div class="form-group">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="autoCutPaper">
                             <label class="form-check-label" for="autoCutPaper">Auto-cut paper after each event</label>
                         </div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="width" class="form-label">Paper Width (characters)</label>
                         <input type="number" class="form-control" id="width" min="32" max="80">
-                        <small class="form-text text-muted">Typical: 48 for 80mm paper, 32 for 58mm paper</small>
+                        <small class="form-text">Typical: 48 for 80mm paper, 32 for 58mm paper</small>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="encoding" class="form-label">Character Encoding</label>
                         <select class="form-select" id="encoding">
                             <option value="GB18030">GB18030 (Default)</option>
@@ -233,39 +450,39 @@
                         </select>
                     </div>
 
-                    <hr>
+                    <hr class="section-divider">
 
                     <!-- Advanced Settings -->
-                    <h6 class="mb-3"><i class="bi bi-sliders"></i> Advanced Settings</h6>
+                    <h6 class="section-title"><span class="icon-sliders"></span>Advanced Settings</h6>
                     
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="reconnectAttempts" class="form-label">Reconnect Attempts</label>
                         <input type="number" class="form-control" id="reconnectAttempts" min="0">
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="reconnectDelay" class="form-label">Reconnect Delay (ms)</label>
                         <input type="number" class="form-control" id="reconnectDelay" min="0">
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="queueMaxSize" class="form-label">Max Queue Size</label>
                         <input type="number" class="form-control" id="queueMaxSize" min="1">
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="printDelay" class="form-label">Print Delay (ms)</label>
                         <input type="number" class="form-control" id="printDelay" min="0">
-                        <small class="form-text text-muted">Delay between print jobs (prevents overloading)</small>
+                        <small class="form-text">Delay between print jobs (prevents overloading)</small>
                     </div>
 
                     <!-- Buttons -->
-                    <div class="d-flex justify-content-between mt-4">
+                    <div class="button-group">
                         <button type="button" class="btn btn-success" id="test-print-btn">
-                            <i class="bi bi-play-circle"></i> Test Print
+                            <span class="icon-test"></span>Test Print
                         </button>
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Configuration
+                            <span class="icon-save"></span>Save Configuration
                         </button>
                     </div>
                 </form>
@@ -273,8 +490,6 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
 
@@ -336,11 +551,11 @@
             // Connection Status
             const statusEl = document.getElementById('connection-status');
             if (status.isConnected) {
-                statusEl.innerHTML = '<span class="badge status-badge bg-success">Connected</span>';
+                statusEl.innerHTML = '<span class="status-badge badge-success">Connected</span>';
             } else if (status.isReconnecting) {
-                statusEl.innerHTML = '<span class="badge status-badge bg-warning">Reconnecting...</span>';
+                statusEl.innerHTML = '<span class="status-badge badge-warning">Reconnecting...</span>';
             } else {
-                statusEl.innerHTML = '<span class="badge status-badge bg-danger">Disconnected</span>';
+                statusEl.innerHTML = '<span class="status-badge badge-danger">Disconnected</span>';
             }
             
             // Queue Size
