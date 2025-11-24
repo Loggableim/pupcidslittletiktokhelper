@@ -2,64 +2,45 @@ package main
 
 import (
 	"fmt"
+	"html/template"
+	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
-	"syscall"
-)
+	"time"
 
-const (
-	colorReset  = "\033[0m"
-	colorCyan   = "\033[36m"
-	colorGreen  = "\033[32m"
-	colorYellow = "\033[33m"
-	colorRed    = "\033[31m"
-	colorBold   = "\033[1m"
+	"github.com/pkg/browser"
 )
 
 type Launcher struct {
 	nodePath string
 	appDir   string
+	progress int
+	status   string
+	clients  map[chan string]bool
 }
 
 func NewLauncher() *Launcher {
-	return &Launcher{}
-}
-
-func (l *Launcher) printHeader() {
-	fmt.Println(colorCyan + colorBold)
-	fmt.Println("╔════════════════════════════════════════════════════╗")
-	fmt.Println("║     TikTok Stream Tool - Grafischer Launcher      ║")
-	fmt.Println("╚════════════════════════════════════════════════════╝")
-	fmt.Println(colorReset)
-}
-
-func (l *Launcher) drawProgressBar(percent int, status string) {
-	barWidth := 50
-	filled := int(float64(barWidth) * float64(percent) / 100.0)
-	empty := barWidth - filled
-	
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", empty)
-	
-	// Clear previous lines
-	fmt.Print("\033[2K\r") // Clear current line
-	fmt.Print("\033[1A\033[2K\r") // Move up and clear
-	fmt.Print("\033[1A\033[2K\r") // Move up and clear
-	
-	// Print status
-	fmt.Printf("%s%s%s\n", colorBold, status, colorReset)
-	
-	// Print progress bar
-	if percent < 50 {
-		fmt.Printf("[%s%s%s] %3d%%\n", colorYellow, bar, colorReset, percent)
-	} else if percent < 100 {
-		fmt.Printf("[%s%s%s] %3d%%\n", colorCyan, bar, colorReset, percent)
-	} else {
-		fmt.Printf("[%s%s%s] %3d%%\n", colorGreen, bar, colorReset, percent)
+	return &Launcher{
+		status:   "Initialisiere...",
+		progress: 0,
+		clients:  make(map[chan string]bool),
 	}
-	fmt.Println()
+}
+
+func (l *Launcher) updateProgress(value int, status string) {
+	l.progress = value
+	l.status = status
+	
+	msg := fmt.Sprintf(`{"progress": %d, "status": "%s"}`, value, status)
+	for client := range l.clients {
+		select {
+		case client <- msg:
+		default:
+		}
+	}
 }
 
 func (l *Launcher) checkNodeJS() error {
@@ -77,7 +58,7 @@ func (l *Launcher) getNodeVersion() string {
 	if err != nil {
 		return "unknown"
 	}
-	return strings.TrimSpace(string(output))
+	return string(output)
 }
 
 func (l *Launcher) checkNodeModules() bool {
@@ -98,8 +79,6 @@ func (l *Launcher) installDependencies() error {
 	}
 	
 	cmd.Dir = l.appDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 	
 	err := cmd.Run()
 	if err != nil {
@@ -117,114 +96,240 @@ func (l *Launcher) startTool() error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	
-	return cmd.Run()
+	return cmd.Start()
 }
 
-func (l *Launcher) run() error {
-	// Initial spacing
-	fmt.Println("\n\n")
+func (l *Launcher) runLauncher() {
+	time.Sleep(1 * time.Second) // Give browser time to load
 	
 	// Phase 1: Check Node.js (0-20%)
-	l.drawProgressBar(0, "Prüfe Node.js Installation...")
+	l.updateProgress(0, "Prüfe Node.js Installation...")
+	time.Sleep(500 * time.Millisecond)
 	
 	err := l.checkNodeJS()
 	if err != nil {
-		l.drawProgressBar(0, colorRed+"FEHLER: Node.js ist nicht installiert!"+colorReset)
-		fmt.Println()
-		fmt.Println(colorYellow + "Bitte installiere Node.js von:" + colorReset)
-		fmt.Println("https://nodejs.org")
-		fmt.Println()
-		fmt.Println(colorYellow + "Empfohlen: Node.js LTS Version 18 oder 20" + colorReset)
-		fmt.Println()
-		return err
+		l.updateProgress(0, "FEHLER: Node.js ist nicht installiert!")
+		time.Sleep(5 * time.Second)
+		os.Exit(1)
 	}
 	
-	l.drawProgressBar(10, "Node.js gefunden...")
+	l.updateProgress(10, "Node.js gefunden...")
+	time.Sleep(300 * time.Millisecond)
 	
 	version := l.getNodeVersion()
-	l.drawProgressBar(20, fmt.Sprintf("Node.js Version: %s", version))
+	l.updateProgress(20, fmt.Sprintf("Node.js Version: %s", version))
+	time.Sleep(300 * time.Millisecond)
 	
 	// Phase 2: Find directories (20-30%)
-	l.drawProgressBar(25, "Prüfe App-Verzeichnis...")
+	l.updateProgress(25, "Prüfe App-Verzeichnis...")
+	time.Sleep(300 * time.Millisecond)
 	
 	if _, err := os.Stat(l.appDir); os.IsNotExist(err) {
-		l.drawProgressBar(25, colorRed+"FEHLER: app Verzeichnis nicht gefunden"+colorReset)
-		fmt.Println()
-		fmt.Printf("%sApp-Verzeichnis erwartet in: %s%s\n", colorYellow, l.appDir, colorReset)
-		fmt.Println()
-		return err
+		l.updateProgress(25, "FEHLER: app Verzeichnis nicht gefunden")
+		time.Sleep(5 * time.Second)
+		os.Exit(1)
 	}
 	
-	l.drawProgressBar(30, "App-Verzeichnis gefunden...")
+	l.updateProgress(30, "App-Verzeichnis gefunden...")
+	time.Sleep(300 * time.Millisecond)
 	
 	// Phase 3: Check and install dependencies (30-80%)
-	l.drawProgressBar(30, "Prüfe Abhängigkeiten...")
+	l.updateProgress(30, "Prüfe Abhängigkeiten...")
+	time.Sleep(300 * time.Millisecond)
 	
 	if !l.checkNodeModules() {
-		l.drawProgressBar(40, "Installiere Abhängigkeiten...")
-		l.drawProgressBar(45, "Dies kann beim ersten Start einige Minuten dauern...")
+		l.updateProgress(40, "Installiere Abhängigkeiten...")
+		time.Sleep(500 * time.Millisecond)
+		l.updateProgress(45, "Dies kann beim ersten Start einige Minuten dauern...")
 		
 		err = l.installDependencies()
 		if err != nil {
-			l.drawProgressBar(45, colorRed+fmt.Sprintf("FEHLER: %v", err)+colorReset)
-			fmt.Println()
-			return err
+			l.updateProgress(45, fmt.Sprintf("FEHLER: %v", err))
+			time.Sleep(5 * time.Second)
+			os.Exit(1)
 		}
 		
-		l.drawProgressBar(80, "Installation abgeschlossen!")
+		l.updateProgress(80, "Installation abgeschlossen!")
 	} else {
-		l.drawProgressBar(80, "Abhängigkeiten bereits installiert...")
+		l.updateProgress(80, "Abhängigkeiten bereits installiert...")
 	}
+	time.Sleep(300 * time.Millisecond)
 	
 	// Phase 4: Start tool (80-100%)
-	l.drawProgressBar(90, "Starte Tool...")
-	l.drawProgressBar(100, colorGreen+"Tool wird gestartet..."+colorReset)
-	
-	fmt.Println()
-	fmt.Println(colorCyan + "═══════════════════════════════════════════════════" + colorReset)
-	fmt.Println()
+	l.updateProgress(90, "Starte Tool...")
+	time.Sleep(500 * time.Millisecond)
+	l.updateProgress(100, "Tool wird gestartet...")
+	time.Sleep(1 * time.Second)
 	
 	// Start the tool
-	return l.startTool()
+	err = l.startTool()
+	if err != nil {
+		l.updateProgress(100, fmt.Sprintf("FEHLER: %v", err))
+		time.Sleep(5 * time.Second)
+		os.Exit(1)
+	}
+	
+	// Close the launcher after a delay
+	time.Sleep(2 * time.Second)
+	os.Exit(0)
 }
 
 func main() {
-	// Enable ANSI color support on Windows 10+
-	if runtime.GOOS == "windows" {
-		kernel32 := syscall.NewLazyDLL("kernel32.dll")
-		setConsoleMode := kernel32.NewProc("SetConsoleMode")
-		getStdHandle := kernel32.NewProc("GetStdHandle")
-		
-		handle, _, _ := getStdHandle.Call(uintptr(^uint32(10))) // STD_OUTPUT_HANDLE (-11 as unsigned)
-		setConsoleMode.Call(handle, 0x0001|0x0002|0x0004)      // ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-	}
-	
 	launcher := NewLauncher()
 	
 	// Get executable directory
 	exePath, err := os.Executable()
 	if err != nil {
-		fmt.Printf("%sFehler: Kann Programmverzeichnis nicht ermitteln: %v%s\n", colorRed, err, colorReset)
-		pause()
-		os.Exit(1)
+		log.Fatal("Kann Programmverzeichnis nicht ermitteln:", err)
 	}
 	
 	exeDir := filepath.Dir(exePath)
 	launcher.appDir = filepath.Join(exeDir, "app")
+	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.png")
 	
-	// Print header
-	launcher.printHeader()
+	// Setup HTTP server
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		tmpl := template.Must(template.New("index").Parse(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>TikTok Stream Tool - Launcher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 1536px;
+            height: 1024px;
+            background-image: url(/bg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-container {
+            position: absolute;
+            left: 50px;
+            bottom: 150px;
+            width: 650px;
+        }
+        
+        .status-text {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            font-family: Arial, sans-serif;
+        }
+        
+        .progress-bar-bg {
+            width: 100%;
+            height: 40px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00d4ff, #0099ff);
+            border-radius: 20px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-container">
+        <div class="status-text" id="status">Initialisiere...</div>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressBar">0%</div>
+        </div>
+    </div>
+    
+    <script>
+        const evtSource = new EventSource('/events');
+        
+        evtSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('status');
+            
+            progressBar.style.width = data.progress + '%';
+            progressBar.textContent = data.progress + '%';
+            statusText.textContent = data.status;
+        };
+    </script>
+</body>
+</html>
+`))
+		tmpl.Execute(w, nil)
+	})
+	
+	http.HandleFunc("/bg", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, bgImagePath)
+	})
+	
+	http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		
+		client := make(chan string, 10)
+		launcher.clients[client] = true
+		
+		// Send initial state
+		msg := fmt.Sprintf(`{"progress": %d, "status": "%s"}`, launcher.progress, launcher.status)
+		fmt.Fprintf(w, "data: %s\n\n", msg)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		
+		// Listen for updates
+		for {
+			select {
+			case msg := <-client:
+				fmt.Fprintf(w, "data: %s\n\n", msg)
+				if f, ok := w.(http.Flusher); ok {
+					f.Flush()
+				}
+			case <-r.Context().Done():
+				delete(launcher.clients, client)
+				return
+			}
+		}
+	})
+	
+	// Start HTTP server
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:58734", nil); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	
+	// Give server time to start
+	time.Sleep(500 * time.Millisecond)
+	
+	// Open browser
+	browser.OpenURL("http://127.0.0.1:58734")
 	
 	// Run launcher
-	err = launcher.run()
-	if err != nil {
-		pause()
-		os.Exit(1)
-	}
-}
-
-func pause() {
-	fmt.Println()
-	fmt.Print("Drücke Enter zum Beenden...")
-	fmt.Scanln()
+	go launcher.runLauncher()
+	
+	// Keep running
+	select {}
 }
