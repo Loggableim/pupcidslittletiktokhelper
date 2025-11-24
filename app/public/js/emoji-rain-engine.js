@@ -122,6 +122,16 @@ let performanceMode = 'normal'; // 'normal', 'reduced', 'minimal'
 function initPhysics() {
     canvasWidth = window.innerWidth;
     canvasHeight = window.innerHeight;
+    
+    // Ensure canvas dimensions are valid
+    if (canvasWidth <= 0 || isNaN(canvasWidth)) {
+        console.warn(`⚠️ Invalid canvasWidth: ${canvasWidth}, using 1920 as fallback`);
+        canvasWidth = 1920;
+    }
+    if (canvasHeight <= 0 || isNaN(canvasHeight)) {
+        console.warn(`⚠️ Invalid canvasHeight: ${canvasHeight}, using 1080 as fallback`);
+        canvasHeight = 1080;
+    }
 
     engine = Engine.create({
         enableSleeping: false
@@ -195,7 +205,7 @@ function createBoundaries() {
  * Handle collision events
  */
 function handleCollision(event) {
-    if (config.effect === 'none' || !config.bounce_enabled) return;
+    if (config.effect === 'none') return;
 
     event.pairs.forEach(pair => {
         if (pair.bodyA.label === 'ground' || pair.bodyB.label === 'ground') {
@@ -221,6 +231,9 @@ function handleCollision(event) {
  */
 function triggerBounceEffect(emoji) {
     if (!emoji.element || config.effect === 'none') return;
+    
+    // Both 'bounce' and 'bubble' effects use the same bubbleBlop animation
+    // The difference is in the physics settings, not the animation
     
     // Reset animation to trigger it again properly
     emoji.element.style.animation = 'none';
@@ -360,27 +373,29 @@ function applyPixelEffect(element) {
     let pixelFilter = '';
     
     if (config.pixel_enabled) {
-        // For images, use image-rendering
-        element.style.imageRendering = 'pixelated';
-        
-        // For text emojis, we need a different approach
-        // Use a combination of blur and contrast to create a pixelated effect
-        const pixelAmount = config.pixel_size || 4;
-        
-        // Constants for pixel effect tuning
-        const PIXEL_BLUR_MULTIPLIER = 0.5; // Adjust blur intensity based on pixel size
-        const PIXEL_CONTRAST = 2; // Contrast boost for pixelation effect
-        
-        // The blur creates the pixelation, we adjust based on pixel_size
-        const blurAmount = pixelAmount * PIXEL_BLUR_MULTIPLIER;
-        
-        // For text emojis, apply a subtle blur to simulate pixelation
-        if (!element.querySelector('img')) {
-            // Text emoji - apply filter-based pixelation
+        // For images, use image-rendering on the img element
+        const img = element.querySelector('img');
+        if (img) {
+            img.style.imageRendering = 'pixelated';
+        } else {
+            // For text emojis, apply filter-based pixelation
+            const pixelAmount = config.pixel_size || 4;
+            
+            // Constants for pixel effect tuning
+            const PIXEL_BLUR_MULTIPLIER = 0.5; // Adjust blur intensity based on pixel size
+            const PIXEL_CONTRAST = 2; // Contrast boost for pixelation effect
+            
+            // The blur creates the pixelation, we adjust based on pixel_size
+            const blurAmount = pixelAmount * PIXEL_BLUR_MULTIPLIER;
+            
             pixelFilter = `blur(${blurAmount}px) contrast(${PIXEL_CONTRAST})`;
         }
     } else {
-        element.style.imageRendering = '';
+        // Clear image-rendering when pixel mode is disabled
+        const img = element.querySelector('img');
+        if (img) {
+            img.style.imageRendering = '';
+        }
     }
     
     // Store the pixel filter for later combination
@@ -612,6 +627,21 @@ function spawnEmoji(emoji, x, y, size, username = null, color = null) {
         const minX = margin;
         const maxX = canvasWidth - margin;
         x = Math.max(minX, Math.min(maxX, x));
+    }
+    
+    // Ensure x and y are valid numbers
+    if (isNaN(x) || !isFinite(x)) {
+        console.error(`⚠️ [SPAWN] Invalid x position: ${x}, using canvasWidth/2`);
+        x = canvasWidth / 2;
+    }
+    if (isNaN(y) || !isFinite(y)) {
+        console.error(`⚠️ [SPAWN] Invalid y position: ${y}, using 0`);
+        y = 0;
+    }
+    
+    // Log spawn position only in debug mode
+    if (debugMode) {
+        console.log(`⚙️ [SPAWN] Spawning emoji at position (${x.toFixed(2)}, ${y.toFixed(2)}) with size ${size}`);
     }
 
     // Create physics body
@@ -885,15 +915,18 @@ function initSocket() {
     socket.on('emoji-rain:config-update', (data) => {
         if (data.config) {
             console.log('🔄 [CONFIG UPDATE] Received new config:', data.config);
+            console.log(`🔄 [CONFIG UPDATE] floor_enabled: ${data.config.floor_enabled}, wind_enabled: ${data.config.wind_enabled}`);
             
             // Store old values for comparison
             const oldGravity = config.physics_gravity_y;
             const oldFloorEnabled = config.floor_enabled;
             const oldBounceHeight = config.bounce_height;
+            const oldWindEnabled = config.wind_enabled;
             
             // Update config
             Object.assign(config, data.config);
             console.log('🔄 Config updated', config);
+            console.log(`🔄 [CONFIG UPDATE] After update - floor_enabled: ${config.floor_enabled}, wind_enabled: ${config.wind_enabled}`);
 
             if (engine) {
                 // Update gravity if changed
@@ -904,17 +937,29 @@ function initSocket() {
                 
                 // Update floor if changed
                 if (config.floor_enabled !== oldFloorEnabled) {
+                    console.log(`⚙️ [PHYSICS] Floor setting changed from ${oldFloorEnabled} to ${config.floor_enabled}`);
                     if (config.floor_enabled) {
                         if (!engine.world.bodies.includes(ground)) {
                             World.add(engine.world, ground);
-                            console.log('⚙️ [PHYSICS] Floor enabled');
+                            console.log('⚙️ [PHYSICS] Floor enabled - ground added to world');
+                        } else {
+                            console.log('⚠️ [PHYSICS] Floor already in world, skipping add');
                         }
                     } else {
                         if (engine.world.bodies.includes(ground)) {
                             World.remove(engine.world, ground);
-                            console.log('⚙️ [PHYSICS] Floor disabled');
+                            console.log('⚙️ [PHYSICS] Floor disabled - ground removed from world');
+                        } else {
+                            console.log('⚠️ [PHYSICS] Floor not in world, skipping remove');
                         }
                     }
+                }
+                
+                // Update wind
+                if (config.wind_enabled !== oldWindEnabled) {
+                    console.log(`⚙️ [PHYSICS] Wind setting changed from ${oldWindEnabled} to ${config.wind_enabled}`);
+                    // Wind force is calculated dynamically in calculateWindForce() based on config.wind_enabled
+                    // No additional physics update needed here
                 }
                 
                 // Update bounce/restitution if changed
