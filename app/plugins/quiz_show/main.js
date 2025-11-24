@@ -119,21 +119,24 @@ class QuizShowPlugin {
             
             // Migrate old database if exists
             const oldDbPath = path.join(__dirname, 'data', 'quiz_show.db');
-            if (fs.existsSync(oldDbPath) && !fs.existsSync(dbPath)) {
+            const oldDataDir = path.join(__dirname, 'data');
+            
+            if (fs.existsSync(oldDataDir) && !fs.existsSync(dbPath)) {
                 this.api.log('Migrating quiz show database to user folder...', 'info');
-                // Copy old database to new location
-                const oldDataDir = path.join(__dirname, 'data');
-                if (fs.existsSync(oldDataDir)) {
-                    const files = fs.readdirSync(oldDataDir);
-                    for (const file of files) {
+                // Copy only database files to new location for security
+                const files = fs.readdirSync(oldDataDir);
+                for (const file of files) {
+                    // Only migrate database files (.db, .db-shm, .db-wal)
+                    if (file.endsWith('.db') || file.endsWith('.db-shm') || file.endsWith('.db-wal')) {
                         const oldFilePath = path.join(oldDataDir, file);
                         const newFilePath = path.join(pluginDataDir, file);
                         if (!fs.existsSync(newFilePath)) {
                             fs.copyFileSync(oldFilePath, newFilePath);
+                            this.api.log(`Migrated ${file}`, 'info');
                         }
                     }
-                    this.api.log('Database migration completed', 'info');
                 }
+                this.api.log('Database migration completed', 'info');
             }
 
             // Initialize database with WAL mode for better concurrency
@@ -282,23 +285,33 @@ class QuizShowPlugin {
                 this.api.log('Removing temperature column from openai_config (not supported by GPT-5 models)...', 'info');
                 
                 // SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
-                this.db.exec(`
-                    CREATE TABLE openai_config_new (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
-                        api_key TEXT DEFAULT NULL,
-                        model TEXT DEFAULT 'gpt-5-mini',
-                        default_package_size INTEGER DEFAULT 10
-                    );
+                // Use a transaction for atomicity
+                try {
+                    this.db.exec('BEGIN TRANSACTION');
                     
-                    INSERT INTO openai_config_new (id, api_key, model, default_package_size)
-                    SELECT id, api_key, model, default_package_size FROM openai_config;
+                    this.db.exec(`
+                        CREATE TABLE openai_config_new (
+                            id INTEGER PRIMARY KEY CHECK (id = 1),
+                            api_key TEXT DEFAULT NULL,
+                            model TEXT DEFAULT 'gpt-5-mini',
+                            default_package_size INTEGER DEFAULT 10
+                        )
+                    `);
                     
-                    DROP TABLE openai_config;
+                    this.db.exec(`
+                        INSERT INTO openai_config_new (id, api_key, model, default_package_size)
+                        SELECT id, api_key, model, default_package_size FROM openai_config
+                    `);
                     
-                    ALTER TABLE openai_config_new RENAME TO openai_config;
-                `);
-                
-                this.api.log('Temperature column removed successfully', 'info');
+                    this.db.exec('DROP TABLE openai_config');
+                    this.db.exec('ALTER TABLE openai_config_new RENAME TO openai_config');
+                    
+                    this.db.exec('COMMIT');
+                    this.api.log('Temperature column removed successfully', 'info');
+                } catch (error) {
+                    this.db.exec('ROLLBACK');
+                    throw error;
+                }
             }
         } catch (error) {
             this.api.log('Error during schema migration: ' + error.message, 'warn');
