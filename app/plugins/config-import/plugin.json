@@ -6,6 +6,7 @@
   "author": "Pup Cid",
   "entry": "main.js",
   "enabled": true,
+  "type": "utility",
   "permissions": [
     "routes",
     "database"

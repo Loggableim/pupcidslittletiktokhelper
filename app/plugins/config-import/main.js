@@ -38,6 +38,11 @@ class ConfigImportPlugin {
      * Register API routes
      */
     registerRoutes() {
+        // Serve UI
+        this.api.registerRoute('GET', '/config-import/ui', (req, res) => {
+            res.sendFile(path.join(__dirname, 'ui.html'));
+        });
+
         // Validate path endpoint
         this.api.registerRoute('POST', '/api/config-import/validate', async (req, res) => {
             try {
