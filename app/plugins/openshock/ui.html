@@ -15,10 +15,15 @@
                 <h1>⚡ OpenShock Control Panel</h1>
                 <p class="text-muted header-subtitle">TikTok Live Integration mit OpenShock API</p>
             </div>
-            <div id="connection-status">
-                <div class="status-badge status-disconnected">
-                    <span class="status-dot"></span>
-                    <span>Getrennt</span>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <button id="headerEmergencyStop" class="btn btn-danger" title="Emergency Stop - Immediately stops all shocks and disables further commands">
+                    🛑 EMERGENCY STOP
+                </button>
+                <div id="connection-status">
+                    <div class="status-badge status-disconnected">
+                        <span class="status-dot"></span>
+                        <span>Getrennt</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -598,22 +603,30 @@
                         <div class="form-group">
                             <label class="form-label">Action Type</label>
                             <select class="form-select" id="stepType">
-                                <option value="shock">Shock</option>
-                                <option value="vibrate">Vibrate</option>
-                                <option value="sound">Sound</option>
-                                <option value="pause">Pause</option>
+                                <option value="shock">⚡ Shock</option>
+                                <option value="vibrate">📳 Vibrate</option>
+                                <option value="sound">🔔 Sound</option>
+                                <option value="pause">⏸️ Pause</option>
                             </select>
+                            <small class="form-help-text">Choose the type of action for this step</small>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="stepIntensityGroup">
                             <div class="slider-label">
                                 <span class="form-label">Intensity</span>
                                 <span class="slider-value" id="stepIntensityValue">50</span>
                             </div>
                             <input type="range" id="stepIntensity" min="1" max="100" value="50">
+                            <small class="form-help-text">Set the strength of the action (1-100%)</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Duration (ms)</label>
-                            <input type="number" class="form-input" id="stepDuration" value="500" min="100" step="100">
+                            <input type="number" class="form-input" id="stepDuration" value="500" min="100" max="30000" step="100">
+                            <small class="form-help-text">How long this step should last (100-30000 milliseconds)</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Delay After Step (ms)</label>
+                            <input type="number" class="form-input" id="stepDelay" value="0" min="0" max="10000" step="100">
+                            <small class="form-help-text">Optional delay before the next step (0-10000 milliseconds)</small>
                         </div>
                         <div class="btn-group">
                             <button class="btn btn-primary btn-sm" id="saveStep">💾 Save Step</button>

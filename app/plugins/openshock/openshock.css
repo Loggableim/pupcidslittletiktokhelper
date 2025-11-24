@@ -5,8 +5,8 @@
 }
 
 body {
-    background: #111827;
-    color: #f9fafb;
+    background: var(--color-bg-primary, #111827);
+    color: var(--color-text-primary, #f9fafb);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     line-height: 1.6;
 }
@@ -24,13 +24,13 @@ header {
     align-items: center;
     margin-bottom: 30px;
     padding-bottom: 20px;
-    border-bottom: 2px solid #374151;
+    border-bottom: 2px solid var(--color-border, #374151);
 }
 
 header h1 {
     font-size: 2rem;
     font-weight: 700;
-    color: #60a5fa;
+    color: var(--color-accent-primary, #60a5fa);
 }
 
 .header-subtitle {
@@ -47,7 +47,7 @@ header h1 {
 .tabs {
     display: flex;
     gap: 8px;
-    background: #1f2937;
+    background: var(--color-bg-secondary, #1f2937);
     border-radius: 8px;
     padding: 8px;
     margin-bottom: 24px;
@@ -58,7 +58,7 @@ header h1 {
     padding: 12px 24px;
     border: none;
     background: transparent;
-    color: #9ca3af;
+    color: var(--color-text-muted, #9ca3af);
     cursor: pointer;
     border-radius: 6px;
     transition: all 0.2s;
@@ -67,12 +67,12 @@ header h1 {
 }
 
 .tab-button:hover {
-    color: #93c5fd;
+    color: var(--color-accent-primary, #93c5fd);
     background: rgba(147, 197, 253, 0.1);
 }
 
 .tab-button.active {
-    color: #60a5fa;
+    color: var(--color-accent-primary, #60a5fa);
     background: rgba(96, 165, 250, 0.15);
 }
 
@@ -87,11 +87,11 @@ header h1 {
 
 /* Cards & Panels */
 .card {
-    background: #1f2937;
+    background: var(--color-bg-card, #1f2937);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 20px;
-    border: 1px solid #374151;
+    border: 1px solid var(--color-border, #374151);
 }
 
 .card-header {
@@ -100,18 +100,18 @@ header h1 {
     align-items: center;
     margin-bottom: 20px;
     padding-bottom: 16px;
-    border-bottom: 1px solid #374151;
+    border-bottom: 1px solid var(--color-border, #374151);
 }
 
 .card-title {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #f9fafb;
+    color: var(--color-text-primary, #f9fafb);
 }
 
 .card-subtitle {
     font-size: 0.875rem;
-    color: #9ca3af;
+    color: var(--color-text-muted, #9ca3af);
     margin-top: 4px;
 }
 
@@ -178,10 +178,10 @@ header h1 {
 
 /* Stat Cards */
 .stat-card {
-    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    background: linear-gradient(135deg, var(--color-bg-secondary, #1f2937) 0%, var(--color-bg-tertiary, #374151) 100%);
     border-radius: 12px;
     padding: 20px;
-    border: 1px solid #4b5563;
+    border: 1px solid var(--color-border, #4b5563);
     text-align: center;
 }
 
@@ -192,14 +192,14 @@ header h1 {
 
 .stat-label {
     font-size: 0.875rem;
-    color: #9ca3af;
+    color: var(--color-text-muted, #9ca3af);
     margin-bottom: 8px;
 }
 
 .stat-value {
     font-size: 2rem;
     font-weight: 700;
-    color: #f9fafb;
+    color: var(--color-text-primary, #f9fafb);
 }
 
 /* Buttons */
@@ -217,7 +217,7 @@ header h1 {
 }
 
 .btn-primary {
-    background: #3b82f6;
+    background: var(--color-accent-primary, #3b82f6);
     color: white;
 }
 
@@ -235,7 +235,7 @@ header h1 {
 }
 
 .btn-success {
-    background: #10b981;
+    background: var(--color-accent-success, #10b981);
     color: white;
 }
 
@@ -244,7 +244,7 @@ header h1 {
 }
 
 .btn-danger {
-    background: #ef4444;
+    background: var(--color-accent-danger, #ef4444);
     color: white;
 }
 
@@ -253,7 +253,7 @@ header h1 {
 }
 
 .btn-warning {
-    background: #f59e0b;
+    background: var(--color-accent-warning, #f59e0b);
     color: white;
 }
 
@@ -286,7 +286,7 @@ header h1 {
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
-    color: #d1d5db;
+    color: var(--color-text-secondary, #d1d5db);
     font-size: 0.875rem;
 }
 
@@ -297,27 +297,27 @@ header h1 {
 .form-input {
     width: 100%;
     padding: 10px 14px;
-    background: #374151;
-    border: 1px solid #4b5563;
+    background: var(--color-input-bg, #374151);
+    border: 1px solid var(--color-input-border, #4b5563);
     border-radius: 6px;
-    color: #f9fafb;
+    color: var(--color-input-text, #f9fafb);
     font-size: 0.875rem;
     transition: all 0.2s;
 }
 
 .form-input:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--color-input-focus, #3b82f6);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-select {
     width: 100%;
     padding: 10px 14px;
-    background: #374151;
-    border: 1px solid #4b5563;
+    background: var(--color-input-bg, #374151);
+    border: 1px solid var(--color-input-border, #4b5563);
     border-radius: 6px;
-    color: #f9fafb;
+    color: var(--color-input-text, #f9fafb);
     font-size: 0.875rem;
     cursor: pointer;
 }
@@ -479,7 +479,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* Mapping Cards */
 .mapping-card {
-    background: #1f2937;
+    background: var(--color-bg-secondary, #1f2937);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
@@ -583,7 +583,7 @@ input[type="range"]::-moz-range-thumb {
 
 .pattern-timeline {
     height: 40px;
-    background: #1f2937;
+    background: var(--color-bg-secondary, #1f2937);
     border-radius: 6px;
     margin-top: 12px;
     position: relative;
@@ -683,7 +683,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .log-entry {
-    background: #1f2937;
+    background: var(--color-bg-secondary, #1f2937);
     border-radius: 6px;
     padding: 12px;
     margin-bottom: 8px;
@@ -738,7 +738,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .modal-content {
-    background: #1f2937;
+    background: var(--color-bg-secondary, #1f2937);
     border-radius: 12px;
     padding: 24px;
     max-width: 700px;
@@ -842,7 +842,7 @@ input[type="range"]::-moz-range-thumb {
     position: fixed;
     top: 20px;
     right: 20px;
-    background: #1f2937;
+    background: var(--color-bg-secondary, #1f2937);
     border: 1px solid #4b5563;
     border-radius: 8px;
     padding: 16px 20px;
@@ -904,7 +904,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .gift-card {
-    background: #1f2937;
+    background: var(--color-bg-secondary, #1f2937);
     border: 1px solid #374151;
     border-radius: 8px;
     padding: 12px;
@@ -974,7 +974,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 ::-webkit-scrollbar-track {
-    background: #1f2937;
+    background: var(--color-bg-secondary, #1f2937);
 }
 
 ::-webkit-scrollbar-thumb {

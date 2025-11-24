@@ -684,6 +684,9 @@ function openMappingModal(mappingId = null) {
     
     // Populate gift name select with catalog
     updateGiftNameSelect();
+    
+    // Populate pattern dropdown with available patterns
+    updateMappingPatternList();
 
     // Populate form - handle both frontend (trigger) and backend (eventType/conditions) format
     const nameInput = document.getElementById('mappingName');
@@ -763,15 +766,33 @@ function populateActionFields(action) {
     const intensityValue = document.getElementById('mappingIntensityValue');
     const durationSlider = document.getElementById('mappingDuration');
     const durationValue = document.getElementById('mappingDurationValue');
+    const deviceSelect = document.getElementById('mappingDevice');
 
     if (action) {
-        if (intensitySlider && action.intensity !== undefined) {
-            intensitySlider.value = action.intensity;
-            if (intensityValue) intensityValue.textContent = action.intensity;
-        }
-        if (durationSlider && action.duration !== undefined) {
-            durationSlider.value = action.duration;
-            if (durationValue) durationValue.textContent = action.duration;
+        // Handle pattern-type actions
+        if (action.type === 'pattern' && action.patternId) {
+            // Select the pattern in the dropdown
+            updateMappingPatternList(action.patternId);
+            
+            // Select the device if specified
+            if (deviceSelect && action.deviceId) {
+                updateMappingDeviceList(action.deviceId);
+            }
+        } else {
+            // Handle command-type actions
+            if (intensitySlider && action.intensity !== undefined) {
+                intensitySlider.value = action.intensity;
+                if (intensityValue) intensityValue.textContent = action.intensity;
+            }
+            if (durationSlider && action.duration !== undefined) {
+                durationSlider.value = action.duration;
+                if (durationValue) durationValue.textContent = action.duration;
+            }
+            
+            // Select the device if specified
+            if (deviceSelect && action.deviceId) {
+                updateMappingDeviceList(action.deviceId);
+            }
         }
     }
 }
@@ -788,9 +809,32 @@ async function saveMappingModal() {
     const deviceSelect = document.getElementById('mappingDevice');
     const intensitySlider = document.getElementById('mappingIntensity');
     const durationSlider = document.getElementById('mappingDuration');
+    const patternSelect = document.getElementById('mappingPattern');
 
     // Collect trigger data and convert to backend format
     const triggerData = collectTriggerData();
+    
+    // Check if a pattern is selected
+    const selectedPatternId = patternSelect?.value || '';
+    
+    let action;
+    if (selectedPatternId) {
+        // Create a pattern-type action
+        action = {
+            type: 'pattern',
+            patternId: selectedPatternId,
+            deviceId: deviceSelect?.value || ''
+        };
+    } else {
+        // Create a command-type action (single pulse)
+        action = {
+            type: 'command',
+            commandType: actionTypeSelect?.value || 'shock',
+            deviceId: deviceSelect?.value || '',
+            intensity: parseInt(intensitySlider?.value) || 50,
+            duration: parseInt(durationSlider?.value) || 1000
+        };
+    }
     
     const mapping = {
         name: nameInput?.value || 'Untitled Mapping',
@@ -802,13 +846,7 @@ async function saveMappingModal() {
             minCoins: triggerData.minCoins || 0,
             messagePattern: triggerData.messagePattern
         },
-        action: {
-            type: 'command', // Backend action type is 'command' for single commands
-            commandType: actionTypeSelect?.value || 'shock',
-            deviceId: deviceSelect?.value || '',
-            intensity: parseInt(intensitySlider?.value) || 50,
-            duration: parseInt(durationSlider?.value) || 1000
-        }
+        action: action
     };
 
     try {
@@ -1077,30 +1115,58 @@ function showStepForm() {
     const typeSelect = document.getElementById('stepType');
     const intensitySlider = document.getElementById('stepIntensity');
     const durationInput = document.getElementById('stepDuration');
+    const delayInput = document.getElementById('stepDelay');
     const intensityValue = document.getElementById('stepIntensityValue');
     
     if (typeSelect) typeSelect.value = 'shock';
     if (intensitySlider) intensitySlider.value = 50;
     if (durationInput) durationInput.value = 500;
+    if (delayInput) delayInput.value = 0;
     if (intensityValue) intensityValue.textContent = 50;
+    
+    // Show/hide intensity based on step type
+    updateStepFormVisibility();
+}
+
+function updateStepFormVisibility() {
+    const typeSelect = document.getElementById('stepType');
+    const intensityGroup = document.getElementById('stepIntensityGroup');
+    
+    if (typeSelect && intensityGroup) {
+        // Hide intensity for pause steps
+        if (typeSelect.value === 'pause') {
+            intensityGroup.style.display = 'none';
+        } else {
+            intensityGroup.style.display = 'block';
+        }
+    }
 }
 
 function addPatternStep() {
     const typeSelect = document.getElementById('stepType');
     const intensitySlider = document.getElementById('stepIntensity');
     const durationInput = document.getElementById('stepDuration');
+    const delayInput = document.getElementById('stepDelay');
 
     const step = {
         type: typeSelect?.value || 'shock',
         intensity: parseInt(intensitySlider?.value) || 50,
         duration: parseInt(durationInput?.value) || 500,
-        delay: 0
+        delay: parseInt(delayInput?.value) || 0
     };
 
     currentPatternSteps.push(step);
     renderPatternSteps();
 
-    // Hide step form after adding
+    // Reset form values
+    if (intensitySlider) intensitySlider.value = 50;
+    if (durationInput) durationInput.value = 500;
+    if (delayInput) delayInput.value = 0;
+    
+    const intensityValue = document.getElementById('stepIntensityValue');
+    if (intensityValue) intensityValue.textContent = 50;
+
+    // Hide step form after adding (optional - could keep it open for adding multiple steps)
     const stepForm = document.getElementById('stepForm');
     if (stepForm) {
         stepForm.classList.add('step-form-hidden');
@@ -1545,6 +1611,32 @@ function updateMappingDeviceList(selectedDeviceId = '') {
             option.selected = true;
         }
         deviceSelect.appendChild(option);
+    });
+}
+
+function updateMappingPatternList(selectedPatternId = '') {
+    const patternSelect = document.getElementById('mappingPattern');
+    
+    if (!patternSelect) return;
+    
+    // Clear existing options
+    patternSelect.innerHTML = '<option value="">None (Single pulse)</option>';
+    
+    // Add pattern options - include both preset and custom patterns
+    patterns.forEach(pattern => {
+        const option = document.createElement('option');
+        option.value = pattern.id;
+        option.textContent = pattern.name || pattern.id;
+        
+        // Add indicator for preset patterns
+        if (pattern.preset) {
+            option.textContent += ' ⭐';
+        }
+        
+        if (pattern.id === selectedPatternId) {
+            option.selected = true;
+        }
+        patternSelect.appendChild(option);
     });
 }
 
@@ -1995,6 +2087,15 @@ function initializeEventDelegation() {
         });
     }
 
+    // Header emergency stop button
+    const headerEmergencyStopBtn = document.getElementById('headerEmergencyStop');
+    if (headerEmergencyStopBtn) {
+        headerEmergencyStopBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerEmergencyStop();
+        });
+    }
+
     // Patterns tab buttons
     const addPatternBtn = document.getElementById('addPattern');
     if (addPatternBtn) {
@@ -2216,6 +2317,14 @@ function initializeEventDelegation() {
     if (stepIntensitySlider && stepIntensityValue) {
         stepIntensitySlider.addEventListener('input', (e) => {
             stepIntensityValue.textContent = e.target.value;
+        });
+    }
+
+    // Step type change handler to show/hide intensity field
+    const stepTypeSelect = document.getElementById('stepType');
+    if (stepTypeSelect) {
+        stepTypeSelect.addEventListener('change', () => {
+            updateStepFormVisibility();
         });
     }
 
