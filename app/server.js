@@ -140,7 +140,7 @@ app.use((req, res, next) => {
             `font-src 'self' data:; ` +
             `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com wss://*.chatango.com https://*.chatango.com; ` +
             `media-src 'self' blob: data: https:; ` +
-            `frame-src 'self' https://*.chatango.com; ` +
+            `frame-src 'self' https://*.chatango.com https://vdo.ninja https://*.vdo.ninja; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +
@@ -158,7 +158,7 @@ app.use((req, res, next) => {
             `font-src 'self' data:; ` +
             `connect-src 'self' ws: wss: wss://ws.eulerstream.com https://www.eulerstream.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://myinstants-api.vercel.app https://www.myinstants.com wss://*.chatango.com https://*.chatango.com; ` +
             `media-src 'self' blob: data: https:; ` +
-            `frame-src 'self' https://*.chatango.com; ` +
+            `frame-src 'self' https://*.chatango.com https://vdo.ninja https://*.vdo.ninja; ` +
             `object-src 'none'; ` +
             `base-uri 'self'; ` +
             `form-action 'self'; ` +

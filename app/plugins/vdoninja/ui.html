@@ -453,6 +453,37 @@
             color: #ef4444;
         }
 
+        .director-iframe-container {
+            margin-top: 1rem;
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--color-bg-primary);
+        }
+
+        .director-iframe-header {
+            padding: 0.75rem 1rem;
+            background: var(--color-bg-tertiary);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .director-iframe-header h4 {
+            margin: 0;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+        }
+
+        .director-iframe-content {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -464,6 +495,10 @@
             
             .layout-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .director-iframe-content {
+                height: 400px;
             }
         }
     </style>
@@ -514,14 +549,14 @@
                                 <span class="room-info-label">Director URL (for OBS):</span>
                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                                     <span id="directorUrl" class="room-info-value">-</span>
-                                    <button class="copy-btn" onclick="copyToClipboard('directorUrl')">📋 Copy</button>
+                                    <button class="copy-btn" data-copy-target="directorUrl">📋 Copy</button>
                                 </div>
                             </div>
                             <div class="room-info-row">
                                 <span class="room-info-label">Guest Invite URL:</span>
                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                                     <span id="guestInviteUrl" class="room-info-value">-</span>
-                                    <button class="copy-btn" onclick="copyToClipboard('guestInviteUrl')">📋 Copy</button>
+                                    <button class="copy-btn" data-copy-target="guestInviteUrl">📋 Copy</button>
                                 </div>
                             </div>
                             <div class="room-info-row">
@@ -533,6 +568,19 @@
                             <button id="closeRoomBtn" class="btn btn-danger">
                                 🔒 Close Room
                             </button>
+                        </div>
+                        
+                        <!-- Director URL Control Room Iframe -->
+                        <div id="directorIframeContainer" class="director-iframe-container" style="display: none;">
+                            <div class="director-iframe-header">
+                                <h4>🎬 Director Control Room</h4>
+                                <button id="toggleIframeBtn" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.75rem;">
+                                    ▼ Hide
+                                </button>
+                            </div>
+                            <div id="directorIframeWrapper">
+                                <iframe id="directorIframe" class="director-iframe-content" src="" title="Director Control Room"></iframe>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -570,7 +618,7 @@
             </div>
             <div class="card-body">
                 <div class="layout-grid">
-                    <div class="layout-btn" data-layout="Grid 2x2" onclick="changeLayout('Grid 2x2')">
+                    <div class="layout-btn" data-layout="Grid 2x2">
                         <div class="layout-preview grid-2x2">
                             <div class="layout-cell"></div>
                             <div class="layout-cell"></div>
@@ -579,7 +627,7 @@
                         </div>
                         <div>Grid 2x2</div>
                     </div>
-                    <div class="layout-btn" data-layout="Grid 3x2" onclick="changeLayout('Grid 3x2')">
+                    <div class="layout-btn" data-layout="Grid 3x2">
                         <div class="layout-preview grid-3x2">
                             <div class="layout-cell"></div>
                             <div class="layout-cell"></div>
@@ -590,7 +638,7 @@
                         </div>
                         <div>Grid 3x2</div>
                     </div>
-                    <div class="layout-btn" data-layout="Solo" onclick="changeLayout('Solo')">
+                    <div class="layout-btn" data-layout="Solo">
                         <div class="layout-preview solo">
                             <div class="layout-cell"></div>
                         </div>
@@ -626,6 +674,29 @@
             document.getElementById('closeRoomBtn').addEventListener('click', closeRoom);
             document.getElementById('muteAllBtn').addEventListener('click', muteAllGuests);
             document.getElementById('unmuteAllBtn').addEventListener('click', unmuteAllGuests);
+
+            // Toggle iframe visibility
+            document.getElementById('toggleIframeBtn').addEventListener('click', toggleDirectorIframe);
+
+            // Copy button event listeners (using event delegation)
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('copy-btn')) {
+                    const targetId = e.target.getAttribute('data-copy-target');
+                    if (targetId) {
+                        copyToClipboard(targetId);
+                    }
+                }
+            });
+
+            // Layout button event listeners
+            document.querySelectorAll('.layout-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const layout = btn.getAttribute('data-layout');
+                    if (layout) {
+                        changeLayout(layout);
+                    }
+                });
+            });
 
             // Socket event listeners
             socket.on('vdoninja:status', handleStatus);
@@ -752,6 +823,14 @@
                     document.getElementById('guestInviteUrl').textContent = activeRoom.guestInviteUrl || 'N/A';
                     document.getElementById('guestCount').textContent = `${activeRoom.guestCount || 0} / ${activeRoom.maxGuests}`;
 
+                    // Set up Director URL iframe
+                    if (activeRoom.directorUrl && activeRoom.directorUrl !== 'N/A') {
+                        const directorIframe = document.getElementById('directorIframe');
+                        const directorIframeContainer = document.getElementById('directorIframeContainer');
+                        directorIframe.src = activeRoom.directorUrl;
+                        directorIframeContainer.style.display = 'block';
+                    }
+
                     // Load guests
                     if (data.status.guests) {
                         guests.clear();
@@ -764,6 +843,13 @@
                     activeRoom = null;
                     document.getElementById('createRoomForm').style.display = 'block';
                     document.getElementById('activeRoomInfo').style.display = 'none';
+                    
+                    // Hide and clear Director URL iframe
+                    const directorIframe = document.getElementById('directorIframe');
+                    const directorIframeContainer = document.getElementById('directorIframeContainer');
+                    directorIframeContainer.style.display = 'none';
+                    directorIframe.src = '';
+                    
                     guests.clear();
                     renderGuests();
                 }
@@ -927,6 +1013,22 @@
             } else {
                 indicator.classList.remove('status-active');
                 indicator.classList.add('status-inactive');
+            }
+        }
+
+        function toggleDirectorIframe() {
+            const wrapper = document.getElementById('directorIframeWrapper');
+            const btn = document.getElementById('toggleIframeBtn');
+            
+            // Check if wrapper is currently hidden
+            const isHidden = wrapper.offsetParent === null;
+            
+            if (isHidden) {
+                wrapper.style.display = 'block';
+                btn.textContent = '▼ Hide';
+            } else {
+                wrapper.style.display = 'none';
+                btn.textContent = '▶ Show';
             }
         }
 
