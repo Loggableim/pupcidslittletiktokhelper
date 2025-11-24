@@ -10,6 +10,8 @@
         config: {},
         questions: [],
         leaderboard: [],
+        packages: [],
+        hasOpenAIKey: false,
         gameState: {},
         stats: {}
     };
@@ -67,6 +69,11 @@
         addListener('uploadQuestionsBtn', 'click', uploadQuestions);
         addListener('exportQuestionsBtn', 'click', exportQuestions);
 
+        // AI Packages
+        addListener('saveOpenAIConfigBtn', 'click', saveOpenAIConfig);
+        addListener('testOpenAIKeyBtn', 'click', testOpenAIKey);
+        addListener('generatePackageBtn', 'click', generateQuestionPackage);
+
         // Settings
         addListener('saveSettingsBtn', 'click', saveSettings);
 
@@ -92,6 +99,17 @@
             modalClose.addEventListener('click', () => {
                 const modal = document.getElementById('importModal');
                 if (modal) modal.classList.add('hidden');
+            });
+        }
+
+        // Load AI packages tab when opened
+        const aiPackagesTab = document.querySelector('[data-tab="ai-packages"]');
+        if (aiPackagesTab) {
+            aiPackagesTab.addEventListener('click', () => {
+                setTimeout(() => {
+                    loadOpenAIConfig();
+                    loadPackages();
+                }, 100);
             });
         }
     }
@@ -1161,9 +1179,322 @@
         }
     }
 
+    // ============================================
+    // AI PACKAGES FUNCTIONS
+    // ============================================
+    
+    async function loadOpenAIConfig() {
+        try {
+            const response = await fetch('/api/quiz-show/openai/config');
+            const data = await response.json();
+
+            if (data.success && data.config) {
+                const config = data.config;
+                
+                // Update status badge
+                const statusBadge = document.getElementById('apiKeyStatus');
+                if (statusBadge) {
+                    if (config.hasApiKey) {
+                        statusBadge.textContent = `✓ Konfiguriert (${config.apiKeyPreview})`;
+                        statusBadge.className = 'status-badge status-connected';
+                        statusBadge.style.display = 'inline-block';
+                        
+                        // Hide warning, show generation form
+                        const warning = document.getElementById('generateWarning');
+                        if (warning) warning.style.display = 'none';
+                    } else {
+                        statusBadge.textContent = '✗ Nicht konfiguriert';
+                        statusBadge.className = 'status-badge status-error';
+                        statusBadge.style.display = 'inline-block';
+                        
+                        // Show warning
+                        const warning = document.getElementById('generateWarning');
+                        if (warning) warning.style.display = 'block';
+                    }
+                }
+
+                // Update form fields
+                document.getElementById('openaiModel').value = config.model || 'gpt-5.1-nano';
+                document.getElementById('defaultPackageSize').value = config.defaultPackageSize || 10;
+                document.getElementById('packageSize').value = config.defaultPackageSize || 10;
+            }
+        } catch (error) {
+            console.error('Error loading OpenAI config:', error);
+        }
+    }
+
+    async function saveOpenAIConfig() {
+        const apiKey = document.getElementById('openaiApiKey').value.trim();
+        const model = document.getElementById('openaiModel').value;
+        const defaultPackageSize = parseInt(document.getElementById('defaultPackageSize').value);
+
+        try {
+            const response = await fetch('/api/quiz-show/openai/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    apiKey: apiKey || undefined,
+                    model,
+                    defaultPackageSize
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Konfiguration erfolgreich gespeichert', 'success', 'openaiConfigMessage');
+                // Clear the password field
+                document.getElementById('openaiApiKey').value = '';
+                // Reload config to update status
+                await loadOpenAIConfig();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'openaiConfigMessage');
+            }
+        } catch (error) {
+            console.error('Error saving OpenAI config:', error);
+            showMessage('Fehler beim Speichern', 'error', 'openaiConfigMessage');
+        }
+    }
+
+    async function testOpenAIKey() {
+        const apiKey = document.getElementById('openaiApiKey').value.trim();
+
+        if (!apiKey) {
+            showMessage('Bitte geben Sie einen API-Schlüssel ein', 'error', 'openaiConfigMessage');
+            return;
+        }
+
+        try {
+            // Show loading state
+            const btn = document.getElementById('testOpenAIKeyBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '🔄 Teste...';
+            btn.disabled = true;
+
+            // For now, we'll just try to save it which will test it
+            const response = await fetch('/api/quiz-show/openai/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey })
+            });
+
+            const data = await response.json();
+            
+            btn.textContent = originalText;
+            btn.disabled = false;
+
+            if (data.success) {
+                showMessage('✓ API-Schlüssel ist gültig!', 'success', 'openaiConfigMessage');
+                document.getElementById('openaiApiKey').value = '';
+                await loadOpenAIConfig();
+            } else {
+                showMessage('✗ ' + data.error, 'error', 'openaiConfigMessage');
+            }
+        } catch (error) {
+            console.error('Error testing API key:', error);
+            showMessage('Fehler beim Testen', 'error', 'openaiConfigMessage');
+            document.getElementById('testOpenAIKeyBtn').disabled = false;
+        }
+    }
+
+    async function generateQuestionPackage() {
+        const category = document.getElementById('packageCategory').value.trim();
+        const packageSize = parseInt(document.getElementById('packageSize').value);
+        const packageName = document.getElementById('packageName').value.trim();
+
+        if (!category) {
+            showMessage('Bitte geben Sie eine Kategorie ein', 'error', 'generateMessage');
+            return;
+        }
+
+        try {
+            // Show progress
+            const progressContainer = document.getElementById('generationProgress');
+            const progressBar = document.getElementById('generationProgressBar');
+            const progressText = document.getElementById('generationProgressText');
+            
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '10%';
+            progressText.textContent = 'Generiere Fragen mit OpenAI...';
+
+            const btn = document.getElementById('generatePackageBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '🤖 Generiere...';
+            btn.disabled = true;
+
+            const response = await fetch('/api/quiz-show/packages/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category,
+                    packageSize,
+                    packageName: packageName || undefined
+                })
+            });
+
+            progressBar.style.width = '50%';
+            progressText.textContent = 'Verarbeite Antworten...';
+
+            const data = await response.json();
+
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Fertig!';
+
+            btn.textContent = originalText;
+            btn.disabled = false;
+
+            if (data.success) {
+                showMessage(`✓ Paket "${data.package.name}" mit ${data.package.question_count} Fragen erfolgreich generiert!`, 'success', 'generateMessage');
+                
+                // Clear form
+                document.getElementById('packageCategory').value = '';
+                document.getElementById('packageName').value = '';
+
+                // Reload packages
+                await loadPackages();
+
+                // Hide progress after delay
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                }, 2000);
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'generateMessage');
+                progressContainer.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error generating package:', error);
+            showMessage('Fehler: ' + error.message, 'error', 'generateMessage');
+            document.getElementById('generationProgress').classList.add('hidden');
+            document.getElementById('generatePackageBtn').disabled = false;
+        }
+    }
+
+    async function loadPackages() {
+        try {
+            const response = await fetch('/api/quiz-show/packages');
+            const data = await response.json();
+
+            if (data.success) {
+                updatePackagesList(data.packages);
+            }
+        } catch (error) {
+            console.error('Error loading packages:', error);
+        }
+    }
+
+    function updatePackagesList(packages) {
+        const container = document.getElementById('packagesList');
+        const countDisplay = document.getElementById('packageCount');
+
+        countDisplay.textContent = `${packages.length} Pakete`;
+
+        if (packages.length === 0) {
+            container.innerHTML = '<p class="no-data">Keine Pakete vorhanden. Generieren Sie Ihr erstes Paket oben!</p>';
+            return;
+        }
+
+        container.innerHTML = packages.map(pkg => `
+            <div class="package-item ${pkg.is_selected ? 'selected' : ''}" data-id="${pkg.id}">
+                <input 
+                    type="checkbox" 
+                    class="package-checkbox" 
+                    ${pkg.is_selected ? 'checked' : ''}
+                    onchange="window.quizShow.togglePackage(${pkg.id})"
+                >
+                <div class="package-info">
+                    <div class="package-header">
+                        <span class="package-name">${escapeHtml(pkg.name)}</span>
+                        <span class="package-badge">${escapeHtml(pkg.category)}</span>
+                    </div>
+                    <div class="package-meta">
+                        <div class="package-meta-item">
+                            <span>📝 ${pkg.question_count} Fragen</span>
+                        </div>
+                        <div class="package-meta-item">
+                            <span>📅 ${new Date(pkg.created_at).toLocaleDateString('de-DE')}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="package-actions">
+                    <button class="btn-view" onclick="window.quizShow.viewPackageQuestions(${pkg.id})" title="Fragen anzeigen">
+                        👁️ Anzeigen
+                    </button>
+                    <button class="btn-delete" onclick="window.quizShow.deletePackage(${pkg.id})" title="Paket löschen">
+                        🗑️ Löschen
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function togglePackage(packageId) {
+        try {
+            const response = await fetch(`/api/quiz-show/packages/${packageId}/toggle`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Reload packages to update UI
+                await loadPackages();
+            }
+        } catch (error) {
+            console.error('Error toggling package:', error);
+        }
+    }
+
+    async function deletePackage(packageId) {
+        if (!confirm('Dieses Paket und alle seine Fragen wirklich löschen?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/quiz-show/packages/${packageId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Paket erfolgreich gelöscht', 'success');
+                await loadPackages();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting package:', error);
+            showMessage('Fehler beim Löschen', 'error');
+        }
+    }
+
+    async function viewPackageQuestions(packageId) {
+        try {
+            const response = await fetch(`/api/quiz-show/packages/${packageId}/questions`);
+            const data = await response.json();
+
+            if (data.success) {
+                // Switch to questions tab and show these questions
+                const questionsTab = document.querySelector('[data-tab="questions"]');
+                if (questionsTab) {
+                    questionsTab.click();
+                }
+                
+                // Update questions list to show only these questions
+                currentState.questions = data.questions;
+                updateQuestionsList();
+            }
+        } catch (error) {
+            console.error('Error viewing package questions:', error);
+        }
+    }
+
     // Expose functions to window for onclick handlers
     window.quizShow = {
         editQuestion,
-        deleteQuestion
+        deleteQuestion,
+        togglePackage,
+        deletePackage,
+        viewPackageQuestions
     };
 })();

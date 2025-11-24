@@ -26,6 +26,9 @@
             <button class="tab-button" data-tab="questions">
                 <span>❓ Fragen</span>
             </button>
+            <button class="tab-button" data-tab="ai-packages">
+                <span>🤖 AI Fragenpakete</span>
+            </button>
             <button class="tab-button" data-tab="settings">
                 <span>⚙️ Einstellungen</span>
             </button>
@@ -236,6 +239,159 @@
                     <div class="panel-body">
                         <div id="questionsList" class="questions-list">
                             <p class="no-data">Keine Fragen vorhanden</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Question Packages Tab -->
+        <div id="ai-packages" class="tab-content">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>🤖 AI Fragenpakete mit OpenAI</h2>
+                </div>
+                <div class="panel-body">
+                    <!-- OpenAI Configuration Section -->
+                    <div class="panel" style="margin-bottom: 20px;">
+                        <div class="panel-header">
+                            <h3>OpenAI Konfiguration</h3>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label for="openaiApiKey">API-Schlüssel</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input 
+                                        type="password" 
+                                        id="openaiApiKey" 
+                                        class="form-control" 
+                                        placeholder="sk-..." 
+                                        style="flex: 1;"
+                                    >
+                                    <span id="apiKeyStatus" class="status-badge" style="display: none;"></span>
+                                </div>
+                                <small>Ihr OpenAI API-Schlüssel wird sicher gespeichert</small>
+                            </div>
+                            
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                                <div class="form-group">
+                                    <label for="openaiModel">Modell</label>
+                                    <select id="openaiModel" class="form-control">
+                                        <option value="gpt-5.1-nano">GPT-5.1 Nano (Empfohlen)</option>
+                                        <option value="gpt-5.1-mini">GPT-5.1 Mini</option>
+                                        <option value="gpt-5.1">GPT-5.1</option>
+                                        <option value="gpt-4o">GPT-4o</option>
+                                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="defaultPackageSize">Standard Paketgröße</label>
+                                    <input 
+                                        type="number" 
+                                        id="defaultPackageSize" 
+                                        class="form-control" 
+                                        min="5" 
+                                        max="50" 
+                                        value="10"
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="form-actions" style="margin-top: 15px;">
+                                <button id="saveOpenAIConfigBtn" class="btn btn-primary">💾 Konfiguration Speichern</button>
+                                <button id="testOpenAIKeyBtn" class="btn btn-secondary" style="margin-left: 10px;">🧪 API-Schlüssel Testen</button>
+                            </div>
+                            <div id="openaiConfigMessage" class="message hidden" style="margin-top: 10px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Question Package Section -->
+                    <div class="panel" style="margin-bottom: 20px;">
+                        <div class="panel-header">
+                            <h3>Neues Fragenpaket Generieren</h3>
+                        </div>
+                        <div class="panel-body">
+                            <div id="generateWarning" class="warning-message" style="margin-bottom: 15px; display: none;">
+                                ⚠️ Bitte konfigurieren Sie zuerst Ihren OpenAI API-Schlüssel oben.
+                            </div>
+
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                                <div class="form-group">
+                                    <label for="packageCategory">Kategorie *</label>
+                                    <input 
+                                        type="text" 
+                                        id="packageCategory" 
+                                        class="form-control" 
+                                        list="categoryList"
+                                        placeholder="z.B. Geographie, Geschichte, Sport"
+                                    >
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="packageSize">Anzahl Fragen</label>
+                                    <input 
+                                        type="number" 
+                                        id="packageSize" 
+                                        class="form-control" 
+                                        min="5" 
+                                        max="50" 
+                                        value="10"
+                                    >
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="packageName">Paketname (optional)</label>
+                                    <input 
+                                        type="text" 
+                                        id="packageName" 
+                                        class="form-control" 
+                                        placeholder="Automatisch generiert"
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="info-box" style="margin: 15px 0; padding: 10px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+                                <strong>ℹ️ Schwierigkeitsverteilung:</strong>
+                                <ul style="margin: 5px 0 0 20px; padding: 0;">
+                                    <li>50% Einfach (⭐)</li>
+                                    <li>~17% Mittel (⭐⭐)</li>
+                                    <li>~17% Schwer (⭐⭐⭐)</li>
+                                    <li>~16% Expert (⭐⭐⭐⭐)</li>
+                                </ul>
+                                <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #666;">
+                                    Vorhandene Fragen in der Kategorie werden automatisch erkannt, um Duplikate zu vermeiden.
+                                </p>
+                            </div>
+
+                            <div class="form-actions">
+                                <button id="generatePackageBtn" class="btn btn-success">🤖 Fragenpaket Generieren</button>
+                            </div>
+                            <div id="generateMessage" class="message hidden" style="margin-top: 10px;"></div>
+                            <div id="generationProgress" class="progress-container hidden" style="margin-top: 15px;">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="generationProgressBar"></div>
+                                </div>
+                                <div class="progress-text" id="generationProgressText">Generiere Fragen...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Question Packages List -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3>📦 Verfügbare Fragenpakete</h3>
+                            <div class="panel-controls">
+                                <span id="packageCount" class="badge">0 Pakete</span>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="info-box" style="margin-bottom: 15px; padding: 10px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                                <strong>💡 Tipp:</strong> Wählen Sie ein oder mehrere Pakete aus, um nur Fragen aus diesen Paketen im Quiz zu verwenden. Wenn keine Pakete ausgewählt sind, werden alle Fragen verwendet.
+                            </div>
+                            <div id="packagesList" class="packages-list">
+                                <p class="no-data">Keine Pakete vorhanden. Generieren Sie Ihr erstes Paket oben!</p>
+                            </div>
                         </div>
                     </div>
                 </div>
