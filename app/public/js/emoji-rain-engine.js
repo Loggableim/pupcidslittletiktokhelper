@@ -640,7 +640,10 @@ function spawnEmoji(emoji, x, y, size, username = null, color = null) {
         y = 0;
     }
     
-    console.log(`⚙️ [SPAWN] Spawning emoji at position (${x.toFixed(2)}, ${y.toFixed(2)}) with size ${size}`);
+    // Log spawn position only in debug mode
+    if (debugMode) {
+        console.log(`⚙️ [SPAWN] Spawning emoji at position (${x.toFixed(2)}, ${y.toFixed(2)}) with size ${size}`);
+    }
 
     // Create physics body
     const radius = size / 2;
@@ -951,15 +954,13 @@ function initSocket() {
                             console.log('⚠️ [PHYSICS] Floor not in world, skipping remove');
                         }
                     }
-                } else {
-                    console.log(`⚙️ [PHYSICS] Floor setting unchanged: ${config.floor_enabled}`);
                 }
                 
                 // Update wind
                 if (config.wind_enabled !== oldWindEnabled) {
                     console.log(`⚙️ [PHYSICS] Wind setting changed from ${oldWindEnabled} to ${config.wind_enabled}`);
-                } else {
-                    console.log(`⚙️ [PHYSICS] Wind setting unchanged: ${config.wind_enabled}`);
+                    // Wind force is calculated dynamically in calculateWindForce() based on config.wind_enabled
+                    // No additional physics update needed here
                 }
                 
                 // Update bounce/restitution if changed
