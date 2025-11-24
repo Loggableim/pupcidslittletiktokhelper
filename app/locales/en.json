@@ -93,6 +93,8 @@
     "plugin_notice": {
       "title": "Plugin Notice",
       "message": "All enabled plugins should work without bugs. You are welcome to test inactive plugins, but please expect bugs.",
+      "report_issues": "Found a bug or have a feature request?",
+      "report_link": "Report it on GitHub",
       "dismiss": "Got it"
     }
   },

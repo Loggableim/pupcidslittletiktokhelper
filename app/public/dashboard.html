@@ -511,7 +511,12 @@
                             </div>
                             <div class="plugin-notice-text">
                                 <h3 class="plugin-notice-title" data-i18n="dashboard.plugin_notice.title">Plugin Notice</h3>
-                                <p class="plugin-notice-message" data-i18n="dashboard.plugin_notice.message">All enabled plugins should work without bugs. You are welcome to test inactive plugins, but please expect bugs.</p>
+                                <p class="plugin-notice-message">
+                                    <span data-i18n="dashboard.plugin_notice.message">All enabled plugins should work without bugs. You are welcome to test inactive plugins, but please expect bugs.</span>
+                                    <br>
+                                    <span data-i18n="dashboard.plugin_notice.report_issues">Found a bug or have a feature request?</span>
+                                    <a href="https://github.com/Loggableim/pupcidslittletiktokhelper/issues" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline; font-weight: 600;" data-i18n="dashboard.plugin_notice.report_link">Report it on GitHub</a>
+                                </p>
                             </div>
                             <button id="dismiss-plugin-notice" class="plugin-notice-dismiss" aria-label="Dismiss notice">
                                 <i data-lucide="x"></i>
@@ -673,7 +678,18 @@
                         </div>
                     </section>
 
-                    <!-- 4. Updates / Features / Changelog Section (NEW) -->
+                    <!-- 4. Community Chat / Shoutbox Section -->
+                    <section class="dashboard-section shoutbox-section">
+                        <h2 class="section-title">
+                            <i data-lucide="message-square"></i>
+                            <span>Community Chat</span>
+                        </h2>
+                        <div class="shoutbox-container" id="chatango-embed-container">
+                            <script id="cid0020000424709220769" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: 100%;height: 100%;">{"handle":"pupcidsltth","arch":"js","styles":{"a":"13A318","b":100,"c":"FFFFFF","d":"FFFFFF","k":"13A318","l":"13A318","m":"13A318","n":"FFFFFF","p":"10","q":"13A318","r":100,"t":0,"surl":0,"allowpm":0,"cnrs":"0.35","fwtickm":1}}</script>
+                        </div>
+                    </section>
+
+                    <!-- 5. Updates / Features / Changelog Section -->
                     <section class="dashboard-section updates-section" id="updates-section">
                         <div class="updates-header">
                             <h2 class="section-title">
@@ -697,7 +713,7 @@
                         </button>
                     </section>
 
-                    <!-- 5. Plugin & Tool Shortcuts -->
+                    <!-- 6. Plugin & Tool Shortcuts -->
                     <section class="dashboard-section shortcuts-section">
                         <h2 class="section-title">
                             <i data-lucide="grid-3x3"></i>
@@ -708,7 +724,7 @@
                         </div>
                     </section>
 
-                    <!-- 6. FAQ / Help Center Section (NEW) -->
+                    <!-- 7. FAQ / Help Center Section -->
                     <section class="dashboard-section faq-section">
                         <h2 class="section-title">
                             <i data-lucide="help-circle"></i>
@@ -784,18 +800,7 @@
                         </div>
                     </section>
 
-                    <!-- 6.5. Community Chat / Shoutbox Section -->
-                    <section class="dashboard-section shoutbox-section">
-                        <h2 class="section-title">
-                            <i data-lucide="message-square"></i>
-                            <span>Community Chat</span>
-                        </h2>
-                        <div class="shoutbox-container" id="chatango-embed-container">
-                            <script id="cid0020000424709220769" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: 100%;height: 100%;">{"handle":"pupcidsltth","arch":"js","styles":{"a":"13A318","b":100,"c":"FFFFFF","d":"FFFFFF","k":"13A318","l":"13A318","m":"13A318","n":"FFFFFF","p":"10","q":"13A318","r":100,"t":0,"surl":0,"allowpm":0,"cnrs":"0.35","fwtickm":1}}</script>
-                        </div>
-                    </section>
-
-                    <!-- 7. System Resources Section (Compact, at bottom) -->
+                    <!-- 8. System Resources Section (Compact, at bottom) -->
                     <section class="dashboard-section resource-section-compact" data-plugin="resource-monitor">
                         <h2 class="section-title-compact">
                             <i data-lucide="activity"></i>

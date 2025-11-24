@@ -51,6 +51,8 @@
     "plugin_notice": {
       "title": "Aviso de Plugins",
       "message": "Todos los plugins habilitados deberían funcionar sin errores. Puede probar los plugins inactivos, pero espere errores.",
+      "report_issues": "¿Encontró un error o tiene una solicitud de función?",
+      "report_link": "Repórtelo en GitHub",
       "dismiss": "Entendido"
     }
   },

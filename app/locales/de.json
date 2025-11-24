@@ -93,6 +93,8 @@
     "plugin_notice": {
       "title": "Plugin-Hinweis",
       "message": "Alle aktivierten Plugins sollten ohne Bugs funktionieren. Die inaktiven Plugins können Sie gerne testen, müssen aber mit Bugs rechnen.",
+      "report_issues": "Bug gefunden oder Feature-Wunsch?",
+      "report_link": "Auf GitHub melden",
       "dismiss": "Verstanden"
     }
   },

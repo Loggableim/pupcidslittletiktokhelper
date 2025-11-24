@@ -257,7 +257,7 @@
         });
     }
 
-    // ========== CHANGELOG LOADER ==========
+    // ========== UPDATE CHECKER & CHANGELOG LOADER ==========
     async function initializeChangelog() {
         const updatesSection = document.getElementById('updates-section');
         const updatesContent = document.getElementById('updates-content');
@@ -281,32 +281,73 @@
             });
         }
 
-        // Load changelog
+        // Check for updates first
         try {
-            const response = await fetch('/CHANGELOG.md');
-            const changelogText = await response.text();
+            const updateResponse = await fetch('/api/update/check');
+            const updateData = await updateResponse.json();
 
-            const changelogHTML = parseChangelog(changelogText, 2); // Show first 2 versions
-            updatesContent.innerHTML = changelogHTML;
-
-            // Show "More" button if there are more versions
-            if (showMoreBtn) {
-                showMoreBtn.style.display = 'block';
-                showMoreBtn.addEventListener('click', async () => {
-                    const fullChangelogHTML = parseChangelog(changelogText); // Show all
-                    updatesContent.innerHTML = fullChangelogHTML;
-                    showMoreBtn.style.display = 'none';
-                });
+            if (updateData.success && updateData.available) {
+                // Show update notification
+                const updateHTML = `
+                    <div style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <i data-lucide="download" style="width: 20px; height: 20px; color: #22c55e;"></i>
+                            <strong style="color: #22c55e;">Neue Version verfügbar: ${updateData.latestVersion}</strong>
+                        </div>
+                        <p style="font-size: 0.875rem; color: var(--color-text-secondary); margin: 0 0 0.75rem 0;">
+                            Aktuelle Version: ${updateData.currentVersion}
+                        </p>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="${updateData.releaseUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="text-decoration: none;">
+                                <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                Release ansehen
+                            </a>
+                        </div>
+                    </div>
+                `;
+                updatesContent.innerHTML = updateHTML;
+                
+                // Re-initialize Lucide icons
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } else {
+                // No updates available, try to load changelog
+                await loadChangelog();
             }
-
-            // Re-initialize Lucide icons
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
-
         } catch (error) {
-            console.error('Error loading changelog:', error);
-            updatesContent.innerHTML = '<p style="color: var(--color-text-muted);">Changelog konnte nicht geladen werden.</p>';
+            console.error('Error checking for updates:', error);
+            // Fallback to loading changelog
+            await loadChangelog();
+        }
+
+        async function loadChangelog() {
+            try {
+                const response = await fetch('/CHANGELOG.txt');
+                const changelogText = await response.text();
+
+                const changelogHTML = parseChangelog(changelogText, 2); // Show first 2 versions
+                updatesContent.innerHTML = changelogHTML;
+
+                // Show "More" button if there are more versions
+                if (showMoreBtn) {
+                    showMoreBtn.style.display = 'block';
+                    showMoreBtn.addEventListener('click', async () => {
+                        const fullChangelogHTML = parseChangelog(changelogText); // Show all
+                        updatesContent.innerHTML = fullChangelogHTML;
+                        showMoreBtn.style.display = 'none';
+                    });
+                }
+
+                // Re-initialize Lucide icons
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+
+            } catch (error) {
+                console.error('Error loading changelog:', error);
+                updatesContent.innerHTML = '<p style="color: var(--color-text-muted);">Keine Updates verfügbar.</p>';
+            }
         }
     }
 
