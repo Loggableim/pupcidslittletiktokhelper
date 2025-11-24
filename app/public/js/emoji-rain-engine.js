@@ -122,6 +122,16 @@ let performanceMode = 'normal'; // 'normal', 'reduced', 'minimal'
 function initPhysics() {
     canvasWidth = window.innerWidth;
     canvasHeight = window.innerHeight;
+    
+    // Ensure canvas dimensions are valid
+    if (canvasWidth <= 0 || isNaN(canvasWidth)) {
+        console.warn(`⚠️ Invalid canvasWidth: ${canvasWidth}, using 1920 as fallback`);
+        canvasWidth = 1920;
+    }
+    if (canvasHeight <= 0 || isNaN(canvasHeight)) {
+        console.warn(`⚠️ Invalid canvasHeight: ${canvasHeight}, using 1080 as fallback`);
+        canvasHeight = 1080;
+    }
 
     engine = Engine.create({
         enableSleeping: false
@@ -903,15 +913,18 @@ function initSocket() {
     socket.on('emoji-rain:config-update', (data) => {
         if (data.config) {
             console.log('🔄 [CONFIG UPDATE] Received new config:', data.config);
+            console.log(`🔄 [CONFIG UPDATE] floor_enabled: ${data.config.floor_enabled}, wind_enabled: ${data.config.wind_enabled}`);
             
             // Store old values for comparison
             const oldGravity = config.physics_gravity_y;
             const oldFloorEnabled = config.floor_enabled;
             const oldBounceHeight = config.bounce_height;
+            const oldWindEnabled = config.wind_enabled;
             
             // Update config
             Object.assign(config, data.config);
             console.log('🔄 Config updated', config);
+            console.log(`🔄 [CONFIG UPDATE] After update - floor_enabled: ${config.floor_enabled}, wind_enabled: ${config.wind_enabled}`);
 
             if (engine) {
                 // Update gravity if changed
@@ -922,17 +935,31 @@ function initSocket() {
                 
                 // Update floor if changed
                 if (config.floor_enabled !== oldFloorEnabled) {
+                    console.log(`⚙️ [PHYSICS] Floor setting changed from ${oldFloorEnabled} to ${config.floor_enabled}`);
                     if (config.floor_enabled) {
                         if (!engine.world.bodies.includes(ground)) {
                             World.add(engine.world, ground);
-                            console.log('⚙️ [PHYSICS] Floor enabled');
+                            console.log('⚙️ [PHYSICS] Floor enabled - ground added to world');
+                        } else {
+                            console.log('⚠️ [PHYSICS] Floor already in world, skipping add');
                         }
                     } else {
                         if (engine.world.bodies.includes(ground)) {
                             World.remove(engine.world, ground);
-                            console.log('⚙️ [PHYSICS] Floor disabled');
+                            console.log('⚙️ [PHYSICS] Floor disabled - ground removed from world');
+                        } else {
+                            console.log('⚠️ [PHYSICS] Floor not in world, skipping remove');
                         }
                     }
+                } else {
+                    console.log(`⚙️ [PHYSICS] Floor setting unchanged: ${config.floor_enabled}`);
+                }
+                
+                // Update wind
+                if (config.wind_enabled !== oldWindEnabled) {
+                    console.log(`⚙️ [PHYSICS] Wind setting changed from ${oldWindEnabled} to ${config.wind_enabled}`);
+                } else {
+                    console.log(`⚙️ [PHYSICS] Wind setting unchanged: ${config.wind_enabled}`);
                 }
                 
                 // Update bounce/restitution if changed
