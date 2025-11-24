@@ -16,13 +16,19 @@ Ein umfassendes Gamification-System für TikTok-Streamer, das Zuschauer durch XP
 ### Overlays
 - **XP Bar**: Live-Anzeige mit XP-Fortschritt, Level und animierten Updates
 - **Leaderboard**: Top-Viewer-Rangliste (All-Time, 7 Tage, 30 Tage)
-- **Level-Up-Animationen**: Einblendungen bei Level-Aufstiegen
+- **Level-Up-Animationen**: Einblendungen bei Level-Aufstiegen mit Konfetti und Sound
 
 ### Admin Panel
 - **Viewer-Management**: Detaillierte Ansicht aller Zuschauer-Profile
 - **Statistik-Dashboard**: Übersicht über Gesamtstatistiken
 - **XP-Konfiguration**: Anpassbare XP-Werte für alle Aktionen
+- **Level-System-Konfiguration**: Wählbare Level-Progression (Exponentiell, Linear, Logarithmisch, Custom)
+  - Definiere eigene XP-Anforderungen für jedes Level
+  - Custom-Titel und Farben pro Level
+  - Live-Preview der Level-Kurve
 - **Manuelle XP-Vergabe**: Admin-Funktion für spezielle Belohnungen
+- **Import/Export**: Backup und Migration von Viewer-Daten
+- **Viewer-Historie**: Detaillierter XP-Verlauf pro Zuschauer
 - **Einstellungen**: Aktivierung/Deaktivierung von Features
 
 ### Performance & Skalierbarkeit
@@ -64,6 +70,24 @@ http://localhost:3000/overlay/viewer-xp/leaderboard
 - `days`: (Optional) Zeitraum in Tagen (leer = All-Time, 7 = letzte 7 Tage)
 - `refresh`: (Optional) Auto-Refresh-Intervall in ms (Standard: 30000)
 
+#### Level-Up Animation (NEU!)
+```
+http://localhost:3000/overlay/viewer-xp/level-up
+```
+
+**Parameter:**
+- `duration`: (Optional) Anzeigedauer in ms (Standard: 5000)
+- `sound`: (Optional) `true`/`false` - Sound aktivieren (Standard: true)
+- `test`: (Optional) `true` - Zeigt Test-Animation beim Laden
+
+**Features:**
+- Animierte Level-Anzeige mit Konfetti-Effekt
+- Partikel-Animationen
+- Soundeffekte (melodische Tonfolge)
+- Zeigt neue Belohnungen (Titel, Farben)
+- Automatisches Ausblenden nach Dauer
+- Reagiert auf WebSocket-Event `viewer-xp:level-up`
+
 ### Admin Panel
 
 ```
@@ -98,12 +122,71 @@ Alle Werte können über das Admin Panel angepasst werden.
 
 ### Level-System
 
+Das Level-System unterstützt jetzt **4 verschiedene Progression-Typen**, konfigurierbar im Admin Panel:
+
+#### 1. Exponentiell (Standard)
 **Level-Formel:**
 ```
 Level = floor(sqrt(XP / 100)) + 1
 ```
 
 **XP für Level:**
+- Level 1: 0 XP
+- Level 2: 100 XP
+- Level 3: 400 XP
+- Level 4: 900 XP
+- Level 5: 1.600 XP
+- Level 10: 8.100 XP
+- Level 25: 57.600 XP
+
+**Vorteil:** Wird mit jedem Level schwieriger, ideal für langfristiges Engagement
+
+#### 2. Linear
+**Level-Formel:**
+```
+Level = floor(XP / XPPerLevel) + 1
+```
+
+**Beispiel (1000 XP pro Level):**
+- Level 1: 0 XP
+- Level 2: 1.000 XP
+- Level 3: 2.000 XP
+- Level 10: 9.000 XP
+- Level 25: 24.000 XP
+
+**Vorteil:** Gleichmäßiger Fortschritt, vorhersehbar für Zuschauer
+
+#### 3. Logarithmisch
+**Level-Formel:**
+```
+XP = Multiplier * log(Level) * Level
+```
+
+**Beispiel (Multiplier = 500):**
+- Level 1: 0 XP
+- Level 2: ~350 XP
+- Level 5: ~4.000 XP
+- Level 10: ~11.500 XP
+- Level 25: ~40.000 XP
+
+**Vorteil:** Moderate Steigerung, ausbalanciert zwischen linear und exponentiell
+
+#### 4. Custom (Individuell)
+Definiere jedes Level einzeln mit:
+- Exakter XP-Anforderung
+- Eigenem Titel
+- Eigener Namensfarbe
+
+**Vorteil:** Vollständige Kontrolle, ideal für spezielle Events oder Milestones
+
+**Konfiguration:**
+Im Admin Panel unter "📊 Level Configuration" kannst du:
+1. Den Progression-Typ wählen
+2. Parameter anpassen (z.B. XP pro Level bei Linear)
+3. Preview der Level-Kurve ansehen
+4. Konfiguration speichern und anwenden
+
+**XP für Level (Standard - Exponentiell):**
 - Level 1: 0 XP
 - Level 2: 100 XP
 - Level 3: 400 XP

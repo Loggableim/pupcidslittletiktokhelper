@@ -120,6 +120,16 @@ class ViewerXPDatabase {
       )
     `);
 
+    // Level configuration table for customizable XP requirements
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS level_config (
+        level INTEGER PRIMARY KEY,
+        xp_required INTEGER NOT NULL,
+        custom_title TEXT,
+        custom_color TEXT
+      )
+    `);
+
     // Indexes for performance
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_xp_transactions_username 
@@ -375,18 +385,58 @@ class ViewerXPDatabase {
   }
 
   /**
-   * Calculate level from XP (exponential curve)
+   * Calculate level from XP (supports custom level configs)
    */
   calculateLevel(xp) {
+    const levelType = this.getSetting('levelType', 'exponential');
+    
+    if (levelType === 'custom') {
+      // Use custom level configuration from database
+      const customLevels = this.db.prepare(`
+        SELECT level FROM level_config 
+        WHERE xp_required <= ? 
+        ORDER BY xp_required DESC 
+        LIMIT 1
+      `).get(xp);
+      
+      if (customLevels) {
+        return customLevels.level;
+      }
+    }
+    
+    if (levelType === 'linear') {
+      // Linear progression: xpPerLevel setting
+      const xpPerLevel = parseInt(this.getSetting('xpPerLevel', '1000'));
+      return Math.floor(xp / xpPerLevel) + 1;
+    }
+    
+    // Default: Exponential
     // Level formula: level = floor(sqrt(xp / 100)) + 1
     // This means: Level 1 = 0 XP, Level 2 = 100 XP, Level 3 = 400 XP, Level 4 = 900 XP, etc.
     return Math.floor(Math.sqrt(xp / 100)) + 1;
   }
 
   /**
-   * Calculate XP required for next level
+   * Calculate XP required for a specific level
    */
   getXPForLevel(level) {
+    const levelType = this.getSetting('levelType', 'exponential');
+    
+    if (levelType === 'custom') {
+      // Use custom level configuration
+      const config = this.db.prepare('SELECT xp_required FROM level_config WHERE level = ?').get(level);
+      if (config) {
+        return config.xp_required;
+      }
+    }
+    
+    if (levelType === 'linear') {
+      // Linear progression
+      const xpPerLevel = parseInt(this.getSetting('xpPerLevel', '1000'));
+      return (level - 1) * xpPerLevel;
+    }
+    
+    // Default: Exponential
     // Inverse of calculateLevel: xp = (level - 1)^2 * 100
     return Math.pow(level - 1, 2) * 100;
   }
@@ -637,6 +687,148 @@ class ViewerXPDatabase {
       INSERT OR REPLACE INTO settings (key, value)
       VALUES (?, ?)
     `).run(key, valueStr);
+  }
+
+  /**
+   * Set custom level configuration
+   */
+  setLevelConfig(levelConfigs) {
+    const transaction = this.db.transaction((configs) => {
+      // Clear existing custom configs
+      this.db.prepare('DELETE FROM level_config').run();
+      
+      // Insert new configs
+      const stmt = this.db.prepare(`
+        INSERT INTO level_config (level, xp_required, custom_title, custom_color)
+        VALUES (?, ?, ?, ?)
+      `);
+      
+      for (const config of configs) {
+        stmt.run(
+          config.level,
+          config.xp_required,
+          config.custom_title || null,
+          config.custom_color || null
+        );
+      }
+    });
+    
+    transaction(levelConfigs);
+  }
+
+  /**
+   * Get all level configurations
+   */
+  getAllLevelConfigs() {
+    return this.db.prepare(`
+      SELECT * FROM level_config 
+      ORDER BY level ASC
+    `).all();
+  }
+
+  /**
+   * Generate level configs based on type and settings
+   */
+  generateLevelConfigs(type, settings = {}) {
+    const maxLevel = settings.maxLevel || 50;
+    const configs = [];
+    
+    if (type === 'linear') {
+      const xpPerLevel = settings.xpPerLevel || 1000;
+      for (let level = 1; level <= maxLevel; level++) {
+        configs.push({
+          level,
+          xp_required: (level - 1) * xpPerLevel
+        });
+      }
+    } else if (type === 'exponential') {
+      const baseXP = settings.baseXP || 100;
+      for (let level = 1; level <= maxLevel; level++) {
+        configs.push({
+          level,
+          xp_required: Math.pow(level - 1, 2) * baseXP
+        });
+      }
+    } else if (type === 'logarithmic') {
+      const multiplier = settings.multiplier || 500;
+      for (let level = 1; level <= maxLevel; level++) {
+        configs.push({
+          level,
+          xp_required: level === 1 ? 0 : Math.floor(multiplier * Math.log(level) * level)
+        });
+      }
+    }
+    
+    return configs;
+  }
+
+  /**
+   * Get viewer XP history/timeline
+   */
+  getViewerHistory(username, limit = 50) {
+    return this.db.prepare(`
+      SELECT * FROM xp_transactions
+      WHERE username = ?
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `).all(username, limit);
+  }
+
+  /**
+   * Export all viewer data
+   */
+  exportViewerData() {
+    const data = {
+      profiles: this.db.prepare('SELECT * FROM viewer_profiles').all(),
+      transactions: this.db.prepare('SELECT * FROM xp_transactions ORDER BY timestamp DESC LIMIT 10000').all(),
+      levelRewards: this.db.prepare('SELECT * FROM level_rewards').all(),
+      levelConfig: this.db.prepare('SELECT * FROM level_config').all(),
+      settings: this.db.prepare('SELECT * FROM settings').all(),
+      exportDate: new Date().toISOString()
+    };
+    
+    return data;
+  }
+
+  /**
+   * Import viewer data
+   */
+  importViewerData(data) {
+    const transaction = this.db.transaction(() => {
+      // Import profiles
+      if (data.profiles && data.profiles.length > 0) {
+        const stmt = this.db.prepare(`
+          INSERT OR REPLACE INTO viewer_profiles 
+          (username, xp, level, total_xp_earned, first_seen, last_seen, 
+           last_daily_bonus, streak_days, last_streak_date, title, badges, name_color)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        for (const profile of data.profiles) {
+          stmt.run(
+            profile.username, profile.xp, profile.level, profile.total_xp_earned,
+            profile.first_seen, profile.last_seen, profile.last_daily_bonus,
+            profile.streak_days, profile.last_streak_date, profile.title,
+            profile.badges, profile.name_color
+          );
+        }
+      }
+      
+      // Import level config if present
+      if (data.levelConfig && data.levelConfig.length > 0) {
+        this.db.prepare('DELETE FROM level_config').run();
+        const stmt = this.db.prepare(`
+          INSERT INTO level_config (level, xp_required, custom_title, custom_color)
+          VALUES (?, ?, ?, ?)
+        `);
+        
+        for (const config of data.levelConfig) {
+          stmt.run(config.level, config.xp_required, config.custom_title, config.custom_color);
+        }
+      }
+    });
+    
+    transaction();
   }
 
   /**
