@@ -47,9 +47,10 @@ runTest('Plugin should be instantiable', () => {
 
 // Test 2: Path sanitization - valid Linux paths
 runTest('Should accept valid Linux absolute paths', () => {
-    const result = plugin.sanitizePath('/home/user/old-install');
+    const testPath = '/home/user/old-install';
+    const result = plugin.sanitizePath(testPath);
     assert(result !== null, 'Valid Linux path should not be null');
-    assert(result === '/home/user/old-install', 'Path should be unchanged');
+    assert(result === path.resolve(testPath), 'Path should be resolved to absolute path');
 });
 
 // Test 3: Path sanitization - valid Windows paths
