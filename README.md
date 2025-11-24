@@ -15,10 +15,11 @@ Ein einfach zu bedienendes Tool für TikTok LIVE Streaming mit Overlays, Alerts,
 ### Installation & Start
 
 #### Windows:
-1. Doppelklick auf `start.exe`
-2. Das war's! Das Tool installiert automatisch alle benötigten Abhängigkeiten und startet sich
+1. Doppelklick auf `launcher.exe` (visueller Launcher mit Fortschrittsanzeige)
+2. **Alternative:** Doppelklick auf `start.exe` (Konsolen-Version)
+3. Das war's! Das Tool installiert automatisch alle benötigten Abhängigkeiten und startet sich
 
-**Alternative:** Nutze `start.bat` wenn die .exe Datei aus irgendeinem Grund nicht funktioniert
+**Weitere Alternativen:** Nutze `start.bat` wenn die .exe Dateien aus irgendeinem Grund nicht funktionieren
 
 #### Linux:
 1. Doppelklick auf `start-linux` (oder im Terminal: `./start-linux`)
@@ -36,12 +37,23 @@ Ein einfach zu bedienendes Tool für TikTok LIVE Streaming mit Overlays, Alerts,
 
 ## 📖 Was macht der Launcher?
 
-Der Launcher (`start.exe` für Windows, `start-linux` für Linux, `start-mac` für Mac) übernimmt automatisch:
+Der Launcher (`launcher.exe` / `start.exe` für Windows, `start-linux` für Linux, `start-mac` für Mac) übernimmt automatisch:
 
 ✅ Prüft ob Node.js installiert ist  
 ✅ Installiert alle benötigten Abhängigkeiten (beim ersten Start)  
 ✅ Startet das Tool  
 ✅ Öffnet automatisch das Dashboard im Browser  
+
+### Unterschied zwischen launcher.exe und start.exe:
+
+- **`launcher.exe`**: Grafischer Launcher mit Hintergrundbild und Fortschrittsbalken
+  - Zeigt das Hintergrundbild `launcherbg.png` an
+  - Zeigt einen prozentualen Fortschrittsbalken während des Starts
+  - Modernes GUI-Erlebnis
+  
+- **`start.exe`**: Klassischer Konsolen-Launcher
+  - Einfache Textausgabe in der Konsole
+  - Leichtgewichtig und schnell
 
 **Hinweis:** Falls die ausführbaren Dateien (.exe, start-linux, start-mac) Probleme machen, gibt es Fallback-Skripte: `start.bat` (Windows) und `start.sh` (Linux/Mac)  
 
