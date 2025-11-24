@@ -1236,7 +1236,12 @@ async function savePatternModal() {
         if (!response.ok) throw new Error('Failed to save pattern');
 
         const result = await response.json();
-        const savedPatternId = result.id || patternId;
+        // For new patterns, get the ID from the response; for edits, use the existing ID
+        const savedPatternId = result.id || (isEdit ? patternId : null);
+        
+        if (!savedPatternId && !isEdit) {
+            console.warn('[OpenShock] Pattern saved but no ID returned from server');
+        }
 
         await loadPatterns();
         renderPatternList();
@@ -1248,11 +1253,13 @@ async function savePatternModal() {
         const shouldReturn = sessionStorage.getItem('returnToMappingModal');
         if (shouldReturn === 'true') {
             // Update the stored mapping state with the new/updated pattern ID
-            const stateJson = sessionStorage.getItem('mappingModalState');
-            if (stateJson) {
-                const state = JSON.parse(stateJson);
-                state.patternId = savedPatternId;
-                sessionStorage.setItem('mappingModalState', JSON.stringify(state));
+            if (savedPatternId) {
+                const stateJson = sessionStorage.getItem('mappingModalState');
+                if (stateJson) {
+                    const state = JSON.parse(stateJson);
+                    state.patternId = savedPatternId;
+                    sessionStorage.setItem('mappingModalState', JSON.stringify(state));
+                }
             }
             
             // Restore mapping modal
@@ -1645,6 +1652,24 @@ function updateMappingPatternList(selectedPatternId = '') {
 }
 
 /**
+ * Configure the edit button visibility and state based on pattern type
+ * @param {HTMLElement} button - The edit button element
+ * @param {boolean} isPreset - Whether the pattern is a preset pattern
+ */
+function configurePatternEditButton(button, isPreset) {
+    if (!button) return;
+    
+    button.style.display = 'inline-flex';
+    if (isPreset) {
+        button.disabled = true;
+        button.title = 'Preset patterns cannot be edited';
+    } else {
+        button.disabled = false;
+        button.title = 'Edit this pattern';
+    }
+}
+
+/**
  * Update the pattern preview display in the mapping modal
  * Shows pattern steps with intensity, duration, and delay when a pattern is selected
  * @param {string} patternId - The ID of the pattern to preview, or empty string for none
@@ -1671,17 +1696,8 @@ function updateMappingPatternPreview(patternId) {
         return;
     }
     
-    // Show edit button (but disable for preset patterns)
-    if (editButton) {
-        editButton.style.display = 'inline-flex';
-        if (pattern.preset) {
-            editButton.disabled = true;
-            editButton.title = 'Preset patterns cannot be edited';
-        } else {
-            editButton.disabled = false;
-            editButton.title = 'Edit this pattern';
-        }
-    }
+    // Configure edit button based on pattern type
+    configurePatternEditButton(editButton, pattern.preset);
     
     // Render pattern steps
     if (pattern.steps && pattern.steps.length > 0) {
@@ -1778,10 +1794,18 @@ function restoreMappingModal() {
     
     // Wait a bit for modal to be fully rendered, then restore state
     setTimeout(() => {
-        if (state.name) document.getElementById('mappingName').value = state.name;
-        if (state.enabled !== undefined) document.getElementById('mappingEnabled').checked = state.enabled;
-        if (state.eventType) document.getElementById('mappingEventType').value = state.eventType;
-        if (state.actionType) document.getElementById('mappingActionType').value = state.actionType;
+        const nameEl = document.getElementById('mappingName');
+        if (nameEl && state.name) nameEl.value = state.name;
+        
+        const enabledEl = document.getElementById('mappingEnabled');
+        if (enabledEl && state.enabled !== undefined) enabledEl.checked = state.enabled;
+        
+        const eventTypeEl = document.getElementById('mappingEventType');
+        if (eventTypeEl && state.eventType) eventTypeEl.value = state.eventType;
+        
+        const actionTypeEl = document.getElementById('mappingActionType');
+        if (actionTypeEl && state.actionType) actionTypeEl.value = state.actionType;
+        
         if (state.deviceId) {
             const deviceSelect = document.getElementById('mappingDevice');
             if (deviceSelect) deviceSelect.value = state.deviceId;
@@ -1808,15 +1832,27 @@ function restoreMappingModal() {
             }
         }
         
-        if (state.giftName) document.getElementById('mappingGiftName').value = state.giftName;
-        if (state.giftNameSelect) document.getElementById('mappingGiftNameSelect').value = state.giftNameSelect;
-        if (state.minCoins) document.getElementById('mappingMinCoins').value = state.minCoins;
-        if (state.messagePattern) document.getElementById('mappingMessagePattern').value = state.messagePattern;
+        const giftNameEl = document.getElementById('mappingGiftName');
+        if (giftNameEl && state.giftName) giftNameEl.value = state.giftName;
         
-        // Trigger event type change to show correct conditions
-        const eventTypeSelect = document.getElementById('mappingEventType');
-        if (eventTypeSelect) {
-            eventTypeSelect.dispatchEvent(new Event('change'));
+        const giftNameSelectEl = document.getElementById('mappingGiftNameSelect');
+        if (giftNameSelectEl && state.giftNameSelect) giftNameSelectEl.value = state.giftNameSelect;
+        
+        const minCoinsEl = document.getElementById('mappingMinCoins');
+        if (minCoinsEl && state.minCoins) minCoinsEl.value = state.minCoins;
+        
+        const messagePatternEl = document.getElementById('mappingMessagePattern');
+        if (messagePatternEl && state.messagePattern) messagePatternEl.value = state.messagePattern;
+        
+        // Update trigger fields display based on event type
+        // Directly call populateTriggerFields instead of dispatching a synthetic event
+        if (state.eventType) {
+            populateTriggerFields({
+                type: state.eventType,
+                giftName: state.giftNameSelect || state.giftName,
+                minCoins: state.minCoins,
+                messagePattern: state.messagePattern
+            });
         }
     }, 100);
 }
