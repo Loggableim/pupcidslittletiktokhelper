@@ -1,17 +1,17 @@
 # OpenAI Quiz Question Package Generator
 
-Diese Funktion ermöglicht die automatische Generierung von Quiz-Fragen mit OpenAI GPT-Modellen.
+Diese Funktion ermöglicht die automatische Generierung von Quiz-Fragen mit OpenAI GPT-5.1 Modellen.
 
 ## Funktionen
 
 ### 1. OpenAI Konfiguration
 - Sichere Speicherung des OpenAI API-Schlüssels
-- Auswahl verschiedener GPT-Modelle (GPT-4o Mini, GPT-4o, etc.)
+- Auswahl verschiedener GPT-Modelle (GPT-5.1 Nano, GPT-5.1 Mini, GPT-5.1, etc.)
 - Konfigurierbare Standard-Paketgröße
 - API-Schlüssel-Validierung
 
 ### 2. Fragenpakete Generieren
-- Automatische Generierung von Fragen für beliebige Kategorien
+- Automatische Generierung von Fragen für beliebige Kategorien mit GPT-5.1
 - Schwierigkeitsverteilung:
   - 50% Einfach (⭐)
   - ~17% Mittel (⭐⭐)
@@ -31,7 +31,7 @@ Diese Funktion ermöglicht die automatische Generierung von Quiz-Fragen mit Open
 ### Schritt 1: OpenAI API-Schlüssel konfigurieren
 1. Navigiere zum Tab "🤖 AI Fragenpakete"
 2. Gib deinen OpenAI API-Schlüssel ein (erhältlich unter https://platform.openai.com/api-keys)
-3. Wähle optional ein anderes Modell (Standard: GPT-4o Mini)
+3. Wähle optional ein anderes Modell (Standard: GPT-5.1 Nano - schnell und kostengünstig)
 4. Klicke auf "💾 Konfiguration Speichern"
 5. Optional: Teste den API-Schlüssel mit "🧪 API-Schlüssel Testen"
 
@@ -87,8 +87,10 @@ Die Verwendung dieser Funktion verursacht Kosten bei OpenAI basierend auf:
 - Anzahl der generierten Fragen
 - Token-Verbrauch
 
-**Geschätzte Kosten (Stand Nov 2024):**
-- GPT-4o Mini: ~$0.01-0.02 pro 10 Fragen
+**Geschätzte Kosten (Stand Dez 2024):**
+- GPT-5.1 Nano: Sehr kostengünstig - ideal für Massengeneration
+- GPT-5.1 Mini: ~$0.005-0.01 pro 10 Fragen
+- GPT-5.1: ~$0.02-0.05 pro 10 Fragen
 - GPT-4o: ~$0.05-0.10 pro 10 Fragen
 
 Prüfe aktuelle Preise unter: https://openai.com/api/pricing/

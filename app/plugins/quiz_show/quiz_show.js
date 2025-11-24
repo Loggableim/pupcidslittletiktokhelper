@@ -1214,7 +1214,7 @@
                 }
 
                 // Update form fields
-                document.getElementById('openaiModel').value = config.model || 'gpt-4o-mini';
+                document.getElementById('openaiModel').value = config.model || 'gpt-5.1-nano';
                 document.getElementById('defaultPackageSize').value = config.defaultPackageSize || 10;
                 document.getElementById('packageSize').value = config.defaultPackageSize || 10;
             }
