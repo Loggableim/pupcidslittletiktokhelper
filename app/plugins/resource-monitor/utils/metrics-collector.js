@@ -61,7 +61,21 @@ class MetricsCollector {
             this.gpuCheckDone = true;
 
             if (this.hasGPU) {
-                this.log(`GPU detected: ${graphics.controllers[0].model}`, 'info');
+                // Filter out virtual/meta monitors
+                const realGPUs = graphics.controllers.filter(gpu => {
+                    const model = (gpu.model || '').toLowerCase();
+                    const vendor = (gpu.vendor || '').toLowerCase();
+                    return !model.includes('virtual') && 
+                           !model.includes('meta') && 
+                           !model.includes('basic display') &&
+                           !vendor.includes('meta');
+                });
+
+                if (realGPUs.length > 0) {
+                    this.log(`GPU detected: ${realGPUs[0].model}`, 'info');
+                } else {
+                    this.log(`GPU detected: ${graphics.controllers[0].model}`, 'info');
+                }
             } else {
                 this.log('No GPU detected or not accessible', 'info');
             }
@@ -347,6 +361,7 @@ class MetricsCollector {
 
     /**
      * Get GPU metrics (if available)
+     * Prioritizes dedicated GPUs over integrated/virtual ones
      */
     async getGPUMetrics() {
         try {
@@ -357,7 +372,55 @@ class MetricsCollector {
             const graphics = await si.graphics();
 
             if (graphics.controllers && graphics.controllers.length > 0) {
-                return graphics.controllers.map(gpu => ({
+                // Filter and prioritize GPUs
+                // 1. Exclude virtual/meta monitors
+                // 2. Prefer NVIDIA, AMD, Intel Arc over integrated GPUs
+                // 3. Return the first suitable GPU
+                
+                const gpuList = graphics.controllers.filter(gpu => {
+                    const model = (gpu.model || '').toLowerCase();
+                    const vendor = (gpu.vendor || '').toLowerCase();
+                    
+                    // Exclude virtual monitors and Microsoft Basic Display
+                    if (model.includes('virtual') || 
+                        model.includes('meta') || 
+                        model.includes('basic display') ||
+                        model.includes('vnc') ||
+                        vendor.includes('meta')) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                // Sort GPUs to prioritize dedicated ones
+                const sortedGPUs = gpuList.sort((a, b) => {
+                    const aModel = (a.model || '').toLowerCase();
+                    const bModel = (b.model || '').toLowerCase();
+                    const aVendor = (a.vendor || '').toLowerCase();
+                    const bVendor = (b.vendor || '').toLowerCase();
+                    
+                    // Prioritize NVIDIA, AMD, Intel Arc
+                    const dedicatedVendors = ['nvidia', 'amd', 'ati'];
+                    const aDedicated = dedicatedVendors.some(v => aVendor.includes(v));
+                    const bDedicated = dedicatedVendors.some(v => bVendor.includes(v));
+                    
+                    if (aDedicated && !bDedicated) return -1;
+                    if (!aDedicated && bDedicated) return 1;
+                    
+                    // De-prioritize Intel UHD/HD Graphics (integrated)
+                    const aIntegrated = aModel.includes('uhd') || aModel.includes('hd graphics');
+                    const bIntegrated = bModel.includes('uhd') || bModel.includes('hd graphics');
+                    
+                    if (!aIntegrated && bIntegrated) return -1;
+                    if (aIntegrated && !bIntegrated) return 1;
+                    
+                    return 0;
+                });
+
+                // Use the best GPU found
+                const selectedGPUs = sortedGPUs.length > 0 ? sortedGPUs : graphics.controllers;
+                
+                return selectedGPUs.map(gpu => ({
                     model: gpu.model,
                     vendor: gpu.vendor,
                     vram: gpu.vram,

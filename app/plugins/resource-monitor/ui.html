@@ -525,20 +525,44 @@
             gap: 0.35rem !important;
         }
 
-        /* Hide the entire processes section in compact mode */
+        /* Show processes section in compact mode with limited height */
         .compact-mode .card:has(#processes-table) {
-            display: none !important;
+            margin-top: 0.35rem;
         }
 
-        /* Ensure 2x2 grid layout for main sections */
-        @media (min-width: 768px) {
-            .compact-mode .grid.grid-cols-1.md\\:grid-cols-3:first-of-type {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        .compact-mode .process-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
 
-            .compact-mode .grid.grid-cols-1:not(:first-of-type) {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        /* Compact mode layout: 2x2 grid for main metrics */
+        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 {
+            /* Create 2x2 grid: CPU/GPU in row 1, RAM/Network in row 2 */
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-rows: auto auto !important;
+        }
+
+        /* Reorder the cards: CPU (1), GPU (2), RAM (3) becomes CPU, GPU, RAM, Network */
+        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(1) {
+            order: 1; /* CPU - top left */
+        }
+
+        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(3) {
+            order: 2; /* GPU - top right */
+        }
+
+        .compact-mode .grid.grid-cols-1.md\\:grid-cols-3 > .card:nth-child(2) {
+            order: 3; /* RAM - bottom left */
+        }
+
+        /* Move network card into the main grid in compact mode */
+        .compact-mode #app > div:nth-of-type(3) {
+            display: contents;
+        }
+
+        .compact-mode #app > div:nth-of-type(3) > .card {
+            order: 4; /* Network - bottom right */
         }
 
         /* Responsive Grid */
