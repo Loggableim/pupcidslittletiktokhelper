@@ -291,9 +291,27 @@ async function saveConfig() {
     }
 }
 
-// Test emoji rain
+// Test emoji rain with debouncing
+const TEST_BUTTON_COOLDOWN_MS = 1000; // 1 second cooldown
+let testEmojiRainInProgress = false;
 async function testEmojiRain() {
+    // Prevent rapid clicks by checking if a test is already in progress
+    if (testEmojiRainInProgress) {
+        showNotification('Bitte warten, Test läuft bereits...', true);
+        return;
+    }
+
     try {
+        testEmojiRainInProgress = true;
+        
+        // Disable the test button to prevent rapid clicks
+        const testButton = document.getElementById('test-emoji-rain-btn');
+        if (testButton) {
+            testButton.disabled = true;
+            testButton.style.opacity = '0.6';
+            testButton.style.cursor = 'not-allowed';
+        }
+
         const response = await fetch('/api/emoji-rain/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -310,6 +328,17 @@ async function testEmojiRain() {
     } catch (error) {
         showNotification('Netzwerkfehler beim Testen', true);
         console.error(error);
+    } finally {
+        // Re-enable the button after a short delay to prevent rapid clicks
+        setTimeout(() => {
+            testEmojiRainInProgress = false;
+            const testButton = document.getElementById('test-emoji-rain-btn');
+            if (testButton) {
+                testButton.disabled = false;
+                testButton.style.opacity = '1';
+                testButton.style.cursor = 'pointer';
+            }
+        }, TEST_BUTTON_COOLDOWN_MS);
     }
 }
 

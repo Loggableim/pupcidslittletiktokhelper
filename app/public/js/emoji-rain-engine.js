@@ -110,6 +110,12 @@ let fpsHistory = [];
 const FPS_HISTORY_SIZE = 60;
 const COLOR_UPDATE_THROTTLE_MS = 100; // Throttle non-rainbow color updates for performance
 
+// Rate limiting for spawn events to prevent overwhelming the system
+let spawnQueue = [];
+let lastSpawnTime = 0;
+const MIN_SPAWN_INTERVAL_MS = 50; // Minimum 50ms between spawn batches
+const MAX_SPAWN_QUEUE_SIZE = 100; // Maximum queued spawn events
+
 // Rainbow animation state
 let rainbowHueOffset = 0;
 
@@ -432,6 +438,9 @@ function updateLoop(currentTime) {
     }
 
     lastUpdateTime = currentTime - (deltaTime % targetFrameTime);
+
+    // Process queued spawn events
+    processSpawnQueue();
 
     // Update FPS counter
     frameCount++;
@@ -790,6 +799,52 @@ function handleSpawnEvent(data) {
     // Apply burst multiplier
     const actualCount = isBurst ? Math.floor(count * config.superfan_burst_intensity) : count;
 
+    // Check if we should queue this spawn event to prevent overwhelming the system
+    const now = performance.now();
+    const timeSinceLastSpawn = now - lastSpawnTime;
+    
+    // If queue is full, warn and drop the event
+    if (spawnQueue.length >= MAX_SPAWN_QUEUE_SIZE) {
+        console.warn(`⚠️ [SPAWN] Queue full (${MAX_SPAWN_QUEUE_SIZE}), dropping spawn event`);
+        return;
+    }
+    
+    // If we're spawning too quickly, queue the event
+    if (timeSinceLastSpawn < MIN_SPAWN_INTERVAL_MS) {
+        spawnQueue.push({ emoji, x, y, actualCount, username, color, isBurst });
+        // Only log queue size every 10 events to reduce console spam
+        if (spawnQueue.length % 10 === 0 || debugMode) {
+            console.log(`⏸️ [SPAWN] Queued spawn event (queue size: ${spawnQueue.length})`);
+        }
+        return;
+    }
+
+    // Process this spawn immediately
+    processSpawn(emoji, x, y, actualCount, username, color, isBurst);
+    lastSpawnTime = now;
+}
+
+/**
+ * Process queued spawn events
+ */
+function processSpawnQueue() {
+    if (spawnQueue.length === 0) return;
+    
+    const now = performance.now();
+    const timeSinceLastSpawn = now - lastSpawnTime;
+    
+    // Only process queue if enough time has passed
+    if (timeSinceLastSpawn >= MIN_SPAWN_INTERVAL_MS) {
+        const event = spawnQueue.shift();
+        processSpawn(event.emoji, event.x, event.y, event.actualCount, event.username, event.color, event.isBurst);
+        lastSpawnTime = now;
+    }
+}
+
+/**
+ * Process a single spawn event
+ */
+function processSpawn(emoji, x, y, actualCount, username, color, isBurst) {
     for (let i = 0; i < actualCount; i++) {
         const size = config.emoji_min_size_px + Math.random() * (config.emoji_max_size_px - config.emoji_min_size_px);
         const offsetX = x + (Math.random() - 0.5) * 0.2;
@@ -1046,6 +1101,9 @@ window.addEventListener('beforeunload', () => {
     emojis.forEach(emoji => removeEmoji(emoji));
     emojis = [];
     emojiBodyMap.clear();
+    
+    // Clear spawn queue
+    spawnQueue = [];
     
     if (engine) {
         // Remove event listeners to prevent memory leaks
