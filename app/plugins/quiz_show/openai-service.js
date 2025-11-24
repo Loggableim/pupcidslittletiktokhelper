@@ -49,7 +49,6 @@ class OpenAIQuizService {
                         content: prompt
                     }
                 ],
-                temperature: 0.7,
                 response_format: { type: 'json_object' }
             });
 
