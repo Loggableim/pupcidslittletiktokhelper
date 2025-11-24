@@ -51,6 +51,37 @@
     "log": {
       "title": "OSC-Nachrichten-Log",
       "clear": "Log löschen"
+    },
+    "gift_mappings": {
+      "title": "🎁 Gift Catalogue Mappings",
+      "save": "Mappings speichern",
+      "info_title": "Gift-to-Action Mapping",
+      "info_text": "Verknüpfen Sie TikTok-Geschenke mit VRChat OSC-Aktionen. Wenn ein Zuschauer ein bestimmtes Geschenk sendet, wird die zugeordnete Aktion automatisch ausgelöst.",
+      "add_new": "Neue Gift-Verknüpfung hinzufügen",
+      "gift_id": "Gift ID",
+      "gift_name": "Gift Name",
+      "action": "Aktion",
+      "parameters": "Parameter",
+      "duration_ms": "Dauer (ms)",
+      "emote_slot": "Emote Slot (0-7)",
+      "avatar_id_param": "Avatar ID / Parameter Name",
+      "add_mapping": "Mapping hinzufügen",
+      "remove": "Entfernen",
+      "no_mappings": "Noch keine Gift-Mappings konfiguriert. Fügen Sie unten eines hinzu."
+    },
+    "avatar_management": {
+      "title": "👤 Avatar Management",
+      "save": "Avatare speichern",
+      "info_title": "VRChat Avatar Liste",
+      "info_text": "Verwalten Sie Ihre VRChat-Avatare. Avatar-IDs können in VRChat-Logs oder mit Tools wie VRCLens gefunden werden.",
+      "add_new": "Neuen Avatar hinzufügen",
+      "avatar_name": "Avatar Name",
+      "avatar_id": "Avatar ID",
+      "description": "Beschreibung (optional)",
+      "add_avatar": "Avatar hinzufügen",
+      "switch": "Wechseln",
+      "remove": "Entfernen",
+      "no_avatars": "Noch keine Avatare konfiguriert. Fügen Sie unten einen hinzu."
     }
   }
 }

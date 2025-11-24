@@ -372,3 +372,240 @@ function deleteCustomPreset(presetId) {
     localStorage.setItem('osc-custom-presets', JSON.stringify(presets));
     loadCustomPresets();
 }
+
+// ========== GIFT MAPPINGS ==========
+let giftMappings = [];
+
+async function loadGiftMappings() {
+    try {
+        const response = await fetch('/api/osc/gift-mappings');
+        const data = await response.json();
+        
+        if (data.success) {
+            giftMappings = data.mappings || [];
+            renderGiftMappings();
+        }
+    } catch (error) {
+        console.error('Error loading gift mappings:', error);
+    }
+}
+
+function renderGiftMappings() {
+    const tbody = document.getElementById('gift-mappings-tbody');
+    
+    if (!tbody) return;
+    
+    if (giftMappings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No gift mappings configured yet. Add one below.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = giftMappings.map((mapping, index) => {
+        const params = JSON.stringify(mapping.params || {});
+        return `
+            <tr>
+                <td>${mapping.giftId || '-'}</td>
+                <td>${mapping.giftName || '-'}</td>
+                <td>${mapping.action}</td>
+                <td><code style="font-size: 11px;">${params}</code></td>
+                <td>
+                    <button class="btn btn-danger btn-small" onclick="removeGiftMapping(${index})">Remove</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function addGiftMapping() {
+    const giftId = document.getElementById('new-gift-id').value;
+    const giftName = document.getElementById('new-gift-name').value;
+    const action = document.getElementById('new-gift-action').value;
+    const duration = parseInt(document.getElementById('new-gift-duration').value) || 2000;
+    const slot = parseInt(document.getElementById('new-gift-slot').value) || 0;
+    const param = document.getElementById('new-gift-param').value;
+    
+    if (!giftId && !giftName) {
+        alert('Please enter either Gift ID or Gift Name');
+        return;
+    }
+    
+    const params = { duration };
+    
+    if (action === 'emote') {
+        params.slot = slot;
+    } else if (action === 'avatar' && param) {
+        params.avatarId = param;
+    } else if (action === 'custom_parameter' && param) {
+        params.parameterName = param;
+        params.value = 1;
+    }
+    
+    giftMappings.push({
+        giftId: giftId ? parseInt(giftId) : null,
+        giftName: giftName || null,
+        action,
+        params
+    });
+    
+    renderGiftMappings();
+    
+    // Clear form
+    document.getElementById('new-gift-id').value = '';
+    document.getElementById('new-gift-name').value = '';
+    document.getElementById('new-gift-duration').value = '2000';
+    document.getElementById('new-gift-slot').value = '0';
+    document.getElementById('new-gift-param').value = '';
+}
+
+function removeGiftMapping(index) {
+    giftMappings.splice(index, 1);
+    renderGiftMappings();
+}
+
+async function saveGiftMappings() {
+    try {
+        const response = await fetch('/api/osc/gift-mappings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mappings: giftMappings })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Gift mappings saved successfully!');
+        } else {
+            alert('Error saving gift mappings: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving gift mappings:', error);
+        alert('Error saving gift mappings: ' + error.message);
+    }
+}
+
+// ========== AVATAR MANAGEMENT ==========
+let avatars = [];
+
+async function loadAvatars() {
+    try {
+        const response = await fetch('/api/osc/avatars');
+        const data = await response.json();
+        
+        if (data.success) {
+            avatars = data.avatars || [];
+            renderAvatars();
+        }
+    } catch (error) {
+        console.error('Error loading avatars:', error);
+    }
+}
+
+function renderAvatars() {
+    const tbody = document.getElementById('avatars-tbody');
+    
+    if (!tbody) return;
+    
+    if (avatars.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No avatars configured yet. Add one below.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = avatars.map((avatar, index) => {
+        return `
+            <tr>
+                <td>${avatar.name}</td>
+                <td><code style="font-size: 11px;">${avatar.avatarId}</code></td>
+                <td>${avatar.description || '-'}</td>
+                <td>
+                    <button class="btn btn-primary btn-small" onclick="switchToAvatar('${avatar.avatarId}', '${avatar.name}')">Switch</button>
+                    <button class="btn btn-danger btn-small" onclick="removeAvatar(${index})">Remove</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function addAvatar() {
+    const name = document.getElementById('new-avatar-name').value;
+    const avatarId = document.getElementById('new-avatar-id').value;
+    const description = document.getElementById('new-avatar-desc').value;
+    
+    if (!name || !avatarId) {
+        alert('Please enter both Avatar Name and Avatar ID');
+        return;
+    }
+    
+    if (!avatarId.startsWith('avtr_')) {
+        alert('Avatar ID should start with "avtr_"');
+        return;
+    }
+    
+    avatars.push({
+        id: Date.now(),
+        name,
+        avatarId,
+        description: description || ''
+    });
+    
+    renderAvatars();
+    
+    // Clear form
+    document.getElementById('new-avatar-name').value = '';
+    document.getElementById('new-avatar-id').value = '';
+    document.getElementById('new-avatar-desc').value = '';
+}
+
+function removeAvatar(index) {
+    avatars.splice(index, 1);
+    renderAvatars();
+}
+
+async function saveAvatars() {
+    try {
+        const response = await fetch('/api/osc/avatars', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ avatars })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Avatars saved successfully!');
+        } else {
+            alert('Error saving avatars: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving avatars:', error);
+        alert('Error saving avatars: ' + error.message);
+    }
+}
+
+async function switchToAvatar(avatarId, avatarName) {
+    try {
+        const response = await fetch('/api/osc/vrchat/avatar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ avatarId, avatarName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`Switched to avatar: ${avatarName}`);
+        } else {
+            alert('Error switching avatar: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error switching avatar:', error);
+        alert('Error switching avatar: ' + error.message);
+    }
+}
+
+// Initialize gift mappings and avatars on page load
+if (typeof window !== 'undefined') {
+    window.addEventListener('DOMContentLoaded', () => {
+        loadGiftMappings();
+        loadAvatars();
+    });
+}
