@@ -219,11 +219,20 @@ Manage and switch between VRChat avatars via OSC.
 
 ### 3. Gift Mappings
 1. Navigate to "Gift Catalogue Mappings" section
-2. Enter Gift ID or Gift Name
-3. Select the action to trigger
-4. Configure parameters (duration, slot, etc.)
-5. Click "Add Mapping"
-6. Click "Save Mappings" when done
+2. **Option A - Use Gift Catalogue (Recommended):**
+   - Click "🔄 Refresh Catalogue" to load the latest gifts from TikTok
+   - Select a gift from the "Select from Gift Catalogue" dropdown
+   - Gift ID and Name will be auto-filled
+3. **Option B - Manual Entry:**
+   - Enter Gift ID and/or Gift Name manually
+   - Useful for custom gifts or if catalogue is not available
+4. Select the action to trigger (wave, celebrate, dance, hearts, confetti, emote, avatar, custom_parameter)
+5. Configure parameters (duration, slot, avatar ID, parameter name, etc.)
+6. Click "Add Mapping"
+7. Repeat for all desired gift mappings
+8. Click "Save Mappings" when done
+
+**Note:** The gift catalogue integration automatically populates gift names and IDs from your TikTok stream, making it easier to create accurate mappings without manually looking up gift IDs.
 
 ### 4. Avatar Management
 1. Navigate to "Avatar Management" section
@@ -286,9 +295,13 @@ Manage and switch between VRChat avatars via OSC.
 ## Version History
 
 ### v1.1.0 (2025-11-24)
+- ✨ Added Gift Catalogue Integration - Auto-populate gifts from TikTok stream
 - ✨ Added Gift Catalogue Mappings
 - ✨ Added Avatar Switching functionality
 - ✨ New UI sections for gift mappings and avatar management
+- ✨ Gift selector dropdown with refresh button
+- ✨ Gifts sorted by diamond count for easy selection
+- ✨ Backward compatible with manual gift entry
 - ✨ New IFTTT action: `osc:vrchat:avatar`
 - ✨ New API endpoints for gift mappings and avatars
 - ✨ Localization support (DE/EN)
