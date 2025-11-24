@@ -1644,6 +1644,11 @@ function updateMappingPatternList(selectedPatternId = '') {
     updateMappingPatternPreview(selectedPatternId);
 }
 
+/**
+ * Update the pattern preview display in the mapping modal
+ * Shows pattern steps with intensity, duration, and delay when a pattern is selected
+ * @param {string} patternId - The ID of the pattern to preview, or empty string for none
+ */
 function updateMappingPatternPreview(patternId) {
     const previewBox = document.getElementById('mappingPatternPreview');
     const stepsContainer = document.getElementById('mappingPatternSteps');
@@ -1711,6 +1716,11 @@ function updateMappingPatternPreview(patternId) {
     }
 }
 
+/**
+ * Open the pattern editor modal from within the mapping modal
+ * Saves the current mapping modal state to session storage to restore later
+ * @param {string|null} patternId - The pattern ID to edit, or null to create new
+ */
 function openPatternEditorFromMapping(patternId = null) {
     const mappingModal = document.getElementById('mappingModal');
     
@@ -1743,6 +1753,11 @@ function openPatternEditorFromMapping(patternId = null) {
     openPatternModal(patternId);
 }
 
+/**
+ * Restore the mapping modal after returning from pattern editor
+ * Retrieves saved state from session storage and repopulates all form fields
+ * Called automatically after pattern save/cancel if returnToMappingModal flag is set
+ */
 function restoreMappingModal() {
     const shouldReturn = sessionStorage.getItem('returnToMappingModal');
     if (shouldReturn !== 'true') return;
