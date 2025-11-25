@@ -22,6 +22,7 @@ class ConfigPathManager {
         this.initializeBootstrapSettings();
         
         // Log the config location on startup for debugging
+        // Note: Using console.log here because this runs before the logger is initialized
         const configDir = this.getConfigDir();
         console.log(`📂 [ConfigPathManager] Settings stored at: ${configDir}`);
         console.log(`   💡 This location survives application updates!`);

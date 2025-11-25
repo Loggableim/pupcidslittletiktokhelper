@@ -50,15 +50,18 @@ In diesem Verzeichnis findest du:
 
 - **plugins/[plugin-name]/data/** - Plugin-spezifische Daten
 
-## API-Keys bleiben erhalten! 🔐
+## API-Keys und Authentifizierung bleiben erhalten! 🔐
 
-Alle API-Keys werden sicher in der Datenbank gespeichert, die sich im persistenten Konfigurationsverzeichnis befindet:
+Alle API-Keys und Authentifizierungsdaten werden sicher in der Datenbank gespeichert, die sich im persistenten Konfigurationsverzeichnis befindet:
 
+**API-Keys:**
 - **Eulerstream API Key** (`tiktok_euler_api_key`)
 - **ElevenLabs API Key**
 - **Google Cloud TTS API Key**
 - **OpenAI API Key**
 - **Speechify API Key**
+
+**Authentifizierungsdaten:**
 - **TikTok Session ID**
 
 Diese Daten werden **NICHT** im Anwendungsverzeichnis gespeichert und bleiben daher bei Updates erhalten.
