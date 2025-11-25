@@ -143,6 +143,13 @@ class SoundboardManager extends EventEmitter {
     }
 
     /**
+     * Extract username from event data with fallbacks
+     */
+    getUsernameFromData(data) {
+        return data.username || data.nickname || data.uniqueId || 'Anonymous';
+    }
+
+    /**
      * Play animation for event (follow, subscribe, share)
      */
     playEventAnimation(eventType, username) {
@@ -179,7 +186,7 @@ class SoundboardManager extends EventEmitter {
             await this.playSound(url, volume, 'Follow');
             
             // Play animation if configured
-            this.playEventAnimation('follow', data.username || data.nickname || 'Anonymous');
+            this.playEventAnimation('follow', this.getUsernameFromData(data));
         } else {
             console.log(`ℹ️ [Soundboard] No sound configured for follow event`);
         }
@@ -197,7 +204,7 @@ class SoundboardManager extends EventEmitter {
             await this.playSound(url, volume, 'Subscribe');
             
             // Play animation if configured
-            this.playEventAnimation('subscribe', data.username || data.nickname || 'Anonymous');
+            this.playEventAnimation('subscribe', this.getUsernameFromData(data));
         } else {
             console.log(`ℹ️ [Soundboard] No sound configured for subscribe event`);
         }
@@ -215,7 +222,7 @@ class SoundboardManager extends EventEmitter {
             await this.playSound(url, volume, 'Share');
             
             // Play animation if configured
-            this.playEventAnimation('share', data.username || data.nickname || 'Anonymous');
+            this.playEventAnimation('share', this.getUsernameFromData(data));
         } else {
             console.log(`ℹ️ [Soundboard] No sound configured for share event`);
         }
