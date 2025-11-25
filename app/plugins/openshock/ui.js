@@ -1415,10 +1415,32 @@ class CurveEditor {
             const time = Math.round((i / 5) * totalTime);
             this.ctx.fillText(time + 'ms', x, height - 5);
         }
+    }
+    
+    drawCurveOnly() {
+        if (this.curvePoints.length < 2) return;
         
-        // Redraw curve if exists
-        if (this.curvePoints.length > 0) {
-            this.redrawCurve();
+        // Draw the curve
+        this.ctx.strokeStyle = this.getActionColor();
+        this.ctx.lineWidth = 3;
+        this.ctx.lineJoin = 'round';
+        this.ctx.lineCap = 'round';
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.curvePoints[0].x, this.curvePoints[0].y);
+        
+        for (let i = 1; i < this.curvePoints.length; i++) {
+            this.ctx.lineTo(this.curvePoints[i].x, this.curvePoints[i].y);
+        }
+        
+        this.ctx.stroke();
+        
+        // Draw points
+        this.ctx.fillStyle = this.getActionColor();
+        for (const point of this.curvePoints) {
+            this.ctx.beginPath();
+            this.ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+            this.ctx.fill();
         }
     }
 
@@ -1478,39 +1500,16 @@ class CurveEditor {
     }
 
     redrawCurve() {
+        // Draw grid first, then curve on top
         this.drawGrid();
-        
-        if (this.curvePoints.length < 2) return;
-        
-        // Draw the curve
-        this.ctx.strokeStyle = this.getActionColor();
-        this.ctx.lineWidth = 3;
-        this.ctx.lineJoin = 'round';
-        this.ctx.lineCap = 'round';
-        
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.curvePoints[0].x, this.curvePoints[0].y);
-        
-        for (let i = 1; i < this.curvePoints.length; i++) {
-            this.ctx.lineTo(this.curvePoints[i].x, this.curvePoints[i].y);
-        }
-        
-        this.ctx.stroke();
-        
-        // Draw points
-        this.ctx.fillStyle = this.getActionColor();
-        for (const point of this.curvePoints) {
-            this.ctx.beginPath();
-            this.ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
+        this.drawCurveOnly();
     }
 
     getActionColor() {
         switch (this.currentAction) {
-            case 'shock': return '#ef4444';
-            case 'vibrate': return '#8b5cf6';
-            case 'sound': return '#10b981';
+            case 'shock': return '#ef4444';    // Red for shock
+            case 'vibrate': return '#22c55e';  // Green for vibration
+            case 'sound': return '#3b82f6';    // Blue for sound
             default: return '#60a5fa';
         }
     }
@@ -2782,6 +2781,9 @@ function initializeEventDelegation() {
             btn.classList.add('active');
             if (curveEditor) {
                 curveEditor.currentAction = btn.dataset.action;
+                // Redraw the curve with the new action type color
+                curveEditor.redrawCurve();
+                curveEditor.generatePreview();
             }
         });
     });
