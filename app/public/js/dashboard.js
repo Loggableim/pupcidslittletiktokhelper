@@ -379,7 +379,6 @@ async function connect() {
     }
 
     const connectBtn = document.getElementById('connect-btn');
-    const disconnectBtn = document.getElementById('disconnect-btn');
     
     // Immediately disable connect button and show connecting state to prevent double-clicks
     if (connectBtn) {
