@@ -75,6 +75,20 @@
                             </select>
                         </div>
 
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Performance Mode</label>
+                            <select id="performanceMode" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="fast">🚀 Fast (Low-Resource / Toaster PCs)</option>
+                                <option value="balanced">⚖️ Balanced (Default)</option>
+                                <option value="quality">🎯 Quality (High-Resource)</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Fast mode is optimized for low-end PCs with faster timeouts (5s) and fewer retries (1). 
+                                Balanced mode is recommended for most users (10s timeout, 2 retries). 
+                                Quality mode provides maximum reliability for high-end PCs (20s timeout, 3 retries).
+                            </p>
+                        </div>
+
                         <div id="google-api-key-section">
                             <label class="block text-sm font-medium mb-2">Google Cloud API Key (Optional)</label>
                             <div class="flex gap-2">
