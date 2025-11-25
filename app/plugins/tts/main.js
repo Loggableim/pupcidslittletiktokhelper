@@ -14,6 +14,10 @@ const QueueManager = require('./utils/queue-manager');
  * Enterprise-grade Text-to-Speech system with multi-engine support
  */
 class TTSPlugin {
+    // Static emoji pattern compiled once for performance
+    // Matches: emoticons, symbols, pictographs, transport, modifiers, sequences, flags
+    static EMOJI_PATTERN = /(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{FE00}-\u{FE0F}]|[\u{200D}]|[\u{20E3}])+/gu;
+
     constructor(api) {
         this.api = api;
         this.logger = api.logger;
@@ -194,15 +198,11 @@ class TTSPlugin {
     _stripEmojis(text) {
         if (!text) return text;
         
-        // Comprehensive emoji regex pattern that matches:
-        // - Basic emojis (emoticons, symbols, pictographs, transport)
-        // - Emoji modifiers (skin tones)
-        // - Emoji sequences (ZWJ sequences, keycap sequences, flag sequences)
-        // - Extended pictographics
-        const emojiPattern = /(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{FE00}-\u{FE0F}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{200D}]|[\u{FE0F}]|[\u{20E3}])+/gu;
+        // Use static regex pattern (reset lastIndex for global regex)
+        TTSPlugin.EMOJI_PATTERN.lastIndex = 0;
         
         // Remove emojis and clean up extra whitespace
-        return text.replace(emojiPattern, '').replace(/\s+/g, ' ').trim();
+        return text.replace(TTSPlugin.EMOJI_PATTERN, '').replace(/\s+/g, ' ').trim();
     }
 
     /**
