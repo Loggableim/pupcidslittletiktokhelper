@@ -804,12 +804,12 @@ class TikTokConnector extends EventEmitter {
 
             const likeCount = data.likeCount || data.count || data.like_count || 1;
 
-            this.logger.info(`💗 [LIKE EVENT] likeCount=${likeCount}, totalLikes=${totalLikes} (raw)`);
+            this.logger.info(`💗 [LIKE EVENT] likeCount=${likeCount}, totalLikes=${totalLikes}`);
 
-            // If totalLikes found, use it (multiply by 10 as Eulerstream API provides totalLikes in units of 10 likes)
+            // If totalLikes found, use it directly (Eulerstream API provides actual total like count)
             if (totalLikes !== null) {
-                this.stats.likes = totalLikes * 10;
-                this.logger.info(`💗 [LIKE EVENT] Adjusted totalLikes: ${this.stats.likes}`);
+                this.stats.likes = totalLikes;
+                this.logger.info(`💗 [LIKE EVENT] Set totalLikes: ${this.stats.likes}`);
             } else {
                 // Fallback: increment based on likeCount (individual event count, not in tens)
                 // Note: likeCount represents individual likes in this event (typically 1), not cumulative
@@ -1075,9 +1075,9 @@ class TikTokConnector extends EventEmitter {
         for (const field of likeFields) {
             const value = roomInfo[field] || roomInfo.room?.[field] || roomInfo.stats?.[field];
             if (typeof value === 'number' && value >= 0) {
-                // Multiply by 10 as Eulerstream API provides like counts in units of 10 likes
-                this.stats.likes = value * 10;
-                this.logger.info(`📊 Extracted like count from roomInfo.${field}: ${value} (raw) -> ${this.stats.likes} (adjusted)`);
+                // Use actual like count directly (Eulerstream API provides actual total)
+                this.stats.likes = value;
+                this.logger.info(`📊 Extracted like count from roomInfo.${field}: ${value}`);
                 statsUpdated = true;
                 break;
             }
