@@ -378,6 +378,22 @@ async function connect() {
         return;
     }
 
+    const connectBtn = document.getElementById('connect-btn');
+    
+    // Immediately disable connect button and show connecting state to prevent double-clicks
+    if (connectBtn) {
+        connectBtn.disabled = true;
+        const connectingText = window.i18n ? window.i18n.t('dashboard.connecting') : 'Connecting';
+        connectBtn.innerHTML = `
+            <i data-lucide="loader-2" class="animate-spin"></i>
+            <span>${connectingText}...</span>
+        `;
+        // Reinitialize lucide icons for the new loader icon
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
     try {
         const response = await fetch('/api/connect', {
             method: 'POST',
@@ -388,11 +404,14 @@ async function connect() {
         const result = await response.json();
         if (result.success) {
             console.log('✅ Connected to TikTok:', username);
+            // Button state will be updated by updateConnectionStatus via socket event
         } else {
             const errorMsg = window.i18n 
                 ? window.i18n.t('errors.connection_failed') + ': ' + result.error
                 : 'Connection failed: ' + result.error;
             alert(errorMsg);
+            // Restore connect button on failure
+            restoreConnectButton();
         }
     } catch (error) {
         console.error('Connection error:', error);
@@ -400,6 +419,27 @@ async function connect() {
             ? window.i18n.t('errors.network_error') + ': ' + error.message
             : 'Connection error: ' + error.message;
         alert(errorMsg);
+        // Restore connect button on error
+        restoreConnectButton();
+    }
+}
+
+/**
+ * Restore connect button to its original state after a failed connection attempt
+ */
+function restoreConnectButton() {
+    const connectBtn = document.getElementById('connect-btn');
+    if (connectBtn) {
+        connectBtn.disabled = false;
+        const connectText = window.i18n ? window.i18n.t('dashboard.connect') : 'Connect';
+        connectBtn.innerHTML = `
+            <i data-lucide="link"></i>
+            <span>${connectText}</span>
+        `;
+        // Reinitialize lucide icons for the restored icon
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     }
 }
 
@@ -443,7 +483,8 @@ function updateConnectionStatus(status, data = {}) {
 
         case 'disconnected':
             infoEl.textContent = '';
-            connectBtn.disabled = false;
+            // Restore connect button to original state
+            restoreConnectButton();
             disconnectBtn.disabled = true;
             
             // Reset runtime display
@@ -501,13 +542,15 @@ function updateConnectionStatus(status, data = {}) {
             errorHtml += `</div>`;
 
             infoEl.innerHTML = errorHtml;
-            connectBtn.disabled = false;
+            // Restore connect button to original state
+            restoreConnectButton();
             disconnectBtn.disabled = true;
             break;
 
         case 'stream_ended':
             infoEl.innerHTML = '<div class="text-gray-400 text-sm">The stream has ended</div>';
-            connectBtn.disabled = false;
+            // Restore connect button to original state
+            restoreConnectButton();
             disconnectBtn.disabled = true;
             break;
     }

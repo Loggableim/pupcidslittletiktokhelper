@@ -2482,3 +2482,21 @@ input:checked + .toggle-slider:before {
     font-size: 1.25rem;
 }
 
+/* ============================================
+   Utility Animations
+   ============================================ */
+
+/* Spin animation for loading indicators */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
