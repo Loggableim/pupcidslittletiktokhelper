@@ -34,9 +34,26 @@ class SpeechifyEngine {
         this.apiVoicesUrl = `${this.apiBaseUrl}/voices`;
         this.apiSynthesisUrl = `${this.apiBaseUrl}/audio/speech`;
 
-        // Request Configuration
-        this.timeout = 15000; // 15 seconds
-        this.maxRetries = 2; // Total of 3 attempts (1 initial + 2 retries)
+        // Performance mode optimization
+        const performanceMode = config.performanceMode || 'balanced';
+        
+        // Adjust timeout and retries based on performance mode
+        if (performanceMode === 'fast') {
+            // Fast mode: optimized for low-resource PCs
+            this.timeout = 5000;  // 5s timeout for faster failure
+            this.maxRetries = 1;  // Only 1 retry (2 attempts total)
+        } else if (performanceMode === 'quality') {
+            // Quality mode: longer timeouts for better reliability
+            this.timeout = 20000; // 20s timeout
+            this.maxRetries = 3;  // 3 retries (4 attempts total)
+        } else {
+            // Balanced mode (default): moderate settings
+            this.timeout = 10000; // 10s timeout (reduced from 15s)
+            this.maxRetries = 2;  // 2 retries (3 attempts total)
+        }
+        
+        this.performanceMode = performanceMode;
+        this.logger.info(`Speechify TTS: Performance mode set to '${performanceMode}' (timeout: ${this.timeout}ms, retries: ${this.maxRetries})`);
 
         // Voice Caching
         this.cachedVoices = null;

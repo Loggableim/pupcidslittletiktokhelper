@@ -342,7 +342,23 @@ function populateConfig(config) {
         }
     }
 
-    // Load TikTok SessionID
+    // Load OpenAI API key
+    const openaiKeyInput = document.getElementById('openaiApiKey');
+    if (openaiKeyInput) {
+        if (config.openaiApiKey) {
+            if (config.openaiApiKey === '***REDACTED***') {
+                openaiKeyInput.placeholder = 'API key configured (hidden for security)';
+                openaiKeyInput.value = '';
+            } else {
+                openaiKeyInput.value = config.openaiApiKey;
+            }
+        } else {
+            openaiKeyInput.placeholder = 'Enter API key...';
+            openaiKeyInput.value = '';
+        }
+    }
+
+    // Load TikTok SessionID (deprecated but kept for backwards compatibility)
     const tiktokSessionInput = document.getElementById('tiktokSessionId');
     if (tiktokSessionInput) {
         if (config.tiktokSessionId) {
@@ -403,7 +419,13 @@ async function saveConfig() {
             config.elevenlabsApiKey = elevenlabsApiKey;
         }
 
-        // Get TikTok SessionID
+        // Get OpenAI API key
+        const openaiApiKey = document.getElementById('openaiApiKey')?.value?.trim();
+        if (openaiApiKey && openaiApiKey !== '***REDACTED***') {
+            config.openaiApiKey = openaiApiKey;
+        }
+
+        // Get TikTok SessionID (deprecated but kept for backwards compatibility)
         const tiktokSessionId = document.getElementById('tiktokSessionId')?.value?.trim();
         if (tiktokSessionId && tiktokSessionId !== '***HIDDEN***') {
             config.tiktokSessionId = tiktokSessionId;
@@ -1381,6 +1403,18 @@ function setupEventListeners() {
             elevenlabsKeyInput.type = type;
             toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye');
             toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // Toggle OpenAI API key visibility
+    const toggleOpenaiKey = document.getElementById('toggle-openai-key');
+    const openaiKeyInput = document.getElementById('openaiApiKey');
+    if (toggleOpenaiKey && openaiKeyInput) {
+        toggleOpenaiKey.addEventListener('click', () => {
+            const type = openaiKeyInput.type === 'password' ? 'text' : 'password';
+            openaiKeyInput.type = type;
+            toggleOpenaiKey.querySelector('i').classList.toggle('fa-eye');
+            toggleOpenaiKey.querySelector('i').classList.toggle('fa-eye-slash');
         });
     }
 
