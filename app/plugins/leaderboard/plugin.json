@@ -5,7 +5,7 @@
   "description": "Real-time leaderboard for top gifters with 5 theme designs, session and all-time tracking, and preview mode. Displays top contributors as an OBS overlay with overtake animations.",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": true,
+  "enabled": false,
   "type": "overlay",
   "permissions": [
     "socket.io",

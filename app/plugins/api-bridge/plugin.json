@@ -5,7 +5,7 @@
   "description": "Ermöglicht externen Anwendungen die Steuerung des Tools via HTTP und WebSocket",
   "author": "Python.72",
   "entry": "main.js",
-  "enabled": true,
+  "enabled": false,
   "type": "core",
   "permissions": [
     "routes",
