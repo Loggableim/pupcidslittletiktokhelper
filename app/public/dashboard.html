@@ -753,7 +753,7 @@
                     </section>
 
                     <!-- 4. Community Chat / Shoutbox Section -->
-                    <section class="dashboard-section shoutbox-section">
+                    <section class="dashboard-section shoutbox-section" data-plugin="chatango">
                         <h2 class="section-title">
                             <i data-lucide="message-square"></i>
                             <span>Community Chat</span>
@@ -2087,7 +2087,9 @@
     <div id="dashboard-soundboard-pool"></div>
 
     <!-- Chatango Bottom-Right Widget -->
-    <script id="cid0020000424709349923" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: 200px;height: 300px;">{"handle":"pupcidsltth","arch":"js","styles":{"a":"13A318","b":100,"c":"FFFFFF","d":"FFFFFF","k":"13A318","l":"13A318","m":"13A318","n":"FFFFFF","p":"10","q":"13A318","r":100,"t":0,"pos":"br","cv":1,"cvbg":"13a318","cvw":75,"cvh":30,"surl":0,"allowpm":0,"cnrs":"0.35","ticker":1,"fwtickm":1}}</script>
+    <div id="chatango-widget-container" data-plugin="chatango">
+        <script id="cid0020000424709349923" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: 200px;height: 300px;">{"handle":"pupcidsltth","arch":"js","styles":{"a":"13A318","b":100,"c":"FFFFFF","d":"FFFFFF","k":"13A318","l":"13A318","m":"13A318","n":"FFFFFF","p":"10","q":"13A318","r":100,"t":0,"pos":"br","cv":1,"cvbg":"13a318","cvw":75,"cvh":30,"surl":0,"allowpm":0,"cnrs":"0.35","ticker":1,"fwtickm":1}}</script>
+    </div>
 
     <!-- Scripts -->
     <!-- Theme manager must load early to prevent flash of unstyled content -->
