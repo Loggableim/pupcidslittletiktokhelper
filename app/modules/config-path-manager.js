@@ -20,6 +20,16 @@ class ConfigPathManager {
         
         // Initialize settings file path in app directory (for bootstrap)
         this.initializeBootstrapSettings();
+        
+        // Log the config location on startup for debugging
+        const configDir = this.getConfigDir();
+        console.log(`📂 [ConfigPathManager] Settings stored at: ${configDir}`);
+        console.log(`   💡 This location survives application updates!`);
+        if (this.customConfigPath) {
+            console.log(`   ⚙️  Using custom config path`);
+        } else {
+            console.log(`   ⚙️  Using default platform config path`);
+        }
     }
 
     /**
@@ -274,16 +284,24 @@ class ConfigPathManager {
      * Get configuration info for display/debugging
      */
     getInfo() {
+        const userConfigsDir = this.getUserConfigsDir();
+        const userDataDir = this.getUserDataDir();
+        const uploadsDir = this.getUploadsDir();
+        
         return {
             platform: os.platform(),
             homeDir: os.homedir(),
             defaultConfigDir: this.getDefaultConfigDir(),
             customConfigDir: this.customConfigPath,
             activeConfigDir: this.getConfigDir(),
-            userConfigsDir: this.getUserConfigsDir(),
-            userDataDir: this.getUserDataDir(),
-            uploadsDir: this.getUploadsDir(),
-            isUsingCustomPath: this.customConfigPath !== null
+            userConfigsDir: userConfigsDir,
+            userDataDir: userDataDir,
+            uploadsDir: uploadsDir,
+            isUsingCustomPath: this.customConfigPath !== null,
+            // Additional info for users
+            description: 'All settings, API keys, and configurations are stored in this location.',
+            surviveUpdates: true,
+            note: 'This directory is OUTSIDE the application folder and will not be deleted when updating the app.'
         };
     }
 }

@@ -31,11 +31,13 @@ Beispiel: /home/DeinName/.local/share/pupcidslittletiktokhelper
 In diesem Verzeichnis findest du:
 
 - **user_configs/** - Alle Benutzerprofile und Datenbanken
+  - ⚡ **API-Keys** (Eulerstream, ElevenLabs, Google TTS, OpenAI, Speechify)
   - TTS-Voice-Zuweisungen
   - Geschenk-Sounds und Animationen
   - Alert-Konfigurationen
   - HUD-Element-Positionen
   - Flow-Automatisierungen
+  - Plugin-Konfigurationen
   
 - **user_data/** - Zusätzliche Benutzerdaten
   - TikTok-Session-Informationen
@@ -47,6 +49,19 @@ In diesem Verzeichnis findest du:
   - Benutzerdefinierte Assets
 
 - **plugins/[plugin-name]/data/** - Plugin-spezifische Daten
+
+## API-Keys bleiben erhalten! 🔐
+
+Alle API-Keys werden sicher in der Datenbank gespeichert, die sich im persistenten Konfigurationsverzeichnis befindet:
+
+- **Eulerstream API Key** (`tiktok_euler_api_key`)
+- **ElevenLabs API Key**
+- **Google Cloud TTS API Key**
+- **OpenAI API Key**
+- **Speechify API Key**
+- **TikTok Session ID**
+
+Diese Daten werden **NICHT** im Anwendungsverzeichnis gespeichert und bleiben daher bei Updates erhalten.
 
 ## Automatische Migration
 
