@@ -253,43 +253,43 @@ function connectSocket() {
 
   // Listen for event updates
   STATE.socket.on('clarityhud.update.chat', (data) => {
-    if (STATE.settings.showChat) {
+    if (STATE.settings.showChat !== false) {
       addEvent('chat', data);
     }
   });
 
   STATE.socket.on('clarityhud.update.follow', (data) => {
-    if (STATE.settings.showFollows) {
+    if (STATE.settings.showFollows !== false) {
       addEvent('follow', data);
     }
   });
 
   STATE.socket.on('clarityhud.update.share', (data) => {
-    if (STATE.settings.showShares) {
+    if (STATE.settings.showShares !== false) {
       addEvent('share', data);
     }
   });
 
   STATE.socket.on('clarityhud.update.gift', (data) => {
-    if (STATE.settings.showGifts) {
+    if (STATE.settings.showGifts !== false) {
       addEvent('gift', data);
     }
   });
 
   STATE.socket.on('clarityhud.update.subscribe', (data) => {
-    if (STATE.settings.showSubs) {
+    if (STATE.settings.showSubs !== false) {
       addEvent('sub', data);
     }
   });
 
   STATE.socket.on('clarityhud.update.treasure', (data) => {
-    if (STATE.settings.showTreasureChests) {
+    if (STATE.settings.showTreasureChests !== false) {
       addEvent('treasure', data);
     }
   });
 
   STATE.socket.on('clarityhud.update.join', (data) => {
-    if (STATE.settings.showJoins) {
+    if (STATE.settings.showJoins !== false) {
       addEvent('join', data);
     }
   });
@@ -454,6 +454,9 @@ function renderEvent(event) {
 
       animateElement(element, 'in');
 
+      // Auto-scroll to show the new event
+      autoScrollToElement(element, feedContainer);
+
       // Remove old events if exceeding max
       const allItems = feedContainer.querySelectorAll('.event-item');
       if (allItems.length > (STATE.settings.maxLines || 50)) {
@@ -471,6 +474,9 @@ function renderEvent(event) {
       blockContent.insertBefore(element, blockContent.firstChild);
       animateElement(element, 'in');
 
+      // Auto-scroll to show the new event in structured/adaptive mode
+      autoScrollToElement(element, blockContent);
+
       // Remove old events if exceeding max
       const items = blockContent.querySelectorAll('.event-item');
       const maxPerBlock = mode === 'adaptive' ?
@@ -485,6 +491,40 @@ function renderEvent(event) {
       }
     }
   }
+}
+
+/**
+ * Auto-scroll container to show the element
+ * Scrolls to top or bottom based on feed direction
+ */
+function autoScrollToElement(element, container) {
+  if (!element || !container) return;
+
+  // Use requestAnimationFrame to ensure DOM is updated
+  requestAnimationFrame(() => {
+    try {
+      if (STATE.settings.feedDirection === 'top') {
+        // For top direction, scroll to top to show newest
+        container.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      } else {
+        // For bottom direction, scroll to bottom to show newest
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    } catch (error) {
+      // Fallback for browsers that don't support smooth scrolling
+      if (STATE.settings.feedDirection === 'top') {
+        container.scrollTop = 0;
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  });
 }
 
 function createEventElement(event, layoutMode) {

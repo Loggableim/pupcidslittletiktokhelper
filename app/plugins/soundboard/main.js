@@ -143,15 +143,50 @@ class SoundboardManager extends EventEmitter {
     }
 
     /**
+     * Extract username from event data with fallbacks
+     */
+    getUsernameFromData(data) {
+        return data.username || data.nickname || data.uniqueId || 'Anonymous';
+    }
+
+    /**
+     * Play animation for event (follow, subscribe, share)
+     */
+    playEventAnimation(eventType, username) {
+        const animationType = this.db.getSetting(`soundboard_${eventType}_animation_type`);
+        const animationUrl = this.db.getSetting(`soundboard_${eventType}_animation_url`);
+        const animationVolume = parseFloat(this.db.getSetting(`soundboard_${eventType}_animation_volume`)) || 1.0;
+
+        if (!animationType || animationType === 'none' || !animationUrl) {
+            return;
+        }
+
+        const animationData = {
+            type: animationType,
+            url: animationUrl,
+            volume: animationVolume,
+            eventType: eventType,
+            username: username || 'Anonymous',
+            timestamp: Date.now()
+        };
+
+        console.log(`🎬 Playing ${eventType} animation: ${animationData.type} (volume: ${animationData.volume})`);
+        this.io.emit('event:animation', animationData);
+    }
+
+    /**
      * Play sound for follow event
      */
-    async playFollowSound() {
+    async playFollowSound(data = {}) {
         console.log(`⭐ [Soundboard] Follow event received`);
         const url = this.db.getSetting('soundboard_follow_sound');
         const volume = parseFloat(this.db.getSetting('soundboard_follow_volume')) || 1.0;
 
         if (url) {
             await this.playSound(url, volume, 'Follow');
+            
+            // Play animation if configured
+            this.playEventAnimation('follow', this.getUsernameFromData(data));
         } else {
             console.log(`ℹ️ [Soundboard] No sound configured for follow event`);
         }
@@ -160,13 +195,16 @@ class SoundboardManager extends EventEmitter {
     /**
      * Play sound for subscribe event
      */
-    async playSubscribeSound() {
+    async playSubscribeSound(data = {}) {
         console.log(`🌟 [Soundboard] Subscribe event received`);
         const url = this.db.getSetting('soundboard_subscribe_sound');
         const volume = parseFloat(this.db.getSetting('soundboard_subscribe_volume')) || 1.0;
 
         if (url) {
             await this.playSound(url, volume, 'Subscribe');
+            
+            // Play animation if configured
+            this.playEventAnimation('subscribe', this.getUsernameFromData(data));
         } else {
             console.log(`ℹ️ [Soundboard] No sound configured for subscribe event`);
         }
@@ -175,13 +213,16 @@ class SoundboardManager extends EventEmitter {
     /**
      * Play sound for share event
      */
-    async playShareSound() {
+    async playShareSound(data = {}) {
         console.log(`🔄 [Soundboard] Share event received`);
         const url = this.db.getSetting('soundboard_share_sound');
         const volume = parseFloat(this.db.getSetting('soundboard_share_volume')) || 1.0;
 
         if (url) {
             await this.playSound(url, volume, 'Share');
+            
+            // Play animation if configured
+            this.playEventAnimation('share', this.getUsernameFromData(data));
         } else {
             console.log(`ℹ️ [Soundboard] No sound configured for share event`);
         }
@@ -726,7 +767,7 @@ class SoundboardPlugin {
                 console.log('ℹ️ [Soundboard] Follow event received but soundboard is disabled');
                 return;
             }
-            await this.soundboard.playFollowSound();
+            await this.soundboard.playFollowSound(data);
         });
 
         // Subscribe Event
@@ -736,7 +777,7 @@ class SoundboardPlugin {
                 console.log('ℹ️ [Soundboard] Subscribe event received but soundboard is disabled');
                 return;
             }
-            await this.soundboard.playSubscribeSound();
+            await this.soundboard.playSubscribeSound(data);
         });
 
         // Share Event
@@ -746,7 +787,7 @@ class SoundboardPlugin {
                 console.log('ℹ️ [Soundboard] Share event received but soundboard is disabled');
                 return;
             }
-            await this.soundboard.playShareSound();
+            await this.soundboard.playShareSound(data);
         });
 
         // Like Event
