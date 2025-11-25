@@ -1,6 +1,6 @@
 /**
  * Dashboard Enhancements
- * New Features: Quick Action Buttons, FAQ, Changelog, Runtime Tracking, Compact Resources
+ * New Features: Quick Action Buttons, Changelog, Runtime Tracking, Compact Resources
  */
 
 (() => {
@@ -15,7 +15,6 @@
     // ========== INITIALIZATION ==========
     document.addEventListener('DOMContentLoaded', () => {
         initializeQuickActionButtons();
-        initializeFAQAccordion();
         initializeChangelog();
         initializeCompactResources();
         initializeRuntimeTracking();
@@ -228,33 +227,6 @@
         const icon = enabled ? '✅' : '⏸️';
 
         console.log(`${icon} ${name} ${status}`);
-    }
-
-    // ========== FAQ ACCORDION ==========
-    function initializeFAQAccordion() {
-        const faqToggles = document.querySelectorAll('.faq-toggle');
-
-        faqToggles.forEach(toggle => {
-            toggle.addEventListener('click', () => {
-                const faqItem = toggle.closest('.faq-item');
-                const isActive = faqItem.classList.contains('active');
-
-                // Close all other items (optional: comment out for multi-open accordion)
-                document.querySelectorAll('.faq-item').forEach(item => {
-                    if (item !== faqItem) {
-                        item.classList.remove('active');
-                    }
-                });
-
-                // Toggle current item
-                faqItem.classList.toggle('active');
-
-                // Re-initialize Lucide icons
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
-                }
-            });
-        });
     }
 
     // ========== UPDATE CHECKER & CHANGELOG LOADER ==========
