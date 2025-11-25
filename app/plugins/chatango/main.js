@@ -141,6 +141,78 @@ class ChatangoPlugin {
         };
     }
 
+    /**
+     * Validate and sanitize configuration input
+     * @param {object} input - Raw input from request body
+     * @returns {object} Validation result with sanitized config or error
+     */
+    validateConfig(input) {
+        if (!input || typeof input !== 'object') {
+            return { valid: false, error: 'Invalid configuration data' };
+        }
+
+        const validThemes = ['night', 'day', 'contrast'];
+        const validPositions = ['br', 'bl', 'tr', 'tl'];
+        const validFontSizes = ['8', '10', '12', '14'];
+
+        // Build sanitized config from input
+        const sanitized = {};
+
+        // Boolean fields
+        if (typeof input.enabled === 'boolean') {
+            sanitized.enabled = input.enabled;
+        }
+        if (typeof input.allowPM === 'boolean') {
+            sanitized.allowPM = input.allowPM;
+        }
+        if (typeof input.showTicker === 'boolean') {
+            sanitized.showTicker = input.showTicker;
+        }
+        if (typeof input.dashboardEnabled === 'boolean') {
+            sanitized.dashboardEnabled = input.dashboardEnabled;
+        }
+        if (typeof input.widgetEnabled === 'boolean') {
+            sanitized.widgetEnabled = input.widgetEnabled;
+        }
+
+        // String fields with validation
+        if (typeof input.roomHandle === 'string') {
+            // Sanitize room handle - alphanumeric and basic punctuation only
+            const cleanHandle = input.roomHandle.replace(/[^a-zA-Z0-9_-]/g, '');
+            if (cleanHandle.length > 0 && cleanHandle.length <= 50) {
+                sanitized.roomHandle = cleanHandle;
+            }
+        }
+
+        if (typeof input.theme === 'string' && validThemes.includes(input.theme)) {
+            sanitized.theme = input.theme;
+        }
+
+        if (typeof input.fontSize === 'string' && validFontSizes.includes(input.fontSize)) {
+            sanitized.fontSize = input.fontSize;
+        }
+
+        if (typeof input.widgetPosition === 'string' && validPositions.includes(input.widgetPosition)) {
+            sanitized.widgetPosition = input.widgetPosition;
+        }
+
+        // Numeric fields with bounds checking
+        if (typeof input.widgetWidth === 'number') {
+            sanitized.widgetWidth = Math.max(150, Math.min(500, Math.floor(input.widgetWidth)));
+        }
+        if (typeof input.widgetHeight === 'number') {
+            sanitized.widgetHeight = Math.max(200, Math.min(600, Math.floor(input.widgetHeight)));
+        }
+        if (typeof input.collapsedWidth === 'number') {
+            sanitized.collapsedWidth = Math.max(50, Math.min(200, Math.floor(input.collapsedWidth)));
+        }
+        if (typeof input.collapsedHeight === 'number') {
+            sanitized.collapsedHeight = Math.max(20, Math.min(100, Math.floor(input.collapsedHeight)));
+        }
+
+        return { valid: true, config: sanitized };
+    }
+
     registerRoutes() {
         // UI route
         this.api.registerRoute('GET', '/chatango/ui', (req, res) => {
@@ -158,15 +230,25 @@ class ChatangoPlugin {
 
         // POST /api/chatango/config - Update configuration
         this.api.registerRoute('post', '/api/chatango/config', async (req, res) => {
-            const newConfig = req.body;
-            const result = await this.updateConfig(newConfig);
+            const newConfig = this.validateConfig(req.body);
+            if (!newConfig.valid) {
+                return res.status(400).json({
+                    success: false,
+                    error: newConfig.error
+                });
+            }
+            const result = await this.updateConfig(newConfig.config);
             res.json(result);
         });
 
         // GET /api/chatango/embed - Get embed code for current config
         this.api.registerRoute('get', '/api/chatango/embed', async (req, res) => {
-            const type = req.query.type || 'dashboard'; // 'dashboard' or 'widget'
-            const theme = req.query.theme || this.config.theme;
+            const validTypes = ['dashboard', 'widget'];
+            const validThemes = ['night', 'day', 'contrast'];
+            
+            const type = validTypes.includes(req.query.type) ? req.query.type : 'dashboard';
+            const theme = validThemes.includes(req.query.theme) ? req.query.theme : this.config.theme;
+            
             const embedCode = this.generateEmbedCode(type, theme);
             res.json({
                 success: true,
@@ -273,13 +355,28 @@ class ChatangoPlugin {
     generateScriptTag(type, theme) {
         const config = this.generateEmbedCode(type, theme);
         const id = `cid${Date.now()}`;
-        const styleAttr = type === 'widget'
-            ? `width: ${config.width}px;height: ${config.height}px;`
-            : `width: ${config.width};height: ${config.height};`;
+        
+        // Sanitize dimensions
+        const sanitizeSize = (val, defaultVal) => {
+            if (typeof val === 'number') return Math.max(0, Math.min(1000, val));
+            if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) return val;
+            return defaultVal;
+        };
+        
+        const width = type === 'widget' 
+            ? `${sanitizeSize(config.width, 200)}px` 
+            : sanitizeSize(config.width, '100%');
+        const height = type === 'widget' 
+            ? `${sanitizeSize(config.height, 300)}px` 
+            : sanitizeSize(config.height, '100%');
+        const styleAttr = `width: ${width};height: ${height};`;
 
+        // Sanitize handle to prevent injection
+        const safeHandle = String(config.handle || '').replace(/[<>'"&]/g, '');
+        
         const jsonConfig = JSON.stringify({
-            handle: config.handle,
-            arch: config.arch,
+            handle: safeHandle,
+            arch: 'js', // Fixed value
             styles: config.styles
         });
 

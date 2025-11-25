@@ -538,16 +538,17 @@
         async function updateEmbedCodes() {
             try {
                 const theme = document.getElementById('theme').value;
+                const encodedTheme = encodeURIComponent(theme);
                 
                 // Dashboard embed
-                const dashboardResponse = await fetch(`/api/chatango/embed?type=dashboard&theme=${theme}`);
+                const dashboardResponse = await fetch(`/api/chatango/embed?type=dashboard&theme=${encodedTheme}`);
                 const dashboardData = await dashboardResponse.json();
                 if (dashboardData.success) {
                     document.getElementById('dashboard-embed-code').textContent = generateScriptTag(dashboardData.embedCode, 'dashboard');
                 }
 
                 // Widget embed
-                const widgetResponse = await fetch(`/api/chatango/embed?type=widget&theme=${theme}`);
+                const widgetResponse = await fetch(`/api/chatango/embed?type=widget&theme=${encodedTheme}`);
                 const widgetData = await widgetResponse.json();
                 if (widgetData.success) {
                     document.getElementById('widget-embed-code').textContent = generateScriptTag(widgetData.embedCode, 'widget');
@@ -559,15 +560,25 @@
 
         function generateScriptTag(config, type) {
             const id = `cid${Date.now()}`;
-            const styleAttr = type === 'widget'
-                ? `width: ${config.width}px;height: ${config.height}px;`
-                : `width: ${config.width};height: ${config.height};`;
+            
+            // Sanitize width and height - ensure they are valid numbers or percentages
+            const sanitizeSize = (val) => {
+                if (typeof val === 'number') return val;
+                if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) return val;
+                return '100%';
+            };
+            
+            const width = type === 'widget' ? `${parseInt(config.width) || 200}px` : sanitizeSize(config.width);
+            const height = type === 'widget' ? `${parseInt(config.height) || 300}px` : sanitizeSize(config.height);
+            const styleAttr = `width: ${width};height: ${height};`;
 
-            const jsonConfig = JSON.stringify({
-                handle: config.handle,
-                arch: config.arch,
-                styles: config.styles
-            });
+            // Sanitize the config object before JSON serialization
+            const sanitizedConfig = {
+                handle: String(config.handle || '').replace(/[<>'"]/g, ''),
+                arch: 'js', // Fixed value
+                styles: config.styles || {}
+            };
+            const jsonConfig = JSON.stringify(sanitizedConfig);
 
             return `<script id="${id}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="${styleAttr}">${jsonConfig}<\/script>`;
         }
