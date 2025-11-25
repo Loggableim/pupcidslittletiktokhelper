@@ -294,6 +294,9 @@ function populateConfig(config) {
     setText('confidenceThresholdValue', Math.round((config.languageConfidenceThreshold || 0.90) * 100));
     setValue('languageMinTextLength', config.languageMinTextLength || 10);
 
+    // Performance mode
+    setValue('performanceMode', config.performanceMode || 'balanced');
+
     // Handle API key - show placeholder if hidden
     const apiKeyInput = document.getElementById('googleApiKey');
     if (apiKeyInput) {
@@ -398,7 +401,9 @@ async function saveConfig() {
             // Language detection settings
             fallbackLanguage: document.getElementById('fallbackLanguage').value,
             languageConfidenceThreshold: parseFloat(document.getElementById('languageConfidenceThreshold').value),
-            languageMinTextLength: parseInt(document.getElementById('languageMinTextLength').value, 10)
+            languageMinTextLength: parseInt(document.getElementById('languageMinTextLength').value, 10),
+            // Performance mode
+            performanceMode: document.getElementById('performanceMode').value
         };
 
         // Add API key if provided
