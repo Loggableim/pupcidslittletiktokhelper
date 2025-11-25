@@ -240,10 +240,18 @@ class PatternStore {
             throw new Error('No pattern selected');
         }
 
+        // Sync keyframes and duration from editor state to ensure latest values are saved
+        const keyframes = this.state.keyframes.length > 0 
+            ? this.state.keyframes 
+            : this.state.selectedPattern.keyframes;
+        const duration = this.state.totalDuration || this.state.selectedPattern.duration;
+
         const newPattern = {
             ...this.state.selectedPattern,
             id: this._generateId(),
             name: name,
+            keyframes: keyframes,
+            duration: duration,
             isUserPattern: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -418,6 +426,7 @@ class PatternStore {
             ...this.state.selectedPattern,
             type: 'custom',
             keyframes: keyframes,
+            duration: this.state.totalDuration || this.state.selectedPattern.duration,
             params: undefined // Remove params when switching to custom
         };
 
