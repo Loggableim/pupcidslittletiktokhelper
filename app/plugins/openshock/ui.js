@@ -2781,6 +2781,9 @@ function initializeEventDelegation() {
             btn.classList.add('active');
             if (curveEditor) {
                 curveEditor.currentAction = btn.dataset.action;
+                // Redraw the curve with the new action type color
+                curveEditor.redrawCurve();
+                curveEditor.generatePreview();
             }
         });
     });
