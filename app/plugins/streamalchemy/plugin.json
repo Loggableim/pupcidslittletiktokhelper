@@ -5,7 +5,7 @@
   "description": "Transform TikTok gifts into virtual RPG items with crafting mechanics and AI-generated icons",
   "author": "Pup Cid",
   "entry": "index.js",
-  "enabled": true,
+  "enabled": false,
   "dependencies": {
     "optional": ["gcce"]
   },
