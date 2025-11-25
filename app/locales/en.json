@@ -425,7 +425,9 @@
         "filter_off": "Off - No filtering",
         "filter_moderate": "Moderate - Replace profanity",
         "filter_strict": "Strict - Drop messages with profanity",
-        "save_config": "Save Configuration"
+        "save_config": "Save Configuration",
+        "strip_emojis": "Strip emojis from TTS text",
+        "strip_emojis_desc": "When enabled, emojis will be removed from messages before they are spoken, preventing the TTS engine from reading emoji names aloud."
       },
       "users": {
         "manual_voice_assignment": "Manual Voice Assignment",

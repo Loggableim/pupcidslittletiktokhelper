@@ -425,7 +425,9 @@
         "filter_off": "Aus - Keine Filterung",
         "filter_moderate": "Moderat - Schimpfwörter ersetzen",
         "filter_strict": "Streng - Nachrichten mit Schimpfwörtern verwerfen",
-        "save_config": "Konfiguration speichern"
+        "save_config": "Konfiguration speichern",
+        "strip_emojis": "Emojis aus TTS-Text entfernen",
+        "strip_emojis_desc": "Wenn aktiviert, werden Emojis aus Nachrichten entfernt, bevor sie gesprochen werden. Dies verhindert, dass die TTS-Engine Emoji-Namen vorliest."
       },
       "users": {
         "manual_voice_assignment": "Manuelle Stimmzuweisung",
