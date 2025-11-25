@@ -35,7 +35,10 @@ class TTSPlugin {
 
         // Initialize engines
         this.engines = {
-            tiktok: new TikTokEngine(this.logger, { sessionId: this.config.tiktokSessionId }),
+            tiktok: new TikTokEngine(this.logger, { 
+                sessionId: this.config.tiktokSessionId,
+                performanceMode: this.config.performanceMode 
+            }),
             google: null, // Initialized if API key is available
             speechify: null, // Initialized if API key is available
             elevenlabs: null, // Initialized if API key is available
@@ -44,7 +47,11 @@ class TTSPlugin {
 
         // Initialize Google engine if API key is configured
         if (this.config.googleApiKey) {
-            this.engines.google = new GoogleEngine(this.config.googleApiKey, this.logger);
+            this.engines.google = new GoogleEngine(
+                this.config.googleApiKey, 
+                this.logger, 
+                { performanceMode: this.config.performanceMode }
+            );
             this.logger.info('TTS: ✅ Google Cloud TTS engine initialized');
             this._logDebug('INIT', 'Google TTS engine initialized', { hasApiKey: true });
         } else {
@@ -288,7 +295,8 @@ class TTSPlugin {
             languageConfidenceThreshold: 0.90, // 90% confidence required
             languageMinTextLength: 10, // Minimum text length for reliable detection
             enableAutoFallback: true, // Enable automatic fallback to other engines when primary fails
-            stripEmojis: false // Strip emojis from TTS text (prevents emojis from being read aloud)
+            stripEmojis: false, // Strip emojis from TTS text (prevents emojis from being read aloud)
+            performanceMode: 'balanced' // Performance mode: 'fast' (low-resource), 'balanced', 'quality' (high-resource)
         };
 
         // Try to load from database
