@@ -654,7 +654,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .timeline-vibrate {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
+    background: linear-gradient(135deg, #22c55e, #16a34a);
 }
 
 .timeline-sound {
@@ -1239,11 +1239,11 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .timeline-step-vibrate {
-    background: linear-gradient(to top, #8b5cf6, #c4b5fd);
+    background: linear-gradient(to top, #22c55e, #86efac);
 }
 
 .timeline-step-sound {
-    background: linear-gradient(to top, #10b981, #6ee7b7);
+    background: linear-gradient(to top, #3b82f6, #93c5fd);
 }
 
 .timeline-step-pause {
@@ -1460,15 +1460,15 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .btn-action.active[data-action="vibrate"] {
-    background: rgba(139, 92, 246, 0.2);
-    border-color: #8b5cf6;
-    color: #8b5cf6;
+    background: rgba(34, 197, 94, 0.2);
+    border-color: #22c55e;
+    color: #22c55e;
 }
 
 .btn-action.active[data-action="sound"] {
-    background: rgba(16, 185, 129, 0.2);
-    border-color: #10b981;
-    color: #10b981;
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    color: #3b82f6;
 }
 
 /* Timeline Preview Styles */
@@ -1499,11 +1499,11 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .timeline-vibrate {
-    background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+    background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
 }
 
 .timeline-sound {
-    background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
 }
 
 .timeline-pause {
