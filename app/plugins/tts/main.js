@@ -17,6 +17,9 @@ class TTSPlugin {
     // Static emoji pattern compiled once for performance
     // Matches: emoticons, symbols, pictographs, transport, modifiers, sequences, flags
     static EMOJI_PATTERN = /(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{FE00}-\u{FE0F}]|[\u{200D}]|[\u{20E3}])+/gu;
+    
+    // Error message constant for missing engines
+    static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, or OpenAI)';
 
     constructor(api) {
         this.api = api;
@@ -60,7 +63,7 @@ class TTSPlugin {
             this.engines.speechify = new SpeechifyEngine(
                 this.config.speechifyApiKey,
                 this.logger,
-                this.config
+                { performanceMode: this.config.performanceMode }
             );
             this.logger.info('TTS: ✅ Speechify TTS engine initialized');
             this._logDebug('INIT', 'Speechify TTS engine initialized', { hasApiKey: true });
@@ -74,7 +77,7 @@ class TTSPlugin {
             this.engines.elevenlabs = new ElevenLabsEngine(
                 this.config.elevenlabsApiKey,
                 this.logger,
-                this.config
+                { performanceMode: this.config.performanceMode }
             );
             this.logger.info('TTS: ✅ ElevenLabs TTS engine initialized');
             this._logDebug('INIT', 'ElevenLabs TTS engine initialized', { hasApiKey: true });
@@ -88,7 +91,7 @@ class TTSPlugin {
             this.engines.openai = new OpenAIEngine(
                 this.config.openaiApiKey,
                 this.logger,
-                this.config
+                { performanceMode: this.config.performanceMode }
             );
             this.logger.info('TTS: ✅ OpenAI TTS engine initialized');
             this._logDebug('INIT', 'OpenAI TTS engine initialized', { hasApiKey: true });
@@ -1193,7 +1196,7 @@ class TTSPlugin {
                     }
                     this.logger.info(`Falling back to OpenAI TTS engine`);
                 } else {
-                    throw new Error('No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, or OpenAI)');
+                    throw new Error(TTSPlugin.NO_ENGINES_ERROR);
                 }
             }
 
@@ -1230,7 +1233,7 @@ class TTSPlugin {
                     }
                     this.logger.info(`Falling back to OpenAI TTS engine`);
                 } else {
-                    throw new Error('No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, or OpenAI)');
+                    throw new Error(TTSPlugin.NO_ENGINES_ERROR);
                 }
             }
 
@@ -1267,7 +1270,7 @@ class TTSPlugin {
                     }
                     this.logger.info(`Falling back to OpenAI TTS engine`);
                 } else {
-                    throw new Error('No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, or OpenAI)');
+                    throw new Error(TTSPlugin.NO_ENGINES_ERROR);
                 }
             }
 
