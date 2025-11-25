@@ -5,12 +5,31 @@ const axios = require('axios');
  * Premium TTS with high-quality voices (requires API key)
  */
 class GoogleEngine {
-    constructor(apiKey, logger) {
+    constructor(apiKey, logger, config = {}) {
         this.apiKey = apiKey;
         this.logger = logger;
         this.apiUrl = 'https://texttospeech.googleapis.com/v1/text:synthesize';
-        this.timeout = 15000;
-        this.maxRetries = 2;
+        
+        // Performance mode optimization
+        const performanceMode = config.performanceMode || 'balanced';
+        
+        // Adjust timeout and retries based on performance mode
+        if (performanceMode === 'fast') {
+            // Fast mode: optimized for low-resource PCs
+            this.timeout = 5000;  // 5s timeout for faster failure
+            this.maxRetries = 1;  // Only 1 retry (2 attempts total)
+        } else if (performanceMode === 'quality') {
+            // Quality mode: longer timeouts for better reliability
+            this.timeout = 20000; // 20s timeout
+            this.maxRetries = 3;  // 3 retries (4 attempts total)
+        } else {
+            // Balanced mode (default): moderate settings
+            this.timeout = 10000; // 10s timeout (reduced from 15s)
+            this.maxRetries = 2;  // 2 retries (3 attempts total)
+        }
+        
+        this.performanceMode = performanceMode;
+        this.logger.info(`Google TTS: Performance mode set to '${performanceMode}' (timeout: ${this.timeout}ms, retries: ${this.maxRetries})`);
     }
 
     /**
