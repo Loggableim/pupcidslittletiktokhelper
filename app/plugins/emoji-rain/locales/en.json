@@ -15,6 +15,20 @@
       "custom_emojis": "Custom Emojis",
       "save": "Save Settings"
     },
+    "toaster_mode": {
+      "title": "Toaster Mode (Low-End PCs)",
+      "description": "Reduces CPU usage and resource consumption for weak PCs",
+      "enabled": "Enable Toaster Mode",
+      "help": "Optimized for maximum performance on weak systems",
+      "changes_title": "What changes:",
+      "max_emojis": "Max Emojis: 200 → 50",
+      "target_fps": "Target FPS: 60 → 30",
+      "rotation": "Rotation: Disabled",
+      "wind": "Wind: Disabled",
+      "effects": "Rainbow/Pixel/Glow: Disabled",
+      "burst": "Burst Intensity: Reduced",
+      "tip": "Use Toaster Mode if your PC slows down during streaming or CPU usage is too high."
+    },
     "overlay": {
       "title": "Overlay",
       "url": "Overlay URL",

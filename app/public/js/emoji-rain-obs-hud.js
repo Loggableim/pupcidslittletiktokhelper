@@ -15,6 +15,8 @@
             use_custom_images: false,
             image_urls: [],
             effect: 'bounce',
+            // Toaster Mode (Low-End PC Mode)
+            toaster_mode: false,
             physics_gravity_y: 1.0,
             physics_air: 0.02,
             physics_friction: 0.1,
@@ -51,6 +53,79 @@
             color_mode: 'off',
             color_intensity: 0.5
         };
+
+        // Toaster mode presets - applied when toaster_mode is enabled
+        const TOASTER_MODE_PRESETS = {
+            max_emojis_on_screen: 50,
+            target_fps: 30,
+            emoji_min_size_px: 30,
+            emoji_max_size_px: 60,
+            emoji_rotation_speed: 0,
+            rainbow_enabled: false,
+            pixel_enabled: false,
+            color_mode: 'off',
+            enable_glow: false,
+            enable_particles: false,
+            enable_depth: false,
+            like_max_emojis: 10,
+            gift_max_emojis: 25
+        };
+
+        // Store original config values before toaster mode
+        let originalConfigValues = {};
+        let toasterModeActive = false;
+
+        /**
+         * Apply toaster mode settings for low-end PCs
+         * Reduces resource usage by limiting effects and emoji count
+         */
+        function applyToasterMode() {
+            if (toasterModeActive) return; // Already applied
+            
+            console.log('🍞 [TOASTER MODE] Activating toaster mode for low-end PCs...');
+            
+            // Store original values before applying toaster mode
+            for (const key of Object.keys(TOASTER_MODE_PRESETS)) {
+                if (config[key] !== undefined) {
+                    originalConfigValues[key] = config[key];
+                }
+            }
+            
+            // Apply toaster mode presets
+            Object.assign(config, TOASTER_MODE_PRESETS);
+            toasterModeActive = true;
+            
+            // Remove any existing expensive CSS effects
+            document.body.classList.add('toaster-mode');
+            
+            console.log('🍞 [TOASTER MODE] Active - Settings applied:');
+            console.log(`   - Max emojis: ${config.max_emojis_on_screen}`);
+            console.log(`   - Target FPS: ${config.target_fps}`);
+            console.log(`   - Rotation: ${config.emoji_rotation_speed === 0 ? 'disabled' : 'enabled'}`);
+            console.log(`   - Effects: minimal`);
+        }
+
+        /**
+         * Remove toaster mode and restore original settings
+         */
+        function removeToasterMode() {
+            if (!toasterModeActive) return; // Not active
+            
+            console.log('🍞 [TOASTER MODE] Deactivating toaster mode...');
+            
+            // Restore original values
+            for (const key of Object.keys(originalConfigValues)) {
+                config[key] = originalConfigValues[key];
+            }
+            
+            originalConfigValues = {};
+            toasterModeActive = false;
+            
+            // Remove CSS class
+            document.body.classList.remove('toaster-mode');
+            
+            console.log('🍞 [TOASTER MODE] Deactivated - Original settings restored');
+        }
 
         // State
         let engine, render;
@@ -649,6 +724,13 @@
                             resizeCanvas(newWidth, newHeight);
                         }
                     }
+
+                    // Apply or remove toaster mode based on config
+                    if (config.toaster_mode) {
+                        applyToasterMode();
+                    } else {
+                        removeToasterMode();
+                    }
                 }
             } catch (error) {
                 console.error('❌ Failed to load config:', error);
@@ -720,8 +802,18 @@
 
             socket.on('emoji-rain:config-update', (data) => {
                 if (data.config) {
+                    const oldToasterMode = config.toaster_mode;
                     Object.assign(config, data.config);
                     console.log('🔄 Config updated', config);
+
+                    // Handle toaster mode change
+                    if (config.toaster_mode !== oldToasterMode) {
+                        if (config.toaster_mode) {
+                            applyToasterMode();
+                        } else {
+                            removeToasterMode();
+                        }
+                    }
 
                     if (engine) {
                         engine.gravity.y = config.physics_gravity_y;
