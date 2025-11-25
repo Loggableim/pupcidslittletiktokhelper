@@ -278,6 +278,7 @@ const initState = require('./modules/initialization-state');
 const dbPath = profileManager.getProfilePath(activeProfile);
 const db = new Database(dbPath);
 logger.info(`✅ Database initialized: ${dbPath}`);
+logger.info(`💡 All settings (including API keys) are stored here and will survive app updates!`);
 initState.setDatabaseReady();
 
 // ========== MODULE INITIALISIEREN ==========
