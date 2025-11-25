@@ -467,13 +467,19 @@ function renderGiftMappings() {
             </tr>
         `;
     }).join('');
+}
+
+// Setup event delegation for gift mappings table
+function setupGiftMappingsEventDelegation() {
+    const tbody = document.getElementById('gift-mappings-tbody');
+    if (!tbody) return;
     
-    // Attach event listeners for remove buttons
-    tbody.querySelectorAll('.btn-remove-gift-mapping').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const index = parseInt(btn.dataset.index, 10);
+    tbody.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.classList.contains('btn-remove-gift-mapping')) {
+            const index = parseInt(target.dataset.index, 10);
             removeGiftMapping(index);
-        });
+        }
     });
 }
 
@@ -589,21 +595,23 @@ function renderAvatars() {
             </tr>
         `;
     }).join('');
+}
+
+// Setup event delegation for avatars table
+function setupAvatarsEventDelegation() {
+    const tbody = document.getElementById('avatars-tbody');
+    if (!tbody) return;
     
-    // Attach event listeners for switch and remove buttons
-    tbody.querySelectorAll('.btn-switch-avatar').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const avatarId = btn.dataset.avatarId;
-            const avatarName = btn.dataset.avatarName;
+    tbody.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.classList.contains('btn-switch-avatar')) {
+            const avatarId = target.dataset.avatarId;
+            const avatarName = target.dataset.avatarName;
             switchToAvatar(avatarId, avatarName);
-        });
-    });
-    
-    tbody.querySelectorAll('.btn-remove-avatar').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const index = parseInt(btn.dataset.index, 10);
+        } else if (target.classList.contains('btn-remove-avatar')) {
+            const index = parseInt(target.dataset.index, 10);
             removeAvatar(index);
-        });
+        }
     });
 }
 
@@ -690,6 +698,10 @@ if (typeof window !== 'undefined') {
         loadGiftCatalog();
         loadGiftMappings();
         loadAvatars();
+        
+        // Setup event delegation for table buttons
+        setupGiftMappingsEventDelegation();
+        setupAvatarsEventDelegation();
         
         // Add event listener for gift catalog selector
         const catalogSelector = document.getElementById('gift-catalog-selector');
