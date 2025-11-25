@@ -286,6 +286,7 @@ function populateConfig(config) {
     setValue('enabledForChat', config.enabledForChat !== false);
     setValue('autoLanguageDetection', config.autoLanguageDetection !== false);
     setValue('enableAutoFallback', config.enableAutoFallback !== false);
+    setValue('stripEmojis', config.stripEmojis || false);
 
     // Language detection settings
     setValue('fallbackLanguage', config.fallbackLanguage || 'de');
@@ -377,6 +378,7 @@ async function saveConfig() {
             enabledForChat: document.getElementById('enabledForChat').checked,
             autoLanguageDetection: document.getElementById('autoLanguageDetection').checked,
             enableAutoFallback: document.getElementById('enableAutoFallback').checked,
+            stripEmojis: document.getElementById('stripEmojis').checked,
             // Language detection settings
             fallbackLanguage: document.getElementById('fallbackLanguage').value,
             languageConfidenceThreshold: parseFloat(document.getElementById('languageConfidenceThreshold').value),

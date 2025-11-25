@@ -186,6 +186,26 @@ class TTSPlugin {
     }
 
     /**
+     * Strip emojis from text
+     * Removes all Unicode emoji characters and emoji sequences
+     * @param {string} text - Text to process
+     * @returns {string} Text with emojis removed
+     */
+    _stripEmojis(text) {
+        if (!text) return text;
+        
+        // Comprehensive emoji regex pattern that matches:
+        // - Basic emojis (emoticons, symbols, pictographs, transport)
+        // - Emoji modifiers (skin tones)
+        // - Emoji sequences (ZWJ sequences, keycap sequences, flag sequences)
+        // - Extended pictographics
+        const emojiPattern = /(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{FE00}-\u{FE0F}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{200D}]|[\u{FE0F}]|[\u{20E3}])+/gu;
+        
+        // Remove emojis and clean up extra whitespace
+        return text.replace(emojiPattern, '').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
      * Internal debug logging
      */
     _logDebug(category, message, data = {}) {
@@ -267,7 +287,8 @@ class TTSPlugin {
             fallbackLanguage: 'de', // Default fallback language (German)
             languageConfidenceThreshold: 0.90, // 90% confidence required
             languageMinTextLength: 10, // Minimum text length for reliable detection
-            enableAutoFallback: true // Enable automatic fallback to other engines when primary fails
+            enableAutoFallback: true, // Enable automatic fallback to other engines when primary fails
+            stripEmojis: false // Strip emojis from TTS text (prevents emojis from being read aloud)
         };
 
         // Try to load from database
@@ -926,18 +947,30 @@ class TTSPlugin {
 
             const filteredText = profanityResult.filtered;
 
+            // Step 2b: Strip emojis if configured
+            let processedText = filteredText;
+            if (this.config.stripEmojis) {
+                const originalWithEmojis = processedText;
+                processedText = this._stripEmojis(processedText);
+                this._logDebug('SPEAK_STEP2B', 'Stripping emojis', {
+                    original: originalWithEmojis,
+                    stripped: processedText,
+                    emojisRemoved: originalWithEmojis !== processedText
+                });
+            }
+
             // Step 3: Validate and truncate text
             this._logDebug('SPEAK_STEP3', 'Validating text', {
                 originalLength: text?.length,
-                filteredLength: filteredText?.length
+                filteredLength: processedText?.length
             });
 
-            if (!filteredText || filteredText.trim().length === 0) {
+            if (!processedText || processedText.trim().length === 0) {
                 this._logDebug('SPEAK_DENIED', 'Empty text after filtering');
                 return { success: false, error: 'empty_text' };
             }
 
-            let finalText = filteredText.trim();
+            let finalText = processedText.trim();
             if (finalText.length > this.config.maxTextLength) {
                 finalText = finalText.substring(0, this.config.maxTextLength) + '...';
                 this._logDebug('SPEAK_STEP3', 'Text truncated', {
