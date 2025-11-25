@@ -749,6 +749,9 @@ class DatabaseManager {
             // Effect
             effect: 'bounce', // 'bounce' | 'bubble' | 'none'
 
+            // Toaster Mode (Low-End PC Mode)
+            toaster_mode: false, // Reduces resource usage for weak PCs
+
             // Physics Settings
             physics_gravity_y: 1.0,
             physics_air: 0.02,

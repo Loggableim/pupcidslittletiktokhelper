@@ -15,6 +15,20 @@
       "custom_emojis": "Benutzerdefinierte Emojis",
       "save": "Einstellungen speichern"
     },
+    "toaster_mode": {
+      "title": "Toaster Modus (Schwache PCs)",
+      "description": "Reduziert CPU-Auslastung und Ressourcenverbrauch für schwache PCs",
+      "enabled": "Toaster Modus aktivieren",
+      "help": "Optimiert für maximale Performance auf schwachen Systemen",
+      "changes_title": "Was wird geändert:",
+      "max_emojis": "Max. Emojis: 200 → 50",
+      "target_fps": "Ziel-FPS: 60 → 30",
+      "rotation": "Rotation: Deaktiviert",
+      "wind": "Wind: Deaktiviert",
+      "effects": "Rainbow/Pixel/Glow: Deaktiviert",
+      "burst": "Burst Intensität: Reduziert",
+      "tip": "Nutze den Toaster Modus, wenn dein PC beim Streamen langsamer wird oder die CPU-Auslastung zu hoch ist."
+    },
     "overlay": {
       "title": "Overlay",
       "url": "Overlay-URL",

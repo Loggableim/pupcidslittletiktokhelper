@@ -70,6 +70,23 @@
             pointer-events: none;
         }
 
+        /* Toaster Mode - Performance optimizations for low-end PCs */
+        body.toaster-mode .emoji-sprite {
+            /* Disable expensive transitions */
+            transition: none !important;
+            /* Disable filters */
+            filter: none !important;
+            /* Disable animations */
+            animation: none !important;
+            /* Reduce will-change to minimize GPU memory */
+            will-change: transform;
+        }
+
+        body.toaster-mode .emoji-sprite.fading {
+            /* Simple opacity change without transition */
+            opacity: 0;
+        }
+
         /* Debug info (optional) */
         #debug-info {
             position: fixed;

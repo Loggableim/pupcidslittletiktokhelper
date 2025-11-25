@@ -32,6 +32,9 @@ let config = {
     image_urls: [],
     effect: 'bounce',
     
+    // Toaster Mode (Low-End PC Mode)
+    toaster_mode: false, // When enabled, reduces resource usage significantly
+    
     // Physics
     physics_gravity_y: 1.0,
     physics_air: 0.02,
@@ -88,6 +91,29 @@ let config = {
     gift_max_emojis: 50
 };
 
+// Toaster mode presets - applied when toaster_mode is enabled
+// NOTE: Keep in sync with TOASTER_MODE_PRESETS in emoji-rain-obs-hud.js
+const TOASTER_MODE_PRESETS = {
+    max_emojis_on_screen: 50,        // Reduced from 200
+    target_fps: 30,                   // Reduced from 60
+    emoji_min_size_px: 30,            // Slightly smaller for performance
+    emoji_max_size_px: 60,            // Slightly smaller for performance
+    emoji_rotation_speed: 0,          // Disable rotation for performance
+    wind_enabled: false,              // Disable wind simulation
+    rainbow_enabled: false,           // Disable rainbow mode
+    pixel_enabled: false,             // Disable pixel mode
+    color_mode: 'off',                // Disable color filters
+    enable_glow: false,               // Disable glow effects
+    enable_particles: false,          // Disable particle effects
+    enable_depth: false,              // Disable depth/shadow effects
+    superfan_burst_intensity: 1.5,    // Reduced burst intensity
+    like_max_emojis: 10,              // Reduced max emojis per like
+    gift_max_emojis: 25               // Reduced max emojis per gift
+};
+
+// Store original config values before toaster mode
+let originalConfigValues = {};
+
 // User emoji mappings
 let userEmojiMap = {};
 
@@ -121,6 +147,69 @@ let rainbowHueOffset = 0;
 
 // Performance state
 let performanceMode = 'normal'; // 'normal', 'reduced', 'minimal'
+
+// Toaster mode state
+let toasterModeActive = false;
+
+/**
+ * Apply toaster mode settings for low-end PCs
+ * Reduces resource usage by limiting effects and emoji count
+ */
+function applyToasterMode() {
+    if (toasterModeActive) return; // Already applied
+    
+    console.log('🍞 [TOASTER MODE] Activating toaster mode for low-end PCs...');
+    
+    // Store original values before applying toaster mode
+    for (const key of Object.keys(TOASTER_MODE_PRESETS)) {
+        if (config[key] !== undefined) {
+            originalConfigValues[key] = config[key];
+        }
+    }
+    
+    // Apply toaster mode presets
+    Object.assign(config, TOASTER_MODE_PRESETS);
+    toasterModeActive = true;
+    
+    // Remove any existing expensive CSS effects
+    document.body.classList.add('toaster-mode');
+    
+    console.log('🍞 [TOASTER MODE] Active - Settings applied:');
+    console.log(`   - Max emojis: ${config.max_emojis_on_screen}`);
+    console.log(`   - Target FPS: ${config.target_fps}`);
+    console.log(`   - Rotation: ${config.emoji_rotation_speed === 0 ? 'disabled' : 'enabled'}`);
+    console.log(`   - Wind: ${config.wind_enabled ? 'enabled' : 'disabled'}`);
+    console.log(`   - Effects: minimal`);
+}
+
+/**
+ * Remove toaster mode and restore original settings
+ */
+function removeToasterMode() {
+    if (!toasterModeActive) return; // Not active
+    
+    console.log('🍞 [TOASTER MODE] Deactivating toaster mode...');
+    
+    // Restore original values
+    for (const key of Object.keys(originalConfigValues)) {
+        config[key] = originalConfigValues[key];
+    }
+    
+    originalConfigValues = {};
+    toasterModeActive = false;
+    
+    // Remove CSS class
+    document.body.classList.remove('toaster-mode');
+    
+    console.log('🍞 [TOASTER MODE] Deactivated - Original settings restored');
+}
+
+/**
+ * Check if toaster mode is currently active
+ */
+function isToasterModeActive() {
+    return toasterModeActive;
+}
 
 /**
  * Initialize physics engine
@@ -877,6 +966,7 @@ function updateDebugInfo() {
         Emojis: ${emojis.length} / ${config.max_emojis_on_screen}<br>
         FPS: ${currentFPS} (Target: ${config.target_fps})<br>
         Mode: ${performanceMode}<br>
+        Toaster: ${toasterModeActive ? '🍞 Active' : 'Off'}<br>
         Wind: ${windForce.toFixed(6)}<br>
         Bodies: ${engine.world.bodies.length}<br>
         Enabled: ${config.enabled ? 'Yes' : 'No'}
@@ -928,6 +1018,13 @@ async function loadConfig() {
                 }
                 console.log(`⚙️ [PHYSICS] Applied bounce height: ${config.bounce_height}, friction: ${config.physics_friction}`);
             }
+            
+            // Apply or remove toaster mode based on config
+            if (config.toaster_mode) {
+                applyToasterMode();
+            } else {
+                removeToasterMode();
+            }
         }
     } catch (error) {
         console.error('❌ Failed to load emoji rain config:', error);
@@ -977,11 +1074,21 @@ function initSocket() {
             const oldFloorEnabled = config.floor_enabled;
             const oldBounceHeight = config.bounce_height;
             const oldWindEnabled = config.wind_enabled;
+            const oldToasterMode = config.toaster_mode;
             
             // Update config
             Object.assign(config, data.config);
             console.log('🔄 Config updated', config);
             console.log(`🔄 [CONFIG UPDATE] After update - floor_enabled: ${config.floor_enabled}, wind_enabled: ${config.wind_enabled}`);
+
+            // Handle toaster mode change
+            if (config.toaster_mode !== oldToasterMode) {
+                if (config.toaster_mode) {
+                    applyToasterMode();
+                } else {
+                    removeToasterMode();
+                }
+            }
 
             if (engine) {
                 // Update gravity if changed

@@ -57,6 +57,10 @@ function updateUI() {
         document.getElementById('enabled-toggle').checked = config.enabled;
         updateEnabledStatus();
 
+        // Toaster mode
+        console.log('🎨 [EMOJI RAIN UI] Setting toaster mode:', config.toaster_mode);
+        document.getElementById('toaster_mode').checked = config.toaster_mode || false;
+
         // OBS HUD settings
         console.log('🎨 [EMOJI RAIN UI] Setting OBS HUD settings...');
         document.getElementById('obs_hud_enabled').checked = config.obs_hud_enabled !== false;
@@ -211,6 +215,8 @@ async function saveConfig() {
 
     const newConfig = {
         enabled: document.getElementById('enabled-toggle').checked,
+        // Toaster mode (Low-End PC Mode)
+        toaster_mode: document.getElementById('toaster_mode').checked,
         // OBS HUD settings
         obs_hud_enabled: document.getElementById('obs_hud_enabled').checked,
         obs_hud_width: parseInt(document.getElementById('obs_hud_width').value),
