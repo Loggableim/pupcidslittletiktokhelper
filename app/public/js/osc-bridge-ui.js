@@ -462,11 +462,19 @@ function renderGiftMappings() {
                 <td>${escapedAction}</td>
                 <td><code style="font-size: 11px;">${params}</code></td>
                 <td>
-                    <button class="btn btn-danger btn-small" onclick="removeGiftMapping(${index})">Remove</button>
+                    <button class="btn btn-danger btn-small btn-remove-gift-mapping" data-index="${index}">Remove</button>
                 </td>
             </tr>
         `;
     }).join('');
+    
+    // Attach event listeners for remove buttons
+    tbody.querySelectorAll('.btn-remove-gift-mapping').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const index = parseInt(btn.dataset.index, 10);
+            removeGiftMapping(index);
+        });
+    });
 }
 
 function addGiftMapping() {
@@ -575,18 +583,28 @@ function renderAvatars() {
                 <td><code style="font-size: 11px;">${escapedId}</code></td>
                 <td>${escapedDesc}</td>
                 <td>
-                    <button class="btn btn-primary btn-small" data-avatar-id="${escapedId}" data-avatar-name="${escapedName}" onclick="switchToAvatarByData(this)">Switch</button>
-                    <button class="btn btn-danger btn-small" onclick="removeAvatar(${index})">Remove</button>
+                    <button class="btn btn-primary btn-small btn-switch-avatar" data-avatar-id="${escapedId}" data-avatar-name="${escapedName}">Switch</button>
+                    <button class="btn btn-danger btn-small btn-remove-avatar" data-index="${index}">Remove</button>
                 </td>
             </tr>
         `;
     }).join('');
-}
-
-function switchToAvatarByData(button) {
-    const avatarId = button.getAttribute('data-avatar-id');
-    const avatarName = button.getAttribute('data-avatar-name');
-    switchToAvatar(avatarId, avatarName);
+    
+    // Attach event listeners for switch and remove buttons
+    tbody.querySelectorAll('.btn-switch-avatar').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const avatarId = btn.dataset.avatarId;
+            const avatarName = btn.dataset.avatarName;
+            switchToAvatar(avatarId, avatarName);
+        });
+    });
+    
+    tbody.querySelectorAll('.btn-remove-avatar').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const index = parseInt(btn.dataset.index, 10);
+            removeAvatar(index);
+        });
+    });
 }
 
 function addAvatar() {
@@ -702,6 +720,28 @@ if (typeof window !== 'undefined') {
                 refreshBtn.textContent = originalText;
                 refreshBtn.disabled = false;
             });
+        }
+        
+        // Add event listeners for gift mappings buttons
+        const btnSaveGiftMappings = document.getElementById('btn-save-gift-mappings');
+        if (btnSaveGiftMappings) {
+            btnSaveGiftMappings.addEventListener('click', saveGiftMappings);
+        }
+        
+        const btnAddGiftMapping = document.getElementById('btn-add-gift-mapping');
+        if (btnAddGiftMapping) {
+            btnAddGiftMapping.addEventListener('click', addGiftMapping);
+        }
+        
+        // Add event listeners for avatar buttons
+        const btnSaveAvatars = document.getElementById('btn-save-avatars');
+        if (btnSaveAvatars) {
+            btnSaveAvatars.addEventListener('click', saveAvatars);
+        }
+        
+        const btnAddAvatar = document.getElementById('btn-add-avatar');
+        if (btnAddAvatar) {
+            btnAddAvatar.addEventListener('click', addAvatar);
         }
     });
 }
