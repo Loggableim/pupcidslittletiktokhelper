@@ -92,6 +92,7 @@ let config = {
 };
 
 // Toaster mode presets - applied when toaster_mode is enabled
+// NOTE: Keep in sync with TOASTER_MODE_PRESETS in emoji-rain-obs-hud.js
 const TOASTER_MODE_PRESETS = {
     max_emojis_on_screen: 50,        // Reduced from 200
     target_fps: 30,                   // Reduced from 60

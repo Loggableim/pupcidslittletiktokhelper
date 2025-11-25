@@ -55,20 +55,23 @@
         };
 
         // Toaster mode presets - applied when toaster_mode is enabled
+        // NOTE: Keep in sync with TOASTER_MODE_PRESETS in emoji-rain-engine.js
         const TOASTER_MODE_PRESETS = {
-            max_emojis_on_screen: 50,
-            target_fps: 30,
-            emoji_min_size_px: 30,
-            emoji_max_size_px: 60,
-            emoji_rotation_speed: 0,
-            rainbow_enabled: false,
-            pixel_enabled: false,
-            color_mode: 'off',
-            enable_glow: false,
-            enable_particles: false,
-            enable_depth: false,
-            like_max_emojis: 10,
-            gift_max_emojis: 25
+            max_emojis_on_screen: 50,        // Reduced from 200
+            target_fps: 30,                   // Reduced from 60
+            emoji_min_size_px: 30,            // Slightly smaller for performance
+            emoji_max_size_px: 60,            // Slightly smaller for performance
+            emoji_rotation_speed: 0,          // Disable rotation for performance
+            wind_enabled: false,              // Disable wind simulation (not used in OBS HUD but kept for consistency)
+            rainbow_enabled: false,           // Disable rainbow mode
+            pixel_enabled: false,             // Disable pixel mode
+            color_mode: 'off',                // Disable color filters
+            enable_glow: false,               // Disable glow effects
+            enable_particles: false,          // Disable particle effects
+            enable_depth: false,              // Disable depth/shadow effects
+            superfan_burst_intensity: 1.5,    // Reduced burst intensity
+            like_max_emojis: 10,              // Reduced max emojis per like
+            gift_max_emojis: 25               // Reduced max emojis per gift
         };
 
         // Store original config values before toaster mode
