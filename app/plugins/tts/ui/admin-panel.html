@@ -60,11 +60,11 @@
                         <div>
                             <label class="block text-sm font-medium mb-2">Default Engine</label>
                             <select id="defaultEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                                <!-- <option value="tiktok">TikTok TTS (Free)</option> -->
-                                <!-- TikTok TTS temporarily disabled - API endpoints not working -->
+                                <!-- TikTok TTS removed - no longer supported -->
                                 <option value="google">Google Cloud TTS (Requires API Key)</option>
                                 <option value="speechify">Speechify TTS (Premium, Requires API Key)</option>
                                 <option value="elevenlabs">ElevenLabs TTS (Premium, Requires API Key)</option>
+                                <option value="openai">OpenAI TTS (Requires API Key)</option>
                             </select>
                         </div>
 
@@ -83,7 +83,7 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">Leave empty to use TikTok TTS only</p>
+                            <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://console.cloud.google.com" target="_blank" class="text-blue-400 hover:text-blue-300">Google Cloud Console</a>. High-quality neural voices.</p>
                         </div>
 
                         <div id="speechify-api-key-section">
@@ -106,6 +106,17 @@
                                 </button>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://elevenlabs.io/docs/quickstart" target="_blank" class="text-blue-400 hover:text-blue-300">elevenlabs.io</a>. Ultra-realistic AI voices. 100+ voices in 30+ languages.</p>
+                        </div>
+
+                        <div id="openai-api-key-section">
+                            <label class="block text-sm font-medium mb-2">OpenAI API Key (Optional)</label>
+                            <div class="flex gap-2">
+                                <input type="password" id="openaiApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <button type="button" id="toggle-openai-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-400 hover:text-blue-300">OpenAI Platform</a>. See <a href="https://platform.openai.com/docs/guides/text-to-speech" target="_blank" class="text-blue-400 hover:text-blue-300">TTS docs</a>. Multiple voice options with TTS-1 and TTS-1-HD models.</p>
                         </div>
 
                         <!-- TikTok SessionID section temporarily hidden - TikTok TTS API endpoints not working -->
@@ -313,11 +324,11 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">Engine</label>
                         <select id="manualEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                            <!-- <option value="tiktok">TikTok TTS (Free)</option> -->
-                            <!-- TikTok TTS temporarily disabled - API endpoints not working -->
+                            <!-- TikTok TTS removed - no longer supported -->
                             <option value="google">Google Cloud TTS</option>
                             <option value="speechify">Speechify TTS</option>
                             <option value="elevenlabs">ElevenLabs TTS</option>
+                            <option value="openai">OpenAI TTS</option>
                         </select>
                     </div>
 
@@ -525,11 +536,11 @@
             <div class="mb-4">
                 <label class="block text-sm font-bold mb-2">Engine</label>
                 <select id="modalEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
-                    <!-- <option value="tiktok">TikTok (Free)</option> -->
-                    <!-- TikTok TTS temporarily disabled - API endpoints not working -->
+                    <!-- TikTok TTS removed - no longer supported -->
                     <option value="google">Google Cloud TTS (Premium)</option>
                     <option value="speechify">Speechify (Premium)</option>
                     <option value="elevenlabs">ElevenLabs (Premium)</option>
+                    <option value="openai">OpenAI TTS (Premium)</option>
                 </select>
             </div>
 
