@@ -203,7 +203,8 @@ class PatternLibrary {
                     selectedPattern: newPattern,
                     currentView: 'keyframe',
                     isExpertMode: true,
-                    keyframes: newPattern.keyframes
+                    keyframes: newPattern.keyframes,
+                    totalDuration: newPattern.duration
                 });
             });
         }

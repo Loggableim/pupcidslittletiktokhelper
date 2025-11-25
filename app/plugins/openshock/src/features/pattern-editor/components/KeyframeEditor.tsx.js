@@ -560,7 +560,17 @@ class KeyframeEditor {
         if (durationInput) {
             durationInput.addEventListener('change', (e) => {
                 const duration = parseInt(e.target.value);
-                this.store.setState({ totalDuration: duration });
+                const state = this.store.getState();
+                
+                // Update both totalDuration state and selectedPattern.duration
+                const updates = { totalDuration: duration };
+                if (state.selectedPattern) {
+                    updates.selectedPattern = {
+                        ...state.selectedPattern,
+                        duration: duration
+                    };
+                }
+                this.store.setState(updates);
             });
         }
 
