@@ -462,11 +462,25 @@ function renderGiftMappings() {
                 <td>${escapedAction}</td>
                 <td><code style="font-size: 11px;">${params}</code></td>
                 <td>
-                    <button class="btn btn-danger btn-small" onclick="removeGiftMapping(${index})">Remove</button>
+                    <button class="btn btn-danger btn-small btn-remove-gift-mapping" data-index="${index}">Remove</button>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+// Setup event delegation for gift mappings table
+function setupGiftMappingsEventDelegation() {
+    const tbody = document.getElementById('gift-mappings-tbody');
+    if (!tbody) return;
+    
+    tbody.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.classList.contains('btn-remove-gift-mapping')) {
+            const index = parseInt(target.dataset.index, 10);
+            removeGiftMapping(index);
+        }
+    });
 }
 
 function addGiftMapping() {
@@ -575,18 +589,30 @@ function renderAvatars() {
                 <td><code style="font-size: 11px;">${escapedId}</code></td>
                 <td>${escapedDesc}</td>
                 <td>
-                    <button class="btn btn-primary btn-small" data-avatar-id="${escapedId}" data-avatar-name="${escapedName}" onclick="switchToAvatarByData(this)">Switch</button>
-                    <button class="btn btn-danger btn-small" onclick="removeAvatar(${index})">Remove</button>
+                    <button class="btn btn-primary btn-small btn-switch-avatar" data-avatar-id="${escapedId}" data-avatar-name="${escapedName}">Switch</button>
+                    <button class="btn btn-danger btn-small btn-remove-avatar" data-index="${index}">Remove</button>
                 </td>
             </tr>
         `;
     }).join('');
 }
 
-function switchToAvatarByData(button) {
-    const avatarId = button.getAttribute('data-avatar-id');
-    const avatarName = button.getAttribute('data-avatar-name');
-    switchToAvatar(avatarId, avatarName);
+// Setup event delegation for avatars table
+function setupAvatarsEventDelegation() {
+    const tbody = document.getElementById('avatars-tbody');
+    if (!tbody) return;
+    
+    tbody.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.classList.contains('btn-switch-avatar')) {
+            const avatarId = target.dataset.avatarId;
+            const avatarName = target.dataset.avatarName;
+            switchToAvatar(avatarId, avatarName);
+        } else if (target.classList.contains('btn-remove-avatar')) {
+            const index = parseInt(target.dataset.index, 10);
+            removeAvatar(index);
+        }
+    });
 }
 
 function addAvatar() {
@@ -673,6 +699,10 @@ if (typeof window !== 'undefined') {
         loadGiftMappings();
         loadAvatars();
         
+        // Setup event delegation for table buttons
+        setupGiftMappingsEventDelegation();
+        setupAvatarsEventDelegation();
+        
         // Add event listener for gift catalog selector
         const catalogSelector = document.getElementById('gift-catalog-selector');
         if (catalogSelector) {
@@ -702,6 +732,28 @@ if (typeof window !== 'undefined') {
                 refreshBtn.textContent = originalText;
                 refreshBtn.disabled = false;
             });
+        }
+        
+        // Add event listeners for gift mappings buttons
+        const btnSaveGiftMappings = document.getElementById('btn-save-gift-mappings');
+        if (btnSaveGiftMappings) {
+            btnSaveGiftMappings.addEventListener('click', saveGiftMappings);
+        }
+        
+        const btnAddGiftMapping = document.getElementById('btn-add-gift-mapping');
+        if (btnAddGiftMapping) {
+            btnAddGiftMapping.addEventListener('click', addGiftMapping);
+        }
+        
+        // Add event listeners for avatar buttons
+        const btnSaveAvatars = document.getElementById('btn-save-avatars');
+        if (btnSaveAvatars) {
+            btnSaveAvatars.addEventListener('click', saveAvatars);
+        }
+        
+        const btnAddAvatar = document.getElementById('btn-add-avatar');
+        if (btnAddAvatar) {
+            btnAddAvatar.addEventListener('click', addAvatar);
         }
     });
 }
