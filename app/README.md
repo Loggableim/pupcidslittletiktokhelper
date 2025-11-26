@@ -127,6 +127,13 @@ http://localhost:3000/goal/subs
 http://localhost:3000/goal/coins
 ```
 
+**Optional - Animations-Overlay (für Follow/Subscribe/Share/Gift Animationen):**
+- Source → Browser Source
+- URL: `http://localhost:3000/animation-overlay.html`
+- Breite: 1920, Höhe: 1080
+- "Shutdown source when not visible" deaktivieren
+- Hinweis: Animationen werden nur abgespielt, wenn im Soundboard-Plugin konfiguriert
+
 ### 3. Soundboard konfigurieren
 1. Dashboard → Soundboard (`http://localhost:3000/soundboard/`)
 2. Gift auswählen → "Set Sound"
