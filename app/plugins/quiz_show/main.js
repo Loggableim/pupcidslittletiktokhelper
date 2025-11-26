@@ -69,7 +69,9 @@ class QuizShowPlugin {
                 1: [], // Answer B voters
                 2: [], // Answer C voters
                 3: [] // Answer D voters
-            }
+            },
+            // Track asked questions in current session to prevent repetition
+            askedQuestionIds: new Set() // Set of question IDs asked in current session
         };
 
         // Timer interval
@@ -209,11 +211,20 @@ class QuizShowPlugin {
                     secondary_color TEXT
                 );
 
+                CREATE TABLE IF NOT EXISTS question_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    question_id INTEGER NOT NULL,
+                    asked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
                 CREATE INDEX IF NOT EXISTS idx_questions_difficulty ON questions(difficulty);
                 CREATE INDEX IF NOT EXISTS idx_questions_package ON questions(package_id);
                 CREATE INDEX IF NOT EXISTS idx_leaderboard_season ON leaderboard_entries(season_id);
                 CREATE INDEX IF NOT EXISTS idx_package_category ON question_packages(category);
+                CREATE INDEX IF NOT EXISTS idx_question_history_asked_at ON question_history(asked_at);
+                CREATE INDEX IF NOT EXISTS idx_question_history_question_id ON question_history(question_id);
             `);
 
             // Ensure default season exists
@@ -244,6 +255,9 @@ class QuizShowPlugin {
                 this.db.prepare('INSERT INTO openai_config (id, api_key, model, default_package_size) VALUES (1, NULL, ?, ?)')
                     .run('gpt-5-mini', 10);
             }
+
+            // Clean up question history older than 24 hours
+            this.cleanupQuestionHistory();
 
             // Migrate schema if needed
             await this.migrateSchema();
@@ -365,6 +379,44 @@ class QuizShowPlugin {
             }
         } catch (error) {
             this.api.log('Error during migration: ' + error.message, 'warn');
+        }
+    }
+
+    cleanupQuestionHistory() {
+        try {
+            // Delete question history entries older than 24 hours
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const result = this.db.prepare('DELETE FROM question_history WHERE asked_at < ?').run(oneDayAgo);
+            
+            if (result.changes > 0) {
+                this.api.log(`Cleaned up ${result.changes} old question history entries`, 'info');
+            }
+        } catch (error) {
+            this.api.log('Error cleaning up question history: ' + error.message, 'warn');
+        }
+    }
+
+    getTodaysAskedQuestionIds() {
+        try {
+            // Get all question IDs asked today (within last 24 hours)
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const rows = this.db.prepare(
+                'SELECT DISTINCT question_id FROM question_history WHERE asked_at >= ?'
+            ).all(oneDayAgo);
+            
+            return new Set(rows.map(row => row.question_id));
+        } catch (error) {
+            this.api.log('Error getting today\'s asked questions: ' + error.message, 'warn');
+            return new Set();
+        }
+    }
+
+    recordQuestionAsked(questionId) {
+        try {
+            this.db.prepare('INSERT INTO question_history (question_id, asked_at) VALUES (?, ?)')
+                .run(questionId, new Date().toISOString());
+        } catch (error) {
+            this.api.log('Error recording asked question: ' + error.message, 'warn');
         }
     }
 
@@ -1414,15 +1466,42 @@ class QuizShowPlugin {
             answers: JSON.parse(q.answers)
         }));
 
-        // Select question
-        let questionIndex;
-        if (this.config.randomQuestions) {
-            questionIndex = Math.floor(Math.random() * questions.length);
-        } else {
-            questionIndex = (this.gameState.currentQuestionIndex + 1) % questions.length;
+        // Get today's asked questions to prevent daily repetition
+        const todaysAskedQuestionIds = this.getTodaysAskedQuestionIds();
+        
+        // Filter out questions asked in current session OR today
+        const availableQuestions = questions.filter(q => 
+            !this.gameState.askedQuestionIds.has(q.id) && 
+            !todaysAskedQuestionIds.has(q.id)
+        );
+
+        // Check if we have any available questions
+        if (availableQuestions.length === 0) {
+            // No questions available - emit error to HUD
+            this.api.emit('quiz-show:error', { 
+                message: 'Neue Fragen notwendig',
+                type: 'no_questions_available'
+            });
+            
+            throw new Error('Alle verfügbaren Fragen wurden heute bereits gestellt. Bitte fügen Sie neue Fragen hinzu.');
         }
 
-        const question = questions[questionIndex];
+        // Select question from available ones
+        let questionIndex;
+        if (this.config.randomQuestions) {
+            questionIndex = Math.floor(Math.random() * availableQuestions.length);
+        } else {
+            // For sequential mode, just use the first available question
+            questionIndex = 0;
+        }
+
+        const question = availableQuestions[questionIndex];
+
+        // Record this question as asked (for daily tracking)
+        this.recordQuestionAsked(question.id);
+        
+        // Add to session tracking (for round tracking)
+        this.gameState.askedQuestionIds.add(question.id);
 
         // Prepare answers (shuffle if configured)
         let answers = [...question.answers];
@@ -2045,7 +2124,8 @@ class QuizShowPlugin {
                 1: [],
                 2: [],
                 3: []
-            }
+            },
+            askedQuestionIds: new Set() // Reset asked questions tracking
         };
     }
 

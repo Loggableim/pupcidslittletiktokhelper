@@ -426,6 +426,22 @@
         socket.on('quiz-show:play-sound', handlePlaySound);
         socket.on('quiz-show:quiz-ended', handleQuizEnded);
         socket.on('quiz-show:brand-kit-updated', handleBrandKitUpdated);
+        socket.on('quiz-show:error', handleQuizError);
+    }
+
+    function handleQuizError(data) {
+        try {
+            console.log('Quiz error:', data);
+            
+            // Display error message in HUD
+            if (data.type === 'no_questions_available') {
+                showErrorMessage(data.message || 'Neue Fragen notwendig');
+            } else {
+                showErrorMessage(data.message || 'Ein Fehler ist aufgetreten');
+            }
+        } catch (error) {
+            console.error('Error handling quiz error:', error);
+        }
     }
 
     function handlePlaySound(data) {
@@ -1044,6 +1060,57 @@
                 }
             }, 500);
         }, 5000);
+    }
+
+    function showErrorMessage(message) {
+        // Create error overlay element if it doesn't exist
+        let errorOverlay = document.getElementById('error-overlay');
+        if (!errorOverlay) {
+            errorOverlay = document.createElement('div');
+            errorOverlay.id = 'error-overlay';
+            errorOverlay.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                color: white;
+                padding: 30px 50px;
+                border-radius: 15px;
+                box-shadow: 0 10px 40px rgba(239, 68, 68, 0.5);
+                z-index: 10000;
+                opacity: 0;
+                transition: opacity 0.3s;
+                font-family: ${hudConfig.fonts.family};
+                text-align: center;
+                border: 3px solid rgba(255, 255, 255, 0.3);
+            `;
+            document.body.appendChild(errorOverlay);
+        }
+
+        errorOverlay.innerHTML = `
+            <div style="transform: scale(0); transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
+                <div style="font-size: 3em; margin-bottom: 15px;">⚠️</div>
+                <h2 style="font-size: 2em; margin-bottom: 10px; font-weight: bold;">${escapeHtml(message)}</h2>
+                <p style="font-size: 1.2em; opacity: 0.9;">Bitte fügen Sie neue Fragen hinzu und starten Sie erneut.</p>
+            </div>
+        `;
+
+        // Animate in
+        setTimeout(() => {
+            errorOverlay.style.opacity = '1';
+            errorOverlay.querySelector('div').style.transform = 'scale(1)';
+        }, 100);
+
+        // Auto-hide after 8 seconds
+        setTimeout(() => {
+            errorOverlay.style.opacity = '0';
+            setTimeout(() => {
+                if (errorOverlay.parentNode) {
+                    errorOverlay.parentNode.removeChild(errorOverlay);
+                }
+            }, 300);
+        }, 8000);
     }
 
     function escapeHtml(text) {
