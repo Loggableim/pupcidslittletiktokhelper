@@ -127,7 +127,7 @@ http://localhost:3000/goal/subs
 http://localhost:3000/goal/coins
 ```
 
-**Optional - Animation Overlay (für Follow/Subscribe/Share/Gift Animationen):**
+**Optional - Animations-Overlay (für Follow/Subscribe/Share/Gift Animationen):**
 - Source → Browser Source
 - URL: `http://localhost:3000/animation-overlay.html`
 - Breite: 1920, Höhe: 1080

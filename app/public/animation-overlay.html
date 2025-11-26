@@ -183,31 +183,33 @@
 
             updateDebug(`Playing: ${url}`);
 
+            // Validate and clamp volume between 0 and 1
+            const validVolume = Math.max(0, Math.min(1, volume || 1.0));
+
             // Create animation element based on URL type
             const isVideo = url.match(/\.(mp4|webm|mov)($|\?)/i);
             const isAudio = url.match(/\.(mp3|wav|ogg)($|\?)/i);
 
             let element;
             let duration = 3000; // Default duration in milliseconds
+            const MAX_ANIMATION_DURATION = 30000; // Maximum 30 seconds
 
             if (isVideo) {
                 element = document.createElement('video');
                 element.src = url;
-                element.volume = volume || 1.0;
+                element.volume = validVolume;
                 element.autoplay = true;
-                element.muted = false;
             } else if (isAudio) {
                 element = document.createElement('audio');
                 element.src = url;
-                element.volume = volume || 1.0;
+                element.volume = validVolume;
                 element.autoplay = true;
             } else {
                 // Assume it's a video if we can't determine
                 element = document.createElement('video');
                 element.src = url;
-                element.volume = volume || 1.0;
+                element.volume = validVolume;
                 element.autoplay = true;
-                element.muted = false;
             }
 
             // Create wrapper div
@@ -260,7 +262,7 @@
                     if (container.contains(wrapper)) {
                         fadeOutAndRemove(wrapper, resolve);
                     }
-                }, 30000); // Max 30 seconds
+                }, MAX_ANIMATION_DURATION);
             });
         }
 
