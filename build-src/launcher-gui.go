@@ -210,6 +210,7 @@ func main() {
 <head>
     <meta charset="UTF-8">
     <title>TikTok Stream Tool - Launcher</title>
+    <link rel="icon" type="image/png" href="/icon">
     <style>
         * {
             margin: 0;
@@ -322,6 +323,11 @@ func main() {
 	
 	http.HandleFunc("/bg", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, bgImagePath)
+	})
+	
+	http.HandleFunc("/icon", func(w http.ResponseWriter, r *http.Request) {
+		iconPath := filepath.Join(launcher.appDir, "ltthappicon.png")
+		http.ServeFile(w, r, iconPath)
 	})
 	
 	http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
