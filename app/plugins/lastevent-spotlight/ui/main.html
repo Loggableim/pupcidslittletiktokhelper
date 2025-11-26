@@ -4,7 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LastEvent Spotlight</title>
+  <link rel="stylesheet" href="/css/themes.css">
+  <script>
+    // Apply saved theme immediately to prevent flash
+    (function() {
+      const savedTheme = localStorage.getItem('dashboard-theme');
+      if (savedTheme && savedTheme !== 'night') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      }
+    })();
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/i18n-client.js"></script>
   <style>
+    body {
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
     .lastevent-container {
       padding: 20px;
       max-width: 1400px;
@@ -18,11 +38,11 @@
     .lastevent-header h1 {
       font-size: 28px;
       margin-bottom: 10px;
-      color: #333;
+      color: var(--color-text-primary);
     }
 
     .lastevent-header p {
-      color: #666;
+      color: var(--color-text-secondary);
       font-size: 14px;
     }
 
@@ -34,17 +54,17 @@
     }
 
     .overlay-card {
-      border: 1px solid #ddd;
+      border: 1px solid var(--color-border);
       border-radius: 8px;
       padding: 20px;
-      background: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background: var(--color-bg-card);
+      box-shadow: var(--shadow-md);
     }
 
     .overlay-card h3 {
       margin: 0 0 15px 0;
       font-size: 18px;
-      color: #333;
+      color: var(--color-text-primary);
       display: flex;
       align-items: center;
       gap: 10px;
@@ -56,7 +76,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #007bff;
+      background: var(--color-accent-primary);
       color: white;
       border-radius: 4px;
       font-size: 14px;
@@ -65,12 +85,13 @@
     .url-container {
       margin: 15px 0;
       padding: 10px;
-      background: #f5f5f5;
+      background: var(--color-bg-secondary);
       border-radius: 4px;
       font-family: monospace;
       font-size: 12px;
       word-break: break-all;
       position: relative;
+      color: var(--color-text-primary);
     }
 
     .button-group {
@@ -96,22 +117,22 @@
     }
 
     .btn-primary {
-      background: #007bff;
+      background: var(--color-accent-primary);
       color: white;
     }
 
     .btn-secondary {
-      background: #6c757d;
-      color: white;
+      background: var(--color-bg-tertiary);
+      color: var(--color-text-primary);
     }
 
     .btn-success {
-      background: #28a745;
+      background: var(--color-accent-success);
       color: white;
     }
 
     .btn-info {
-      background: #17a2b8;
+      background: var(--color-accent-secondary);
       color: white;
     }
 
@@ -129,7 +150,7 @@
       top: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0,0,0,0.5);
+      background-color: var(--color-modal-backdrop);
       overflow: auto;
     }
 
@@ -138,7 +159,7 @@
     }
 
     .modal-content {
-      background-color: white;
+      background-color: var(--color-modal-bg);
       margin: 2% auto;
       padding: 0;
       border-radius: 8px;
@@ -147,11 +168,12 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      border: 1px solid var(--color-border);
     }
 
     .modal-header {
       padding: 20px;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid var(--color-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -160,6 +182,7 @@
     .modal-header h2 {
       margin: 0;
       font-size: 22px;
+      color: var(--color-text-primary);
     }
 
     .modal-body {
@@ -170,7 +193,7 @@
 
     .modal-footer {
       padding: 20px;
-      border-top: 1px solid #ddd;
+      border-top: 1px solid var(--color-border);
       display: flex;
       justify-content: flex-end;
       gap: 10px;
@@ -179,28 +202,28 @@
     .close {
       font-size: 28px;
       font-weight: bold;
-      color: #aaa;
+      color: var(--color-text-muted);
       cursor: pointer;
       line-height: 1;
     }
 
     .close:hover {
-      color: #000;
+      color: var(--color-text-primary);
     }
 
     /* Settings Form Styles */
     .settings-section {
       margin-bottom: 25px;
       padding: 15px;
-      background: #f8f9fa;
+      background: var(--color-bg-secondary);
       border-radius: 6px;
     }
 
     .settings-section h4 {
       margin: 0 0 15px 0;
       font-size: 16px;
-      color: #333;
-      border-bottom: 2px solid #007bff;
+      color: var(--color-text-primary);
+      border-bottom: 2px solid var(--color-accent-primary);
       padding-bottom: 8px;
     }
 
@@ -220,15 +243,17 @@
       margin-bottom: 5px;
       font-size: 13px;
       font-weight: 600;
-      color: #555;
+      color: var(--color-text-secondary);
     }
 
     .form-group input,
     .form-group select {
       padding: 8px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--color-border);
       border-radius: 4px;
       font-size: 14px;
+      background: var(--color-bg-tertiary);
+      color: var(--color-text-primary);
     }
 
     .form-group input[type="checkbox"] {
@@ -250,10 +275,10 @@
     /* Preview */
     .preview-container {
       margin: 20px 0;
-      border: 2px solid #ddd;
+      border: 2px solid var(--color-border);
       border-radius: 8px;
       overflow: hidden;
-      background: #000;
+      background: var(--color-bg-primary);
     }
 
     .preview-frame {
@@ -267,11 +292,11 @@
       position: fixed;
       bottom: 20px;
       right: 20px;
-      background: #28a745;
+      background: var(--color-accent-success);
       color: white;
       padding: 15px 20px;
       border-radius: 6px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      box-shadow: var(--shadow-lg);
       z-index: 2000;
       display: none;
       animation: slideIn 0.3s ease;
