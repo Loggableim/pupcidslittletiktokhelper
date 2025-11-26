@@ -10,6 +10,10 @@ let settings = {};
 let previewAudio = null;
 let isPreviewPlaying = false;
 
+// Audio unlock state (for browser autoplay restrictions)
+let audioUnlocked = false;
+let pendingTTSQueue = [];
+
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize UI first
@@ -56,6 +60,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ========== BUTTONS ==========
 function initializeButtons() {
+    // Unlock audio on first user interaction (for browser autoplay policy)
+    const unlockOnInteraction = () => {
+        if (!audioUnlocked) {
+            unlockAudio().catch(err => console.warn('Audio unlock on interaction failed:', err));
+        }
+    };
+    
+    // Add one-time listeners to common interaction elements
+    document.body.addEventListener('click', unlockOnInteraction, { once: true });
+    document.body.addEventListener('keydown', unlockOnInteraction, { once: true });
+    
     // Connect Button
     const connectBtn = document.getElementById('connect-btn');
     if (connectBtn) {
@@ -2202,10 +2217,107 @@ function initializeAudioInfoBanner() {
 // ========== DASHBOARD AUDIO PLAYBACK ==========
 
 /**
+ * Unlock audio playback (required by browser autoplay policies)
+ * Modern browsers require user interaction before allowing audio
+ */
+function unlockAudio() {
+    if (audioUnlocked) return Promise.resolve();
+    
+    return new Promise((resolve) => {
+        console.log('🔓 [Dashboard] Attempting to unlock audio...');
+        
+        const audio = document.getElementById('dashboard-tts-audio');
+        if (!audio) {
+            console.error('❌ [Dashboard] Audio element not found');
+            resolve();
+            return;
+        }
+        
+        // Play and immediately pause a silent audio to unlock
+        // This must happen in response to user interaction
+        audio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADhADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD/////////////////////////////////////////////////////////////////AAAAUExBTUUzLjEwMQQBAAAAAAAAACRgJAiFAAABIAAAA4TBdh8SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADhADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD/////////////////////////////////////////////////////////////////AAAAUExBTUUzLjEwMQQBAAAAAAAAACRgJAiFAAABIAAAA4TBdh8SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+        audio.volume = 0.01; // Very quiet
+        
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audioUnlocked = true;
+                console.log('✅ [Dashboard] Audio unlocked successfully');
+                
+                // Process any pending TTS
+                if (pendingTTSQueue.length > 0) {
+                    console.log(`🎤 [Dashboard] Processing ${pendingTTSQueue.length} pending TTS items`);
+                    pendingTTSQueue.forEach(data => playDashboardTTS(data));
+                    pendingTTSQueue = [];
+                }
+                
+                resolve();
+            }).catch((err) => {
+                console.warn('⚠️ [Dashboard] Audio unlock failed, but will try anyway:', err);
+                audioUnlocked = true; // Mark as unlocked to avoid repeated prompts
+                resolve();
+            });
+        } else {
+            audioUnlocked = true;
+            resolve();
+        }
+    });
+}
+
+/**
+ * Show audio enable prompt to user
+ */
+function showAudioEnablePrompt() {
+    // Check if prompt already exists
+    if (document.getElementById('audio-enable-prompt')) {
+        return;
+    }
+    
+    const prompt = document.createElement('div');
+    prompt.id = 'audio-enable-prompt';
+    prompt.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-4 max-w-2xl';
+    prompt.style.zIndex = '99999'; // Ensure it's above everything including sidebar
+    prompt.style.pointerEvents = 'auto'; // Ensure it's clickable
+    prompt.innerHTML = `
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+        <span><strong>Audio aktivieren:</strong> Klicken Sie hier, um TTS-Audio zu hören</span>
+        <button id="enable-audio-btn" class="bg-white text-blue-600 px-4 py-2 rounded font-semibold hover:bg-blue-50 transition flex-shrink-0">
+            Aktivieren
+        </button>
+    `;
+    
+    document.body.appendChild(prompt);
+    
+    document.getElementById('enable-audio-btn').addEventListener('click', async () => {
+        await unlockAudio();
+        prompt.remove();
+    });
+    
+    // Auto-hide after 10 seconds if user doesn't interact
+    setTimeout(() => {
+        if (document.getElementById('audio-enable-prompt')) {
+            prompt.remove();
+        }
+    }, 10000);
+}
+
+/**
  * TTS im Dashboard abspielen
  */
 function playDashboardTTS(data) {
     console.log('🎤 [Dashboard] Playing TTS:', data.text);
+
+    // Check if audio is unlocked
+    if (!audioUnlocked) {
+        console.log('⚠️ [Dashboard] Audio not unlocked yet, adding to queue and showing prompt');
+        pendingTTSQueue.push(data);
+        showAudioEnablePrompt();
+        return;
+    }
 
     const audio = document.getElementById('dashboard-tts-audio');
 
@@ -2223,6 +2335,13 @@ function playDashboardTTS(data) {
             console.log('✅ [Dashboard] TTS started playing');
         }).catch(err => {
             console.error('❌ [Dashboard] TTS playback error:', err);
+            // If playback fails due to autoplay policy, show prompt
+            if (err.name === 'NotAllowedError') {
+                console.log('⚠️ [Dashboard] Autoplay blocked, showing enable prompt');
+                audioUnlocked = false; // Reset unlock state
+                pendingTTSQueue.push(data);
+                showAudioEnablePrompt();
+            }
         });
 
         // URL nach Abspielen freigeben

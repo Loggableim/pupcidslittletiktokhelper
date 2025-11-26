@@ -150,9 +150,10 @@ class TTSPlugin {
      * @param {string} engineName - Engine to try
      * @param {string} text - Text to synthesize
      * @param {string} currentVoice - Current voice (may not be compatible)
+     * @param {boolean} hasUserAssignedVoice - Whether user has an assigned voice (to preserve assignment intent)
      * @returns {Promise<{audioData: string, voice: string}>} Audio data and used voice
      */
-    async _tryFallbackEngine(engineName, text, currentVoice) {
+    async _tryFallbackEngine(engineName, text, currentVoice, hasUserAssignedVoice = false) {
         if (!this.engines[engineName]) {
             throw new Error(`Engine ${engineName} not available`);
         }
@@ -163,30 +164,58 @@ class TTSPlugin {
         if (engineName === 'elevenlabs') {
             const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
             if (!fallbackVoice || !elevenlabsVoices[fallbackVoice]) {
-                const langResult = this.languageDetector.detectAndGetVoice(text, ElevenLabsEngine, this.config.fallbackLanguage);
-                fallbackVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                this._logDebug('FALLBACK', `Voice adjusted for ${engineName}`, { fallbackVoice, langResult });
+                // Only use language detection if user doesn't have an assigned voice
+                if (!hasUserAssignedVoice) {
+                    const langResult = this.languageDetector.detectAndGetVoice(text, ElevenLabsEngine, this.config.fallbackLanguage);
+                    fallbackVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted via language detection for ${engineName}`, { fallbackVoice, langResult });
+                } else {
+                    // User had assigned voice - use engine's default for fallback language
+                    fallbackVoice = ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
+                }
             }
         } else if (engineName === 'speechify') {
             const speechifyVoices = await this.engines.speechify.getVoices();
             if (!fallbackVoice || !speechifyVoices[fallbackVoice]) {
-                const langResult = this.languageDetector.detectAndGetVoice(text, SpeechifyEngine, this.config.fallbackLanguage);
-                fallbackVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                this._logDebug('FALLBACK', `Voice adjusted for ${engineName}`, { fallbackVoice, langResult });
+                // Only use language detection if user doesn't have an assigned voice
+                if (!hasUserAssignedVoice) {
+                    const langResult = this.languageDetector.detectAndGetVoice(text, SpeechifyEngine, this.config.fallbackLanguage);
+                    fallbackVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted via language detection for ${engineName}`, { fallbackVoice, langResult });
+                } else {
+                    // User had assigned voice - use engine's default for fallback language
+                    fallbackVoice = SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
+                }
             }
         } else if (engineName === 'google') {
             const googleVoices = GoogleEngine.getVoices();
             if (!fallbackVoice || !googleVoices[fallbackVoice]) {
-                const langResult = this.languageDetector.detectAndGetVoice(text, GoogleEngine, this.config.fallbackLanguage);
-                fallbackVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                this._logDebug('FALLBACK', `Voice adjusted for ${engineName}`, { fallbackVoice, langResult });
+                // Only use language detection if user doesn't have an assigned voice
+                if (!hasUserAssignedVoice) {
+                    const langResult = this.languageDetector.detectAndGetVoice(text, GoogleEngine, this.config.fallbackLanguage);
+                    fallbackVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted via language detection for ${engineName}`, { fallbackVoice, langResult });
+                } else {
+                    // User had assigned voice - use engine's default for fallback language
+                    fallbackVoice = GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
+                }
             }
         } else if (engineName === 'openai') {
             const openaiVoices = OpenAIEngine.getVoices();
             if (!fallbackVoice || !openaiVoices[fallbackVoice]) {
-                const langResult = this.languageDetector.detectAndGetVoice(text, OpenAIEngine, this.config.fallbackLanguage);
-                fallbackVoice = langResult?.voiceId || OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                this._logDebug('FALLBACK', `Voice adjusted for ${engineName}`, { fallbackVoice, langResult });
+                // Only use language detection if user doesn't have an assigned voice
+                if (!hasUserAssignedVoice) {
+                    const langResult = this.languageDetector.detectAndGetVoice(text, OpenAIEngine, this.config.fallbackLanguage);
+                    fallbackVoice = langResult?.voiceId || OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted via language detection for ${engineName}`, { fallbackVoice, langResult });
+                } else {
+                    // User had assigned voice - use engine's default for fallback language
+                    fallbackVoice = OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
+                }
             }
         }
 
@@ -813,10 +842,11 @@ class TTSPlugin {
                 // Extract text from either 'message' or 'comment' field
                 const chatText = data.message || data.comment;
 
-                // IMPORTANT: Use uniqueId as the primary userId for consistency
-                // uniqueId is the TikTok username and is stable across sessions
-                const userId = data.uniqueId || data.nickname || data.userId;
-                const username = data.uniqueId || data.nickname;
+                // IMPORTANT: Use username/uniqueId as the primary userId for consistency
+                // username is the TikTok handle (@username) and is stable across sessions
+                // Prioritize: username (actual handle) > uniqueId > nickname (display name)
+                const userId = data.username || data.uniqueId || data.nickname || data.userId;
+                const username = data.username || data.uniqueId || data.nickname;
 
                 this._logDebug('TIKTOK_EVENT', 'Chat event received', {
                     uniqueId: data.uniqueId,
@@ -1023,6 +1053,11 @@ class TTSPlugin {
             this._logDebug('SPEAK_STEP4', 'Getting user settings', { userId });
 
             const userSettings = this.permissionManager.getUserSettings(userId);
+            let selectedEngine = engine || userSettings?.assigned_engine || this.config.defaultEngine;
+            let selectedVoice = voiceId || userSettings?.assigned_voice_id;
+            
+            // Track if user has an assigned voice to preserve assignment intent during engine fallback
+            const hasUserAssignedVoice = !!(userSettings?.assigned_voice_id && userSettings?.assigned_engine);
             
             // Prioritize user custom voices over source-provided voices
             // EXCEPT for system sources (quiz-show, manual) which should use their configured voice
@@ -1060,6 +1095,7 @@ class TTSPlugin {
                 requestedVoice: voiceId,
                 assignedVoice: userSettings?.assigned_voice_id,
                 selectedVoice,
+                hasUserAssignedVoice,
                 autoLanguageDetection: this.config.autoLanguageDetection,
                 defaultEngine: this.config.defaultEngine,
                 defaultVoice: this.config.defaultVoice
@@ -1181,7 +1217,7 @@ class TTSPlugin {
 
             // Validate engine availability and fallback to working engines
             if (selectedEngine === 'elevenlabs' && !this.engines.elevenlabs) {
-                this._logDebug('SPEAK_STEP4', 'ElevenLabs engine not available, falling back');
+                this._logDebug('SPEAK_STEP4', 'ElevenLabs engine not available, falling back', { hasUserAssignedVoice });
                 this.logger.warn(`ElevenLabs TTS requested but not available (no API key configured)`);
 
                 // Fallback to Speechify, Google, or OpenAI
@@ -1189,27 +1225,48 @@ class TTSPlugin {
                     selectedEngine = 'speechify';
                     const speechifyVoices = await this.engines.speechify.getVoices();
                     if (!selectedVoice || !speechifyVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, SpeechifyEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for Speechify fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, SpeechifyEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for Speechify fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for Speechify fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to Speechify engine`);
                 } else if (this.engines.google) {
                     selectedEngine = 'google';
                     const googleVoices = GoogleEngine.getVoices();
                     if (!selectedVoice || !googleVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, GoogleEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for Google fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, GoogleEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for Google fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for Google fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to Google Cloud TTS engine`);
                 } else if (this.engines.openai) {
                     selectedEngine = 'openai';
                     const openaiVoices = OpenAIEngine.getVoices();
                     if (!selectedVoice || !openaiVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, OpenAIEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for OpenAI fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, OpenAIEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for OpenAI fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for OpenAI fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to OpenAI TTS engine`);
                 } else {
@@ -1218,7 +1275,7 @@ class TTSPlugin {
             }
 
             if (selectedEngine === 'speechify' && !this.engines.speechify) {
-                this._logDebug('SPEAK_STEP4', 'Speechify engine not available, falling back');
+                this._logDebug('SPEAK_STEP4', 'Speechify engine not available, falling back', { hasUserAssignedVoice });
                 this.logger.warn(`Speechify TTS requested but not available (no API key configured)`);
 
                 // Fallback to ElevenLabs, Google, or OpenAI
@@ -1226,27 +1283,48 @@ class TTSPlugin {
                     selectedEngine = 'elevenlabs';
                     const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
                     if (!selectedVoice || !elevenlabsVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for ElevenLabs fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for ElevenLabs fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for ElevenLabs fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to ElevenLabs engine (premium quality)`);
                 } else if (this.engines.google) {
                     selectedEngine = 'google';
                     const googleVoices = GoogleEngine.getVoices();
                     if (!selectedVoice || !googleVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, GoogleEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for Google fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, GoogleEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for Google fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = GoogleEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for Google fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to Google Cloud TTS engine`);
                 } else if (this.engines.openai) {
                     selectedEngine = 'openai';
                     const openaiVoices = OpenAIEngine.getVoices();
                     if (!selectedVoice || !openaiVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, OpenAIEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for OpenAI fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, OpenAIEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for OpenAI fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for OpenAI fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to OpenAI TTS engine`);
                 } else {
@@ -1255,7 +1333,7 @@ class TTSPlugin {
             }
 
             if (selectedEngine === 'google' && !this.engines.google) {
-                this._logDebug('SPEAK_STEP4', 'Google engine not available, falling back');
+                this._logDebug('SPEAK_STEP4', 'Google engine not available, falling back', { hasUserAssignedVoice });
                 this.logger.warn(`Google TTS requested but not available (no API key configured)`);
                 
                 // Fallback to ElevenLabs, Speechify, or OpenAI
@@ -1263,27 +1341,48 @@ class TTSPlugin {
                     selectedEngine = 'elevenlabs';
                     const elevenlabsVoices = await this.engines.elevenlabs.getVoices();
                     if (!selectedVoice || !elevenlabsVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for ElevenLabs fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, ElevenLabsEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for ElevenLabs fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = ElevenLabsEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for ElevenLabs fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to ElevenLabs engine (premium quality)`);
                 } else if (this.engines.speechify) {
                     selectedEngine = 'speechify';
                     const speechifyVoices = await this.engines.speechify.getVoices();
                     if (!selectedVoice || !speechifyVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, SpeechifyEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for Speechify fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, SpeechifyEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for Speechify fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = SpeechifyEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for Speechify fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to Speechify engine`);
                 } else if (this.engines.openai) {
                     selectedEngine = 'openai';
                     const openaiVoices = OpenAIEngine.getVoices();
                     if (!selectedVoice || !openaiVoices[selectedVoice]) {
-                        const langResult = this.languageDetector.detectAndGetVoice(finalText, OpenAIEngine, this.config.fallbackLanguage);
-                        selectedVoice = langResult?.voiceId || OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
-                        this._logDebug('SPEAK_STEP4', 'Voice reset for OpenAI fallback', { selectedVoice, langResult });
+                        // Only use language detection if user doesn't have an assigned voice
+                        if (!hasUserAssignedVoice) {
+                            const langResult = this.languageDetector.detectAndGetVoice(finalText, OpenAIEngine, this.config.fallbackLanguage);
+                            selectedVoice = langResult?.voiceId || OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected via language detection for OpenAI fallback', { selectedVoice, langResult });
+                        } else {
+                            // User had assigned voice - use engine's default for fallback language without overriding with text detection
+                            selectedVoice = OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                            this._logDebug('SPEAK_STEP4', 'Voice selected for OpenAI fallback (preserving user assignment intent)', { selectedVoice, hasUserAssignedVoice });
+                        }
                     }
                     this.logger.info(`Falling back to OpenAI TTS engine`);
                 } else {
@@ -1356,7 +1455,7 @@ class TTSPlugin {
                     try {
                         this.logger.info(`Falling back from ${selectedEngine} to ${fallbackEngine}`);
                         
-                        const result = await this._tryFallbackEngine(fallbackEngine, finalText, selectedVoice);
+                        const result = await this._tryFallbackEngine(fallbackEngine, finalText, selectedVoice, hasUserAssignedVoice);
                         audioData = result.audioData;
                         selectedVoice = result.voice;
                         selectedEngine = fallbackEngine;

@@ -37,40 +37,32 @@ class OpenAIEngine {
      */
     static getVoices() {
         return {
-            // GPT-4o Mini TTS voices
-            'gpt-4o-mini-tts-alloy': { name: 'GPT-4o Mini TTS (Alloy)', lang: 'multi', gender: 'neutral', model: 'gpt-4o-mini-tts', voice: 'alloy' },
-            'gpt-4o-mini-tts-echo': { name: 'GPT-4o Mini TTS (Echo)', lang: 'multi', gender: 'male', model: 'gpt-4o-mini-tts', voice: 'echo' },
-            'gpt-4o-mini-tts-fable': { name: 'GPT-4o Mini TTS (Fable)', lang: 'multi', gender: 'neutral', model: 'gpt-4o-mini-tts', voice: 'fable' },
-            'gpt-4o-mini-tts-onyx': { name: 'GPT-4o Mini TTS (Onyx)', lang: 'multi', gender: 'male', model: 'gpt-4o-mini-tts', voice: 'onyx' },
-            'gpt-4o-mini-tts-nova': { name: 'GPT-4o Mini TTS (Nova)', lang: 'multi', gender: 'female', model: 'gpt-4o-mini-tts', voice: 'nova' },
-            'gpt-4o-mini-tts-shimmer': { name: 'GPT-4o Mini TTS (Shimmer)', lang: 'multi', gender: 'female', model: 'gpt-4o-mini-tts', voice: 'shimmer' },
+            // Standard TTS-1 voices (faster, lower latency)
+            'tts-1-alloy': { name: 'Alloy (Standard)', lang: 'multi', gender: 'neutral', model: 'tts-1', voice: 'alloy', description: 'Neutral voice' },
+            'tts-1-echo': { name: 'Echo (Standard)', lang: 'multi', gender: 'male', model: 'tts-1', voice: 'echo', description: 'Male voice' },
+            'tts-1-fable': { name: 'Fable (Standard)', lang: 'multi', gender: 'neutral', model: 'tts-1', voice: 'fable', description: 'British accent' },
+            'tts-1-onyx': { name: 'Onyx (Standard)', lang: 'multi', gender: 'male', model: 'tts-1', voice: 'onyx', description: 'Deep male voice' },
+            'tts-1-nova': { name: 'Nova (Standard)', lang: 'multi', gender: 'female', model: 'tts-1', voice: 'nova', description: 'Female voice' },
+            'tts-1-shimmer': { name: 'Shimmer (Standard)', lang: 'multi', gender: 'female', model: 'tts-1', voice: 'shimmer', description: 'Soft female voice' },
             
-            // Standard TTS-1 voices (fallback)
-            'tts-1-alloy': { name: 'OpenAI TTS-1 (Alloy)', lang: 'multi', gender: 'neutral', model: 'tts-1', voice: 'alloy' },
-            'tts-1-echo': { name: 'OpenAI TTS-1 (Echo)', lang: 'multi', gender: 'male', model: 'tts-1', voice: 'echo' },
-            'tts-1-fable': { name: 'OpenAI TTS-1 (Fable)', lang: 'multi', gender: 'neutral', model: 'tts-1', voice: 'fable' },
-            'tts-1-onyx': { name: 'OpenAI TTS-1 (Onyx)', lang: 'multi', gender: 'male', model: 'tts-1', voice: 'onyx' },
-            'tts-1-nova': { name: 'OpenAI TTS-1 (Nova)', lang: 'multi', gender: 'female', model: 'tts-1', voice: 'nova' },
-            'tts-1-shimmer': { name: 'OpenAI TTS-1 (Shimmer)', lang: 'multi', gender: 'female', model: 'tts-1', voice: 'shimmer' },
-            
-            // HD TTS-1-HD voices (highest quality)
-            'tts-1-hd-alloy': { name: 'OpenAI TTS-1-HD (Alloy)', lang: 'multi', gender: 'neutral', model: 'tts-1-hd', voice: 'alloy' },
-            'tts-1-hd-echo': { name: 'OpenAI TTS-1-HD (Echo)', lang: 'multi', gender: 'male', model: 'tts-1-hd', voice: 'echo' },
-            'tts-1-hd-fable': { name: 'OpenAI TTS-1-HD (Fable)', lang: 'multi', gender: 'neutral', model: 'tts-1-hd', voice: 'fable' },
-            'tts-1-hd-onyx': { name: 'OpenAI TTS-1-HD (Onyx)', lang: 'multi', gender: 'male', model: 'tts-1-hd', voice: 'onyx' },
-            'tts-1-hd-nova': { name: 'OpenAI TTS-1-HD (Nova)', lang: 'multi', gender: 'female', model: 'tts-1-hd', voice: 'nova' },
-            'tts-1-hd-shimmer': { name: 'OpenAI TTS-1-HD (Shimmer)', lang: 'multi', gender: 'female', model: 'tts-1-hd', voice: 'shimmer' }
+            // HD TTS-1-HD voices (higher quality)
+            'tts-1-hd-alloy': { name: 'Alloy (HD)', lang: 'multi', gender: 'neutral', model: 'tts-1-hd', voice: 'alloy', description: 'Neutral voice, high quality' },
+            'tts-1-hd-echo': { name: 'Echo (HD)', lang: 'multi', gender: 'male', model: 'tts-1-hd', voice: 'echo', description: 'Male voice, high quality' },
+            'tts-1-hd-fable': { name: 'Fable (HD)', lang: 'multi', gender: 'neutral', model: 'tts-1-hd', voice: 'fable', description: 'British accent, high quality' },
+            'tts-1-hd-onyx': { name: 'Onyx (HD)', lang: 'multi', gender: 'male', model: 'tts-1-hd', voice: 'onyx', description: 'Deep male voice, high quality' },
+            'tts-1-hd-nova': { name: 'Nova (HD)', lang: 'multi', gender: 'female', model: 'tts-1-hd', voice: 'nova', description: 'Female voice, high quality' },
+            'tts-1-hd-shimmer': { name: 'Shimmer (HD)', lang: 'multi', gender: 'female', model: 'tts-1-hd', voice: 'shimmer', description: 'Soft female voice, high quality' }
         };
     }
 
     /**
      * Convert text to speech using OpenAI TTS
      * @param {string} text - The text to convert
-     * @param {string} voiceId - The voice ID (e.g., 'gpt-4o-mini-tts-alloy')
+     * @param {string} voiceId - The voice ID (e.g., 'tts-1-alloy' or 'tts-1-hd-alloy')
      * @param {object} options - Additional options
-     * @returns {Promise<Buffer>} Audio buffer
+     * @returns {Promise<string>} Base64-encoded audio data
      */
-    async synthesize(text, voiceId = 'gpt-4o-mini-tts-alloy', options = {}) {
+    async synthesize(text, voiceId = 'tts-1-alloy', options = {}) {
         const voices = OpenAIEngine.getVoices();
         const voiceConfig = voices[voiceId];
 
@@ -91,17 +83,29 @@ class OpenAIEngine {
                 speed: options.speed || 1.0
             });
 
-            // Convert the response to a buffer
+            // Convert the response to a buffer and then to base64
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
+            const base64Audio = buffer.toString('base64');
 
             this.logger.info(`OpenAI TTS: Successfully synthesized ${buffer.length} bytes`);
-            return buffer;
+            return base64Audio;
 
         } catch (error) {
             this.logger.error(`OpenAI TTS: Synthesis failed - ${error.message}`);
             throw error;
         }
+    }
+
+    /**
+     * Get default voice for a language
+     * OpenAI TTS voices are multilingual, so we return the same voice for all languages
+     * @param {string} langCode - Language code (e.g., 'de', 'en', 'es')
+     * @returns {string} Voice ID
+     */
+    static getDefaultVoiceForLanguage(langCode) {
+        // OpenAI voices support all languages, return standard quality Alloy by default
+        return 'tts-1-alloy';
     }
 
     /**
