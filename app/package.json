@@ -21,7 +21,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0 <=24.99.99"
+    "node": ">=18.0.0 <25.0.0"
   },
   "dependencies": {
     "@eulerstream/euler-websocket-sdk": "^0.0.6",

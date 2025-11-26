@@ -18,6 +18,10 @@ const (
 	colorGreen  = "\033[32m"
 	colorYellow = "\033[33m"
 	colorCyan   = "\033[36m"
+	
+	// Node.js compatibility constants
+	minVisualStudio2019RequiredVersion = 24
+	supportedVersionRange = "18.x bis 23.x"
 )
 
 var logFile *os.File
@@ -141,11 +145,11 @@ func checkNodeVersionCompatibility(nodePath string) bool {
 			
 			logInfo(fmt.Sprintf("Erkannte Hauptversion: %d", majorVersion))
 			
-			// Check if version is 24 or higher (requires VS 2019+)
-			if majorVersion >= 24 {
+			// Check if version requires Visual Studio 2019+ for native module compilation
+			if majorVersion >= minVisualStudio2019RequiredVersion {
 				logError("Node.js Version nicht kompatibel", fmt.Errorf("Version %s ist zu neu", version))
-				logWarning("Dieses Tool unterstuetzt Node.js 18.x bis 23.x")
-				logWarning("Node.js v24+ erfordert Visual Studio 2019+ Build Tools")
+				logWarning(fmt.Sprintf("Dieses Tool unterstuetzt Node.js %s", supportedVersionRange))
+				logWarning(fmt.Sprintf("Node.js v%d+ erfordert Visual Studio 2019+ Build Tools", minVisualStudio2019RequiredVersion))
 				return false
 			}
 		}
