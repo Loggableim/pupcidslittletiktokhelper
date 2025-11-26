@@ -69,8 +69,8 @@ class GoalsEventHandlers {
             // Use totalLikes from the event data (cumulative total from stream)
             // This matches the same engine used in dashboard and main UI
             const totalLikes = data.totalLikes;
-            
-            if (totalLikes !== undefined && totalLikes !== null) {
+
+            if (totalLikes != null) {
                 // Set the goal value to the total likes count
                 for (const goal of enabledGoals) {
                     this.setGoalValue(goal.id, totalLikes);
