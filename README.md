@@ -18,6 +18,12 @@ Ein einfach zu bedienendes Tool für TikTok LIVE Streaming mit Overlays, Alerts,
 1. Doppelklick auf `launcher.exe` (Grafischer Launcher mit Hintergrundbild und Fortschrittsanzeige)
 2. Das war's! Der Launcher installiert automatisch alle benötigten Abhängigkeiten und öffnet das Dashboard
 
+**Alternative:** Bei Problemen mit dem grafischen Launcher:
+- Verwende `launcher-backup.exe` (Minimalistischer Launcher mit detailliertem Logging)
+- Erstellt automatisch eine `launcher-debug.log` Datei zur Fehleranalyse
+- Zeigt alle Schritte im Terminal-Fenster an
+- Terminal bleibt geöffnet, um Fehler zu sehen
+
 #### Linux:
 1. Doppelklick auf `start-linux` (oder im Terminal: `./start-linux`)
 2. Das war's! Das Tool installiert automatisch alle benötigten Abhängigkeiten und startet sich
@@ -73,5 +79,14 @@ Wenn Node.js nicht installiert ist, erscheint eine Fehlermeldung mit Download-Li
 
 **Bei Problemen:**
 1. Überprüfe ob Node.js korrekt installiert ist: `node --version`
-2. Siehe `app/README.md` für Troubleshooting
-3. Kontaktiere Support: loggableim@gmail.com
+2. **Verwende den Backup-Launcher:** `launcher-backup.exe` erstellt eine `launcher-debug.log` Datei mit detaillierten Informationen
+3. Siehe `app/README.md` für Troubleshooting
+4. Kontaktiere Support: loggableim@gmail.com
+
+### Problemlösung mit dem Backup-Launcher
+
+Wenn `launcher.exe` ein Terminal-Fenster öffnet, das sich sofort wieder schließt:
+1. Verwende stattdessen `launcher-backup.exe`
+2. Das Terminal bleibt geöffnet und zeigt alle Schritte an
+3. Eine `launcher-debug.log` Datei wird erstellt mit detaillierten Informationen
+4. Die Log-Datei kann zur Fehleranalyse an den Support geschickt werden
