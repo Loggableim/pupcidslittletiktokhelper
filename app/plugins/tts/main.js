@@ -1058,10 +1058,29 @@ class TTSPlugin {
             
             // Track if user has an assigned voice to preserve assignment intent during engine fallback
             const hasUserAssignedVoice = !!(userSettings?.assigned_voice_id && userSettings?.assigned_engine);
+            
+            // Prioritize user custom voices over source-provided voices
+            // EXCEPT for system sources (quiz-show, manual) which should use their configured voice
+            const isSystemSource = source === 'quiz-show' || source === 'manual';
+            
+            let selectedEngine;
+            let selectedVoice;
+            
+            if (isSystemSource) {
+                // System sources: use provided voice/engine, fall back to defaults
+                selectedEngine = engine || this.config.defaultEngine;
+                selectedVoice = voiceId;
+            } else {
+                // User sources (chat, etc): prioritize user custom voice, then provided voice, then defaults
+                selectedEngine = userSettings?.assigned_engine || engine || this.config.defaultEngine;
+                selectedVoice = userSettings?.assigned_voice_id || voiceId;
+            }
 
             this._logDebug('SPEAK_STEP4', 'Voice/Engine selection', {
                 userId: userId,
                 username: username,
+                source: source,
+                isSystemSource: isSystemSource,
                 userSettingsFound: !!userSettings,
                 userSettingsRaw: userSettings ? {
                     user_id: userSettings.user_id,
