@@ -171,6 +171,11 @@ app.use((req, res, next) => {
 
 app.use(express.static('public'));
 
+// Serve app icon
+app.get('/ltthappicon.png', (req, res) => {
+    res.sendFile(path.join(__dirname, 'ltthappicon.png'));
+});
+
 // Serve GSAP library for overlays
 app.use('/gsap', express.static(path.join(__dirname, 'node_modules', 'gsap', 'dist')));
 
