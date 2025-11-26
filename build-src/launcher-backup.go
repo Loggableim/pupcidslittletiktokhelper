@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -108,7 +110,7 @@ func getNodeVersion(nodePath string) string {
 		return "unknown"
 	}
 	
-	version := string(output)
+	version := strings.TrimSpace(string(output))
 	logSuccess(fmt.Sprintf("Node.js Version: %s", version))
 	return version
 }
@@ -123,17 +125,29 @@ func checkNodeVersionCompatibility(nodePath string) bool {
 		return true // Allow to continue if we can't check
 	}
 	
-	version := string(output)
-	// Check if version starts with v24 or higher (not compatible)
-	if len(version) > 3 {
-		versionNum := version[1:3] // Extract major version number
-		logInfo(fmt.Sprintf("Erkannte Hauptversion: %s", versionNum))
-		
-		if versionNum == "24" || versionNum == "25" || versionNum == "26" {
-			logError("Node.js Version nicht kompatibel", fmt.Errorf("Version %s ist zu neu", version))
-			logWarning("Dieses Tool unterstuetzt Node.js 18.x bis 23.x")
-			logWarning("Node.js v24+ erfordert Visual Studio 2019+ Build Tools")
-			return false
+	version := strings.TrimSpace(string(output))
+	logInfo(fmt.Sprintf("Geprueft: %s", version))
+	
+	// Parse version string (e.g., "v24.11.1" -> 24)
+	if len(version) > 1 && version[0] == 'v' {
+		// Split by dot to get major version
+		parts := strings.Split(version[1:], ".")
+		if len(parts) > 0 {
+			majorVersion, err := strconv.Atoi(parts[0])
+			if err != nil {
+				logWarning(fmt.Sprintf("Kann Hauptversion nicht parsen: %s", version))
+				return true // Allow to continue if we can't parse
+			}
+			
+			logInfo(fmt.Sprintf("Erkannte Hauptversion: %d", majorVersion))
+			
+			// Check if version is 24 or higher (requires VS 2019+)
+			if majorVersion >= 24 {
+				logError("Node.js Version nicht kompatibel", fmt.Errorf("Version %s ist zu neu", version))
+				logWarning("Dieses Tool unterstuetzt Node.js 18.x bis 23.x")
+				logWarning("Node.js v24+ erfordert Visual Studio 2019+ Build Tools")
+				return false
+			}
 		}
 	}
 	
