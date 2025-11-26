@@ -62,18 +62,17 @@ class GoalsEventHandlers {
      */
     handleLike(data) {
         try {
+            // Get all enabled likes goals
+            const goals = this.db.getGoalsByType('likes');
+            const enabledGoals = goals.filter(g => g.enabled);
+
             // Use totalLikes from the event data (cumulative total from stream)
             // This matches the same engine used in dashboard and main UI
             const totalLikes = data.totalLikes;
             
-            // If totalLikes is not available, fall back to incrementing by likeCount
             if (totalLikes !== undefined && totalLikes !== null) {
-                // Get all enabled likes goals
-                const goals = this.db.getGoalsByType('likes');
-                const enabledGoals = goals.filter(g => g.enabled);
-
+                // Set the goal value to the total likes count
                 for (const goal of enabledGoals) {
-                    // Set the goal value to the total likes count
                     this.setGoalValue(goal.id, totalLikes);
                 }
 
@@ -81,10 +80,6 @@ class GoalsEventHandlers {
             } else {
                 // Fallback: increment by individual likeCount (legacy behavior)
                 const likeCount = data.likeCount || 1;
-
-                // Get all enabled likes goals
-                const goals = this.db.getGoalsByType('likes');
-                const enabledGoals = goals.filter(g => g.enabled);
 
                 for (const goal of enabledGoals) {
                     this.incrementGoal(goal.id, likeCount);
