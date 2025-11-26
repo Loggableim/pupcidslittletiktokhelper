@@ -517,7 +517,7 @@
 
             case States.REVEAL_CORRECT:
                 revealCorrectAnswer();
-                // Use answerDisplayDuration from config (in milliseconds), fallback to 3000ms
+                // Use answerDisplayDuration from config (in milliseconds), fallback to 5000ms
                 const displayDuration = (gameData.answerDisplayDuration || 5) * 1000;
                 stateTimeout = setTimeout(() => {
                     transitionToState(States.WAIT_NEXT);
