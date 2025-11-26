@@ -113,6 +113,34 @@ func getNodeVersion(nodePath string) string {
 	return version
 }
 
+func checkNodeVersionCompatibility(nodePath string) bool {
+	logInfo("Pruefe Node.js Versions-Kompatibilitaet...")
+	
+	cmd := exec.Command(nodePath, "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		logWarning("Kann Node.js Version nicht pruefen")
+		return true // Allow to continue if we can't check
+	}
+	
+	version := string(output)
+	// Check if version starts with v24 or higher (not compatible)
+	if len(version) > 3 {
+		versionNum := version[1:3] // Extract major version number
+		logInfo(fmt.Sprintf("Erkannte Hauptversion: %s", versionNum))
+		
+		if versionNum == "24" || versionNum == "25" || versionNum == "26" {
+			logError("Node.js Version nicht kompatibel", fmt.Errorf("Version %s ist zu neu", version))
+			logWarning("Dieses Tool unterstuetzt Node.js 18.x bis 23.x")
+			logWarning("Node.js v24+ erfordert Visual Studio 2019+ Build Tools")
+			return false
+		}
+	}
+	
+	logSuccess("Node.js Version ist kompatibel")
+	return true
+}
+
 func checkNodeModules(appDir string) bool {
 	logInfo("Pruefe node_modules Verzeichnis...")
 	
@@ -157,6 +185,26 @@ func installDependencies(appDir string) error {
 	err := cmd.Run()
 	if err != nil {
 		logError("npm install fehlgeschlagen", err)
+		
+		// Provide helpful troubleshooting information
+		if runtime.GOOS == "windows" {
+			logWarning("========================================")
+			logWarning("Haeufige Ursachen fuer npm install Fehler:")
+			logWarning("1. Node.js Version zu neu (v24+)")
+			logWarning("   -> Loesung: Node.js v20 LTS oder v22 installieren")
+			logWarning("   -> Download: https://nodejs.org/en/download/")
+			logWarning("")
+			logWarning("2. Fehlende Visual Studio Build Tools")
+			logWarning("   -> Benoetigt fuer better-sqlite3 und andere native Module")
+			logWarning("   -> Loesung: Visual Studio Build Tools installieren")
+			logWarning("   -> Download: https://visualstudio.microsoft.com/downloads/")
+			logWarning("   -> Waehle: 'Desktop development with C++'")
+			logWarning("")
+			logWarning("3. Alternative: Verwende vorkompilierte Version")
+			logWarning("   -> Kontaktiere Support fuer vorkompilierte Pakete")
+			logWarning("========================================")
+		}
+		
 		return fmt.Errorf("Installation fehlgeschlagen: %v", err)
 	}
 	
@@ -251,6 +299,48 @@ func main() {
 	// Show Node.js version
 	version := getNodeVersion(nodePath)
 	fmt.Printf("Node.js Version: %s\n", version)
+	
+	// Check Node.js version compatibility
+	if !checkNodeVersionCompatibility(nodePath) {
+		fmt.Println()
+		fmt.Println("===============================================")
+		fmt.Println("  WARNUNG: Node.js Version Inkompatibilitaet!")
+		fmt.Println("===============================================")
+		fmt.Println()
+		fmt.Println("Deine Node.js Version ist zu neu (v24+).")
+		fmt.Println()
+		fmt.Println("Dieses Tool benoetigt Node.js v18, v20 oder v22.")
+		fmt.Println()
+		fmt.Println("Node.js v24+ erfordert Visual Studio 2019 oder neuer")
+		fmt.Println("mit 'Desktop development with C++' Workload fuer")
+		fmt.Println("die Kompilierung nativer Module (better-sqlite3).")
+		fmt.Println()
+		fmt.Println("EMPFOHLENE LOESUNG:")
+		fmt.Println("1. Deinstalliere Node.js v24")
+		fmt.Println("2. Installiere Node.js v20 LTS von:")
+		fmt.Println("   https://nodejs.org/en/download/")
+		fmt.Println()
+		fmt.Println("ALTERNATIVE (Erweitert):")
+		fmt.Println("1. Installiere Visual Studio Build Tools 2019+")
+		fmt.Println("2. Waehle 'Desktop development with C++' Workload")
+		fmt.Println("3. Download: https://visualstudio.microsoft.com/downloads/")
+		fmt.Println()
+		fmt.Print("Moechtest Du trotzdem fortfahren? (j/n): ")
+		
+		var response string
+		fmt.Scanln(&response)
+		
+		if response != "j" && response != "J" {
+			logInfo("Benutzer hat Installation abgebrochen")
+			if logFile != nil {
+				logFile.Close()
+			}
+			os.Exit(0)
+		}
+		
+		logWarning("Benutzer faehrt mit inkompatibler Node.js Version fort")
+	}
+	
 	fmt.Println()
 	
 	appDir := filepath.Join(exeDir, "app")

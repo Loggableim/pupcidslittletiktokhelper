@@ -78,15 +78,29 @@ Icon-Datei: `app/ltthappicon.png`
 Wenn Node.js nicht installiert ist, erscheint eine Fehlermeldung mit Download-Link.
 
 **Bei Problemen:**
-1. Überprüfe ob Node.js korrekt installiert ist: `node --version`
-2. **Verwende den Backup-Launcher:** `launcher-backup.exe` erstellt eine `launcher-debug.log` Datei mit detaillierten Informationen
-3. Siehe `app/README.md` für Troubleshooting
-4. Kontaktiere Support: loggableim@gmail.com
+1. **Node.js Version:** Verwende Node.js v20 LTS (empfohlen) statt v24+
+2. **Backup-Launcher:** `launcher-backup.exe` erstellt eine `launcher-debug.log` Datei mit detaillierten Informationen
+3. **Troubleshooting Guide:** Siehe `TROUBLESHOOTING.md` für detaillierte Lösungen
+4. **App-Dokumentation:** Siehe `app/README.md` für weitere Informationen
+5. **Support:** loggableim@gmail.com
 
 ### Problemlösung mit dem Backup-Launcher
 
 Wenn `launcher.exe` ein Terminal-Fenster öffnet, das sich sofort wieder schließt:
 1. Verwende stattdessen `launcher-backup.exe`
 2. Das Terminal bleibt geöffnet und zeigt alle Schritte an
-3. Eine `launcher-debug.log` Datei wird erstellt mit detaillierten Informationen
-4. Die Log-Datei kann zur Fehleranalyse an den Support geschickt werden
+3. Prüft automatisch Node.js Version Kompatibilität
+4. Eine `launcher-debug.log` Datei wird erstellt mit detaillierten Informationen
+5. Die Log-Datei kann zur Fehleranalyse an den Support geschickt werden
+
+### Häufiges Problem: Node.js v24+ Installation
+
+**Symptom:** npm install schlägt fehl mit "gyp ERR! find VS" Fehler
+
+**Ursache:** Node.js v24+ benötigt Visual Studio Build Tools 2019+
+
+**Lösung (Einfach):**
+- Installiere Node.js v20 LTS statt v24+
+- Download: https://nodejs.org/en/download/
+
+**Details:** Siehe `TROUBLESHOOTING.md`
