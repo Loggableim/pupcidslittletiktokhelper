@@ -62,17 +62,31 @@ class GoalsEventHandlers {
      */
     handleLike(data) {
         try {
-            const likeCount = data.likeCount || 1;
-
             // Get all enabled likes goals
             const goals = this.db.getGoalsByType('likes');
             const enabledGoals = goals.filter(g => g.enabled);
 
-            for (const goal of enabledGoals) {
-                this.incrementGoal(goal.id, likeCount);
-            }
+            // Use totalLikes from the event data (cumulative total from stream)
+            // This matches the same engine used in dashboard and main UI
+            const totalLikes = data.totalLikes;
 
-            this.api.log(`Likes received: ${likeCount}`, 'debug');
+            if (totalLikes != null) {
+                // Set the goal value to the total likes count
+                for (const goal of enabledGoals) {
+                    this.setGoalValue(goal.id, totalLikes);
+                }
+
+                this.api.log(`Likes total updated: ${totalLikes}`, 'debug');
+            } else {
+                // Fallback: increment by individual likeCount (legacy behavior)
+                const likeCount = data.likeCount || 1;
+
+                for (const goal of enabledGoals) {
+                    this.incrementGoal(goal.id, likeCount);
+                }
+
+                this.api.log(`Likes received: ${likeCount}`, 'debug');
+            }
         } catch (error) {
             this.api.log(`Error handling like event: ${error.message}`, 'error');
         }
