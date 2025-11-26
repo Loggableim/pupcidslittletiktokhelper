@@ -1053,8 +1053,6 @@ class TTSPlugin {
             this._logDebug('SPEAK_STEP4', 'Getting user settings', { userId });
 
             const userSettings = this.permissionManager.getUserSettings(userId);
-            let selectedEngine = engine || userSettings?.assigned_engine || this.config.defaultEngine;
-            let selectedVoice = voiceId || userSettings?.assigned_voice_id;
             
             // Track if user has an assigned voice to preserve assignment intent during engine fallback
             const hasUserAssignedVoice = !!(userSettings?.assigned_voice_id && userSettings?.assigned_engine);
