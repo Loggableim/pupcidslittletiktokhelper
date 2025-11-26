@@ -349,6 +349,11 @@ class TTSPlugin {
      * Register HTTP API routes
      */
     _registerRoutes() {
+        // Serve plugin UI (admin panel)
+        this.api.registerRoute('GET', '/tts/ui', (req, res) => {
+            res.sendFile(path.join(__dirname, 'ui', 'admin-panel.html'));
+        });
+
         // Get TTS configuration
         this.api.registerRoute('GET', '/api/tts/config', (req, res) => {
             res.json({
