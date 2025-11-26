@@ -158,7 +158,8 @@ class TemplateRenderer {
       const giftName = userData.metadata.giftName || 'Gift';
       const size = this.settings.profilePictureSize || '80px';
       
-      if (giftPictureUrl) {
+      // Always prefer showing the gift image from the catalogue if available
+      if (giftPictureUrl && giftPictureUrl.trim() !== '') {
         // Show gift image if available
         const escapedGiftPictureUrl = this.escapeHtml(giftPictureUrl);
         const escapedGiftName = this.escapeHtml(giftName);
@@ -239,7 +240,8 @@ class TemplateRenderer {
       
       if (userData.metadata.giftName) {
         const escapedGiftName = this.escapeHtml(userData.metadata.giftName);
-        giftInfo.push(`<span style="color: #ffc107;">🎁 ${escapedGiftName}</span>`);
+        // Don't show emoji here since we already have a gift icon displayed above
+        giftInfo.push(`<span style="color: #ffc107;">${escapedGiftName}</span>`);
       }
       
       if (userData.metadata.giftCount && userData.metadata.giftCount > 1) {
