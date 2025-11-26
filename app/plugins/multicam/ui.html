@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="multicam.title">Multi-Cam Switcher - Admin Panel</title>
     <link rel="stylesheet" href="/css/themes.css">
+    <script>
+        // Apply saved theme immediately to prevent flash
+        (function() {
+            const savedTheme = localStorage.getItem('dashboard-theme');
+            if (savedTheme && savedTheme !== 'night') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/i18n-client.js"></script>
     <style>

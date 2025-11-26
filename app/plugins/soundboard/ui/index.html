@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="/css/tailwind.output.css">
     <link rel="stylesheet" href="/css/navigation.css">
     <link rel="stylesheet" href="/css/themes.css">
+    <script>
+        // Apply saved theme immediately to prevent flash
+        (function() {
+            const savedTheme = localStorage.getItem('dashboard-theme');
+            if (savedTheme && savedTheme !== 'night') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>

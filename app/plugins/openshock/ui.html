@@ -6,6 +6,15 @@
     <title>OpenShock Control Panel</title>
     <link rel="stylesheet" href="/css/themes.css">
     <link rel="stylesheet" href="/openshock/openshock.css">
+    <script>
+        // Apply saved theme immediately to prevent flash
+        (function() {
+            const savedTheme = localStorage.getItem('dashboard-theme');
+            if (savedTheme && savedTheme !== 'night') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/i18n-client.js"></script>
 </head>
