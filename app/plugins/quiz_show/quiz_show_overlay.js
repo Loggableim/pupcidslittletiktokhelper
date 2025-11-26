@@ -35,6 +35,7 @@
         totalTime: 30,
         hiddenAnswers: [],
         revealedWrongAnswer: null,
+        answerDisplayDuration: 5, // Default to 5 seconds
         votersPerAnswer: { 0: [], 1: [], 2: [], 3: [] },
         voterIconsConfig: {
             enabled: true,
@@ -516,9 +517,11 @@
 
             case States.REVEAL_CORRECT:
                 revealCorrectAnswer();
+                // Use answerDisplayDuration from config (in milliseconds), fallback to 3000ms
+                const displayDuration = (gameData.answerDisplayDuration || 5) * 1000;
                 stateTimeout = setTimeout(() => {
                     transitionToState(States.WAIT_NEXT);
-                }, 3000 / hudConfig.animationSpeed);
+                }, displayDuration / hudConfig.animationSpeed);
                 break;
 
             case States.WAIT_NEXT:
@@ -601,6 +604,7 @@
         gameData.correctAnswerLetter = data.correctAnswerLetter;
         gameData.correctAnswerText = data.correctAnswerText;
         gameData.info = data.info || null;
+        gameData.answerDisplayDuration = data.answerDisplayDuration || 5; // Get from server
         
         // Update voter data from round ended event
         if (data.votersPerAnswer) {
