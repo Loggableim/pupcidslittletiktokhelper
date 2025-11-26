@@ -10,6 +10,9 @@ class QuizShowPlugin {
         // Database instance
         this.db = null;
 
+        // Constants
+        this.QUESTION_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
         // Plugin configuration
         this.config = {
             roundDuration: 30,
@@ -385,7 +388,7 @@ class QuizShowPlugin {
     cleanupQuestionHistory() {
         try {
             // Delete question history entries older than 24 hours
-            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const oneDayAgo = new Date(Date.now() - this.QUESTION_COOLDOWN_MS).toISOString();
             const result = this.db.prepare('DELETE FROM question_history WHERE asked_at < ?').run(oneDayAgo);
             
             if (result.changes > 0) {
@@ -399,7 +402,7 @@ class QuizShowPlugin {
     getTodaysAskedQuestionIds() {
         try {
             // Get all question IDs asked today (within last 24 hours)
-            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const oneDayAgo = new Date(Date.now() - this.QUESTION_COOLDOWN_MS).toISOString();
             const rows = this.db.prepare(
                 'SELECT DISTINCT question_id FROM question_history WHERE asked_at >= ?'
             ).all(oneDayAgo);
@@ -1487,25 +1490,26 @@ class QuizShowPlugin {
         }
 
         // Select question from available ones
-        let questionIndex;
+        let selectedQuestion;
         if (this.config.randomQuestions) {
-            questionIndex = Math.floor(Math.random() * availableQuestions.length);
+            // Random selection
+            const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+            selectedQuestion = availableQuestions[randomIndex];
         } else {
-            // For sequential mode, just use the first available question
-            questionIndex = 0;
+            // Sequential mode: select the first available question by ID order
+            // This ensures consistent ordering even when questions are filtered
+            selectedQuestion = availableQuestions[0];
         }
 
-        const question = availableQuestions[questionIndex];
-
         // Record this question as asked (for daily tracking)
-        this.recordQuestionAsked(question.id);
+        this.recordQuestionAsked(selectedQuestion.id);
         
         // Add to session tracking (for round tracking)
-        this.gameState.askedQuestionIds.add(question.id);
+        this.gameState.askedQuestionIds.add(selectedQuestion.id);
 
         // Prepare answers (shuffle if configured)
-        let answers = [...question.answers];
-        let correctIndex = question.correct;
+        let answers = [...selectedQuestion.answers];
+        let correctIndex = selectedQuestion.correct;
 
         if (this.config.shuffleAnswers) {
             // Create mapping for shuffling
@@ -1518,7 +1522,7 @@ class QuizShowPlugin {
             }
 
             answers = answerMapping.map(item => item.ans);
-            correctIndex = answerMapping.findIndex(item => item.originalIdx === question.correct);
+            correctIndex = answerMapping.findIndex(item => item.originalIdx === selectedQuestion.correct);
         }
 
         // Update game state
@@ -1526,11 +1530,11 @@ class QuizShowPlugin {
             ...this.gameState,
             isRunning: true,
             currentQuestion: {
-                ...question,
+                ...selectedQuestion,
                 answers,
                 correct: correctIndex
             },
-            currentQuestionIndex: questionIndex,
+            currentQuestionIndex: selectedQuestion.id, // Store question ID instead of array index
             startTime: Date.now(),
             endTime: Date.now() + (this.config.roundDuration * 1000),
             timeRemaining: this.config.roundDuration,
@@ -1562,7 +1566,7 @@ class QuizShowPlugin {
 
         // TTS announcement if enabled
         if (this.config.ttsEnabled) {
-            const ttsText = `Neue Frage: ${question.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
+            const ttsText = `Neue Frage: ${selectedQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
             
             // Parse voice format: "engine:voiceId" or "default"
             let engine = null;
@@ -1594,7 +1598,7 @@ class QuizShowPlugin {
         // Broadcast to overlay and UI
         this.broadcastGameState();
 
-        this.api.log(`Round started with question: ${question.question}`, 'info');
+        this.api.log(`Round started with question: ${selectedQuestion.question}`, 'info');
     }
 
     startTimer() {

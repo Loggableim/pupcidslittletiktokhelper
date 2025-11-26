@@ -1068,6 +1068,7 @@
         if (!errorOverlay) {
             errorOverlay = document.createElement('div');
             errorOverlay.id = 'error-overlay';
+            const fontFamily = hudConfig.fonts?.family || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
             errorOverlay.style.cssText = `
                 position: fixed;
                 top: 50%;
@@ -1081,7 +1082,7 @@
                 z-index: 10000;
                 opacity: 0;
                 transition: opacity 0.3s;
-                font-family: ${hudConfig.fonts.family};
+                font-family: ${fontFamily};
                 text-align: center;
                 border: 3px solid rgba(255, 255, 255, 0.3);
             `;
@@ -1106,9 +1107,7 @@
         setTimeout(() => {
             errorOverlay.style.opacity = '0';
             setTimeout(() => {
-                if (errorOverlay.parentNode) {
-                    errorOverlay.parentNode.removeChild(errorOverlay);
-                }
+                errorOverlay.remove();
             }, 300);
         }, 8000);
     }
