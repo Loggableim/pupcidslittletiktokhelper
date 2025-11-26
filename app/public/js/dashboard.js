@@ -2277,13 +2277,15 @@ function showAudioEnablePrompt() {
     
     const prompt = document.createElement('div');
     prompt.id = 'audio-enable-prompt';
-    prompt.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-4';
+    prompt.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-4 max-w-2xl';
+    prompt.style.zIndex = '99999'; // Ensure it's above everything including sidebar
+    prompt.style.pointerEvents = 'auto'; // Ensure it's clickable
     prompt.innerHTML = `
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
         </svg>
         <span><strong>Audio aktivieren:</strong> Klicken Sie hier, um TTS-Audio zu hören</span>
-        <button id="enable-audio-btn" class="bg-white text-blue-600 px-4 py-2 rounded font-semibold hover:bg-blue-50 transition">
+        <button id="enable-audio-btn" class="bg-white text-blue-600 px-4 py-2 rounded font-semibold hover:bg-blue-50 transition flex-shrink-0">
             Aktivieren
         </button>
     `;

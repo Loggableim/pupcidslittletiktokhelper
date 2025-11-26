@@ -68,7 +68,7 @@ class OpenAIEngine {
      * @param {string} text - The text to convert
      * @param {string} voiceId - The voice ID (e.g., 'gpt-4o-mini-tts-alloy')
      * @param {object} options - Additional options
-     * @returns {Promise<Buffer>} Audio buffer
+     * @returns {Promise<string>} Base64-encoded audio data
      */
     async synthesize(text, voiceId = 'gpt-4o-mini-tts-alloy', options = {}) {
         const voices = OpenAIEngine.getVoices();
@@ -91,12 +91,13 @@ class OpenAIEngine {
                 speed: options.speed || 1.0
             });
 
-            // Convert the response to a buffer
+            // Convert the response to a buffer and then to base64
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
+            const base64Audio = buffer.toString('base64');
 
             this.logger.info(`OpenAI TTS: Successfully synthesized ${buffer.length} bytes`);
-            return buffer;
+            return base64Audio;
 
         } catch (error) {
             this.logger.error(`OpenAI TTS: Synthesis failed - ${error.message}`);
