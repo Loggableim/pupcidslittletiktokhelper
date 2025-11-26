@@ -51,7 +51,19 @@ Der Launcher (`launcher.exe` für Windows, `start-linux` für Linux, `start-mac`
 
 - **Vollständige Dokumentation:** Siehe `app/README.md`
 - **Features, Konfiguration, Troubleshooting:** Alle Details in `app/README.md`
+- **Launcher Build-Anleitung:** Siehe `build-src/README.md`
 - **Support:** [loggableim@gmail.com](mailto:loggableim@gmail.com)
+
+---
+
+## 🎨 Branding
+
+Das Tool verwendet das ltthappicon.png (Hund mit Brille und TikTok-Rahmen) als:
+- **Launcher-Icon:** Windows-Programmsymbol für `launcher.exe`
+- **Dashboard-Logo:** Seitennavigation im Browser-UI
+- **Favicon:** Browser-Tab-Symbol
+
+Icon-Datei: `app/ltthappicon.png`
 
 ---
 
