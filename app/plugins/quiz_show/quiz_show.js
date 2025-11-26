@@ -401,6 +401,7 @@
             categoryFilter: document.getElementById('categoryFilter').value,
             autoMode: document.getElementById('autoMode').checked,
             autoModeDelay: parseInt(document.getElementById('autoModeDelay').value),
+            answerDisplayDuration: parseInt(document.getElementById('answerDisplayDuration').value),
             // Voter Icons Settings
             voterIconsEnabled: document.getElementById('voterIconsEnabled').checked,
             voterIconSize: document.getElementById('voterIconSize').value,
@@ -626,6 +627,7 @@
         document.getElementById('categoryFilter').value = config.categoryFilter || 'Alle';
         document.getElementById('autoMode').checked = config.autoMode || false;
         document.getElementById('autoModeDelay').value = config.autoModeDelay || 5;
+        document.getElementById('answerDisplayDuration').value = config.answerDisplayDuration || 5;
         
         // Voter Icons Settings
         document.getElementById('voterIconsEnabled').checked = config.voterIconsEnabled !== false;

@@ -30,6 +30,7 @@ class QuizShowPlugin {
             ttsVoice: 'default',
             autoMode: false, // Auto advance to next question
             autoModeDelay: 5, // Seconds to wait before auto-advancing
+            answerDisplayDuration: 5, // Seconds to display the correct answer (including info text)
             // Voter Icons Configuration
             voterIconsEnabled: true,
             voterIconSize: 'medium', // small, medium, large
@@ -1577,14 +1578,52 @@ class QuizShowPlugin {
 
         // Get the correct answer letter
         const correctAnswerLetter = String.fromCharCode(65 + this.gameState.currentQuestion.correct); // A, B, C, D
+        const correctAnswerText = this.gameState.currentQuestion.answers[this.gameState.currentQuestion.correct];
+        
+        // TTS announcement for correct answer and info text if enabled
+        if (this.config.ttsEnabled) {
+            let ttsText = `Die richtige Antwort ist ${correctAnswerLetter}: ${correctAnswerText}.`;
+            
+            // Add info text if available
+            if (this.gameState.currentQuestion.info) {
+                ttsText += ` ${this.gameState.currentQuestion.info}`;
+            }
+            
+            // Parse voice format: "engine:voiceId" or "default"
+            let engine = null;
+            let voiceId = null;
+            
+            const voiceConfig = this.config.ttsVoice || 'default';
+            if (voiceConfig !== 'default' && voiceConfig.includes(':')) {
+                const parts = voiceConfig.split(':');
+                engine = parts[0];
+                voiceId = parts[1];
+            }
+            
+            // Call TTS plugin via HTTP API
+            try {
+                const port = process.env.PORT || 3000;
+                await axios.post(`http://localhost:${port}/api/tts/speak`, {
+                    text: ttsText,
+                    userId: 'quiz-show',
+                    username: 'Quiz Show',
+                    voiceId: voiceId,
+                    engine: engine,
+                    source: 'quiz-show'
+                });
+            } catch (error) {
+                this.api.log(`TTS error: ${error.message}`, 'error');
+            }
+        }
 
         // Broadcast results
         this.api.emit('quiz-show:round-ended', {
             question: this.gameState.currentQuestion,
             correctAnswer: this.gameState.currentQuestion.correct,
             correctAnswerLetter: correctAnswerLetter,
-            correctAnswerText: this.gameState.currentQuestion.answers[this.gameState.currentQuestion.correct],
+            correctAnswerText: correctAnswerText,
             info: this.gameState.currentQuestion.info,
+            answerDisplayDuration: this.config.answerDisplayDuration || 5, // Send to overlay
             results,
             stats: this.stats,
             eliminatedUsers: Array.from(this.gameState.eliminatedUsers),
