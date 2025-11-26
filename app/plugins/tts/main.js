@@ -842,10 +842,11 @@ class TTSPlugin {
                 // Extract text from either 'message' or 'comment' field
                 const chatText = data.message || data.comment;
 
-                // IMPORTANT: Use uniqueId as the primary userId for consistency
-                // uniqueId is the TikTok username and is stable across sessions
-                const userId = data.uniqueId || data.nickname || data.userId;
-                const username = data.uniqueId || data.nickname;
+                // IMPORTANT: Use username/uniqueId as the primary userId for consistency
+                // username is the TikTok handle (@username) and is stable across sessions
+                // Prioritize: username (actual handle) > uniqueId > nickname (display name)
+                const userId = data.username || data.uniqueId || data.nickname || data.userId;
+                const username = data.username || data.uniqueId || data.nickname;
 
                 this._logDebug('TIKTOK_EVENT', 'Chat event received', {
                     uniqueId: data.uniqueId,
