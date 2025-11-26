@@ -1090,7 +1090,7 @@
         }
 
         errorOverlay.innerHTML = `
-            <div style="transform: scale(0); transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
+            <div class="error-content" style="transform: scale(0); transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
                 <div style="font-size: 3em; margin-bottom: 15px;">⚠️</div>
                 <h2 style="font-size: 2em; margin-bottom: 10px; font-weight: bold;">${escapeHtml(message)}</h2>
                 <p style="font-size: 1.2em; opacity: 0.9;">Bitte fügen Sie neue Fragen hinzu und starten Sie erneut.</p>
@@ -1100,7 +1100,10 @@
         // Animate in
         setTimeout(() => {
             errorOverlay.style.opacity = '1';
-            errorOverlay.querySelector('div').style.transform = 'scale(1)';
+            const content = errorOverlay.querySelector('.error-content');
+            if (content) {
+                content.style.transform = 'scale(1)';
+            }
         }, 100);
 
         // Auto-hide after 8 seconds

@@ -48,7 +48,8 @@ class QuizShowPlugin {
         this.gameState = {
             isRunning: false,
             currentQuestion: null,
-            currentQuestionIndex: -1,
+            currentQuestionIndex: -1, // Deprecated: kept for backwards compatibility
+            currentQuestionId: null, // ID of the current question being asked
             startTime: null,
             endTime: null,
             timeRemaining: 0,
@@ -401,7 +402,7 @@ class QuizShowPlugin {
 
     getTodaysAskedQuestionIds() {
         try {
-            // Get all question IDs asked today (within last 24 hours)
+            // Get all question IDs asked within the last 24 hours (sliding window)
             const oneDayAgo = new Date(Date.now() - this.QUESTION_COOLDOWN_MS).toISOString();
             const rows = this.db.prepare(
                 'SELECT DISTINCT question_id FROM question_history WHERE asked_at >= ?'
@@ -1534,7 +1535,7 @@ class QuizShowPlugin {
                 answers,
                 correct: correctIndex
             },
-            currentQuestionIndex: selectedQuestion.id, // Store question ID instead of array index
+            currentQuestionId: selectedQuestion.id, // Store question ID for tracking
             startTime: Date.now(),
             endTime: Date.now() + (this.config.roundDuration * 1000),
             timeRemaining: this.config.roundDuration,
@@ -2105,7 +2106,8 @@ class QuizShowPlugin {
         this.gameState = {
             isRunning: false,
             currentQuestion: null,
-            currentQuestionIndex: -1,
+            currentQuestionIndex: -1, // Deprecated: kept for backwards compatibility
+            currentQuestionId: null,
             startTime: null,
             endTime: null,
             timeRemaining: 0,
