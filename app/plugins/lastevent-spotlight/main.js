@@ -75,7 +75,7 @@ class LastEventSpotlightPlugin {
       borderColor: '#FFFFFF',
 
       // Background
-      enableBackground: true,
+      enableBackground: false,
       backgroundColor: 'rgba(0, 0, 0, 0.7)',
 
       // Profile picture
