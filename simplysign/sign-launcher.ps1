@@ -196,8 +196,10 @@ try {
         
         $signArguments = @(
             "sign",
-            "/file:`"$fullPath`"",
-            "/timestamp:`"$TimestampServer`""
+            "-inputPath",
+            "`"$fullPath`"",
+            "-tsaUrl",
+            "`"$TimestampServer`""
         )
         
         $signProcess = Start-Process -FilePath $simplySignPath `

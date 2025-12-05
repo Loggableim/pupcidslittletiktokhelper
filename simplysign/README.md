@@ -163,6 +163,15 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 ## 🔧 Configuration
 
+### Command-Line Parameters
+
+The scripts use the correct Certum SimplySign Desktop command-line format:
+```
+SimplySignDesktop.exe sign -inputPath "file.exe" -tsaUrl "https://timestamp.digicert.com"
+```
+
+**Important:** Certum SimplySign Desktop uses `-inputPath` and `-tsaUrl` parameters (not `/file:` or `/timestamp:`).
+
 ### Timestamp Server
 
 Both scripts use DigiCert's timestamp server by default:

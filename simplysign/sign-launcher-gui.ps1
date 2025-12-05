@@ -210,8 +210,10 @@ function Start-Signing {
             
             $signArguments = @(
                 "sign",
-                "/file:`"$fullPath`"",
-                "/timestamp:`"$script:timestampServer`""
+                "-inputPath",
+                "`"$fullPath`"",
+                "-tsaUrl",
+                "`"$script:timestampServer`""
             )
             
             $tempOut = [System.IO.Path]::GetTempFileName()

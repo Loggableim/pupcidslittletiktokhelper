@@ -148,7 +148,7 @@ REM Sign launcher.exe if in list
 echo !FILES_TO_SIGN! | findstr /C:"launcher" >nul
 if not errorlevel 1 (
     echo   Signing launcher.exe...
-    "%SIMPLYSIGN_EXE%" sign /file:"%LAUNCHER_PATH%" /timestamp:"%TIMESTAMP_SERVER%"
+    "%SIMPLYSIGN_EXE%" sign -inputPath "%LAUNCHER_PATH%" -tsaUrl "%TIMESTAMP_SERVER%"
     if errorlevel 1 (
         echo   ERROR: Failed to sign launcher.exe
         set /a FAILED_COUNT+=1
@@ -163,7 +163,7 @@ REM Sign ltthgit.exe if in list
 echo !FILES_TO_SIGN! | findstr /C:"cloud" >nul
 if not errorlevel 1 (
     echo   Signing ltthgit.exe...
-    "%SIMPLYSIGN_EXE%" sign /file:"%CLOUD_LAUNCHER_PATH%" /timestamp:"%TIMESTAMP_SERVER%"
+    "%SIMPLYSIGN_EXE%" sign -inputPath "%CLOUD_LAUNCHER_PATH%" -tsaUrl "%TIMESTAMP_SERVER%"
     if errorlevel 1 (
         echo   ERROR: Failed to sign ltthgit.exe
         set /a FAILED_COUNT+=1
