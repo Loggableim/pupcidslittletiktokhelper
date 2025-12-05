@@ -2,6 +2,8 @@
 
 This directory contains scripts and documentation for signing `launcher.exe` using **SimplySign™ Desktop**, a qualified electronic signature tool for code signing.
 
+> **⚠️ IMPORTANT - PowerShell Users:** If you encounter an execution policy error when running the PowerShell script, see the [PowerShell Execution Policy](#powershell-execution-policy) section below for solutions.
+
 ---
 
 ## 📋 Overview
@@ -77,23 +79,44 @@ cd simplysign
 .\sign-launcher.ps1 -LauncherPath "C:\path\to\launcher.exe"
 
 # Use different timestamp server
-.\sign-launcher.ps1 -TimestampServer "http://timestamp.comodoca.com"
+.\sign-launcher.ps1 -TimestampServer "https://timestamp.sectigo.com"
 
 # Custom SimplySign executable path
 .\sign-launcher.ps1 -SimplySignExe "C:\Program Files\SimplySign\SimplySignDesktop.exe"
 ```
 
-**PowerShell Execution Policy:**
+### PowerShell Execution Policy
 
-If you get an execution policy error:
+**If you encounter an execution policy error** (script is not digitally signed), you have several options:
 
+#### Option 1: Bypass for Single Execution (Recommended)
+Run PowerShell with bypass flag:
 ```powershell
-# Allow scripts for current session
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-
-# Or run with bypass
 powershell -ExecutionPolicy Bypass -File .\sign-launcher.ps1
 ```
+
+#### Option 2: Bypass for Current Session
+Allow scripts for the current PowerShell session only:
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\sign-launcher.ps1
+```
+
+#### Option 3: Unblock the Script File
+Unblock the downloaded script (removes "downloaded from internet" flag):
+```powershell
+Unblock-File -Path .\sign-launcher.ps1
+.\sign-launcher.ps1
+```
+
+#### Option 4: Change User Policy (Less Secure)
+Change execution policy for current user (persists across sessions):
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+.\sign-launcher.ps1
+```
+
+**Note:** The batch script (`sign-launcher.bat`) does not have execution policy restrictions and can be used as an alternative.
 
 ---
 
@@ -113,13 +136,14 @@ powershell -ExecutionPolicy Bypass -File .\sign-launcher.ps1
 
 Both scripts use DigiCert's timestamp server by default:
 ```
-http://timestamp.digicert.com
+https://timestamp.digicert.com
 ```
 
 **Alternative timestamp servers:**
-- `http://timestamp.comodoca.com` (Sectigo/Comodo)
+- `https://timestamp.sectigo.com` (Sectigo/Comodo)
 - `http://timestamp.globalsign.com/tsa/g6` (GlobalSign)
-- `http://timestamp.sectigo.com` (Sectigo)
+
+**Note:** Always prefer HTTPS timestamp servers when available for enhanced security.
 
 Timestamping ensures the signature remains valid even after the certificate expires.
 
@@ -162,6 +186,46 @@ Successfully verified: launcher.exe
 ---
 
 ## ❌ Troubleshooting
+
+### PowerShell Error: "File is not digitally signed" / "UnauthorizedAccess"
+
+**Error message (English):**
+```
+The file cannot be loaded. The file is not digitally signed. You cannot run this script on the current system.
+```
+
+**Error message (German):**
+```
+Die Datei kann nicht geladen werden. Die Datei ist nicht digital signiert. 
+Sie können dieses Skript im aktuellen System nicht ausführen.
+```
+
+**Solution:**
+This is a PowerShell execution policy restriction. Choose one of these solutions:
+
+1. **Use the batch script instead** (no restrictions):
+   ```batch
+   sign-launcher.bat
+   ```
+
+2. **Run with bypass flag** (recommended):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\sign-launcher.ps1
+   ```
+
+3. **Unblock the file**:
+   ```powershell
+   Unblock-File -Path .\sign-launcher.ps1
+   .\sign-launcher.ps1
+   ```
+
+4. **Set execution policy for current session**:
+   ```powershell
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   .\sign-launcher.ps1
+   ```
+
+See [PowerShell Execution Policy](#powershell-execution-policy) section for more details.
 
 ### Error: "SimplySign Desktop not found in PATH"
 

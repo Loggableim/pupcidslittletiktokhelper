@@ -25,7 +25,7 @@ echo.
 REM Configuration
 set "LAUNCHER_PATH=..\launcher.exe"
 set "SIMPLYSIGN_EXE=SimplySignDesktop.exe"
-set "TIMESTAMP_SERVER=http://timestamp.digicert.com"
+set "TIMESTAMP_SERVER=https://timestamp.digicert.com"
 
 REM Check if launcher.exe exists
 echo [1/4] Checking for launcher.exe...

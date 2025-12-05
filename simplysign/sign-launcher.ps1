@@ -11,7 +11,7 @@
     Path to launcher.exe (default: ..\launcher.exe)
 
 .PARAMETER TimestampServer
-    URL of the timestamp server (default: http://timestamp.digicert.com)
+    URL of the timestamp server (default: https://timestamp.digicert.com)
 
 .PARAMETER SimplySignExe
     Name or path to SimplySign Desktop executable (default: SimplySignDesktop.exe)
@@ -39,7 +39,7 @@ param(
     [string]$LauncherPath = "..\launcher.exe",
     
     [Parameter(Mandatory = $false)]
-    [string]$TimestampServer = "http://timestamp.digicert.com",
+    [string]$TimestampServer = "https://timestamp.digicert.com",
     
     [Parameter(Mandatory = $false)]
     [string]$SimplySignExe = "SimplySignDesktop.exe"
