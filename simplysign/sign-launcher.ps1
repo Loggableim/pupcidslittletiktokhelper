@@ -212,11 +212,11 @@ try {
         $fullPath = Resolve-Path $file.Path
         Write-Status "   Signing $($file.Name)..." -Type Info
         
-        # signtool sign /tr <timestamp_url> /td sha256 /fd sha256 /a <file>
+        # signtool sign /a /fd sha256 /tr <timestamp_url> /td sha256 <file>
         # /a = automatically select best certificate
         # /fd sha256 = file digest algorithm
-        # /td sha256 = timestamp digest algorithm
         # /tr = RFC 3161 timestamp server
+        # /td sha256 = timestamp digest algorithm
         $signArguments = @(
             "sign",
             "/a",

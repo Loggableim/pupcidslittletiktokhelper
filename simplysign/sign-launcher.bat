@@ -82,7 +82,7 @@ echo.
 goto :error
 
 :signtool_found
-echo      Found: %SIGNTOOL_EXE%
+echo      Found: !SIGNTOOL_EXE!
 echo.
 
 REM Check which files exist and need to be signed
