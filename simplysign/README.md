@@ -47,7 +47,33 @@ Code signing helps establish trust by:
 
 ## 🚀 Usage
 
-### Option 1: Batch Script (Recommended for Windows)
+### Option 1: GUI Tool (Recommended - Easy to Use)
+
+**Visual interface with real-time progress and error logging:**
+
+```powershell
+cd simplysign
+.\sign-launcher-gui.ps1
+```
+
+**Features:**
+- ✅ User-friendly graphical interface
+- ✅ Real-time progress display
+- ✅ Color-coded status messages
+- ✅ Comprehensive error logging to file
+- ✅ View error logs with one click
+- ✅ Visual confirmation of success/failure
+- ✅ Step-by-step process display
+
+**Error Log:** All operations are logged to `sign-launcher-error.log` in the same directory.
+
+**Screenshot:** The GUI provides:
+- Configuration display (launcher path, timestamp server)
+- Progress bar showing signing progress
+- Real-time log output with color coding
+- Buttons for signing, viewing logs, and closing
+
+### Option 2: Batch Script (Quick Command-Line)
 
 Simple double-click execution:
 
@@ -63,7 +89,7 @@ The script will:
 4. ✅ Verify the signature (if signtool available)
 5. ✅ Display success/error messages
 
-### Option 2: PowerShell Script (Advanced)
+### Option 3: PowerShell Script (Advanced/Automation)
 
 For more control and scripting integration:
 
@@ -116,7 +142,7 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 .\sign-launcher.ps1
 ```
 
-**Note:** The batch script (`sign-launcher.bat`) does not have execution policy restrictions and can be used as an alternative.
+**Note:** The batch script (`sign-launcher.bat`) and GUI tool (`sign-launcher-gui.ps1`) may also require execution policy adjustments. Use the same solutions above.
 
 ---
 
@@ -124,8 +150,10 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 | File | Description |
 |------|-------------|
-| `sign-launcher.bat` | Batch script for automated signing (Windows) |
-| `sign-launcher.ps1` | PowerShell script with advanced features and parameter support |
+| `sign-launcher-gui.ps1` | **GUI application** with visual interface, progress display, and error logging (Recommended) |
+| `sign-launcher.bat` | Batch script for automated signing (Windows command-line) |
+| `sign-launcher.ps1` | PowerShell script with advanced features and parameter support (Automation) |
+| `sign-launcher-error.log` | Error log file (created automatically by GUI tool) |
 | `README.md` | This documentation file |
 
 ---
