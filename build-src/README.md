@@ -1,17 +1,24 @@
 # Launcher Build Instructions
 
-This directory contains the source code for the Windows launcher (`launcher.exe`).
+This directory contains the source code for the Windows launchers.
 
-## Building the Launcher
+## Launchers
 
-The launcher is written in Go and includes an embedded icon resource.
+1. **launcher.exe** - Local launcher for existing installations
+2. **ltthgit.exe** - Cloud launcher that downloads files from GitHub
+
+## Building the Launchers
+
+The launchers are written in Go and include embedded resources.
 
 ### Prerequisites
 
 - Go 1.18 or higher
-- `go-winres` tool (for embedding the icon)
+- `go-winres` tool (for embedding icons in launcher.exe)
 
 ### Building on Windows
+
+#### Local Launcher (launcher.exe)
 
 ```bash
 # Build the GUI launcher (with icon)
@@ -24,28 +31,27 @@ go build -o launcher-console.exe launcher.go
 go build -o launcher-backup.exe launcher-backup.go
 ```
 
-The `.syso` resource files (`rsrc_windows_*.syso`) are automatically included during the build process and contain the application icon.
-
-### Icon Management
-
-The launcher icon is managed using `go-winres`:
-
-1. Icon source: `icon.png` (copy of `../app/ltthappicon.png`)
-2. Configuration: `winres/winres.json`
-3. Generated resources: `rsrc_windows_*.syso`
-
-To regenerate the icon resources after updating the icon:
+#### Cloud Launcher (ltthgit.exe)
 
 ```bash
-# Install go-winres if not already installed
-go install github.com/tc-hib/go-winres@latest
+# Build the cloud launcher (downloads from GitHub)
+go build -o ltthgit.exe -ldflags="-s -w" ltthgit.go
 
-# Regenerate resource files
-go-winres make
+# Copy to project root
+cp ltthgit.exe ../
 ```
+
+**Size:** ~8.5MB (well under 22MB target)
+
+The cloud launcher includes:
+- Embedded splash screen HTML
+- GitHub repository downloader
+- Automatic dependency installation
+- Browser-based progress display
 
 ## Files
 
+### Local Launcher Files
 - `launcher.go` - Console launcher (shows terminal window)
 - `launcher-gui.go` - GUI launcher (no terminal, shows graphical progress)
 - `launcher-backup.go` - Backup launcher with detailed logging (troubleshooting)
@@ -54,16 +60,35 @@ go-winres make
 - `winres/winres.json` - Icon and metadata configuration
 - `rsrc_windows_*.syso` - Generated Windows resource files (auto-included in build)
 
+### Cloud Launcher Files
+- `ltthgit.go` - Cloud launcher source code
+- `assets/splash.html` - Embedded splash screen (HTML template)
+
 ## Launcher Types
 
-### launcher-gui.go (launcher.exe)
-- **Purpose:** Main launcher with graphical interface
+### ltthgit.go (ltthgit.exe) - Cloud Launcher
+- **Purpose:** Download and install LTTH from GitHub
+- **Size:** ~8.5MB (single executable, no dependencies)
+- **Features:**
+  - Downloads latest version from GitHub
+  - Shows progress in browser
+  - Server-Sent Events (SSE) for real-time updates
+  - Embedded splash screen with animations
+  - Automatic Node.js check and dependency installation
+  - Opens application when ready
+- **Use when:** 
+  - First-time installation
+  - Want latest version from GitHub
+  - Distributing to users without local files
+
+### launcher-gui.go (launcher.exe) - Local Launcher
+- **Purpose:** Main launcher for existing installations
 - **Features:**
   - Opens in browser with background image
   - Shows progress bar and status updates
   - Auto-redirects to dashboard when ready
   - No terminal window (windowsgui mode)
-- **Use when:** Normal operation
+- **Use when:** Normal operation with local files
 
 ### launcher.go (launcher-console.exe)
 - **Purpose:** Simple console launcher
