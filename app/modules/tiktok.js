@@ -699,6 +699,7 @@ class TikTokConnector extends EventEmitter {
                     uniqueId: userData.username,
                     username: userData.username,
                     nickname: userData.nickname,
+                    userId: userData.userId,
                     giftName: giftData.giftName,
                     giftId: giftData.giftId,
                     giftPictureUrl: giftData.giftPictureUrl,

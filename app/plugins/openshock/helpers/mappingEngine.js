@@ -213,7 +213,8 @@ class MappingEngine {
         }
 
         // Check cooldowns
-        const userId = eventData.user?.userId || eventData.userId || 'unknown';
+        // Support both field name formats: userId/userName (expected) and uniqueId/username (TikTok format)
+        const userId = eventData.user?.userId || eventData.userId || eventData.uniqueId || 'unknown';
         const deviceId = mapping.action.deviceId;
 
         if (!this.checkCooldown(mapping, userId, deviceId)) {
@@ -285,8 +286,9 @@ class MappingEngine {
 
     try {
       // User filters
-      const userId = eventData.user?.userId || eventData.userId;
-      const userName = eventData.user?.userName || eventData.userName || '';
+      // Support both field name formats: userId/userName (expected) and uniqueId/username (TikTok format)
+      const userId = eventData.user?.userId || eventData.userId || eventData.uniqueId;
+      const userName = eventData.user?.userName || eventData.userName || eventData.username || '';
 
       // Whitelist check (user must be in whitelist with userId OR userName)
       if (conditions.whitelist && conditions.whitelist.length > 0) {
@@ -304,7 +306,8 @@ class MappingEngine {
 
       // Team level check
       if (conditions.teamLevelMin !== undefined && conditions.teamLevelMin > 0) {
-        const teamLevel = eventData.user?.teamLevel || 0;
+        // Support both teamLevel and teamMemberLevel (TikTok format)
+        const teamLevel = eventData.user?.teamLevel || eventData.teamLevel || eventData.teamMemberLevel || 0;
         if (teamLevel < conditions.teamLevelMin) {
           return false;
         }
