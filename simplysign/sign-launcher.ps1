@@ -1,14 +1,21 @@
 <#
 .SYNOPSIS
-    Signs launcher.exe using SimplySign™ Desktop tool
+    Signs launcher executables using SimplySign™ Desktop tool
 
 .DESCRIPTION
-    This script automates the code signing process for launcher.exe using
+    This script automates the code signing process for launcher executables using
     SimplySign Desktop. It includes validation, error handling, and detailed
-    status reporting.
+    status reporting. Supports signing multiple files.
+
+.PARAMETER Files
+    Files to sign: 'all', 'launcher', 'cloud', or array of file paths
+    (default: 'all' - signs both launcher.exe and ltthgit.exe)
 
 .PARAMETER LauncherPath
     Path to launcher.exe (default: ..\launcher.exe)
+
+.PARAMETER CloudLauncherPath
+    Path to ltthgit.exe (default: ..\ltthgit.exe)
 
 .PARAMETER TimestampServer
     URL of the timestamp server (default: https://timestamp.digicert.com)
@@ -18,10 +25,18 @@
 
 .EXAMPLE
     .\sign-launcher.ps1
-    Signs launcher.exe with default settings
+    Signs both launcher.exe and ltthgit.exe with default settings
 
 .EXAMPLE
-    .\sign-launcher.ps1 -LauncherPath "C:\path\to\launcher.exe"
+    .\sign-launcher.ps1 -Files launcher
+    Signs only launcher.exe
+
+.EXAMPLE
+    .\sign-launcher.ps1 -Files cloud
+    Signs only ltthgit.exe
+
+.EXAMPLE
+    .\sign-launcher.ps1 -LauncherPath "C:\path\to\launcher.exe" -Files launcher
     Signs launcher.exe at a custom path
 
 .NOTES
@@ -36,7 +51,14 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
+    [ValidateSet('all', 'launcher', 'cloud')]
+    [string]$Files = 'all',
+    
+    [Parameter(Mandatory = $false)]
     [string]$LauncherPath = "..\launcher.exe",
+    
+    [Parameter(Mandatory = $false)]
+    [string]$CloudLauncherPath = "..\ltthgit.exe",
     
     [Parameter(Mandatory = $false)]
     [string]$TimestampServer = "https://timestamp.digicert.com",
@@ -81,21 +103,49 @@ function Write-SectionHeader {
 try {
     Write-SectionHeader "SimplySign™ Launcher Signing Tool"
     
-    # Step 1: Validate launcher.exe exists
-    Write-Status "[1/4] Checking for launcher.exe..." -Type Info
+    # Determine which files to sign
+    $filesToSign = @()
     
-    if (-not (Test-Path $LauncherPath)) {
-        Write-Status "      ERROR: launcher.exe not found at $LauncherPath" -Type Error
-        Write-Status "      Please ensure launcher.exe exists in the parent directory." -Type Error
-        throw "Launcher file not found"
+    switch ($Files) {
+        'all' {
+            if (Test-Path $LauncherPath) {
+                $filesToSign += @{Name = 'launcher.exe'; Path = $LauncherPath}
+            }
+            if (Test-Path $CloudLauncherPath) {
+                $filesToSign += @{Name = 'ltthgit.exe'; Path = $CloudLauncherPath}
+            }
+        }
+        'launcher' {
+            if (Test-Path $LauncherPath) {
+                $filesToSign += @{Name = 'launcher.exe'; Path = $LauncherPath}
+            }
+        }
+        'cloud' {
+            if (Test-Path $CloudLauncherPath) {
+                $filesToSign += @{Name = 'ltthgit.exe'; Path = $CloudLauncherPath}
+            }
+        }
     }
     
-    $launcherFullPath = Resolve-Path $LauncherPath
-    Write-Status "      Found: $launcherFullPath" -Type Success
+    if ($filesToSign.Count -eq 0) {
+        Write-Status "ERROR: No files found to sign" -Type Error
+        Write-Host ""
+        Write-Status "Expected files:" -Type Warning
+        if ($Files -eq 'all' -or $Files -eq 'launcher') {
+            Write-Host "  - $LauncherPath"
+        }
+        if ($Files -eq 'all' -or $Files -eq 'cloud') {
+            Write-Host "  - $CloudLauncherPath"
+        }
+        throw "No files found"
+    }
+    
+    Write-Status "Mode: $Files" -Type Info
+    Write-Status "Files to sign: $($filesToSign.Count)" -Type Info
     Write-Host ""
     
-    # Step 2: Check if SimplySign Desktop is installed
-    Write-Status "[2/4] Checking for SimplySign Desktop..." -Type Info
+    # Step 1: Check if SimplySign Desktop is installed
+    Write-Status "[1/5] Checking for SimplySign Desktop..." -Type Info
     
     $simplySignPath = Get-Command $SimplySignExe -ErrorAction SilentlyContinue
     
@@ -113,81 +163,118 @@ try {
     Write-Status "      Found: $($simplySignPath.Source)" -Type Success
     Write-Host ""
     
-    # Step 3: Sign the launcher
-    Write-Status "[3/4] Signing launcher.exe..." -Type Info
-    Write-Status "      This may take a moment..." -Type Info
+    # Step 2: List files to sign
+    Write-Status "[2/5] Files to sign:" -Type Info
+    foreach ($file in $filesToSign) {
+        $fullPath = Resolve-Path $file.Path
+        Write-Status "      - $($file.Name): $fullPath" -Type Info
+    }
     Write-Host ""
     
-    $signArguments = @(
-        "sign",
-        "/file:`"$launcherFullPath`"",
-        "/timestamp:`"$TimestampServer`""
-    )
+    # Step 3: Sign the files
+    Write-Status "[3/5] Signing files..." -Type Info
+    Write-Host ""
     
-    $signProcess = Start-Process -FilePath $simplySignPath.Source `
-                                 -ArgumentList $signArguments `
-                                 -Wait `
-                                 -PassThru `
-                                 -NoNewWindow
+    $signedCount = 0
+    $failedCount = 0
     
-    if ($signProcess.ExitCode -ne 0) {
+    foreach ($file in $filesToSign) {
+        $fullPath = Resolve-Path $file.Path
+        Write-Status "   Signing $($file.Name)..." -Type Info
+        
+        $signArguments = @(
+            "sign",
+            "/file:`"$fullPath`"",
+            "/timestamp:`"$TimestampServer`""
+        )
+        
+        $signProcess = Start-Process -FilePath $simplySignPath.Source `
+                                     -ArgumentList $signArguments `
+                                     -Wait `
+                                     -PassThru `
+                                     -NoNewWindow
+        
+        if ($signProcess.ExitCode -ne 0) {
+            Write-Status "   ERROR: Failed to sign $($file.Name)" -Type Error
+            $failedCount++
+        }
+        else {
+            Write-Status "   SUCCESS: $($file.Name) signed" -Type Success
+            $signedCount++
+        }
         Write-Host ""
-        Write-Status "      ERROR: Signing failed with exit code $($signProcess.ExitCode)" -Type Error
+    }
+    
+    if ($failedCount -gt 0) {
         Write-Host ""
-        Write-Status "      Common issues:" -Type Warning
-        Write-Host "        - No valid certificate configured in SimplySign Desktop"
-        Write-Host "        - Certificate expired or not yet valid"
-        Write-Host "        - Network issue accessing timestamp server"
-        Write-Host "        - File is locked or in use"
+        Write-Status "ERROR: Signing failed for $failedCount file(s)" -Type Error
         Write-Host ""
-        Write-Status "      Please check SimplySign Desktop for details." -Type Warning
+        Write-Status "Common issues:" -Type Warning
+        Write-Host "  - No valid certificate configured in SimplySign Desktop"
+        Write-Host "  - Certificate expired or not yet valid"
+        Write-Host "  - Network issue accessing timestamp server"
+        Write-Host "  - File is locked or in use"
+        Write-Host ""
+        Write-Status "Please check SimplySign Desktop for details." -Type Warning
         throw "Signing process failed"
     }
     
+    # Step 4: Verify signatures
+    Write-Status "[4/5] Verifying signatures..." -Type Info
     Write-Host ""
     
-    # Step 4: Verify signature
-    Write-Status "[4/4] Verifying signature..." -Type Info
-    
     $signToolPath = Get-Command signtool.exe -ErrorAction SilentlyContinue
+    $verifiedCount = 0
     
     if ($signToolPath) {
-        # Create temporary files for output redirection
-        $tempOut = [System.IO.Path]::GetTempFileName()
-        $tempErr = [System.IO.Path]::GetTempFileName()
-        
-        try {
-            $verifyProcess = Start-Process -FilePath $signToolPath.Source `
-                                           -ArgumentList @("verify", "/pa", "`"$launcherFullPath`"") `
-                                           -Wait `
-                                           -PassThru `
-                                           -NoNewWindow `
-                                           -RedirectStandardOutput $tempOut `
-                                           -RedirectStandardError $tempErr
+        foreach ($file in $filesToSign) {
+            $fullPath = Resolve-Path $file.Path
             
-            if ($verifyProcess.ExitCode -ne 0) {
-                Write-Status "      WARNING: Signature verification failed" -Type Warning
-                Write-Status "      The file was signed but signature may be invalid" -Type Warning
-                throw "Signature verification failed"
+            # Create temporary files for output redirection
+            $tempOut = [System.IO.Path]::GetTempFileName()
+            $tempErr = [System.IO.Path]::GetTempFileName()
+            
+            try {
+                $verifyProcess = Start-Process -FilePath $signToolPath.Source `
+                                               -ArgumentList @("verify", "/pa", "`"$fullPath`"") `
+                                               -Wait `
+                                               -PassThru `
+                                               -NoNewWindow `
+                                               -RedirectStandardOutput $tempOut `
+                                               -RedirectStandardError $tempErr
+                
+                if ($verifyProcess.ExitCode -ne 0) {
+                    Write-Status "   WARNING: $($file.Name) signature verification failed" -Type Warning
+                }
+                else {
+                    Write-Status "   SUCCESS: $($file.Name) signature verified" -Type Success
+                    $verifiedCount++
+                }
             }
-            
-            Write-Status "      Signature verified successfully!" -Type Success
-        }
-        finally {
-            # Clean up temporary files
-            if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
-            if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
+            finally {
+                # Clean up temporary files
+                if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
+                if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
+            }
         }
     }
     else {
-        Write-Status "      Skipping verification (signtool.exe not found)" -Type Warning
+        Write-Status "   Skipping verification (signtool.exe not found)" -Type Warning
     }
     
     Write-Host ""
-    Write-SectionHeader "SUCCESS: launcher.exe has been signed!"
+    
+    # Step 5: Summary
+    Write-Status "[5/5] Summary" -Type Info
+    Write-Status "   Files signed: $signedCount" -Type Success
+    Write-Status "   Files verified: $verifiedCount" -Type Success
     Write-Host ""
-    Write-Status "The signed launcher.exe is ready for distribution." -Type Success
-    Write-Status "Users will see a verified publisher when running the executable." -Type Success
+    
+    Write-SectionHeader "SUCCESS: Signing completed!"
+    Write-Host ""
+    Write-Status "Signed $signedCount file(s) successfully." -Type Success
+    Write-Status "The signed executable(s) are ready for distribution." -Type Success
+    Write-Status "Users will see a verified publisher when running the executable(s)." -Type Success
     Write-Host ""
     
     exit 0

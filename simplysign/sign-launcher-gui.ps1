@@ -22,6 +22,7 @@ Add-Type -AssemblyName System.Drawing
 # Global variables
 $script:logFilePath = Join-Path $PSScriptRoot "sign-launcher-error.log"
 $script:launcherPath = Join-Path (Split-Path $PSScriptRoot -Parent) "launcher.exe"
+$script:cloudLauncherPath = Join-Path (Split-Path $PSScriptRoot -Parent) "ltthgit.exe"
 $script:timestampServer = "https://timestamp.digicert.com"
 $script:simplySignExe = "SimplySignDesktop.exe"
 
@@ -116,135 +117,194 @@ function Start-Signing {
         Initialize-Log
         Update-Progress 0
         
-        # Step 1: Validate prerequisites
-        Update-Status "Checking prerequisites..." -Color ([System.Drawing.Color]::Blue)
-        Append-LogDisplay "[1/4] Checking prerequisites..." -Color ([System.Drawing.Color]::Blue)
+        # Determine which files to sign based on checkboxes
+        $filesToSign = @()
         
-        $logMsg = Write-Log "Starting signing process" "INFO"
-        Append-LogDisplay $logMsg
-        
-        $issues = Test-Prerequisites
-        if ($issues.Count -gt 0) {
-            foreach ($issue in $issues) {
-                $logMsg = Write-Log $issue "ERROR"
-                Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Red)
-            }
-            throw "Prerequisite validation failed"
+        if ($script:launcherCheckbox.Checked -and (Test-Path $script:launcherPath)) {
+            $filesToSign += @{Name = 'launcher.exe'; Path = $script:launcherPath}
         }
         
-        $logMsg = Write-Log "Prerequisites validated successfully" "SUCCESS"
-        Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Green)
-        Update-Progress 25
-        Start-Sleep -Milliseconds 500
+        if ($script:cloudCheckbox.Checked -and (Test-Path $script:cloudLauncherPath)) {
+            $filesToSign += @{Name = 'ltthgit.exe'; Path = $script:cloudLauncherPath}
+        }
         
-        # Step 2: Locate SimplySign Desktop
-        Update-Status "Locating SimplySign Desktop..." -Color ([System.Drawing.Color]::Blue)
-        Append-LogDisplay "[2/4] Locating SimplySign Desktop..." -Color ([System.Drawing.Color]::Blue)
+        if ($filesToSign.Count -eq 0) {
+            Append-LogDisplay "ERROR: No files selected or found to sign" -Color ([System.Drawing.Color]::Red)
+            Append-LogDisplay "Please select at least one file to sign." -Color ([System.Drawing.Color]::Orange)
+            
+            [System.Windows.Forms.MessageBox]::Show(
+                "No files selected or found to sign.`n`nPlease select at least one file.",
+                "Error",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            return
+        }
         
-        $simplySignPath = Get-Command $script:simplySignExe -ErrorAction Stop
+        # Step 1: Show files to sign
+        Update-Status "Preparing to sign..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "[1/5] Files to sign:" -Color ([System.Drawing.Color]::Blue)
+        
+        $logMsg = Write-Log "Starting signing process for $($filesToSign.Count) file(s)" "INFO"
+        Append-LogDisplay $logMsg
+        
+        foreach ($file in $filesToSign) {
+            $fullPath = Resolve-Path $file.Path
+            Append-LogDisplay "      - $($file.Name): $fullPath" -Color ([System.Drawing.Color]::Cyan)
+        }
+        Append-LogDisplay ""
+        
+        Update-Progress 10
+        Start-Sleep -Milliseconds 300
+        
+        # Step 2: Check for SimplySign Desktop
+        Update-Status "Checking for SimplySign Desktop..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "[2/5] Checking for SimplySign Desktop..." -Color ([System.Drawing.Color]::Blue)
+        
+        $simplySignPath = Get-Command $script:simplySignExe -ErrorAction SilentlyContinue
+        if (-not $simplySignPath) {
+            $logMsg = Write-Log "SimplySign Desktop not found in PATH" "ERROR"
+            Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Red)
+            throw "SimplySign Desktop not found"
+        }
+        
         $logMsg = Write-Log "Found SimplySign Desktop at: $($simplySignPath.Source)" "INFO"
-        Append-LogDisplay $logMsg
-        Update-Progress 40
-        Start-Sleep -Milliseconds 500
+        Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Green)
+        Append-LogDisplay ""
+        Update-Progress 20
+        Start-Sleep -Milliseconds 300
         
-        # Step 3: Sign the file
-        Update-Status "Signing launcher.exe..." -Color ([System.Drawing.Color]::Blue)
-        Append-LogDisplay "[3/4] Signing launcher.exe..." -Color ([System.Drawing.Color]::Blue)
-        Append-LogDisplay "This may take a moment..." -Color ([System.Drawing.Color]::Gray)
+        # Step 3: Sign the files
+        Update-Status "Signing files..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "[3/5] Signing files..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "Timestamp server: $script:timestampServer" -Color ([System.Drawing.Color]::Gray)
+        Append-LogDisplay ""
         
-        $logMsg = Write-Log "Timestamp server: $script:timestampServer" "INFO"
-        Append-LogDisplay $logMsg
+        $signedCount = 0
+        $failedCount = 0
+        $progressStep = 40 / $filesToSign.Count
         
-        $signArguments = @(
-            "sign",
-            "/file:`"$script:launcherPath`"",
-            "/timestamp:`"$script:timestampServer`""
-        )
-        
-        $tempOut = [System.IO.Path]::GetTempFileName()
-        $tempErr = [System.IO.Path]::GetTempFileName()
-        
-        try {
-            $signProcess = Start-Process -FilePath $simplySignPath.Source `
-                                         -ArgumentList $signArguments `
-                                         -Wait `
-                                         -PassThru `
-                                         -NoNewWindow `
-                                         -RedirectStandardOutput $tempOut `
-                                         -RedirectStandardError $tempErr
+        foreach ($file in $filesToSign) {
+            $fullPath = Resolve-Path $file.Path
+            Append-LogDisplay "   Signing $($file.Name)..." -Color ([System.Drawing.Color]::Cyan)
             
-            if ($signProcess.ExitCode -ne 0) {
-                $errorOutput = Get-Content $tempErr -Raw
-                $logMsg = Write-Log "Signing failed with exit code $($signProcess.ExitCode)" "ERROR"
-                Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Red)
-                
-                if ($errorOutput) {
-                    $logMsg = Write-Log "Error details: $errorOutput" "ERROR"
-                    Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Red)
-                }
-                
-                throw "Signing process failed"
-            }
+            $logMsg = Write-Log "Signing $($file.Name)" "INFO"
             
-            $logMsg = Write-Log "Signing completed successfully" "SUCCESS"
-            Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Green)
-            Update-Progress 70
-            Start-Sleep -Milliseconds 500
-        }
-        finally {
-            if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
-            if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
-        }
-        
-        # Step 4: Verify signature
-        Update-Status "Verifying signature..." -Color ([System.Drawing.Color]::Blue)
-        Append-LogDisplay "[4/4] Verifying signature..." -Color ([System.Drawing.Color]::Blue)
-        
-        $signToolPath = Get-Command signtool.exe -ErrorAction SilentlyContinue
-        
-        if ($signToolPath) {
+            $signArguments = @(
+                "sign",
+                "/file:`"$fullPath`"",
+                "/timestamp:`"$script:timestampServer`""
+            )
+            
             $tempOut = [System.IO.Path]::GetTempFileName()
             $tempErr = [System.IO.Path]::GetTempFileName()
             
             try {
-                $verifyProcess = Start-Process -FilePath $signToolPath.Source `
-                                               -ArgumentList @("verify", "/pa", "`"$script:launcherPath`"") `
-                                               -Wait `
-                                               -PassThru `
-                                               -NoNewWindow `
-                                               -RedirectStandardOutput $tempOut `
-                                               -RedirectStandardError $tempErr
+                $signProcess = Start-Process -FilePath $simplySignPath.Source `
+                                             -ArgumentList $signArguments `
+                                             -Wait `
+                                             -PassThru `
+                                             -NoNewWindow `
+                                             -RedirectStandardOutput $tempOut `
+                                             -RedirectStandardError $tempErr
                 
-                if ($verifyProcess.ExitCode -ne 0) {
-                    $logMsg = Write-Log "Signature verification failed" "WARNING"
-                    Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Orange)
+                if ($signProcess.ExitCode -ne 0) {
+                    $errorOutput = Get-Content $tempErr -Raw -ErrorAction SilentlyContinue
+                    $logMsg = Write-Log "Failed to sign $($file.Name): Exit code $($signProcess.ExitCode)" "ERROR"
+                    Append-LogDisplay "   ERROR: Failed to sign $($file.Name)" -Color ([System.Drawing.Color]::Red)
+                    if ($errorOutput) {
+                        Write-Log "Error details: $errorOutput" "ERROR"
+                    }
+                    $failedCount++
                 }
                 else {
-                    $logMsg = Write-Log "Signature verified successfully" "SUCCESS"
-                    Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Green)
+                    $logMsg = Write-Log "Successfully signed $($file.Name)" "SUCCESS"
+                    Append-LogDisplay "   SUCCESS: $($file.Name) signed" -Color ([System.Drawing.Color]::Green)
+                    $signedCount++
                 }
             }
             finally {
                 if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
                 if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
             }
+            
+            Append-LogDisplay ""
+            Update-Progress (20 + ($signedCount + $failedCount) * $progressStep)
+            Start-Sleep -Milliseconds 300
+        }
+        
+        if ($failedCount -gt 0) {
+            $logMsg = Write-Log "Signing failed for $failedCount file(s)" "ERROR"
+            throw "Signing process failed for some files"
+        }
+        
+        # Step 4: Verify signatures
+        Update-Status "Verifying signatures..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "[4/5] Verifying signatures..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay ""
+        
+        $signToolPath = Get-Command signtool.exe -ErrorAction SilentlyContinue
+        $verifiedCount = 0
+        
+        if ($signToolPath) {
+            foreach ($file in $filesToSign) {
+                if ($file.Name -notin $filesToSign.Where({$signedCount -gt 0}).Name) { continue }
+                
+                $fullPath = Resolve-Path $file.Path
+                
+                $tempOut = [System.IO.Path]::GetTempFileName()
+                $tempErr = [System.IO.Path]::GetTempFileName()
+                
+                try {
+                    $verifyProcess = Start-Process -FilePath $signToolPath.Source `
+                                                   -ArgumentList @("verify", "/pa", "`"$fullPath`"") `
+                                                   -Wait `
+                                                   -PassThru `
+                                                   -NoNewWindow `
+                                                   -RedirectStandardOutput $tempOut `
+                                                   -RedirectStandardError $tempErr
+                    
+                    if ($verifyProcess.ExitCode -ne 0) {
+                        $logMsg = Write-Log "$($file.Name) signature verification failed" "WARNING"
+                        Append-LogDisplay "   WARNING: $($file.Name) verification failed" -Color ([System.Drawing.Color]::Orange)
+                    }
+                    else {
+                        $logMsg = Write-Log "$($file.Name) signature verified successfully" "SUCCESS"
+                        Append-LogDisplay "   SUCCESS: $($file.Name) verified" -Color ([System.Drawing.Color]::Green)
+                        $verifiedCount++
+                    }
+                }
+                finally {
+                    if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
+                    if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
+                }
+            }
         }
         else {
             $logMsg = Write-Log "signtool.exe not found - skipping verification" "WARNING"
-            Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Orange)
+            Append-LogDisplay "   Skipping verification (signtool.exe not found)" -Color ([System.Drawing.Color]::Orange)
         }
         
+        Append-LogDisplay ""
+        Update-Progress 80
+        Start-Sleep -Milliseconds 300
+        
+        # Step 5: Summary
+        Update-Status "Completed!" -Color ([System.Drawing.Color]::Green)
+        Append-LogDisplay "[5/5] Summary" -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "   Files signed: $signedCount" -Color ([System.Drawing.Color]::Green)
+        Append-LogDisplay "   Files verified: $verifiedCount" -Color ([System.Drawing.Color]::Green)
+        Append-LogDisplay ""
+        
         Update-Progress 100
-        Update-Status "SUCCESS: launcher.exe has been signed!" -Color ([System.Drawing.Color]::Green)
         
         $logMsg = Write-Log "Signing process completed successfully" "SUCCESS"
-        Append-LogDisplay "" 
         Append-LogDisplay "════════════════════════════════════════════════════════" -Color ([System.Drawing.Color]::Green)
-        Append-LogDisplay "SUCCESS: launcher.exe has been signed!" -Color ([System.Drawing.Color]::Green)
+        Append-LogDisplay "SUCCESS: $signedCount file(s) signed!" -Color ([System.Drawing.Color]::Green)
         Append-LogDisplay "════════════════════════════════════════════════════════" -Color ([System.Drawing.Color]::Green)
         
         [System.Windows.Forms.MessageBox]::Show(
-            "launcher.exe has been signed successfully!`n`nThe signed file is ready for distribution.",
+            "Successfully signed $signedCount file(s)!`n`nThe signed executable(s) are ready for distribution.",
             "Success",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Information
@@ -291,7 +351,7 @@ function Open-ErrorLog {
 # Create the form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "SimplySign™ Launcher Signing Tool"
-$form.Size = New-Object System.Drawing.Size(700, 600)
+$form.Size = New-Object System.Drawing.Size(700, 650)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
@@ -306,37 +366,70 @@ $headerLabel.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawi
 $headerLabel.ForeColor = [System.Drawing.Color]::DarkBlue
 $form.Controls.Add($headerLabel)
 
+# File selection panel
+$filePanel = New-Object System.Windows.Forms.GroupBox
+$filePanel.Location = New-Object System.Drawing.Point(10, 50)
+$filePanel.Size = New-Object System.Drawing.Size(660, 80)
+$filePanel.Text = "Files to Sign"
+$form.Controls.Add($filePanel)
+
+# Launcher checkbox
+$script:launcherCheckbox = New-Object System.Windows.Forms.CheckBox
+$script:launcherCheckbox.Location = New-Object System.Drawing.Point(10, 25)
+$script:launcherCheckbox.Size = New-Object System.Drawing.Size(640, 20)
+$script:launcherCheckbox.Text = "launcher.exe"
+$script:launcherCheckbox.Checked = $true
+if (Test-Path $script:launcherPath) {
+    $script:launcherCheckbox.Text = "launcher.exe (Found)"
+    $script:launcherCheckbox.ForeColor = [System.Drawing.Color]::Green
+} else {
+    $script:launcherCheckbox.Text = "launcher.exe (Not Found)"
+    $script:launcherCheckbox.ForeColor = [System.Drawing.Color]::Red
+    $script:launcherCheckbox.Checked = $false
+    $script:launcherCheckbox.Enabled = $false
+}
+$filePanel.Controls.Add($script:launcherCheckbox)
+
+# Cloud launcher checkbox
+$script:cloudCheckbox = New-Object System.Windows.Forms.CheckBox
+$script:cloudCheckbox.Location = New-Object System.Drawing.Point(10, 50)
+$script:cloudCheckbox.Size = New-Object System.Drawing.Size(640, 20)
+$script:cloudCheckbox.Text = "ltthgit.exe"
+$script:cloudCheckbox.Checked = $true
+if (Test-Path $script:cloudLauncherPath) {
+    $script:cloudCheckbox.Text = "ltthgit.exe (Found)"
+    $script:cloudCheckbox.ForeColor = [System.Drawing.Color]::Green
+} else {
+    $script:cloudCheckbox.Text = "ltthgit.exe (Not Found)"
+    $script:cloudCheckbox.ForeColor = [System.Drawing.Color]::Orange
+    $script:cloudCheckbox.Checked = $false
+}
+$filePanel.Controls.Add($script:cloudCheckbox)
+
 # Info panel
 $infoPanel = New-Object System.Windows.Forms.GroupBox
-$infoPanel.Location = New-Object System.Drawing.Point(10, 50)
-$infoPanel.Size = New-Object System.Drawing.Size(660, 100)
+$infoPanel.Location = New-Object System.Drawing.Point(10, 140)
+$infoPanel.Size = New-Object System.Drawing.Size(660, 70)
 $infoPanel.Text = "Configuration"
 $form.Controls.Add($infoPanel)
 
-# Launcher path label
-$launcherLabel = New-Object System.Windows.Forms.Label
-$launcherLabel.Location = New-Object System.Drawing.Point(10, 25)
-$launcherLabel.Size = New-Object System.Drawing.Size(640, 20)
-$launcherLabel.Text = "Launcher: $script:launcherPath"
-$infoPanel.Controls.Add($launcherLabel)
-
 # Timestamp server label
 $timestampLabel = New-Object System.Windows.Forms.Label
-$timestampLabel.Location = New-Object System.Drawing.Point(10, 50)
+$timestampLabel.Location = New-Object System.Drawing.Point(10, 25)
 $timestampLabel.Size = New-Object System.Drawing.Size(640, 20)
 $timestampLabel.Text = "Timestamp Server: $script:timestampServer"
 $infoPanel.Controls.Add($timestampLabel)
 
 # SimplySign label
 $simplySignLabel = New-Object System.Windows.Forms.Label
-$simplySignLabel.Location = New-Object System.Drawing.Point(10, 75)
+$simplySignLabel.Location = New-Object System.Drawing.Point(10, 45)
 $simplySignLabel.Size = New-Object System.Drawing.Size(640, 20)
 $simplySignLabel.Text = "SimplySign: $script:simplySignExe"
 $infoPanel.Controls.Add($simplySignLabel)
 
 # Progress bar
 $progressBar = New-Object System.Windows.Forms.ProgressBar
-$progressBar.Location = New-Object System.Drawing.Point(10, 160)
+$progressBar.Location = New-Object System.Drawing.Point(10, 220)
 $progressBar.Size = New-Object System.Drawing.Size(660, 25)
 $progressBar.Minimum = 0
 $progressBar.Maximum = 100
@@ -345,7 +438,9 @@ $form.Controls.Add($progressBar)
 
 # Status label
 $statusLabel = New-Object System.Windows.Forms.Label
-$statusLabel.Location = New-Object System.Drawing.Point(10, 195)
+$statusLabel.Location = New-Object System.Drawing.Point(10, 255)
+$statusLabel.Size = New-Object System.Drawing.Size(660, 20)
+$statusLabel.Location = New-Object System.Drawing.Point(10, 255)
 $statusLabel.Size = New-Object System.Drawing.Size(660, 20)
 $statusLabel.Text = "Ready to sign"
 $statusLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
@@ -353,7 +448,7 @@ $form.Controls.Add($statusLabel)
 
 # Log text box
 $logTextBox = New-Object System.Windows.Forms.RichTextBox
-$logTextBox.Location = New-Object System.Drawing.Point(10, 225)
+$logTextBox.Location = New-Object System.Drawing.Point(10, 285)
 $logTextBox.Size = New-Object System.Drawing.Size(660, 260)
 $logTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
 $logTextBox.ReadOnly = $true
@@ -363,7 +458,7 @@ $form.Controls.Add($logTextBox)
 
 # Button panel
 $buttonPanel = New-Object System.Windows.Forms.Panel
-$buttonPanel.Location = New-Object System.Drawing.Point(10, 495)
+$buttonPanel.Location = New-Object System.Drawing.Point(10, 555)
 $buttonPanel.Size = New-Object System.Drawing.Size(660, 50)
 $form.Controls.Add($buttonPanel)
 
