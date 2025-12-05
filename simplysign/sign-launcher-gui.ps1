@@ -24,6 +24,8 @@ $script:logFilePath = Join-Path $PSScriptRoot "sign-launcher-error.log"
 $script:launcherPath = Join-Path (Split-Path $PSScriptRoot -Parent) "launcher.exe"
 $script:cloudLauncherPath = Join-Path (Split-Path $PSScriptRoot -Parent) "ltthgit.exe"
 $script:timestampServer = "https://timestamp.digicert.com"
+# Default Certum SimplySign Desktop installation path
+# Note: Path with spaces is handled correctly by Start-Process -FilePath parameter
 $script:simplySignExe = "C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe"
 
 # Logging function

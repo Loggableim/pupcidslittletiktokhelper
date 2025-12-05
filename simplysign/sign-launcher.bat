@@ -29,6 +29,8 @@ echo.
 REM Configuration
 set "LAUNCHER_PATH=..\launcher.exe"
 set "CLOUD_LAUNCHER_PATH=..\ltthgit.exe"
+REM Default Certum SimplySign Desktop installation path
+REM Note: Path is quoted when used in commands to handle spaces correctly
 set "SIMPLYSIGN_EXE=C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe"
 set "TIMESTAMP_SERVER=https://timestamp.digicert.com"
 

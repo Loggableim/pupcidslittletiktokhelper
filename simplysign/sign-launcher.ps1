@@ -64,6 +64,8 @@ param(
     [string]$TimestampServer = "https://timestamp.digicert.com",
     
     [Parameter(Mandatory = $false)]
+    # Default Certum SimplySign Desktop installation path
+    # Note: Path with spaces is handled correctly by Start-Process -FilePath parameter
     [string]$SimplySignExe = "C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe"
 )
 
