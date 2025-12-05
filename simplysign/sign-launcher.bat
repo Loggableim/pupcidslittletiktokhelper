@@ -214,8 +214,6 @@ if not errorlevel 1 (
 REM Verify ltthgit.exe if it was signed
 echo !FILES_TO_SIGN! | findstr /C:"cloud" >nul
 if not errorlevel 1 (
-    where signtool.exe >nul 2>&1
-if not errorlevel 1 (
     "%SIGNTOOL_EXE%" verify /pa "%CLOUD_LAUNCHER_PATH%" >nul 2>&1
     if errorlevel 1 (
         echo   WARNING: ltthgit.exe signature verification failed
