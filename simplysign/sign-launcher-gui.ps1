@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    GUI application for signing launcher.exe using SimplySign™ Desktop
+    GUI application for signing launcher.exe using SimplySign(TM) Desktop
 
 .DESCRIPTION
     This script provides a graphical user interface for code signing launcher.exe
@@ -49,7 +49,7 @@ function Initialize-Log {
     $separator = "=" * 80
     $header = @"
 $separator
-SimplySign™ Launcher Signing Tool - Error Log
+SimplySign(TM) Launcher Signing Tool - Error Log
 Started: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 $separator
 "@
@@ -350,7 +350,7 @@ function Open-ErrorLog {
 
 # Create the form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "SimplySign™ Launcher Signing Tool"
+$form.Text = "SimplySign(TM) Launcher Signing Tool"
 $form.Size = New-Object System.Drawing.Size(700, 650)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
@@ -361,7 +361,7 @@ $form.MinimizeBox = $true
 $headerLabel = New-Object System.Windows.Forms.Label
 $headerLabel.Location = New-Object System.Drawing.Point(10, 10)
 $headerLabel.Size = New-Object System.Drawing.Size(660, 30)
-$headerLabel.Text = "SimplySign™ Launcher Code Signing Tool"
+$headerLabel.Text = "SimplySign(TM) Launcher Code Signing Tool"
 $headerLabel.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
 $headerLabel.ForeColor = [System.Drawing.Color]::DarkBlue
 $form.Controls.Add($headerLabel)
@@ -492,7 +492,7 @@ $buttonPanel.Controls.Add($closeButton)
 
 # Show the form
 $form.Add_Shown({
-    $logTextBox.AppendText("SimplySign™ Launcher Signing Tool`r`n")
+    $logTextBox.AppendText("SimplySign(TM) Launcher Signing Tool`r`n")
     $logTextBox.AppendText("═══════════════════════════════════════════════════════`r`n")
     $logTextBox.AppendText("`r`n")
     $logTextBox.AppendText("Ready to sign launcher.exe`r`n")

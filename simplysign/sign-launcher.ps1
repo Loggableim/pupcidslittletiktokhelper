@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Signs launcher executables using SimplySign™ Desktop tool
+    Signs launcher executables using SimplySign(TM) Desktop tool
 
 .DESCRIPTION
     This script automates the code signing process for launcher executables using
@@ -101,7 +101,7 @@ function Write-SectionHeader {
 
 # Main script
 try {
-    Write-SectionHeader "SimplySign™ Launcher Signing Tool"
+    Write-SectionHeader "SimplySign(TM) Launcher Signing Tool"
     
     # Determine which files to sign
     $filesToSign = @()

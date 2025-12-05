@@ -1,6 +1,6 @@
 @echo off
 REM ================================================================================
-REM SimplySign™ Launcher Signing Script
+REM SimplySign(TM) Launcher Signing Script
 REM ================================================================================
 REM This script signs launcher executables using the SimplySign Desktop tool
 REM 
@@ -22,7 +22,7 @@ setlocal enabledelayedexpansion
 
 echo.
 echo ================================================================================
-echo  SimplySign™ Launcher Signing Tool
+echo  SimplySign(TM) Launcher Signing Tool
 echo ================================================================================
 echo.
 
