@@ -29,7 +29,7 @@ echo.
 REM Configuration
 set "LAUNCHER_PATH=..\launcher.exe"
 set "CLOUD_LAUNCHER_PATH=..\ltthgit.exe"
-set "SIMPLYSIGN_EXE=SimplySignDesktop.exe"
+set "SIMPLYSIGN_EXE=C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe"
 set "TIMESTAMP_SERVER=https://timestamp.digicert.com"
 
 REM Determine which files to sign based on argument
@@ -49,18 +49,33 @@ echo.
 
 REM Check if SimplySign Desktop is installed
 echo [1/5] Checking for SimplySign Desktop...
-where "%SIMPLYSIGN_EXE%" >nul 2>&1
+
+REM Try default Certum path first
+if exist "%SIMPLYSIGN_EXE%" (
+    echo      Found: %SIMPLYSIGN_EXE%
+    goto :simplysign_found
+)
+
+REM Fall back to PATH
+where SimplySignDesktop.exe >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: SimplySign Desktop not found in PATH
+    echo ERROR: SimplySign Desktop not found at default path or in PATH
+    echo.
+    echo Expected at: %SIMPLYSIGN_EXE%
     echo.
     echo Please install SimplySign Desktop from:
-    echo https://www.simplysign.eu/en/desktop
+    echo https://www.certum.eu/en/cert_services_sign_code.html
     echo.
-    echo After installation, ensure SimplySignDesktop.exe is in your PATH
+    echo After installation, ensure SimplySignDesktop.exe is accessible
     echo or update the SIMPLYSIGN_EXE variable in this script.
     goto :error
 )
-echo      Found: %SIMPLYSIGN_EXE%
+
+REM Found in PATH - update to use PATH version
+set "SIMPLYSIGN_EXE=SimplySignDesktop.exe"
+echo      Found in PATH: %SIMPLYSIGN_EXE%
+
+:simplysign_found
 echo.
 
 REM Check which files exist and need to be signed

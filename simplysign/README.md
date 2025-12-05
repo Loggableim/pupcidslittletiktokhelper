@@ -1,8 +1,10 @@
 # SimplySign™ Code Signing for Launcher
 
-This directory contains scripts and documentation for signing `launcher.exe` using **SimplySign™ Desktop**, a qualified electronic signature tool for code signing.
+This directory contains scripts and documentation for signing `launcher.exe` using **Certum SimplySign™ Desktop**, a qualified electronic signature tool for code signing.
 
 > **⚠️ IMPORTANT - PowerShell Users:** If you encounter an execution policy error when running the PowerShell script, see the [PowerShell Execution Policy](#powershell-execution-policy) section below for solutions.
+
+> **ℹ️ NOTE:** This project uses **Certum SimplySign Desktop**, which has a different default installation path than generic SimplySign. The scripts are configured for the Certum installation at `C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe`.
 
 ---
 
@@ -14,7 +16,7 @@ Code signing helps establish trust by:
 - ✅ Reducing Windows SmartScreen warnings
 - ✅ Building user confidence in the application
 
-**SimplySign™** is a cloud-based code signing solution that meets eIDAS standards and provides qualified electronic signatures.
+**Certum SimplySign™** is a cloud-based code signing solution that meets eIDAS standards and provides qualified electronic signatures.
 
 ---
 
@@ -22,13 +24,14 @@ Code signing helps establish trust by:
 
 ### Required Software
 
-1. **SimplySign™ Desktop Application**
-   - Download from: [https://www.simplysign.eu/en/desktop](https://www.simplysign.eu/en/desktop)
-   - Install and configure with your SimplySign™ account
-   - Ensure the application is in your system PATH
+1. **Certum SimplySign™ Desktop Application**
+   - Download from: [https://www.certum.eu/en/cert_services_sign_code.html](https://www.certum.eu/en/cert_services_sign_code.html)
+   - Documentation: [Certum Code Signing Manual](https://files.certum.eu/documents/manual_en/CS-Code_Signing_in_the_Cloud_Signtool_jarsigner_signing.pdf)
+   - Default installation path: `C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe`
+   - Install and configure with your Certum SimplySign™ account
 
 2. **Valid Code Signing Certificate**
-   - Obtain from SimplySign™ or another trusted Certificate Authority (CA)
+   - Obtain from Certum or another trusted Certificate Authority (CA)
    - Configure in SimplySign™ Desktop
    - Ensure certificate is valid and not expired
 
@@ -107,8 +110,8 @@ cd simplysign
 # Use different timestamp server
 .\sign-launcher.ps1 -TimestampServer "https://timestamp.sectigo.com"
 
-# Custom SimplySign executable path
-.\sign-launcher.ps1 -SimplySignExe "C:\Program Files\SimplySign\SimplySignDesktop.exe"
+# Custom SimplySign executable path (if different from default Certum path)
+.\sign-launcher.ps1 -SimplySignExe "C:\CustomPath\SimplySignDesktop.exe"
 ```
 
 ### PowerShell Execution Policy
@@ -177,17 +180,30 @@ Timestamping ensures the signature remains valid even after the certificate expi
 
 ### SimplySign™ Desktop Path
 
-If SimplySign™ Desktop is not in your PATH, update the executable location:
+The scripts are pre-configured with the default Certum SimplySign Desktop installation path:
+```
+C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe
+```
+
+If SimplySign™ Desktop is installed at a different location, you can update it:
 
 **In batch script (`sign-launcher.bat`):**
 ```batch
-set "SIMPLYSIGN_EXE=C:\Program Files\SimplySign\SimplySignDesktop.exe"
+set "SIMPLYSIGN_EXE=C:\CustomPath\SimplySignDesktop.exe"
 ```
 
 **In PowerShell script (`sign-launcher.ps1`):**
 ```powershell
-.\sign-launcher.ps1 -SimplySignExe "C:\Program Files\SimplySign\SimplySignDesktop.exe"
+.\sign-launcher.ps1 -SimplySignExe "C:\CustomPath\SimplySignDesktop.exe"
 ```
+
+**In GUI script (`sign-launcher-gui.ps1`):**
+Edit line 27 to set a custom path:
+```powershell
+$script:simplySignExe = "C:\CustomPath\SimplySignDesktop.exe"
+```
+
+**Note:** The scripts will automatically fall back to searching for `SimplySignDesktop.exe` in your system PATH if the default Certum path is not found.
 
 ---
 
@@ -255,12 +271,16 @@ This is a PowerShell execution policy restriction. Choose one of these solutions
 
 See [PowerShell Execution Policy](#powershell-execution-policy) section for more details.
 
-### Error: "SimplySign Desktop not found in PATH"
+### Error: "SimplySign Desktop not found at default path or in PATH"
 
 **Solution:**
-1. Verify SimplySign™ Desktop is installed
-2. Add to PATH or use full path in script
-3. Restart command prompt/PowerShell after installation
+1. Verify Certum SimplySign™ Desktop is installed at the default location:
+   ```
+   C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe
+   ```
+2. If installed at a different location, update the path in the script (see [Configuration](#configuration) section)
+3. Download from: [https://www.certum.eu/en/cert_services_sign_code.html](https://www.certum.eu/en/cert_services_sign_code.html)
+4. Restart command prompt/PowerShell after installation
 
 ### Error: "Signing failed"
 
@@ -328,9 +348,10 @@ See [PowerShell Execution Policy](#powershell-execution-policy) section for more
 
 ## 📚 Additional Resources
 
-### SimplySign™ Documentation
+### Certum SimplySign™ Documentation
+- [Certum Code Signing Services](https://www.certum.eu/en/cert_services_sign_code.html)
+- [Certum SimplySign Code Signing Manual](https://files.certum.eu/documents/manual_en/CS-Code_Signing_in_the_Cloud_Signtool_jarsigner_signing.pdf)
 - [SimplySign Website](https://www.simplysign.eu/)
-- [SimplySign Desktop Guide](https://www.simplysign.eu/en/desktop)
 - [eIDAS Standards](https://ec.europa.eu/digital-building-blocks/wikis/display/DIGITAL/eIDAS)
 
 ### Code Signing Resources
@@ -339,6 +360,7 @@ See [PowerShell Execution Policy](#powershell-execution-policy) section for more
 - [Windows Authenticode](https://docs.microsoft.com/en-us/windows-hardware/drivers/install/authenticode)
 
 ### Certificate Authorities
+- [Certum](https://www.certum.eu/en/cert_services_sign_code.html)
 - [DigiCert](https://www.digicert.com/signing/code-signing-certificates)
 - [Sectigo](https://sectigo.com/ssl-certificates-tls/code-signing)
 - [GlobalSign](https://www.globalsign.com/en/code-signing-certificate)

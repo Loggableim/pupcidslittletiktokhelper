@@ -24,7 +24,7 @@ $script:logFilePath = Join-Path $PSScriptRoot "sign-launcher-error.log"
 $script:launcherPath = Join-Path (Split-Path $PSScriptRoot -Parent) "launcher.exe"
 $script:cloudLauncherPath = Join-Path (Split-Path $PSScriptRoot -Parent) "ltthgit.exe"
 $script:timestampServer = "https://timestamp.digicert.com"
-$script:simplySignExe = "SimplySignDesktop.exe"
+$script:simplySignExe = "C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe"
 
 # Logging function
 function Write-Log {
@@ -99,9 +99,13 @@ function Test-Prerequisites {
     }
     
     # Check SimplySign Desktop
-    $simplySignPath = Get-Command $script:simplySignExe -ErrorAction SilentlyContinue
-    if (-not $simplySignPath) {
-        $issues += "SimplySign Desktop not found in PATH"
+    if (Test-Path $script:simplySignExe) {
+        # Direct path exists
+    } else {
+        $simplySignPath = Get-Command "SimplySignDesktop.exe" -ErrorAction SilentlyContinue
+        if (-not $simplySignPath) {
+            $issues += "SimplySign Desktop not found at default path or in PATH"
+        }
     }
     
     return $issues
@@ -161,15 +165,26 @@ function Start-Signing {
         Update-Status "Checking for SimplySign Desktop..." -Color ([System.Drawing.Color]::Blue)
         Append-LogDisplay "[2/5] Checking for SimplySign Desktop..." -Color ([System.Drawing.Color]::Blue)
         
-        $simplySignPath = Get-Command $script:simplySignExe -ErrorAction SilentlyContinue
-        if (-not $simplySignPath) {
-            $logMsg = Write-Log "SimplySign Desktop not found in PATH" "ERROR"
-            Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Red)
-            throw "SimplySign Desktop not found"
+        # Try default Certum path first
+        if (Test-Path $script:simplySignExe) {
+            $simplySignPath = $script:simplySignExe
+            $logMsg = Write-Log "Found SimplySign Desktop at: $simplySignPath" "INFO"
+            Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Green)
+        } else {
+            # Fall back to PATH
+            $pathCmd = Get-Command "SimplySignDesktop.exe" -ErrorAction SilentlyContinue
+            if ($pathCmd) {
+                $simplySignPath = $pathCmd.Source
+                $logMsg = Write-Log "Found SimplySign Desktop in PATH: $simplySignPath" "INFO"
+                Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Green)
+            } else {
+                $logMsg = Write-Log "SimplySign Desktop not found at default path or in PATH" "ERROR"
+                Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Red)
+                Append-LogDisplay "Expected at: $script:simplySignExe" -Color ([System.Drawing.Color]::Orange)
+                throw "SimplySign Desktop not found"
+            }
         }
         
-        $logMsg = Write-Log "Found SimplySign Desktop at: $($simplySignPath.Source)" "INFO"
-        Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Green)
         Append-LogDisplay ""
         Update-Progress 20
         Start-Sleep -Milliseconds 300
@@ -201,7 +216,7 @@ function Start-Signing {
             $tempErr = [System.IO.Path]::GetTempFileName()
             
             try {
-                $signProcess = Start-Process -FilePath $simplySignPath.Source `
+                $signProcess = Start-Process -FilePath $simplySignPath `
                                              -ArgumentList $signArguments `
                                              -Wait `
                                              -PassThru `

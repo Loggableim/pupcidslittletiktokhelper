@@ -64,7 +64,7 @@ param(
     [string]$TimestampServer = "https://timestamp.digicert.com",
     
     [Parameter(Mandatory = $false)]
-    [string]$SimplySignExe = "SimplySignDesktop.exe"
+    [string]$SimplySignExe = "C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe"
 )
 
 # Set error action preference
@@ -147,20 +147,30 @@ try {
     # Step 1: Check if SimplySign Desktop is installed
     Write-Status "[1/5] Checking for SimplySign Desktop..." -Type Info
     
-    $simplySignPath = Get-Command $SimplySignExe -ErrorAction SilentlyContinue
-    
-    if (-not $simplySignPath) {
-        Write-Status "      ERROR: SimplySign Desktop not found in PATH" -Type Error
-        Write-Host ""
-        Write-Status "      Please install SimplySign Desktop from:" -Type Warning
-        Write-Host "      https://www.simplysign.eu/en/desktop"
-        Write-Host ""
-        Write-Status "      After installation, ensure SimplySignDesktop.exe is in your PATH" -Type Warning
-        Write-Status "      or update the -SimplySignExe parameter." -Type Warning
-        throw "SimplySign Desktop not found"
+    # Try default Certum path first
+    if (Test-Path $SimplySignExe) {
+        $simplySignPath = $SimplySignExe
+        Write-Status "      Found: $simplySignPath" -Type Success
+    } else {
+        # Fall back to PATH
+        $pathCmd = Get-Command "SimplySignDesktop.exe" -ErrorAction SilentlyContinue
+        if ($pathCmd) {
+            $simplySignPath = $pathCmd.Source
+            Write-Status "      Found in PATH: $simplySignPath" -Type Success
+        } else {
+            Write-Status "      ERROR: SimplySign Desktop not found at default path or in PATH" -Type Error
+            Write-Host ""
+            Write-Status "      Expected at: $SimplySignExe" -Type Warning
+            Write-Host ""
+            Write-Status "      Please install SimplySign Desktop from:" -Type Warning
+            Write-Host "      https://www.certum.eu/en/cert_services_sign_code.html"
+            Write-Host ""
+            Write-Status "      After installation, ensure SimplySignDesktop.exe is accessible" -Type Warning
+            Write-Status "      or update the -SimplySignExe parameter." -Type Warning
+            throw "SimplySign Desktop not found"
+        }
     }
     
-    Write-Status "      Found: $($simplySignPath.Source)" -Type Success
     Write-Host ""
     
     # Step 2: List files to sign
@@ -188,7 +198,7 @@ try {
             "/timestamp:`"$TimestampServer`""
         )
         
-        $signProcess = Start-Process -FilePath $simplySignPath.Source `
+        $signProcess = Start-Process -FilePath $simplySignPath `
                                      -ArgumentList $signArguments `
                                      -Wait `
                                      -PassThru `
