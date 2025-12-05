@@ -1,12 +1,12 @@
 @echo off
 REM ================================================================================
-REM SimplySign(TM) Launcher Signing Script
+REM Certum Code Signing Script (using Windows signtool)
 REM ================================================================================
-REM This script signs launcher executables using the SimplySign Desktop tool
+REM This script signs launcher executables using Windows signtool.exe
 REM 
 REM Prerequisites:
-REM   - SimplySign Desktop tool must be installed
-REM   - Valid SimplySign certificate configured
+REM   - Windows SDK (signtool.exe) must be installed
+REM   - Valid Certum certificate in Windows Certificate Store
 REM   - Executable files must exist in the parent directory
 REM 
 REM Usage:
@@ -22,15 +22,15 @@ setlocal enabledelayedexpansion
 
 echo.
 echo ================================================================================
-echo  SimplySign(TM) Launcher Signing Tool
+echo  Certum Code Signing Tool (Windows signtool)
 echo ================================================================================
 echo.
 
 REM Configuration
 set "LAUNCHER_PATH=..\launcher.exe"
 set "CLOUD_LAUNCHER_PATH=..\ltthgit.exe"
-set "SIMPLYSIGN_EXE=SimplySignDesktop.exe"
 set "TIMESTAMP_SERVER=https://timestamp.digicert.com"
+set "SIGNTOOL_EXE="
 
 REM Determine which files to sign based on argument
 set "SIGN_MODE=%~1"
@@ -47,20 +47,42 @@ if not "%SIGN_MODE%"=="all" if not "%SIGN_MODE%"=="launcher" if not "%SIGN_MODE%
 echo Mode: %SIGN_MODE%
 echo.
 
-REM Check if SimplySign Desktop is installed
-echo [1/5] Checking for SimplySign Desktop...
-where "%SIMPLYSIGN_EXE%" >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: SimplySign Desktop not found in PATH
-    echo.
-    echo Please install SimplySign Desktop from:
-    echo https://www.simplysign.eu/en/desktop
-    echo.
-    echo After installation, ensure SimplySignDesktop.exe is in your PATH
-    echo or update the SIMPLYSIGN_EXE variable in this script.
-    goto :error
+REM Find signtool.exe
+echo [1/5] Locating signtool.exe...
+
+REM Search common Windows SDK locations
+set "SDK_PATHS[0]=%ProgramFiles(x86)%\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe"
+set "SDK_PATHS[1]=%ProgramFiles(x86)%\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe"
+set "SDK_PATHS[2]=%ProgramFiles(x86)%\Windows Kits\10\bin\x64\signtool.exe"
+set "SDK_PATHS[3]=%ProgramFiles%\Windows Kits\10\bin\x64\signtool.exe"
+
+set "FOUND=0"
+for /L %%i in (0,1,3) do (
+    if exist "!SDK_PATHS[%%i]!" (
+        set "SIGNTOOL_EXE=!SDK_PATHS[%%i]!"
+        set "FOUND=1"
+        goto :signtool_found
+    )
 )
-echo      Found: %SIMPLYSIGN_EXE%
+
+REM Try PATH as last resort
+where signtool.exe >nul 2>&1
+if not errorlevel 1 (
+    set "SIGNTOOL_EXE=signtool.exe"
+    set "FOUND=1"
+    goto :signtool_found
+)
+
+REM Not found
+echo ERROR: signtool.exe not found
+echo.
+echo signtool.exe is part of the Windows SDK
+echo Download from: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/
+echo.
+goto :error
+
+:signtool_found
+echo      Found: !SIGNTOOL_EXE!
 echo.
 
 REM Check which files exist and need to be signed
@@ -121,7 +143,8 @@ echo.
 goto :start_signing
 
 :start_signing
-echo [3/5] Signing executable files...
+echo [3/5] Signing executable files with signtool...
+echo    Using certificate from Windows Certificate Store
 echo.
 
 set "SIGNED_COUNT=0"
@@ -131,7 +154,7 @@ REM Sign launcher.exe if in list
 echo !FILES_TO_SIGN! | findstr /C:"launcher" >nul
 if not errorlevel 1 (
     echo   Signing launcher.exe...
-    "%SIMPLYSIGN_EXE%" sign /file:"%LAUNCHER_PATH%" /timestamp:"%TIMESTAMP_SERVER%"
+    "%SIGNTOOL_EXE%" sign /a /fd sha256 /tr "%TIMESTAMP_SERVER%" /td sha256 "%LAUNCHER_PATH%"
     if errorlevel 1 (
         echo   ERROR: Failed to sign launcher.exe
         set /a FAILED_COUNT+=1
@@ -146,7 +169,7 @@ REM Sign ltthgit.exe if in list
 echo !FILES_TO_SIGN! | findstr /C:"cloud" >nul
 if not errorlevel 1 (
     echo   Signing ltthgit.exe...
-    "%SIMPLYSIGN_EXE%" sign /file:"%CLOUD_LAUNCHER_PATH%" /timestamp:"%TIMESTAMP_SERVER%"
+    "%SIGNTOOL_EXE%" sign /a /fd sha256 /tr "%TIMESTAMP_SERVER%" /td sha256 "%CLOUD_LAUNCHER_PATH%"
     if errorlevel 1 (
         echo   ERROR: Failed to sign ltthgit.exe
         set /a FAILED_COUNT+=1
@@ -162,12 +185,12 @@ if !FAILED_COUNT! gtr 0 (
     echo ERROR: Signing failed for !FAILED_COUNT! file(s)!
     echo.
     echo Common issues:
-    echo   - No valid certificate configured in SimplySign Desktop
+    echo   - No valid certificate in Windows Certificate Store
     echo   - Certificate expired or not yet valid
     echo   - Network issue accessing timestamp server
     echo   - File is locked or in use
     echo.
-    echo Please check SimplySign Desktop for details.
+    echo For Certum SimplySign: Ensure certificate is installed in Windows Certificate Store
     goto :error
 )
 
@@ -179,34 +202,24 @@ set "VERIFIED_COUNT=0"
 REM Verify launcher.exe if it was signed
 echo !FILES_TO_SIGN! | findstr /C:"launcher" >nul
 if not errorlevel 1 (
-    where signtool.exe >nul 2>&1
-    if not errorlevel 1 (
-        signtool verify /pa "%LAUNCHER_PATH%" >nul 2>&1
-        if errorlevel 1 (
-            echo   WARNING: launcher.exe signature verification failed
-        ) else (
-            echo   SUCCESS: launcher.exe signature verified
-            set /a VERIFIED_COUNT+=1
-        )
+    "%SIGNTOOL_EXE%" verify /pa "%LAUNCHER_PATH%" >nul 2>&1
+    if errorlevel 1 (
+        echo   WARNING: launcher.exe signature verification failed
     ) else (
-        echo   SKIPPED: signtool.exe not found for launcher.exe
+        echo   SUCCESS: launcher.exe signature verified
+        set /a VERIFIED_COUNT+=1
     )
 )
 
 REM Verify ltthgit.exe if it was signed
 echo !FILES_TO_SIGN! | findstr /C:"cloud" >nul
 if not errorlevel 1 (
-    where signtool.exe >nul 2>&1
-    if not errorlevel 1 (
-        signtool verify /pa "%CLOUD_LAUNCHER_PATH%" >nul 2>&1
-        if errorlevel 1 (
-            echo   WARNING: ltthgit.exe signature verification failed
-        ) else (
-            echo   SUCCESS: ltthgit.exe signature verified
-            set /a VERIFIED_COUNT+=1
-        )
+    "%SIGNTOOL_EXE%" verify /pa "%CLOUD_LAUNCHER_PATH%" >nul 2>&1
+    if errorlevel 1 (
+        echo   WARNING: ltthgit.exe signature verification failed
     ) else (
-        echo   SKIPPED: signtool.exe not found for ltthgit.exe
+        echo   SUCCESS: ltthgit.exe signature verified
+        set /a VERIFIED_COUNT+=1
     )
 )
 

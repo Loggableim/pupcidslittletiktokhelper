@@ -1,19 +1,19 @@
 <#
 .SYNOPSIS
-    GUI application for signing launcher.exe using SimplySign(TM) Desktop
+    GUI application for signing launcher.exe using Windows signtool
 
 .DESCRIPTION
     This script provides a graphical user interface for code signing launcher.exe
-    with SimplySign Desktop. Includes real-time progress display, comprehensive
-    error logging, and visual status indicators.
+    with Windows signtool and certificates from the Windows Certificate Store.
+    Includes real-time progress display, comprehensive error logging, and visual status indicators.
 
 .NOTES
     File Name      : sign-launcher-gui.ps1
-    Prerequisite   : SimplySign Desktop must be installed
+    Prerequisite   : Windows SDK (signtool.exe) and certificate in Windows Certificate Store
     Copyright      : Pup Cid's Little TikTok Helper
     
 .LINK
-    https://www.simplysign.eu/en/desktop
+    https://www.certum.eu/en/cert_services_sign_code.html
 #>
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -24,7 +24,7 @@ $script:logFilePath = Join-Path $PSScriptRoot "sign-launcher-error.log"
 $script:launcherPath = Join-Path (Split-Path $PSScriptRoot -Parent) "launcher.exe"
 $script:cloudLauncherPath = Join-Path (Split-Path $PSScriptRoot -Parent) "ltthgit.exe"
 $script:timestampServer = "https://timestamp.digicert.com"
-$script:simplySignExe = "SimplySignDesktop.exe"
+$script:signtoolExe = $null  # Will be auto-detected
 
 # Logging function
 function Write-Log {
@@ -49,7 +49,7 @@ function Initialize-Log {
     $separator = "=" * 80
     $header = @"
 $separator
-SimplySign(TM) Launcher Signing Tool - Error Log
+Certum Code Signing Tool - Error Log
 Started: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 $separator
 "@
@@ -99,9 +99,13 @@ function Test-Prerequisites {
     }
     
     # Check SimplySign Desktop
-    $simplySignPath = Get-Command $script:simplySignExe -ErrorAction SilentlyContinue
-    if (-not $simplySignPath) {
-        $issues += "SimplySign Desktop not found in PATH"
+    if (Test-Path $script:simplySignExe) {
+        # Direct path exists
+    } else {
+        $simplySignPath = Get-Command "SimplySignDesktop.exe" -ErrorAction SilentlyContinue
+        if (-not $simplySignPath) {
+            $issues += "SimplySign Desktop not found at default path or in PATH"
+        }
     }
     
     return $issues
@@ -157,26 +161,56 @@ function Start-Signing {
         Update-Progress 10
         Start-Sleep -Milliseconds 300
         
-        # Step 2: Check for SimplySign Desktop
-        Update-Status "Checking for SimplySign Desktop..." -Color ([System.Drawing.Color]::Blue)
-        Append-LogDisplay "[2/5] Checking for SimplySign Desktop..." -Color ([System.Drawing.Color]::Blue)
+        # Step 2: Find signtool.exe
+        Update-Status "Locating signtool.exe..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "[2/5] Locating signtool.exe..." -Color ([System.Drawing.Color]::Blue)
         
-        $simplySignPath = Get-Command $script:simplySignExe -ErrorAction SilentlyContinue
-        if (-not $simplySignPath) {
-            $logMsg = Write-Log "SimplySign Desktop not found in PATH" "ERROR"
-            Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Red)
-            throw "SimplySign Desktop not found"
+        # Search for signtool in common Windows SDK locations
+        $sdkPaths = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe",
+            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe",
+            "${env:ProgramFiles}\Windows Kits\10\bin\*\x64\signtool.exe",
+            "${env:ProgramFiles}\Windows Kits\10\bin\x64\signtool.exe"
+        )
+        
+        $found = $false
+        foreach ($pattern in $sdkPaths) {
+            $matches = Get-ChildItem $pattern -ErrorAction SilentlyContinue | Sort-Object -Descending | Select-Object -First 1
+            if ($matches) {
+                $script:signtoolExe = $matches.FullName
+                $found = $true
+                break
+            }
         }
         
-        $logMsg = Write-Log "Found SimplySign Desktop at: $($simplySignPath.Source)" "INFO"
+        if (-not $found) {
+            # Try PATH as last resort
+            $pathCmd = Get-Command "signtool.exe" -ErrorAction SilentlyContinue
+            if ($pathCmd) {
+                $script:signtoolExe = $pathCmd.Source
+                $found = $true
+            }
+        }
+        
+        if (-not $found) {
+            $logMsg = Write-Log "signtool.exe not found" "ERROR"
+            Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Red)
+            Append-LogDisplay "signtool.exe is part of the Windows SDK" -Color ([System.Drawing.Color]::Orange)
+            Append-LogDisplay "Download from: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/" -Color ([System.Drawing.Color]::Orange)
+            throw "signtool.exe not found"
+        }
+        
+        $logMsg = Write-Log "Found signtool at: $script:signtoolExe" "INFO"
         Append-LogDisplay $logMsg -Color ([System.Drawing.Color]::Green)
+        
         Append-LogDisplay ""
         Update-Progress 20
         Start-Sleep -Milliseconds 300
         
         # Step 3: Sign the files
-        Update-Status "Signing files..." -Color ([System.Drawing.Color]::Blue)
-        Append-LogDisplay "[3/5] Signing files..." -Color ([System.Drawing.Color]::Blue)
+        Update-Status "Signing files with signtool..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "[3/5] Signing files with signtool..." -Color ([System.Drawing.Color]::Blue)
+        Append-LogDisplay "Using certificate from Windows Certificate Store" -Color ([System.Drawing.Color]::Gray)
         Append-LogDisplay "Timestamp server: $script:timestampServer" -Color ([System.Drawing.Color]::Gray)
         Append-LogDisplay ""
         
@@ -191,17 +225,21 @@ function Start-Signing {
             
             $logMsg = Write-Log "Signing $($file.Name)" "INFO"
             
+            # signtool sign /a /fd sha256 /tr <timestamp_url> /td sha256 <file>
             $signArguments = @(
                 "sign",
-                "/file:`"$fullPath`"",
-                "/timestamp:`"$script:timestampServer`""
+                "/a",
+                "/fd", "sha256",
+                "/tr", $script:timestampServer,
+                "/td", "sha256",
+                "`"$fullPath`""
             )
             
             $tempOut = [System.IO.Path]::GetTempFileName()
             $tempErr = [System.IO.Path]::GetTempFileName()
             
             try {
-                $signProcess = Start-Process -FilePath $simplySignPath.Source `
+                $signProcess = Start-Process -FilePath $script:signtoolExe `
                                              -ArgumentList $signArguments `
                                              -Wait `
                                              -PassThru `
@@ -350,7 +388,7 @@ function Open-ErrorLog {
 
 # Create the form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "SimplySign(TM) Launcher Signing Tool"
+$form.Text = "Certum Code Signing Tool (signtool)"
 $form.Size = New-Object System.Drawing.Size(700, 650)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
@@ -361,7 +399,7 @@ $form.MinimizeBox = $true
 $headerLabel = New-Object System.Windows.Forms.Label
 $headerLabel.Location = New-Object System.Drawing.Point(10, 10)
 $headerLabel.Size = New-Object System.Drawing.Size(660, 30)
-$headerLabel.Text = "SimplySign(TM) Launcher Code Signing Tool"
+$headerLabel.Text = "Certum Code Signing Tool (Windows signtool)"
 $headerLabel.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
 $headerLabel.ForeColor = [System.Drawing.Color]::DarkBlue
 $form.Controls.Add($headerLabel)
@@ -421,11 +459,11 @@ $timestampLabel.Text = "Timestamp Server: $script:timestampServer"
 $infoPanel.Controls.Add($timestampLabel)
 
 # SimplySign label
-$simplySignLabel = New-Object System.Windows.Forms.Label
-$simplySignLabel.Location = New-Object System.Drawing.Point(10, 45)
-$simplySignLabel.Size = New-Object System.Drawing.Size(640, 20)
-$simplySignLabel.Text = "SimplySign: $script:simplySignExe"
-$infoPanel.Controls.Add($simplySignLabel)
+$signtoolLabel = New-Object System.Windows.Forms.Label
+$signtoolLabel.Location = New-Object System.Drawing.Point(10, 45)
+$signtoolLabel.Size = New-Object System.Drawing.Size(640, 20)
+$signtoolLabel.Text = "Signing Tool: Windows signtool.exe (auto-detected)"
+$infoPanel.Controls.Add($signtoolLabel)
 
 # Progress bar
 $progressBar = New-Object System.Windows.Forms.ProgressBar
@@ -492,7 +530,7 @@ $buttonPanel.Controls.Add($closeButton)
 
 # Show the form
 $form.Add_Shown({
-    $logTextBox.AppendText("SimplySign(TM) Launcher Signing Tool`r`n")
+    $logTextBox.AppendText("Certum Code Signing Tool`r`n")
     $logTextBox.AppendText("═══════════════════════════════════════════════════════`r`n")
     $logTextBox.AppendText("`r`n")
     $logTextBox.AppendText("Ready to sign launcher.exe`r`n")
