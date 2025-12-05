@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-    Signs launcher executables using SimplySign(TM) Desktop tool
+    Signs launcher executables using Windows signtool with Certum certificate
 
 .DESCRIPTION
     This script automates the code signing process for launcher executables using
-    SimplySign Desktop. It includes validation, error handling, and detailed
-    status reporting. Supports signing multiple files.
+    Windows signtool.exe and a certificate from the Windows Certificate Store.
+    For Certum SimplySign, ensure the certificate is installed in the store first.
 
 .PARAMETER Files
     Files to sign: 'all', 'launcher', 'cloud', or array of file paths
@@ -20,8 +20,8 @@
 .PARAMETER TimestampServer
     URL of the timestamp server (default: https://timestamp.digicert.com)
 
-.PARAMETER SimplySignExe
-    Name or path to SimplySign Desktop executable (default: SimplySignDesktop.exe)
+.PARAMETER SigntoolPath
+    Path to signtool.exe (default: searches Windows SDK locations)
 
 .EXAMPLE
     .\sign-launcher.ps1
@@ -41,11 +41,11 @@
 
 .NOTES
     File Name      : sign-launcher.ps1
-    Prerequisite   : SimplySign Desktop must be installed
+    Prerequisite   : Windows SDK (signtool.exe) and Certum certificate in Windows Certificate Store
     Copyright      : Pup Cid's Little TikTok Helper
     
 .LINK
-    https://www.simplysign.eu/en/desktop
+    https://www.certum.eu/en/cert_services_sign_code.html
 #>
 
 [CmdletBinding()]
@@ -64,9 +64,7 @@ param(
     [string]$TimestampServer = "https://timestamp.digicert.com",
     
     [Parameter(Mandatory = $false)]
-    # Default Certum SimplySign Desktop installation path
-    # Note: Path with spaces is handled correctly by Start-Process -FilePath parameter
-    [string]$SimplySignExe = "C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe"
+    [string]$SigntoolPath = $null
 )
 
 # Set error action preference
@@ -146,31 +144,50 @@ try {
     Write-Status "Files to sign: $($filesToSign.Count)" -Type Info
     Write-Host ""
     
-    # Step 1: Check if SimplySign Desktop is installed
-    Write-Status "[1/5] Checking for SimplySign Desktop..." -Type Info
+    # Step 1: Find signtool.exe
+    Write-Status "[1/5] Locating signtool.exe..." -Type Info
     
-    # Try default Certum path first
-    if (Test-Path $SimplySignExe) {
-        $simplySignPath = $SimplySignExe
-        Write-Status "      Found: $simplySignPath" -Type Success
+    if ($SigntoolPath -and (Test-Path $SigntoolPath)) {
+        $signtoolExe = $SigntoolPath
+        Write-Status "      Using custom path: $signtoolExe" -Type Success
     } else {
-        # Fall back to PATH
-        $pathCmd = Get-Command "SimplySignDesktop.exe" -ErrorAction SilentlyContinue
-        if ($pathCmd) {
-            $simplySignPath = $pathCmd.Source
-            Write-Status "      Found in PATH: $simplySignPath" -Type Success
-        } else {
-            Write-Status "      ERROR: SimplySign Desktop not found at default path or in PATH" -Type Error
-            Write-Host ""
-            Write-Status "      Expected at: $SimplySignExe" -Type Warning
-            Write-Host ""
-            Write-Status "      Please install SimplySign Desktop from:" -Type Warning
-            Write-Host "      https://www.certum.eu/en/cert_services_sign_code.html"
-            Write-Host ""
-            Write-Status "      After installation, ensure SimplySignDesktop.exe is accessible" -Type Warning
-            Write-Status "      or update the -SimplySignExe parameter." -Type Warning
-            throw "SimplySign Desktop not found"
+        # Search for signtool in common Windows SDK locations
+        $sdkPaths = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe",
+            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe",
+            "${env:ProgramFiles}\Windows Kits\10\bin\*\x64\signtool.exe",
+            "${env:ProgramFiles}\Windows Kits\10\bin\x64\signtool.exe"
+        )
+        
+        $found = $false
+        foreach ($pattern in $sdkPaths) {
+            $matches = Get-ChildItem $pattern -ErrorAction SilentlyContinue | Sort-Object -Descending | Select-Object -First 1
+            if ($matches) {
+                $signtoolExe = $matches.FullName
+                $found = $true
+                break
+            }
         }
+        
+        if (-not $found) {
+            # Try PATH as last resort
+            $pathCmd = Get-Command "signtool.exe" -ErrorAction SilentlyContinue
+            if ($pathCmd) {
+                $signtoolExe = $pathCmd.Source
+                $found = $true
+            }
+        }
+        
+        if (-not $found) {
+            Write-Status "      ERROR: signtool.exe not found" -Type Error
+            Write-Host ""
+            Write-Status "      signtool.exe is part of the Windows SDK" -Type Warning
+            Write-Host "      Download from: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/"
+            Write-Host ""
+            throw "signtool.exe not found"
+        }
+        
+        Write-Status "      Found: $signtoolExe" -Type Success
     }
     
     Write-Host ""
@@ -184,7 +201,8 @@ try {
     Write-Host ""
     
     # Step 3: Sign the files
-    Write-Status "[3/5] Signing files..." -Type Info
+    Write-Status "[3/5] Signing files with signtool..." -Type Info
+    Write-Status "   Using certificate from Windows Certificate Store" -Type Info
     Write-Host ""
     
     $signedCount = 0
@@ -194,15 +212,21 @@ try {
         $fullPath = Resolve-Path $file.Path
         Write-Status "   Signing $($file.Name)..." -Type Info
         
+        # signtool sign /tr <timestamp_url> /td sha256 /fd sha256 /a <file>
+        # /a = automatically select best certificate
+        # /fd sha256 = file digest algorithm
+        # /td sha256 = timestamp digest algorithm
+        # /tr = RFC 3161 timestamp server
         $signArguments = @(
             "sign",
-            "-inputPath",
-            "`"$fullPath`"",
-            "-tsaUrl",
-            "`"$TimestampServer`""
+            "/a",
+            "/fd", "sha256",
+            "/tr", $TimestampServer,
+            "/td", "sha256",
+            "`"$fullPath`""
         )
         
-        $signProcess = Start-Process -FilePath $simplySignPath `
+        $signProcess = Start-Process -FilePath $signtoolExe `
                                      -ArgumentList $signArguments `
                                      -Wait `
                                      -PassThru `
@@ -224,12 +248,12 @@ try {
         Write-Status "ERROR: Signing failed for $failedCount file(s)" -Type Error
         Write-Host ""
         Write-Status "Common issues:" -Type Warning
-        Write-Host "  - No valid certificate configured in SimplySign Desktop"
+        Write-Host "  - No valid certificate in Windows Certificate Store"
         Write-Host "  - Certificate expired or not yet valid"
         Write-Host "  - Network issue accessing timestamp server"
         Write-Host "  - File is locked or in use"
         Write-Host ""
-        Write-Status "Please check SimplySign Desktop for details." -Type Warning
+        Write-Status "For Certum SimplySign: Ensure certificate is installed in Windows Certificate Store" -Type Warning
         throw "Signing process failed"
     }
     
@@ -237,43 +261,37 @@ try {
     Write-Status "[4/5] Verifying signatures..." -Type Info
     Write-Host ""
     
-    $signToolPath = Get-Command signtool.exe -ErrorAction SilentlyContinue
     $verifiedCount = 0
     
-    if ($signToolPath) {
-        foreach ($file in $filesToSign) {
-            $fullPath = Resolve-Path $file.Path
+    foreach ($file in $filesToSign) {
+        $fullPath = Resolve-Path $file.Path
+        
+        # Create temporary files for output redirection
+        $tempOut = [System.IO.Path]::GetTempFileName()
+        $tempErr = [System.IO.Path]::GetTempFileName()
+        
+        try {
+            $verifyProcess = Start-Process -FilePath $signtoolExe `
+                                           -ArgumentList @("verify", "/pa", "`"$fullPath`"") `
+                                           -Wait `
+                                           -PassThru `
+                                           -NoNewWindow `
+                                           -RedirectStandardOutput $tempOut `
+                                           -RedirectStandardError $tempErr
             
-            # Create temporary files for output redirection
-            $tempOut = [System.IO.Path]::GetTempFileName()
-            $tempErr = [System.IO.Path]::GetTempFileName()
-            
-            try {
-                $verifyProcess = Start-Process -FilePath $signToolPath.Source `
-                                               -ArgumentList @("verify", "/pa", "`"$fullPath`"") `
-                                               -Wait `
-                                               -PassThru `
-                                               -NoNewWindow `
-                                               -RedirectStandardOutput $tempOut `
-                                               -RedirectStandardError $tempErr
-                
-                if ($verifyProcess.ExitCode -ne 0) {
-                    Write-Status "   WARNING: $($file.Name) signature verification failed" -Type Warning
-                }
-                else {
-                    Write-Status "   SUCCESS: $($file.Name) signature verified" -Type Success
-                    $verifiedCount++
-                }
+            if ($verifyProcess.ExitCode -ne 0) {
+                Write-Status "   WARNING: $($file.Name) signature verification failed" -Type Warning
             }
-            finally {
-                # Clean up temporary files
-                if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
-                if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
+            else {
+                Write-Status "   SUCCESS: $($file.Name) signature verified" -Type Success
+                $verifiedCount++
             }
         }
-    }
-    else {
-        Write-Status "   Skipping verification (signtool.exe not found)" -Type Warning
+        finally {
+            # Clean up temporary files
+            if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
+            if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
+        }
     }
     
     Write-Host ""

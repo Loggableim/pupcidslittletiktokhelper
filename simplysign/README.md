@@ -1,10 +1,10 @@
-# SimplySign™ Code Signing for Launcher
+# Certum Code Signing for Launcher
 
-This directory contains scripts and documentation for signing `launcher.exe` using **Certum SimplySign™ Desktop**, a qualified electronic signature tool for code signing.
+This directory contains scripts and documentation for signing `launcher.exe` using **Windows signtool** with **Certum SimplySign™** certificates.
 
 > **⚠️ IMPORTANT - PowerShell Users:** If you encounter an execution policy error when running the PowerShell script, see the [PowerShell Execution Policy](#powershell-execution-policy) section below for solutions.
 
-> **ℹ️ NOTE:** This project uses **Certum SimplySign Desktop**, which has a different default installation path than generic SimplySign. The scripts are configured for the Certum installation at `C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe`.
+> **ℹ️ NOTE:** These scripts use **Windows signtool.exe** (from Windows SDK) to sign executables using certificates from the Windows Certificate Store. For Certum SimplySign, ensure your certificate is installed in the Windows Certificate Store first.
 
 ---
 
@@ -24,26 +24,25 @@ Code signing helps establish trust by:
 
 ### Required Software
 
-1. **Certum SimplySign™ Desktop Application**
+1. **Windows SDK (signtool.exe)**
+   - Download from: [Microsoft Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
+   - Scripts automatically search common installation locations
+   - Required for signing executables
+
+2. **Certum SimplySign™ Certificate**
    - Download from: [https://www.certum.eu/en/cert_services_sign_code.html](https://www.certum.eu/en/cert_services_sign_code.html)
    - Documentation: [Certum Code Signing Manual](https://files.certum.eu/documents/manual_en/CS-Code_Signing_in_the_Cloud_Signtool_jarsigner_signing.pdf)
-   - Default installation path: `C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe`
-   - Install and configure with your Certum SimplySign™ account
+   - **IMPORTANT:** Install the certificate in Windows Certificate Store (not as a file)
+   - The certificate must be accessible to signtool.exe
 
-2. **Valid Code Signing Certificate**
-   - Obtain from Certum or another trusted Certificate Authority (CA)
-   - Configure in SimplySign™ Desktop
-   - Ensure certificate is valid and not expired
-
-3. **Windows SDK (Optional - for verification)**
-   - Provides `signtool.exe` for signature verification
-   - Download from: [Microsoft Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
-   - Not required for signing, only for post-signing verification
+3. **Certum SimplySign™ Mobile App** (for Cloud HSM)
+   - Required for 2FA during signing process
+   - Download from your mobile app store
 
 ### System Requirements
 
 - **Operating System:** Windows 10/11 (64-bit)
-- **Network:** Internet connection (for timestamp server)
+- **Network:** Internet connection (for timestamp server and Certum Cloud HSM)
 - **Permissions:** Administrator rights may be required
 
 ---
@@ -110,8 +109,8 @@ cd simplysign
 # Use different timestamp server
 .\sign-launcher.ps1 -TimestampServer "https://timestamp.sectigo.com"
 
-# Custom SimplySign executable path (if different from default Certum path)
-.\sign-launcher.ps1 -SimplySignExe "C:\CustomPath\SimplySignDesktop.exe"
+# Custom signtool path (if not in standard Windows SDK locations)
+.\sign-launcher.ps1 -SigntoolPath "C:\CustomPath\signtool.exe"
 ```
 
 ### PowerShell Execution Policy
@@ -163,14 +162,20 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 
 ## 🔧 Configuration
 
-### Command-Line Parameters
+### Command-Line Format
 
-The scripts use the correct Certum SimplySign Desktop command-line format:
+The scripts use **Windows signtool.exe** with the following command format:
 ```
-SimplySignDesktop.exe sign -inputPath "file.exe" -tsaUrl "https://timestamp.digicert.com"
+signtool.exe sign /a /fd sha256 /tr "https://timestamp.digicert.com" /td sha256 "file.exe"
 ```
 
-**Important:** Certum SimplySign Desktop uses `-inputPath` and `-tsaUrl` parameters (not `/file:` or `/timestamp:`).
+**Parameters explained:**
+- `/a` - Automatically select the best signing certificate
+- `/fd sha256` - File digest algorithm
+- `/tr <url>` - RFC 3161 timestamp server URL
+- `/td sha256` - Timestamp digest algorithm
+
+This is the recommended format for Certum SimplySign certificates in the Windows Certificate Store.
 
 ### Timestamp Server
 
@@ -187,32 +192,21 @@ https://timestamp.digicert.com
 
 Timestamping ensures the signature remains valid even after the certificate expires.
 
-### SimplySign™ Desktop Path
+### Windows SDK / signtool Path
 
-The scripts are pre-configured with the default Certum SimplySign Desktop installation path:
-```
-C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe
-```
+The scripts automatically search for signtool.exe in common Windows SDK locations:
+- `C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe`
+- `C:\Program Files\Windows Kits\10\bin\*\x64\signtool.exe`
+- System PATH
 
-If SimplySign™ Desktop is installed at a different location, you can update it:
-
-**In batch script (`sign-launcher.bat`):**
-```batch
-set "SIMPLYSIGN_EXE=C:\CustomPath\SimplySignDesktop.exe"
-```
+If signtool.exe is installed in a custom location, you can specify it:
 
 **In PowerShell script (`sign-launcher.ps1`):**
 ```powershell
-.\sign-launcher.ps1 -SimplySignExe "C:\CustomPath\SimplySignDesktop.exe"
+.\sign-launcher.ps1 -SigntoolPath "C:\CustomPath\signtool.exe"
 ```
 
-**In GUI script (`sign-launcher-gui.ps1`):**
-Edit line 27 to set a custom path:
-```powershell
-$script:simplySignExe = "C:\CustomPath\SimplySignDesktop.exe"
-```
-
-**Note:** The scripts will automatically fall back to searching for `SimplySignDesktop.exe` in your system PATH if the default Certum path is not found.
+**Note:** The scripts will automatically detect the latest version of signtool from the Windows SDK.
 
 ---
 
@@ -280,37 +274,38 @@ This is a PowerShell execution policy restriction. Choose one of these solutions
 
 See [PowerShell Execution Policy](#powershell-execution-policy) section for more details.
 
-### Error: "SimplySign Desktop not found at default path or in PATH"
+### Error: "signtool.exe not found"
 
 **Solution:**
-1. Verify Certum SimplySign™ Desktop is installed at the default location:
-   ```
-   C:\Program Files\Certum\SimplySign Desktop\SimplySignDesktop.exe
-   ```
-2. If installed at a different location, update the path in the script (see [Configuration](#configuration) section)
-3. Download from: [https://www.certum.eu/en/cert_services_sign_code.html](https://www.certum.eu/en/cert_services_sign_code.html)
-4. Restart command prompt/PowerShell after installation
+1. Install Windows SDK:
+   - Download from: [https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
+   - During installation, ensure "Windows SDK Signing Tools for Desktop Apps" is selected
+2. The scripts automatically search common SDK locations
+3. Restart command prompt/PowerShell after installation
+4. If installed in a custom location, use the `-SigntoolPath` parameter
 
 ### Error: "Signing failed"
 
 **Common causes:**
-1. **No certificate configured**
-   - Open SimplySign™ Desktop
-   - Configure your code signing certificate
-   - Ensure certificate is valid
+1. **No certificate in Windows Certificate Store**
+   - Install your Certum certificate in Windows Certificate Store
+   - Use Certum SimplySign Desktop to install the certificate
+   - Ensure certificate is valid and not expired
 
-2. **Certificate expired**
-   - Check certificate validity dates
-   - Renew if necessary
+2. **Certificate not accessible**
+   - Verify certificate is in the "Personal" or "My" certificate store
+   - Run PowerShell/Command Prompt as Administrator
+   - Check that the certificate has a private key associated
 
 3. **File locked**
    - Close any programs using `launcher.exe`
    - Stop the application if running
 
 4. **Network issues**
-   - Check internet connection
+   - Check internet connection (required for Certum Cloud HSM and timestamp server)
    - Verify timestamp server is accessible
    - Try alternative timestamp server
+   - Ensure Certum SimplySign Mobile App is ready for 2FA
 
 ### Error: "launcher.exe not found"
 
