@@ -96,8 +96,6 @@ goto :start_signing
 
 :check_launcher
 echo [2/5] Checking for launcher.exe...
-:check_launcher
-echo [2/5] Checking for launcher.exe...
 if not exist "%LAUNCHER_PATH%" (
     echo ERROR: launcher.exe not found at %LAUNCHER_PATH%
     echo Please ensure launcher.exe exists in the parent directory.

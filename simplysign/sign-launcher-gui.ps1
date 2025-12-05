@@ -182,6 +182,7 @@ function Start-Signing {
         
         $signedCount = 0
         $failedCount = 0
+        $signedFiles = @()
         $progressStep = 40 / $filesToSign.Count
         
         foreach ($file in $filesToSign) {
@@ -221,6 +222,7 @@ function Start-Signing {
                     $logMsg = Write-Log "Successfully signed $($file.Name)" "SUCCESS"
                     Append-LogDisplay "   SUCCESS: $($file.Name) signed" -Color ([System.Drawing.Color]::Green)
                     $signedCount++
+                    $signedFiles += $file
                 }
             }
             finally {
@@ -247,9 +249,7 @@ function Start-Signing {
         $verifiedCount = 0
         
         if ($signToolPath) {
-            foreach ($file in $filesToSign) {
-                if ($file.Name -notin $filesToSign.Where({$signedCount -gt 0}).Name) { continue }
-                
+            foreach ($file in $signedFiles) {
                 $fullPath = Resolve-Path $file.Path
                 
                 $tempOut = [System.IO.Path]::GetTempFileName()
@@ -438,8 +438,6 @@ $form.Controls.Add($progressBar)
 
 # Status label
 $statusLabel = New-Object System.Windows.Forms.Label
-$statusLabel.Location = New-Object System.Drawing.Point(10, 255)
-$statusLabel.Size = New-Object System.Drawing.Size(660, 20)
 $statusLabel.Location = New-Object System.Drawing.Point(10, 255)
 $statusLabel.Size = New-Object System.Drawing.Size(660, 20)
 $statusLabel.Text = "Ready to sign"
