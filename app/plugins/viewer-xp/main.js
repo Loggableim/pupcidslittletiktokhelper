@@ -289,6 +289,46 @@ class ViewerXPPlugin extends EventEmitter {
       }
     });
 
+    // API: Get shared user statistics (cross-plugin)
+    this.api.registerRoute('GET', '/api/viewer-xp/shared-stats', (req, res) => {
+      try {
+        const mainDb = this.api.getDatabase();
+        let limit = parseInt(req.query.limit) || 100;
+        let minCoins = parseInt(req.query.minCoins) || 0;
+        
+        // Validate and bounds check parameters
+        limit = Math.max(1, Math.min(limit, 1000)); // Between 1 and 1000
+        minCoins = Math.max(0, minCoins); // Non-negative
+        
+        const stats = mainDb.getAllUserStatistics(limit, minCoins);
+        res.json({ success: true, statistics: stats });
+      } catch (error) {
+        this.api.log(`Error getting shared statistics: ${error.message}`, 'error');
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // API: Get shared statistics for specific user
+    this.api.registerRoute('GET', '/api/viewer-xp/shared-stats/:userId', (req, res) => {
+      try {
+        const mainDb = this.api.getDatabase();
+        const stats = mainDb.getUserStatistics(req.params.userId);
+        
+        if (!stats) {
+          return res.status(404).json({ 
+            success: false, 
+            error: 'User statistics not found',
+            statistics: null
+          });
+        }
+        
+        res.json({ success: true, statistics: stats });
+      } catch (error) {
+        this.api.log(`Error getting user shared statistics: ${error.message}`, 'error');
+        res.status(500).json({ error: error.message });
+      }
+    });
+
     this.api.log('Viewer XP routes registered', 'debug');
   }
 
@@ -449,6 +489,16 @@ class ViewerXPPlugin extends EventEmitter {
     if (!username) return;
 
     this.db.updateLastSeen(username);
+    
+    // Update shared statistics
+    try {
+      const mainDb = this.api.getDatabase();
+      const userId = data.userId || username;
+      mainDb.updateUserStatistics(userId, username, { comments: 1 });
+    } catch (error) {
+      this.api.log(`Error updating shared statistics: ${error.message}`, 'error');
+    }
+    
     this.awardXP(username, 'chat_message', { message: data.comment });
   }
 
@@ -460,6 +510,16 @@ class ViewerXPPlugin extends EventEmitter {
     if (!username) return;
 
     this.db.updateLastSeen(username);
+    
+    // Update shared statistics
+    try {
+      const mainDb = this.api.getDatabase();
+      const userId = data.userId || username;
+      mainDb.updateUserStatistics(userId, username, { likes: 1 });
+    } catch (error) {
+      this.api.log(`Error updating shared statistics: ${error.message}`, 'error');
+    }
+    
     this.awardXP(username, 'like', { likeCount: data.likeCount });
   }
 
@@ -471,6 +531,16 @@ class ViewerXPPlugin extends EventEmitter {
     if (!username) return;
 
     this.db.updateLastSeen(username);
+    
+    // Update shared statistics
+    try {
+      const mainDb = this.api.getDatabase();
+      const userId = data.userId || username;
+      mainDb.updateUserStatistics(userId, username, { shares: 1 });
+    } catch (error) {
+      this.api.log(`Error updating shared statistics: ${error.message}`, 'error');
+    }
+    
     this.awardXP(username, 'share');
   }
 
@@ -482,6 +552,16 @@ class ViewerXPPlugin extends EventEmitter {
     if (!username) return;
 
     this.db.updateLastSeen(username);
+    
+    // Update shared statistics
+    try {
+      const mainDb = this.api.getDatabase();
+      const userId = data.userId || username;
+      mainDb.updateUserStatistics(userId, username, { follows: 1 });
+    } catch (error) {
+      this.api.log(`Error updating shared statistics: ${error.message}`, 'error');
+    }
+    
     this.awardXP(username, 'follow');
   }
 
@@ -497,6 +577,17 @@ class ViewerXPPlugin extends EventEmitter {
     // FIX: Use data.coins (already calculated as diamondCount * repeatCount)
     // instead of data.gift?.diamond_count (which is just the raw diamond value per gift)
     const coins = data.coins || 0;
+    
+    // Update shared user statistics (cross-plugin)
+    try {
+      const mainDb = this.api.getDatabase();
+      const userId = data.userId || username;
+      const uniqueId = data.uniqueId || '';
+      const profilePictureUrl = data.profilePictureUrl || '';
+      mainDb.addCoinsToUserStats(userId, username, uniqueId, profilePictureUrl, coins);
+    } catch (error) {
+      this.api.log(`Error updating shared user statistics: ${error.message}`, 'error');
+    }
     
     // Determine gift tier based on coin value
     let actionType = 'gift_tier1';

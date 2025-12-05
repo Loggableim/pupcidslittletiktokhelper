@@ -249,6 +249,11 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
             const plugin = await pluginLoader.loadPlugin(targetDir);
 
             if (plugin) {
+                // Notify all clients that plugins have changed
+                if (io) {
+                    io.emit('plugins:changed', { action: 'uploaded', pluginId: plugin.manifest.id });
+                }
+                
                 res.json({
                     success: true,
                     message: 'Plugin erfolgreich hochgeladen und geladen',
@@ -355,6 +360,11 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
             const success = await pluginLoader.reloadPlugin(id);
 
             if (success) {
+                // Notify all clients that plugins have changed
+                if (io) {
+                    io.emit('plugins:changed', { action: 'reloaded', pluginId: id });
+                }
+                
                 res.json({
                     success: true,
                     message: `Plugin ${id} neu geladen`
@@ -388,6 +398,11 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
             // Alle Plugins neu laden
             await pluginLoader.loadAllPlugins();
 
+            // Notify all clients that plugins have changed
+            if (io) {
+                io.emit('plugins:changed', { action: 'reloaded_all' });
+            }
+
             res.json({
                 success: true,
                 message: 'Alle Plugins neu geladen'
@@ -410,6 +425,11 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
             const success = await pluginLoader.deletePlugin(id);
 
             if (success) {
+                // Notify all clients that plugins have changed
+                if (io) {
+                    io.emit('plugins:changed', { action: 'deleted', pluginId: id });
+                }
+                
                 res.json({
                     success: true,
                     message: `Plugin ${id} gelöscht`

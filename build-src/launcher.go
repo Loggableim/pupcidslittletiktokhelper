@@ -54,9 +54,9 @@ func installDependencies(appDir string) error {
 	
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/C", "npm", "install")
+		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
 	} else {
-		cmd = exec.Command("npm", "install")
+		cmd = exec.Command("npm", "install", "--cache", "false")
 	}
 	
 	cmd.Dir = appDir

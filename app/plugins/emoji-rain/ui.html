@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emoji Rain Konfiguration - TikTok Stream Tool</title>
     <link rel="stylesheet" href="/css/themes.css">
@@ -173,6 +174,24 @@
         .form-group input::placeholder,
         .form-group textarea::placeholder {
             color: rgba(255,255,255,0.6);
+        }
+
+        /* Fix white on white text in select dropdowns */
+        .form-group select option {
+            background: #2d2d2d;
+            color: #ffffff;
+        }
+
+        .form-group select option:checked,
+        .form-group select option:hover {
+            background: #4CAF50;
+            color: #ffffff;
+        }
+
+        .form-group select optgroup {
+            background: #1a1a1a;
+            color: #4CAF50;
+            font-weight: bold;
         }
 
         .form-group input[type="range"] {
@@ -421,10 +440,18 @@
                     <label for="obs_hud_preset">Auflösungs-Preset</label>
                     <select id="obs_hud_preset">
                         <option value="custom">Custom</option>
-                        <option value="720p">720p (1280x720)</option>
-                        <option value="1080p" selected>1080p (1920x1080)</option>
-                        <option value="1440p">1440p (2560x1440)</option>
-                        <option value="4k">4K (3840x2160)</option>
+                        <optgroup label="16:9 (Landscape)">
+                            <option value="720p">720p (1280x720)</option>
+                            <option value="1080p" selected>1080p (1920x1080)</option>
+                            <option value="1440p">1440p (2560x1440)</option>
+                            <option value="4k">4K (3840x2160)</option>
+                        </optgroup>
+                        <optgroup label="9:16 (Portrait)">
+                            <option value="720p-portrait">720p Portrait (720x1280)</option>
+                            <option value="1080p-portrait">1080p Portrait (1080x1920)</option>
+                            <option value="1440p-portrait">1440p Portrait (1440x2560)</option>
+                            <option value="4k-portrait">4K Portrait (2160x3840)</option>
+                        </optgroup>
                     </select>
                     <div class="help-text">Wähle eine Standard-Auflösung oder Custom</div>
                 </div>

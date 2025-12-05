@@ -12,6 +12,10 @@ class VirtualScroller {
     this.scrollTop = 0;
     this.visibleStart = 0;
     this.visibleEnd = 0;
+    
+    // Performance: requestAnimationFrame throttling
+    this._ticking = false;
+    this._pendingScrollTop = 0;
 
     this.init();
   }
@@ -32,18 +36,30 @@ class VirtualScroller {
     this.content.style.top = '0';
     this.content.style.left = '0';
     this.content.style.right = '0';
+    // Performance: Use GPU layer for smooth scrolling
+    this.content.style.willChange = 'transform';
+    this.content.style.contain = 'layout style paint';
     this.viewport.appendChild(this.content);
 
-    // Listen to scroll
-    this.container.addEventListener('scroll', () => this.onScroll());
+    // Listen to scroll with requestAnimationFrame optimization
+    this.container.addEventListener('scroll', () => this.onScroll(), { passive: true });
 
     // Initial render
     this.render();
   }
 
   onScroll() {
-    this.scrollTop = this.container.scrollTop;
-    this.render();
+    this._pendingScrollTop = this.container.scrollTop;
+    
+    // Performance: Use requestAnimationFrame to batch scroll updates
+    if (!this._ticking) {
+      requestAnimationFrame(() => {
+        this.scrollTop = this._pendingScrollTop;
+        this.render();
+        this._ticking = false;
+      });
+      this._ticking = true;
+    }
   }
 
   render() {

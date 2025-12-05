@@ -59,8 +59,9 @@ async function init() {
   // Initialize message parser
   STATE.messageParser = new MessageParser();
 
-  // Load settings
+  // Load settings and initial state
   await loadSettings();
+  await loadInitialState();
 
   // Initialize layout engine
   STATE.layoutEngine = new LayoutEngine(STATE.container, STATE.settings);
@@ -93,6 +94,37 @@ async function loadSettings() {
     console.error('Error loading settings:', error);
     STATE.settings = getDefaultSettings();
     applySettings();
+  }
+}
+
+async function loadInitialState() {
+  try {
+    const response = await fetch('/api/clarityhud/state/full');
+    const data = await response.json();
+
+    if (data.success && data.events) {
+      // Load existing events from backend
+      // Transform backend format to match overlay format
+      const transformedEvents = {};
+      for (const [eventType, eventList] of Object.entries(data.events)) {
+        transformedEvents[eventType] = eventList.map(event => {
+          // Extract the type and timestamp
+          const { type, timestamp, ...eventData } = event;
+          // Return in the format expected by overlay
+          return {
+            type: eventType,
+            data: eventData,
+            timestamp: timestamp,
+            id: `${eventType}_${timestamp}_${Math.random()}`
+          };
+        });
+      }
+      STATE.events = transformedEvents;
+      console.log('Initial state loaded:', STATE.events);
+    }
+  } catch (error) {
+    console.error('Error loading initial state:', error);
+    // Continue with empty events
   }
 }
 

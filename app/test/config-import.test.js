@@ -195,6 +195,128 @@ runTest('Should get ConfigPathManager instance', () => {
     assert(typeof configPathManager.getUploadsDir === 'function', 'Should have getUploadsDir method');
 });
 
+// ========== NEW TESTS FOR LEGACY FORMAT SUPPORT ==========
+
+// Test 15: Should validate legacy database.db file
+const tmpDirWithLegacyDb = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-legacy-db-'));
+fs.writeFileSync(path.join(tmpDirWithLegacyDb, 'database.db'), 'sqlite3 mock data');
+
+runTest('Should validate directory with legacy database.db as valid', () => {
+    const validation = plugin.validateImportPath(tmpDirWithLegacyDb);
+    assert(validation.valid === true, 'Directory with legacy database.db should be valid');
+    assert(validation.findings.legacyDatabase === true, 'Should find legacy database');
+    assert(validation.findings.files.includes('database.db'), 'Files should include database.db');
+});
+
+// Test 16: Should validate legacy data directory
+const tmpDirWithLegacyData = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-legacy-data-'));
+fs.mkdirSync(path.join(tmpDirWithLegacyData, 'data'));
+fs.writeFileSync(path.join(tmpDirWithLegacyData, 'data', 'session.json'), '{}');
+
+runTest('Should validate directory with legacy data folder as valid', () => {
+    const validation = plugin.validateImportPath(tmpDirWithLegacyData);
+    assert(validation.valid === true, 'Directory with legacy data folder should be valid');
+    assert(validation.findings.legacyData === true, 'Should find legacy data folder');
+    assert(validation.findings.files.some(f => f.startsWith('data/')), 'Files should include data/ files');
+});
+
+// Test 17: Should validate mixed legacy and new format
+const tmpDirMixed = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-mixed-'));
+fs.writeFileSync(path.join(tmpDirMixed, 'database.db'), 'sqlite3 mock data');
+fs.mkdirSync(path.join(tmpDirMixed, 'user_configs'));
+fs.writeFileSync(path.join(tmpDirMixed, 'user_configs', 'profile1.db'), 'profile data');
+
+runTest('Should validate directory with both legacy and new format', () => {
+    const validation = plugin.validateImportPath(tmpDirMixed);
+    assert(validation.valid === true, 'Directory with mixed format should be valid');
+    assert(validation.findings.legacyDatabase === true, 'Should find legacy database');
+    assert(validation.findings.userConfigs === true, 'Should find user_configs');
+});
+
+// Test 18: Should detect legacy database WAL and SHM files
+const tmpDirWithWal = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-wal-'));
+fs.writeFileSync(path.join(tmpDirWithWal, 'database.db'), 'sqlite3 mock data');
+fs.writeFileSync(path.join(tmpDirWithWal, 'database.db-wal'), 'wal data');
+fs.writeFileSync(path.join(tmpDirWithWal, 'database.db-shm'), 'shm data');
+
+runTest('Should include WAL and SHM files in legacy database detection', () => {
+    const validation = plugin.validateImportPath(tmpDirWithWal);
+    assert(validation.valid === true, 'Should be valid');
+    assert(validation.findings.legacyDatabase === true, 'Should find legacy database');
+    assert(validation.findings.files.includes('database.db'), 'Should include database.db');
+    assert(validation.findings.files.includes('database.db-wal'), 'Should include WAL file');
+    assert(validation.findings.files.includes('database.db-shm'), 'Should include SHM file');
+});
+
+// ========== TESTS FOR PLUGINS DIRECTORY SUPPORT ==========
+
+// Test 19: Should validate plugins directory
+const tmpDirWithPlugins = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-plugins-'));
+fs.mkdirSync(path.join(tmpDirWithPlugins, 'plugins', 'quiz_show', 'data'), { recursive: true });
+fs.writeFileSync(path.join(tmpDirWithPlugins, 'plugins', 'quiz_show', 'data', 'quiz_show.db'), 'sqlite3 mock data');
+
+runTest('Should validate directory with plugins folder as valid', () => {
+    const validation = plugin.validateImportPath(tmpDirWithPlugins);
+    assert(validation.valid === true, 'Directory with plugins folder should be valid');
+    assert(validation.findings.plugins === true, 'Should find plugins folder');
+    assert(validation.findings.files.some(f => f.startsWith('plugins/')), 'Files should include plugins/ files');
+});
+
+// Test 20: Should detect plugin data files correctly
+runTest('Should correctly detect plugin data files', () => {
+    const validation = plugin.validateImportPath(tmpDirWithPlugins);
+    assert(validation.valid === true, 'Should be valid');
+    assert(validation.findings.plugins === true, 'Should find plugins');
+    assert(validation.findings.files.includes('plugins/quiz_show/data/quiz_show.db'), 
+           'Should include quiz_show.db in files list');
+});
+
+// Test 21: Should validate directory with multiple plugins
+const tmpDirWithMultiplePlugins = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-multi-plugins-'));
+fs.mkdirSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'quiz_show', 'data'), { recursive: true });
+fs.mkdirSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'another_plugin', 'data'), { recursive: true });
+fs.writeFileSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'quiz_show', 'data', 'quiz.db'), 'data1');
+fs.writeFileSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'another_plugin', 'data', 'plugin.db'), 'data2');
+
+runTest('Should validate directory with multiple plugins', () => {
+    const validation = plugin.validateImportPath(tmpDirWithMultiplePlugins);
+    assert(validation.valid === true, 'Directory with multiple plugins should be valid');
+    assert(validation.findings.plugins === true, 'Should find plugins');
+    assert(validation.findings.files.some(f => f.includes('quiz_show')), 'Should include quiz_show files');
+    assert(validation.findings.files.some(f => f.includes('another_plugin')), 'Should include another_plugin files');
+});
+
+// Test 22: Should handle plugins directory without data subdirectories
+const tmpDirPluginsNoData = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-plugins-no-data-'));
+fs.mkdirSync(path.join(tmpDirPluginsNoData, 'plugins', 'empty_plugin'), { recursive: true });
+
+runTest('Should handle plugins directory without data subdirectories', () => {
+    const validation = plugin.validateImportPath(tmpDirPluginsNoData);
+    // Should be invalid because the plugin has no data directory with files
+    assert(validation.valid === false, 'Should be invalid when plugins have no data');
+    assert(validation.error === 'No configuration files found in the specified path', 
+           'Should have appropriate error message');
+});
+
+// Cleanup plugin test directories
+try {
+    fs.rmSync(tmpDirWithPlugins, { recursive: true, force: true });
+    fs.rmSync(tmpDirWithMultiplePlugins, { recursive: true, force: true });
+    fs.rmSync(tmpDirPluginsNoData, { recursive: true, force: true });
+} catch (error) {
+    console.warn('Warning: Failed to cleanup plugin test directories:', error.message);
+}
+
+// Cleanup legacy test directories
+try {
+    fs.rmSync(tmpDirWithLegacyDb, { recursive: true, force: true });
+    fs.rmSync(tmpDirWithLegacyData, { recursive: true, force: true });
+    fs.rmSync(tmpDirMixed, { recursive: true, force: true });
+    fs.rmSync(tmpDirWithWal, { recursive: true, force: true });
+} catch (error) {
+    console.warn('Warning: Failed to cleanup legacy test directories:', error.message);
+}
+
 // Cleanup temporary directories
 try {
     fs.rmSync(tmpDir, { recursive: true, force: true });

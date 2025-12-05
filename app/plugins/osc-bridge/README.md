@@ -319,4 +319,4 @@ For issues or feature requests, please contact: loggableim@gmail.com
 
 ## License
 
-MIT License - See main repository for details
+CC BY-NC 4.0 License - See main repository for details

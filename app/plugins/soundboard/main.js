@@ -693,11 +693,20 @@ class SoundboardPlugin {
                         
                         // Fallback: Direct proxy without caching
                         const axios = require('axios');
+                        const https = require('https');
+                        const httpsAgent = new https.Agent({
+                            rejectUnauthorized: true,
+                            keepAlive: true,
+                            timeout: 30000
+                        });
+                        
                         const response = await axios.get(url, {
                             responseType: 'stream',
                             timeout: 30000,
+                            httpsAgent: httpsAgent,
                             headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                'Accept': 'audio/mpeg, audio/*;q=0.9, */*;q=0.8'
                             }
                         });
 

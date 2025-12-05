@@ -7,15 +7,29 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs').promises;
 const path = require('path');
-const { marked } = require('marked');
 
-// Configure marked options
-marked.setOptions({
-    headerIds: true,
-    mangle: false,
-    breaks: true,
-    gfm: true
-});
+// marked is an ESM module, so we need to use dynamic import
+// Use a Promise to ensure single initialization and prevent race conditions
+let markedPromise = null;
+
+// Initialize marked module asynchronously
+async function initMarked() {
+    if (!markedPromise) {
+        markedPromise = (async () => {
+            const markedModule = await import('marked');
+            const marked = markedModule.marked;
+            // Configure marked options
+            marked.setOptions({
+                headerIds: true,
+                mangle: false,
+                breaks: true,
+                gfm: true
+            });
+            return marked;
+        })();
+    }
+    return markedPromise;
+}
 
 // Base path for wiki files
 const WIKI_BASE_PATH = path.join(__dirname, '../wiki');
@@ -166,7 +180,8 @@ router.get('/page/:pageId', async (req, res) => {
         if (!await fileExists(filePath)) {
             // Create placeholder content for missing files
             const placeholderContent = createPlaceholderContent(page.title);
-            const html = marked(placeholderContent);
+            const markdownParser = await initMarked();
+            const html = markdownParser(placeholderContent);
             
             return res.json({
                 id: page.id,
@@ -220,7 +235,8 @@ router.get('/page/:pageId', async (req, res) => {
         });
         
         // Render markdown to HTML
-        let html = marked(processedMarkdown);
+        const markdownParser = await initMarked();
+        let html = markdownParser(processedMarkdown);
         
         // Process image paths to be relative to server
         html = html.replace(/src="(?!http)([^"]+)"/g, (match, imgPath) => {

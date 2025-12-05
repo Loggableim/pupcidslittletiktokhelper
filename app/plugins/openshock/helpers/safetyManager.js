@@ -94,6 +94,14 @@ class SafetyManager {
   }
 
   /**
+   * Get current settings (alias for getConfig for API compatibility)
+   * @returns {Object} Current settings/configuration
+   */
+  getSettings() {
+    return this.getConfig();
+  }
+
+  /**
    * Validate a command and apply safety limits
    * This is a wrapper around checkCommand that provides a simpler interface
    * compatible with main.js expectations

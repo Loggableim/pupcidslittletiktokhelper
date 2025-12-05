@@ -56,6 +56,10 @@ class LastEventSpotlightPlugin {
    */
   getDefaultSettings() {
     return {
+      // Design variant - determines overall look and feel
+      // Options: default, minimal, compact, neon, glassmorphism, retro
+      designVariant: 'default',
+
       // Font settings
       fontFamily: 'Exo 2',
       fontSize: '32px',
@@ -73,6 +77,8 @@ class LastEventSpotlightPlugin {
       // Border
       enableBorder: true,
       borderColor: '#FFFFFF',
+      borderWidth: '3px',
+      borderRadius: '50%',
 
       // Background
       enableBackground: false,
@@ -319,24 +325,7 @@ class LastEventSpotlightPlugin {
     // Reset stream session (clear top gift and streaks)
     this.api.registerRoute('POST', '/api/lastevent/reset-session', async (req, res) => {
       try {
-        this.topGift = null;
-        this.currentStreak = {
-          giftName: null,
-          count: 0,
-          user: null,
-          userData: null,
-          startTime: null,
-          totalCoins: 0
-        };
-        this.longestStreak = null;
-        
-        // Clear stored data
-        await this.api.setConfig('lastuser:topgift', null);
-        await this.api.setConfig('lastuser:giftstreak', null);
-        
-        // Notify clients
-        this.api.emit('lastevent.session.reset', { timestamp: new Date().toISOString() });
-        
+        await this.resetSession();
         res.json({ success: true, message: 'Stream session reset successfully' });
       } catch (error) {
         this.api.log(`Error resetting session: ${error.message}`);
@@ -372,7 +361,47 @@ class LastEventSpotlightPlugin {
       await this.handleEvent('superfan', 'subscriber', data);
     });
 
+    // Reset session data when a new TikTok connection is established
+    // This ensures overlays don't show events from the previous stream
+    this.api.registerTikTokEvent('connected', async () => {
+      this.api.log('New TikTok connection detected - resetting overlay session data');
+      await this.resetSession();
+    });
+
     this.api.log('Event listeners registered');
+  }
+
+  /**
+   * Reset all session data (called on new stream connection)
+   * Clears last users, top gift, and streaks
+   */
+  async resetSession() {
+    try {
+      // Reset in-memory tracking
+      this.topGift = null;
+      this.currentStreak = {
+        giftName: null,
+        count: 0,
+        user: null,
+        userData: null,
+        startTime: null,
+        totalCoins: 0
+      };
+      this.longestStreak = null;
+      
+      // Clear all last user data
+      for (const type of Object.keys(this.eventTypes)) {
+        this.lastUsers[type] = null;
+        await this.api.setConfig(`lastuser:${type}`, null);
+      }
+      
+      // Notify all overlay clients to clear their displays
+      this.api.emit('lastevent.session.reset', { timestamp: new Date().toISOString() });
+      
+      this.api.log('Session data reset successfully');
+    } catch (error) {
+      this.api.log(`Error resetting session: ${error.message}`);
+    }
   }
 
   /**
@@ -492,6 +521,7 @@ class LastEventSpotlightPlugin {
 
   /**
    * Extract user data from TikTok event
+   * Includes fallback to GiftCatalogue for gift images
    */
   extractUserData(eventName, overlayType, data) {
     // Handle different event data structures
@@ -507,6 +537,26 @@ class LastEventSpotlightPlugin {
       return null;
     }
 
+    // Get gift picture URL, with fallback to GiftCatalogue
+    let giftPictureUrl = data.giftPictureUrl;
+    const giftId = data.giftId;
+    
+    // If no giftPictureUrl but we have a giftId, look up from GiftCatalogue
+    if (!giftPictureUrl && giftId) {
+      try {
+        const db = this.api.getDatabase();
+        if (db && typeof db.getGift === 'function') {
+          const catalogGift = db.getGift(giftId);
+          if (catalogGift && catalogGift.image_url) {
+            giftPictureUrl = catalogGift.image_url;
+            this.api.log(`Loaded gift image from catalog for gift ID ${giftId}: ${giftPictureUrl}`);
+          }
+        }
+      } catch (error) {
+        this.api.log(`Could not load gift from catalog: ${error.message}`);
+      }
+    }
+
     return {
       uniqueId: user.uniqueId || user.username || user.userId || 'unknown',
       nickname: user.nickname || user.displayName || user.uniqueId || user.username || 'Anonymous',
@@ -517,7 +567,8 @@ class LastEventSpotlightPlugin {
       // Additional event-specific data
       metadata: {
         giftName: data.giftName,
-        giftPictureUrl: data.giftPictureUrl,
+        giftPictureUrl: giftPictureUrl,
+        giftId: giftId,
         giftCount: data.repeatCount || data.count || 1,
         message: data.comment || data.message,
         // FIX: Use data.coins (already calculated), only fallback to 0 if not present

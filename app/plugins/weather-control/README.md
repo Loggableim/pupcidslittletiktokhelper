@@ -383,7 +383,7 @@ Example structure:
 ## 📄 License
 
 Part of Pup Cid's Little TikTok Helper.
-Licensed under MIT License.
+Licensed under CC BY-NC 4.0 License.
 
 ## 🤝 Contributing
 

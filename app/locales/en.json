@@ -19,13 +19,13 @@
     "osc_bridge": "OSC-Bridge",
     "hybridshock": "HybridShock",
     "openshock": "OpenShock",
+    "leaderboard": "Leaderboard",
     "automations": "Automations",
     "overlays": "Overlays",
     "effects": "Interactive Effects",
     "vdoninja": "VDO.Ninja",
     "quiz_show": "Quiz Show",
     "viewer_xp": "Viewer XP",
-    "resources": "Resources",
     "weather_control": "Weather Control",
     "minecraft_connect": "Minecraft Connect",
     "streamalchemy": "Stream Alchemy",
@@ -89,7 +89,10 @@
       "soundboard": "Soundboard",
       "flows": "Automation Flows",
       "emoji_rain": "Emoji Rain",
-      "osc_bridge": "OSC-Bridge"
+      "osc_bridge": "OSC-Bridge",
+      "openshock_emergency_stop": "OpenShock Stop",
+      "plugin_disabled": "Plugin disabled",
+      "enable_plugin_hint": "Enable this plugin to use quick actions"
     },
     "plugin_notice": {
       "title": "Plugin Notice",
@@ -251,7 +254,10 @@
     "auto_start_title": "Auto-Start Settings",
     "language_settings": "Language Settings",
     "global_settings": "Global Settings",
-    "select_language": "Select Language"
+    "select_language": "Select Language",
+    "diagnostics": "System Diagnostics & Logging",
+    "diagnostics_desc": "Monitor system performance, GPU status, and view application logs for debugging.",
+    "enable_logging": "Enable Comprehensive Logging"
   },
   "obs": {
     "title": "OBS WebSocket Integration",
@@ -361,7 +367,25 @@
     "not_found": "Not found",
     "unauthorized": "Unauthorized",
     "rate_limit": "Too many requests. Please wait a moment.",
-    "unknown_error": "An unknown error occurred"
+    "unknown_error": "An unknown error occurred",
+    "page_not_found_title": "Page Not Found",
+    "page_not_found_heading": "🔌 Page Not Found",
+    "page_not_found_message": "This page or plugin is not available.",
+    "page_not_found_reason": "The plugin may be disabled or the route doesn't exist.",
+    "back_to_dashboard": "← Back to Dashboard",
+    "plugin_disabled_title": "Plugin Disabled",
+    "plugin_disabled_heading": "🔌 Plugin is Disabled",
+    "plugin_disabled_message": "The \"{pluginName}\" plugin is currently disabled.",
+    "plugin_disabled_reason": "You can enable this plugin in the Plugin Manager or click the button below.",
+    "plugin_load_failed_title": "Plugin Failed to Load",
+    "plugin_load_failed_heading": "⚠️ Plugin Failed to Load",
+    "plugin_load_failed_message": "The \"{pluginName}\" plugin is enabled but failed to load.",
+    "plugin_load_failed_reason": "Check the server logs for errors. Try reloading the plugin or restart the application.",
+    "enable_plugin_button": "Enable Plugin",
+    "enabling_plugin": "Enabling...",
+    "plugin_enabled_success": "Plugin enabled! Redirecting...",
+    "plugin_enabled_error": "Failed to enable plugin. Please try again.",
+    "go_to_plugin_manager": "Go to Plugin Manager"
   },
   "tts": {
     "title": "Text-to-Speech",

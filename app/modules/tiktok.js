@@ -4,10 +4,12 @@ const WebSocket = require('ws');
 const axios = require('axios');
 
 // Fallback API key for users who don't have their own
-const FALLBACK_API_KEY = 'euler_MmE2OWM1ZTY1NWFkNmIxZmEwOThjNjU5ZmU1NmNjOTlkMWJiOGY5MzkzNWVlOTBjODY2NGVh';
+// SECURITY: Keys are now loaded from environment variables instead of being hardcoded
+// Set EULER_FALLBACK_API_KEY and EULER_BACKUP_API_KEY in .env file
+const FALLBACK_API_KEY = process.env.EULER_FALLBACK_API_KEY || null;
 
 // Euler backup key - requires special warning before connection
-const EULER_BACKUP_KEY = 'euler_NTI1MTFmMmJkZmE2MTFmODA4Njk5NWVjZDA1NDk1OTUxZDMyNzE0NDIyYzJmZDVlZDRjOWU2';
+const EULER_BACKUP_KEY = process.env.EULER_BACKUP_API_KEY || null;
 
 /**
  * TikTok Live Connector - Eulerstream WebSocket API
@@ -129,18 +131,27 @@ class TikTokConnector extends EventEmitter {
             let usingFallback = false;
             
             if (!apiKey) {
-                // Use fallback key if no user key is configured
-                apiKey = FALLBACK_API_KEY;
-                usingFallback = true;
-                this.logger.warn('⚠️  No personal API key configured - using fallback key');
-                this.logger.warn('⚠️  This is a temporary solution. Please get your own free API key at https://www.eulerstream.com');
-                
-                // Emit event to show warning overlay to user
-                if (this.io) {
-                    this.io.emit('fallback-key-warning', {
-                        message: 'Fallback API Key wird verwendet',
-                        duration: 10000 // 10 seconds
-                    });
+                // Use fallback key if no user key is configured and fallback is available
+                if (FALLBACK_API_KEY) {
+                    apiKey = FALLBACK_API_KEY;
+                    usingFallback = true;
+                    this.logger.warn('⚠️  No personal API key configured - using fallback key');
+                    this.logger.warn('⚠️  This is a temporary solution. Please get your own free API key at https://www.eulerstream.com');
+                    
+                    // Emit event to show warning overlay to user
+                    if (this.io) {
+                        this.io.emit('fallback-key-warning', {
+                            message: 'Fallback API Key wird verwendet',
+                            duration: 10000 // 10 seconds
+                        });
+                    }
+                } else {
+                    const errorMsg = 'No API key configured. Please set your Eulerstream API key either:\n' +
+                        '1. In the Dashboard Settings UI, or\n' +
+                        '2. Via EULER_API_KEY environment variable.\n' +
+                        'Get your free API key at https://www.eulerstream.com';
+                    this.logger.error('❌ ' + errorMsg);
+                    throw new Error(errorMsg);
                 }
             }
             
@@ -167,7 +178,7 @@ class TikTokConnector extends EventEmitter {
 
             // Check if user is using the Euler backup key
             // Show non-dismissible warning and delay connection by 10 seconds
-            if (apiKey === EULER_BACKUP_KEY) {
+            if (EULER_BACKUP_KEY && apiKey === EULER_BACKUP_KEY) {
                 this.logger.warn('⚠️  EULER BACKUP KEY DETECTED - Connection will be delayed by 10 seconds');
                 this.logger.warn('⚠️  Please get your own free API key at https://www.eulerstream.com');
                 
@@ -603,30 +614,15 @@ class TikTokConnector extends EventEmitter {
             
             const userData = this.extractUserData(data);
 
-            let teamMemberLevel = 0;
-
-            // Check if user is moderator (highest priority)
-            if (data.userIdentity?.isModeratorOfAnchor) {
-                teamMemberLevel = 10;
-            }
-            // Check fans club level
-            else if (data.user?.fansClub?.data?.level) {
-                teamMemberLevel = data.user.fansClub.data.level;
-            }
-            // Check if subscriber
-            else if (data.userIdentity?.isSubscriberOfAnchor) {
-                teamMemberLevel = 1;
-            }
-
             const eventData = {
                 username: userData.username,
                 nickname: userData.nickname,
                 message: data.comment || data.message,
                 userId: userData.userId,
                 profilePictureUrl: userData.profilePictureUrl,
-                teamMemberLevel: teamMemberLevel,
-                isModerator: data.userIdentity?.isModeratorOfAnchor || false,
-                isSubscriber: data.userIdentity?.isSubscriberOfAnchor || false,
+                teamMemberLevel: userData.teamMemberLevel,
+                isModerator: userData.isModerator,
+                isSubscriber: userData.isSubscriber,
                 timestamp: new Date().toISOString()
             };
 
@@ -712,6 +708,9 @@ class TikTokConnector extends EventEmitter {
                     totalCoins: this.stats.totalCoins,
                     isStreakEnd: isStreakEnd,
                     giftType: giftData.giftType,
+                    teamMemberLevel: userData.teamMemberLevel,
+                    isModerator: userData.isModerator,
+                    isSubscriber: userData.isSubscriber,
                     timestamp: new Date().toISOString()
                 };
 
@@ -725,22 +724,39 @@ class TikTokConnector extends EventEmitter {
             }
         });
 
-        // ========== FOLLOW ==========
+        // ========== FOLLOW (via WebcastSocialMessage) ==========
         this.eventEmitter.on('social', (data) => {
             trackEarliestEventTime(data);
             
-            // Social events can be follow, share, etc.
-            // We need to check the displayType or action field
-            // Enhanced follow detection to handle various TikTok API patterns
-            // Check for specific known patterns first, then fall back to pattern matching
-            const isFollow = data.displayType === 'pm_main_follow_message_viewer_2' ||
-                             data.displayType === 'pm_mt_guidance_viewer_follow' ||
-                             (data.displayType && (
-                                 data.displayType.includes('_follow') ||
-                                 data.displayType.includes('follow_message') ||
-                                 data.displayType.includes('follow_viewer')
-                             )) ||
-                             data.action === 1;
+            // Social events can be follow (action=1) or share (action=2)
+            // The EulerStream SDK returns action as a string ("1", "2"), not a number
+            // We need to handle both string and number comparisons for robustness
+            
+            // Normalize action value to handle both string and number types
+            const actionValue = parseInt(data.action, 10);
+            
+            // displayType can be at top level (legacy) or nested in common.displayText.displayType
+            const displayType = data.displayType || data.common?.displayText?.displayType || '';
+            
+            // Check displayType patterns for follow detection
+            const hasFollowDisplayType = displayType && typeof displayType === 'string' && (
+                displayType === 'pm_main_follow_message_viewer_2' ||
+                displayType === 'pm_mt_guidance_viewer_follow' ||
+                displayType.includes('_follow') ||
+                displayType.includes('follow_message') ||
+                displayType.includes('follow_viewer')
+            );
+            
+            // Detect follow events:
+            // - action === 1 (primary detection method)
+            // - displayType patterns as fallback
+            // Note: Using Boolean() to ensure proper boolean result since hasFollowDisplayType
+            // can be an empty string when displayType is empty (JavaScript short-circuit)
+            const isFollow = actionValue === 1 || Boolean(hasFollowDisplayType);
+            
+            // Detect share events from social message (action === 2)
+            // Note: Shares can also come from WebcastShareMessage (separate event handler)
+            const isShare = actionValue === 2;
             
             if (isFollow) {
                 this.stats.followers++;
@@ -750,15 +766,40 @@ class TikTokConnector extends EventEmitter {
                     username: userData.username,
                     nickname: userData.nickname,
                     userId: userData.userId,
+                    profilePictureUrl: userData.profilePictureUrl,
+                    teamMemberLevel: userData.teamMemberLevel,
+                    isModerator: userData.isModerator,
+                    isSubscriber: userData.isSubscriber,
                     timestamp: new Date().toISOString()
                 };
 
+                this.logger.info(`👤 [FOLLOW] New follower: ${eventData.username || eventData.nickname}`);
                 this.handleEvent('follow', eventData);
                 this.db.logEvent('follow', eventData.username, eventData);
                 this.broadcastStats();
+            } else if (isShare) {
+                // Handle share events from WebcastSocialMessage (action === 2)
+                this.stats.shares++;
+
+                const userData = this.extractUserData(data);
+                const eventData = {
+                    username: userData.username,
+                    nickname: userData.nickname,
+                    userId: userData.userId,
+                    profilePictureUrl: userData.profilePictureUrl,
+                    teamMemberLevel: userData.teamMemberLevel,
+                    isModerator: userData.isModerator,
+                    isSubscriber: userData.isSubscriber,
+                    timestamp: new Date().toISOString()
+                };
+
+                this.logger.info(`📢 [SHARE] User shared stream: ${eventData.username || eventData.nickname}`);
+                this.handleEvent('share', eventData);
+                this.db.logEvent('share', eventData.username, eventData);
+                this.broadcastStats();
             } else {
                 // Log unrecognized social event types for debugging
-                this.logger.debug(`Unrecognized social event type: displayType="${data.displayType}", action=${data.action}`);
+                this.logger.debug(`Unrecognized social event type: displayType="${displayType}", action=${data.action} (parsed: ${actionValue})`);
             }
         });
 
@@ -772,6 +813,10 @@ class TikTokConnector extends EventEmitter {
                 username: userData.username,
                 nickname: userData.nickname,
                 userId: userData.userId,
+                profilePictureUrl: userData.profilePictureUrl,
+                teamMemberLevel: userData.teamMemberLevel,
+                isModerator: userData.isModerator,
+                isSubscriber: userData.isSubscriber,
                 timestamp: new Date().toISOString()
             };
 
@@ -820,12 +865,18 @@ class TikTokConnector extends EventEmitter {
             const eventData = {
                 username: userData.username,
                 nickname: userData.nickname,
+                userId: userData.userId,
+                profilePictureUrl: userData.profilePictureUrl,
                 likeCount: likeCount,
                 totalLikes: this.stats.likes,
+                teamMemberLevel: userData.teamMemberLevel,
+                isModerator: userData.isModerator,
+                isSubscriber: userData.isSubscriber,
                 timestamp: new Date().toISOString()
             };
 
             this.handleEvent('like', eventData);
+            this.db.logEvent('like', eventData.username, eventData);
             this.broadcastStats();
         });
 
@@ -851,6 +902,10 @@ class TikTokConnector extends EventEmitter {
                 username: userData.username,
                 nickname: userData.nickname,
                 userId: userData.userId,
+                profilePictureUrl: userData.profilePictureUrl,
+                teamMemberLevel: userData.teamMemberLevel,
+                isModerator: userData.isModerator,
+                isSubscriber: userData.isSubscriber,
                 timestamp: new Date().toISOString()
             };
 
@@ -874,11 +929,47 @@ class TikTokConnector extends EventEmitter {
     extractUserData(data) {
         const user = data.user || data;
 
+        // Extract team member level from various sources
+        let teamMemberLevel = 0;
+        
+        // Check if user is moderator (highest priority - level 10)
+        if (data.userIdentity?.isModeratorOfAnchor) {
+            teamMemberLevel = 10;
+        }
+        // Check direct teamMemberLevel on data (from pre-processed events)
+        else if (data.teamMemberLevel !== undefined && data.teamMemberLevel > 0) {
+            teamMemberLevel = data.teamMemberLevel;
+        }
+        // Check user object teamMemberLevel
+        else if (user.teamMemberLevel !== undefined && user.teamMemberLevel > 0) {
+            teamMemberLevel = user.teamMemberLevel;
+        }
+        // Check fans club level (multiple possible paths)
+        else if (user.fansClub?.data?.level) {
+            teamMemberLevel = user.fansClub.data.level;
+        }
+        else if (user.fansClub?.level) {
+            teamMemberLevel = user.fansClub.level;
+        }
+        else if (data.fansClub?.data?.level) {
+            teamMemberLevel = data.fansClub.data.level;
+        }
+        else if (data.fansClub?.level) {
+            teamMemberLevel = data.fansClub.level;
+        }
+        // Check if subscriber (minimum level 1)
+        else if (data.userIdentity?.isSubscriberOfAnchor) {
+            teamMemberLevel = 1;
+        }
+
         const extractedData = {
             username: user.uniqueId || user.username || null,
             nickname: user.nickname || user.displayName || null,
             userId: user.userId || user.id || null,
-            profilePictureUrl: user.profilePictureUrl || user.profilePicture || null
+            profilePictureUrl: user.profilePictureUrl || user.profilePicture || null,
+            teamMemberLevel: teamMemberLevel,
+            isModerator: data.userIdentity?.isModeratorOfAnchor || false,
+            isSubscriber: data.userIdentity?.isSubscriberOfAnchor || false
         };
 
         if (!extractedData.username && !extractedData.nickname) {
@@ -1352,6 +1443,16 @@ class TikTokConnector extends EventEmitter {
                 if (data.giftId) components.push(data.giftId.toString());
                 if (data.giftName) components.push(data.giftName);
                 if (data.repeatCount) components.push(data.repeatCount.toString());
+                break;
+            case 'like':
+                // Include likeCount and totalLikes to prevent incorrect deduplication
+                // Each like event should be unique based on the like count values
+                if (data.likeCount) components.push(data.likeCount.toString());
+                if (data.totalLikes) components.push(data.totalLikes.toString());
+                if (data.timestamp) {
+                    const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
+                    components.push(roundedTime.toString());
+                }
                 break;
             case 'follow':
             case 'share':

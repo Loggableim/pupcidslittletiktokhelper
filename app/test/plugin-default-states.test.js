@@ -19,7 +19,7 @@ console.log('==========================\n');
 console.log('Test 1: Verify plugin.json default states');
 console.log('-------------------------------------------');
 
-const expectedActive = ['emoji-rain', 'lastevent-spotlight', 'goals', 'soundboard', 'tts'];
+const expectedActive = ['emoji-rain', 'lastevent-spotlight', 'goals', 'leaderboard', 'quiz_show', 'soundboard', 'tts'];
 const entries = fs.readdirSync(pluginsDir, { withFileTypes: true });
 
 let activeCount = 0;
@@ -44,8 +44,8 @@ for (const entry of entries) {
     }
 }
 
-assert.strictEqual(activeCount, 5, `Should have exactly 5 active plugins, but found ${activeCount}`);
-console.log(`✓ Found ${activeCount} active plugins (expected 5)`);
+assert.strictEqual(activeCount, 7, `Should have exactly 7 active plugins, but found ${activeCount}`);
+console.log(`✓ Found ${activeCount} active plugins (expected 7)`);
 console.log(`✓ Found ${inactiveCount} inactive plugins`);
 console.log('✓ All plugins have correct default states\n');
 
@@ -119,7 +119,7 @@ console.log('======================\n');
 console.log('Summary:');
 console.log('--------');
 console.log('✓ All 24 plugin manifests have correct default enabled states');
-console.log('✓ Only 5 plugins enabled by default (emoji-rain, lastevent-spotlight, goals, soundboard, tts)');
+console.log('✓ Only 7 plugins enabled by default (emoji-rain, goals, lastevent-spotlight, leaderboard, quiz_show, soundboard, tts)');
 console.log('✓ State file logic correctly overrides manifest defaults');
 console.log('✓ Partial state handling works correctly');
 console.log('✓ State file persistence mechanism verified');

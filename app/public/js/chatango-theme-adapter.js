@@ -2,10 +2,14 @@
  * Chatango Theme Adapter
  * Adapts Chatango shoutbox colors to match the current theme (day/night/high contrast)
  * Corporate branding color: #13A318 (green)
+ * 
+ * This module now handles dynamic loading of Chatango embeds to ensure they
+ * only load when the chatango plugin is enabled.
  */
 
 class ChatangoThemeAdapter {
     constructor() {
+        this.pluginConfig = null; // Will be loaded from API
         this.themeConfigs = {
             night: {
                 // Default night mode - green branding
@@ -90,15 +94,280 @@ class ChatangoThemeAdapter {
             }
         };
 
+        this.embedsLoaded = false;
+        this.chatangoEnabled = false;
+        this.embedIdCounter = 0; // Counter for unique embed IDs
         this.init();
     }
 
     init() {
-        // Wait for theme manager to be ready
+        // Wait for DOM to be ready
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setupThemeListener());
+            document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
         } else {
-            this.setupThemeListener();
+            this.onDOMReady();
+        }
+    }
+
+    async onDOMReady() {
+        // Setup theme listener
+        this.setupThemeListener();
+        
+        // Check if chatango plugin is enabled and load embeds
+        await this.checkAndLoadChatango();
+        
+        // Listen for plugin changes to reload chatango when enabled
+        this.setupPluginChangeListener();
+    }
+
+    async checkAndLoadChatango() {
+        try {
+            const response = await fetch('/api/plugins');
+            if (!response.ok) {
+                console.warn('Could not check plugin status for Chatango');
+                return;
+            }
+            
+            const data = await response.json();
+            if (!data.success) {
+                console.warn('Plugin API returned unsuccessful response');
+                return;
+            }
+            
+            // Check if chatango plugin is enabled
+            const chatangoPlugin = data.plugins.find(p => p.id === 'chatango');
+            this.chatangoEnabled = chatangoPlugin && chatangoPlugin.enabled;
+            
+            if (this.chatangoEnabled) {
+                console.log('💬 Chatango plugin is enabled, loading embeds...');
+                // Fetch the plugin configuration before loading embeds
+                await this.fetchPluginConfig();
+                this.loadChatangoEmbeds();
+            } else {
+                console.log('💬 Chatango plugin is disabled, skipping embed loading');
+                this.showDisabledMessage();
+            }
+        } catch (error) {
+            console.error('Error checking Chatango plugin status:', error);
+        }
+    }
+
+    async fetchPluginConfig() {
+        try {
+            const response = await fetch('/api/chatango/config');
+            if (!response.ok) {
+                console.warn('Could not fetch Chatango config, using defaults');
+                this.pluginConfig = this.getDefaultConfig();
+                return;
+            }
+            
+            const data = await response.json();
+            if (data.success && data.config) {
+                this.pluginConfig = data.config;
+                console.log('💬 Chatango config loaded:', this.pluginConfig.roomHandle);
+            } else {
+                console.warn('Chatango config API returned unsuccessful, using defaults');
+                this.pluginConfig = this.getDefaultConfig();
+            }
+        } catch (error) {
+            console.error('Error fetching Chatango config:', error);
+            this.pluginConfig = this.getDefaultConfig();
+        }
+    }
+
+    getDefaultConfig() {
+        return {
+            enabled: true,
+            roomHandle: 'pupcidsltth',
+            theme: 'night',
+            fontSize: '10',
+            allowPM: false,
+            showTicker: true,
+            widgetPosition: 'br',
+            widgetWidth: 200,
+            widgetHeight: 300,
+            collapsedWidth: 75,
+            collapsedHeight: 30,
+            dashboardEnabled: true,
+            widgetEnabled: true
+        };
+    }
+
+    setupPluginChangeListener() {
+        // Use Promise-based approach to wait for socket availability
+        const waitForSocket = () => {
+            return new Promise((resolve) => {
+                // Check if socket is already available
+                if (typeof socket !== 'undefined' && socket) {
+                    resolve(socket);
+                    return;
+                }
+                
+                // Use MutationObserver to detect when socket becomes available
+                // by watching for the global socket variable
+                let attempts = 0;
+                const maxAttempts = 100; // 10 seconds max (100 * 100ms)
+                
+                const checkSocket = () => {
+                    attempts++;
+                    if (typeof socket !== 'undefined' && socket) {
+                        resolve(socket);
+                    } else if (attempts < maxAttempts) {
+                        setTimeout(checkSocket, 100);
+                    } else {
+                        console.warn('💬 Chatango: Socket not available after timeout');
+                        resolve(null);
+                    }
+                };
+                
+                checkSocket();
+            });
+        };
+        
+        waitForSocket().then((socketInstance) => {
+            if (socketInstance) {
+                socketInstance.on('plugins:changed', async (data) => {
+                    if (data && data.pluginId === 'chatango') {
+                        console.log('💬 Chatango plugin state changed:', data.action);
+                        // Reset embedsLoaded flag to allow reload when plugin is re-enabled
+                        this.embedsLoaded = false;
+                        await this.checkAndLoadChatango();
+                    }
+                });
+                console.log('💬 Chatango adapter listening for plugin changes');
+            }
+        });
+    }
+
+    loadChatangoEmbeds() {
+        if (this.embedsLoaded) {
+            console.log('💬 Chatango embeds already loaded');
+            return;
+        }
+
+        // Ensure the dashboard section is visible before loading embeds
+        // This prevents race conditions where the embed loads before navigation.js shows the section
+        const dashboardSection = document.querySelector('.shoutbox-section[data-plugin="chatango"]');
+        if (dashboardSection && dashboardSection.style.display === 'none') {
+            console.log('💬 Chatango section is hidden, making it visible before loading embed');
+            dashboardSection.style.display = '';
+        }
+
+        // Use theme from plugin config if available
+        const theme = (this.pluginConfig && this.pluginConfig.theme) || this.getCurrentTheme();
+        
+        // Load dashboard embed
+        this.loadDashboardEmbed(theme);
+        
+        // Load widget embed
+        this.loadWidgetEmbed(theme);
+        
+        this.embedsLoaded = true;
+        console.log('💬 Chatango embeds loaded successfully');
+    }
+
+    /**
+     * Generate a unique ID for embed scripts using counter-based approach
+     * @param {string} prefix - Prefix for the ID
+     * @returns {string} Unique ID
+     */
+    generateUniqueId(prefix) {
+        this.embedIdCounter++;
+        return `${prefix}-${this.embedIdCounter}`;
+    }
+
+    loadDashboardEmbed(theme) {
+        const container = document.getElementById('chatango-embed-container');
+        if (!container) {
+            console.warn('Chatango dashboard container not found');
+            return;
+        }
+
+        // Check if dashboard is enabled in config
+        if (this.pluginConfig && !this.pluginConfig.dashboardEnabled) {
+            console.log('💬 Dashboard embed is disabled in config');
+            return;
+        }
+
+        // Clear any existing content (like loading message)
+        container.innerHTML = '';
+
+        const embedConfig = this.generateEmbedCode('dashboard', theme);
+        const scriptId = this.generateUniqueId('cid-dashboard');
+        const jsonConfig = JSON.stringify(embedConfig.config);
+        
+        // Create script element properly for Chatango embed
+        // Chatango's emb.js reads the script element's text content after loading
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.setAttribute('data-cfasync', 'false');
+        script.src = 'https://st.chatango.com/js/gz/emb.js';
+        script.style.cssText = `width: ${embedConfig.width}; height: ${embedConfig.height};`;
+        // Set the JSON config as text - Chatango reads this after script loads
+        script.text = jsonConfig;
+        
+        container.appendChild(script);
+    }
+
+    loadWidgetEmbed(theme) {
+        const container = document.getElementById('chatango-widget-container');
+        if (!container) {
+            console.warn('Chatango widget container not found');
+            return;
+        }
+
+        // Check if widget is enabled in config
+        if (this.pluginConfig && !this.pluginConfig.widgetEnabled) {
+            console.log('💬 Widget embed is disabled in config');
+            return;
+        }
+
+        // Clear any existing content
+        container.innerHTML = '';
+
+        const embedConfig = this.generateEmbedCode('widget', theme);
+        const scriptId = this.generateUniqueId('cid-widget');
+        const jsonConfig = JSON.stringify(embedConfig.config);
+        
+        // Create script element properly for Chatango embed
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.setAttribute('data-cfasync', 'false');
+        script.src = 'https://st.chatango.com/js/gz/emb.js';
+        script.style.cssText = `width: ${embedConfig.width}; height: ${embedConfig.height};`;
+        // Set the JSON config as text - Chatango reads this after script loads
+        script.text = jsonConfig;
+        
+        container.appendChild(script);
+    }
+
+    showDisabledMessage() {
+        // Show message in dashboard container
+        const dashboardContainer = document.getElementById('chatango-embed-container');
+        if (dashboardContainer) {
+            // First try to update the loading element if it exists
+            const loadingEl = dashboardContainer.querySelector('.chatango-loading');
+            const disabledHtml = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--color-text-secondary);">
+                    <div style="text-align: center; padding: 20px;">
+                        <i data-lucide="message-square-off" style="width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.5;"></i>
+                        <p style="margin: 0; font-size: 14px;">Community Chat is disabled</p>
+                        <p style="margin: 8px 0 0 0; font-size: 12px; opacity: 0.7;">Enable the Chatango plugin to use this feature</p>
+                    </div>
+                </div>
+            `;
+            
+            if (loadingEl) {
+                loadingEl.innerHTML = disabledHtml;
+            } else {
+                // Loading element not found, set container directly
+                dashboardContainer.innerHTML = disabledHtml;
+            }
+            
+            // Re-initialize Lucide icons for the new icon
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
         }
     }
 
@@ -155,46 +424,60 @@ class ChatangoThemeAdapter {
 
     /**
      * Generate embed code for current theme
-     * Useful for dynamic recreation if needed
+     * Uses configuration from plugin API when available
      */
-    generateEmbedCode(elementId, position = 'dashboard') {
-        const theme = this.getCurrentTheme();
-        const config = this.getConfigForTheme(theme);
+    generateEmbedCode(position = 'dashboard', theme = null) {
+        // Use theme from config or current theme as fallback
+        theme = theme || (this.pluginConfig && this.pluginConfig.theme) || this.getCurrentTheme();
+        const themeStyles = this.getConfigForTheme(theme);
+        
+        // Get room handle from config or use default
+        const roomHandle = (this.pluginConfig && this.pluginConfig.roomHandle) || 'pupcidsltth';
+        const fontSize = (this.pluginConfig && this.pluginConfig.fontSize) || '10';
+        const allowPM = (this.pluginConfig && this.pluginConfig.allowPM) ? 1 : 0;
 
         const baseConfig = {
-            handle: 'pupcidsltth',
+            handle: roomHandle,
             arch: 'js',
             styles: {
-                ...config,
+                ...themeStyles,
+                p: fontSize,
                 surl: 0,
-                allowpm: 0,
+                allowpm: allowPM,
                 cnrs: '0.35',
                 fwtickm: 1
             }
         };
 
         if (position === 'widget') {
-            // Bottom-right widget configuration
+            // Widget configuration from plugin config
+            const widgetWidth = (this.pluginConfig && this.pluginConfig.widgetWidth) || 200;
+            const widgetHeight = (this.pluginConfig && this.pluginConfig.widgetHeight) || 300;
+            const widgetPos = (this.pluginConfig && this.pluginConfig.widgetPosition) || 'br';
+            const collapsedWidth = (this.pluginConfig && this.pluginConfig.collapsedWidth) || 75;
+            const collapsedHeight = (this.pluginConfig && this.pluginConfig.collapsedHeight) || 30;
+            const showTicker = (this.pluginConfig && this.pluginConfig.showTicker) ? 1 : 0;
+            
             return {
-                id: elementId,
-                style: 'width: 200px;height: 300px;',
+                width: `${widgetWidth}px`,
+                height: `${widgetHeight}px`,
                 config: {
                     ...baseConfig,
                     styles: {
                         ...baseConfig.styles,
-                        pos: 'br',
+                        pos: widgetPos,
                         cv: 1,
-                        cvw: 75,
-                        cvh: 30,
-                        ticker: 1
+                        cvw: collapsedWidth,
+                        cvh: collapsedHeight,
+                        ticker: showTicker
                     }
                 }
             };
         } else {
             // Dashboard embed configuration
             return {
-                id: elementId,
-                style: 'width: 100%;height: 100%;',
+                width: '100%',
+                height: '100%',
                 config: baseConfig
             };
         }

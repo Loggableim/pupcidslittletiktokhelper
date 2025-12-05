@@ -649,6 +649,8 @@ class GiftMilestonePlugin {
             const coins = data.coins || 0;
             const userId = data.userId || data.uniqueId;
             const username = data.nickname || data.uniqueId;
+            const uniqueId = data.uniqueId || '';
+            const profilePictureUrl = data.profilePictureUrl || '';
 
             if (coins === 0) {
                 return;
@@ -675,6 +677,9 @@ class GiftMilestonePlugin {
             // Per-user milestone tracking (tier-based)
             if (userId && username) {
                 const userResult = db.addCoinsToUserMilestone(userId, username, coins);
+                
+                // ALSO update shared user statistics for cross-plugin usage
+                db.addCoinsToUserStats(userId, username, uniqueId, profilePictureUrl, coins);
                 
                 // Emit user stats update to UI
                 this.api.emit('milestone:user-stats-update', {

@@ -83,7 +83,8 @@ class LeaderboardManager {
         break;
 
       case 'like':
-        stats.like_count += 1;
+        // Use the actual like count from the event data (e.g., 80 likes at once)
+        stats.like_count += data.count || 1;
         break;
 
       case 'share':

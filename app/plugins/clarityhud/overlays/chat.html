@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ClarityHUD - Chat Overlay</title>
   <link href="/fonts/exo-2.css" rel="stylesheet">
@@ -163,9 +164,10 @@
       text-align: center;
     }
 
-    /* Smooth scroll behavior */
+    /* Scroll behavior - using auto instead of smooth for better performance
+       Smooth scrolling causes ~1 second delays in Electron apps */
     #messages {
-      scroll-behavior: smooth;
+      scroll-behavior: auto;
     }
   </style>
 </head>

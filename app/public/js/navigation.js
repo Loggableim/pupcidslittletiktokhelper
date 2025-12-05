@@ -67,15 +67,20 @@
 
     // Setup socket listener for plugin changes
     function setupPluginChangeListener() {
-        // Wait for socket to be available (dashboard.js creates it)
+        // Wait for socket to be available (dashboard.js creates it and sets window.socket)
         const checkSocket = setInterval(() => {
-            if (typeof socket !== 'undefined' && socket) {
+            if (window.socket) {
                 clearInterval(checkSocket);
                 
-                socket.on('plugins:changed', (data) => {
+                window.socket.on('plugins:changed', (data) => {
                     console.log('🔌 [Navigation] Plugin state changed:', data);
                     // Refresh plugin visibility without full page reload
                     initializePluginVisibility();
+                    
+                    // If a plugin was enabled, reload its iframe to show the now-available UI
+                    if (data && data.action === 'enabled' && data.pluginId) {
+                        reloadPluginIframe(data.pluginId);
+                    }
                 });
                 
                 console.log('✅ [Navigation] Plugin change listener registered');
@@ -84,6 +89,94 @@
         
         // Stop checking after 10 seconds
         setTimeout(() => clearInterval(checkSocket), 10000);
+    }
+
+    // ========== IFRAME LAZY LOADING ==========
+    /**
+     * Load iframes within a view that have data-src attribute (lazy loading)
+     * or reload iframes that have src but might be showing 404
+     */
+    function loadViewIframes(viewElement) {
+        if (!viewElement) return;
+        
+        const iframes = viewElement.querySelectorAll('iframe[data-src], iframe[src]');
+        iframes.forEach(iframe => {
+            // If iframe has data-src and hasn't been loaded yet, load it now
+            const dataSrc = iframe.getAttribute('data-src');
+            if (dataSrc) {
+                // Check if src is empty or about:blank (not yet loaded)
+                // Note: An empty src attribute becomes the current page URL when read via .src property
+                const currentSrc = iframe.getAttribute('src');
+                if (!currentSrc || currentSrc === '' || iframe.src === 'about:blank') {
+                    console.log(`📄 [Navigation] Lazy-loading iframe: ${dataSrc}`);
+                    
+                    // Add load event listener to mark container as loaded
+                    const container = iframe.closest('.iframe-container');
+                    if (container) {
+                        iframe.addEventListener('load', () => {
+                            container.classList.add('loaded');
+                        }, { once: true });
+                    }
+                    
+                    iframe.src = dataSrc;
+                    return;
+                }
+            }
+            
+            // If iframe has src but might be showing 404, reload it
+            // This is detected by checking if the iframe document contains our 404 page
+            try {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (iframeDoc && iframeDoc.title && iframeDoc.title.includes('Not Found')) {
+                    console.log(`🔄 [Navigation] Reloading iframe that was showing 404: ${iframe.src}`);
+                    const srcToLoad = iframe.getAttribute('data-src') || iframe.src;
+                    iframe.src = srcToLoad; // Force reload
+                }
+            } catch (e) {
+                // Cross-origin frame, can't check - that's okay, it probably loaded successfully
+            }
+        });
+    }
+    
+    // Minimum delay (ms) before setting new src after clearing, to ensure browser registers the change
+    const IFRAME_RELOAD_DELAY_MS = 100;
+    
+    /**
+     * Reload iframe for a specific plugin when it gets enabled
+     */
+    function reloadPluginIframe(pluginId) {
+        // Find the view element for this plugin
+        const viewElement = document.querySelector(`[data-plugin="${pluginId}"]`);
+        if (!viewElement) {
+            console.log(`⚠️ [Navigation] No view found for plugin: ${pluginId}`);
+            return;
+        }
+        
+        // Find and reload the iframe
+        const iframe = viewElement.querySelector('iframe');
+        if (iframe) {
+            const currentSrc = iframe.getAttribute('data-src') || iframe.src;
+            if (currentSrc) {
+                console.log(`🔄 [Navigation] Reloading iframe for newly enabled plugin: ${pluginId}`);
+                
+                // Remove loaded state from container
+                const container = iframe.closest('.iframe-container');
+                if (container) {
+                    container.classList.remove('loaded');
+                    // Re-add load listener
+                    iframe.addEventListener('load', () => {
+                        container.classList.add('loaded');
+                    }, { once: true });
+                }
+                
+                // Clear src first, then set it after a brief delay to force browser to reload
+                // The delay ensures the browser registers the src change as a new navigation
+                iframe.src = '';
+                setTimeout(() => {
+                    iframe.src = currentSrc;
+                }, IFRAME_RELOAD_DELAY_MS);
+            }
+        }
     }
 
     // ========== SIDEBAR MANAGEMENT ==========
@@ -148,6 +241,9 @@
             });
         }
 
+        // Window control buttons (for frameless Electron window)
+        initializeWindowControls();
+
         // Check for hash-based navigation first (e.g., #soundboard)
         const hash = window.location.hash.substring(1); // Remove the #
         if (hash) {
@@ -207,6 +303,9 @@
         const activeView = document.getElementById(`view-${viewName}`);
         if (activeView) {
             activeView.classList.add('active');
+            
+            // Lazy-load iframes when view becomes active
+            loadViewIframes(activeView);
         }
 
         // Save current view
@@ -216,6 +315,11 @@
         // Re-initialize Lucide icons
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
+        }
+
+        // Lazy-load JavaScript modules for this view (non-blocking)
+        if (window.LazyLoader) {
+            window.LazyLoader.loadModulesForView(viewName);
         }
 
         // Trigger view-specific initialization
@@ -292,7 +396,6 @@
             { icon: 'zap', label: 'OpenShock', view: 'openshock', plugin: 'openshock' },
             { icon: 'help-circle', label: 'Quiz Show', view: 'quiz-show', plugin: 'quiz-show' },
             { icon: 'award', label: 'Viewer XP', view: 'viewer-xp', plugin: 'viewer-xp' },
-            { icon: 'cpu', label: 'Resources', view: 'resource-monitor', plugin: 'resource-monitor' },
             { icon: 'flask-conical', label: 'Stream Alchemy', view: 'streamalchemy', plugin: 'streamalchemy' },
             { icon: 'terminal', label: 'Chat Commands', view: 'gcce', plugin: 'gcce' },
             { icon: 'printer', label: 'Thermal Printer', view: 'thermal-printer', plugin: 'thermal-printer' },
@@ -420,7 +523,8 @@
             console.log('✅ [Navigation] Active plugins loaded:', Array.from(activePlugins));
 
             // Hide sidebar items, shortcuts, AND views for inactive plugins
-            const pluginElements = document.querySelectorAll('[data-plugin]');
+            // Exclude quick action buttons - they are handled separately in dashboard-enhancements.js
+            const pluginElements = document.querySelectorAll('[data-plugin]:not(.quick-action-btn)');
             pluginElements.forEach(element => {
                 const requiredPlugin = element.getAttribute('data-plugin');
 
@@ -510,6 +614,49 @@
         // Re-initialize Lucide icons
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
+        }
+    }
+
+    // ========== WINDOW CONTROLS (Frameless Window) ==========
+    function initializeWindowControls() {
+        const minimizeBtn = document.getElementById('window-minimize-btn');
+        const maximizeBtn = document.getElementById('window-maximize-btn');
+        const closeBtn = document.getElementById('window-close-btn');
+        const windowControls = document.querySelector('.window-controls');
+
+        // Check if we're running in Electron (electronAPI is exposed via preload.js)
+        const isElectron = typeof window.electronAPI !== 'undefined';
+
+        if (!isElectron) {
+            // Hide window controls if not in Electron using CSS class
+            if (windowControls) {
+                windowControls.classList.add('hidden-in-browser');
+            }
+            return;
+        }
+
+        if (minimizeBtn) {
+            minimizeBtn.addEventListener('click', () => {
+                if (window.electronAPI && window.electronAPI.minimizeWindow) {
+                    window.electronAPI.minimizeWindow();
+                }
+            });
+        }
+
+        if (maximizeBtn) {
+            maximizeBtn.addEventListener('click', () => {
+                if (window.electronAPI && window.electronAPI.maximizeWindow) {
+                    window.electronAPI.maximizeWindow();
+                }
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                if (window.electronAPI && window.electronAPI.closeWindow) {
+                    window.electronAPI.closeWindow();
+                }
+            });
         }
     }
 

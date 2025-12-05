@@ -667,7 +667,7 @@ Bei Fragen oder Problemen:
 
 ## 📜 License
 
-MIT License - siehe LICENSE-Datei
+CC BY-NC 4.0 License - siehe LICENSE-Datei
 
 ---
 

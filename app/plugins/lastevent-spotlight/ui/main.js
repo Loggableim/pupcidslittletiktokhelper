@@ -177,6 +177,27 @@ function renderSettingsForm(type) {
   const container = document.getElementById('settings-form-container');
 
   container.innerHTML = `
+    <!-- Design Variant -->
+    <div class="settings-section">
+      <h4>🎨 Design Variant</h4>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Choose a Design Style</label>
+          <select id="designVariant">
+            <option value="default" ${settings.designVariant === 'default' || !settings.designVariant ? 'selected' : ''}>Default - Clean & Modern</option>
+            <option value="minimal" ${settings.designVariant === 'minimal' ? 'selected' : ''}>Minimal - Subtle & Clean</option>
+            <option value="compact" ${settings.designVariant === 'compact' ? 'selected' : ''}>Compact - Small & Tight</option>
+            <option value="neon" ${settings.designVariant === 'neon' ? 'selected' : ''}>Neon - Cyberpunk Glow</option>
+            <option value="glassmorphism" ${settings.designVariant === 'glassmorphism' ? 'selected' : ''}>Glassmorphism - Frosted Glass</option>
+            <option value="retro" ${settings.designVariant === 'retro' ? 'selected' : ''}>Retro - 8-bit Pixel Style</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size: 12px; color: var(--color-text-muted); margin-top: 10px;">
+        💡 Each design variant has its own unique look. Some variants may override certain settings like borders or fonts for the best visual effect.
+      </p>
+    </div>
+
     <!-- Font Settings -->
     <div class="settings-section">
       <h4>📝 Font Settings</h4>
@@ -399,6 +420,9 @@ async function saveSettings() {
   if (!currentType) return;
 
   const newSettings = {
+    // Design variant
+    designVariant: document.getElementById('designVariant').value,
+
     // Font
     fontFamily: document.getElementById('fontFamily').value,
     fontSize: document.getElementById('fontSize').value,

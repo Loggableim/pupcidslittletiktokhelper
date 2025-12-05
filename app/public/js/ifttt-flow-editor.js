@@ -494,9 +494,12 @@
             </div>
             ${component.fields ? renderFields(component.fields, node) : '<p style="color: #64748b; font-size: 13px;">No configuration needed</p>'}
             <div class="form-group">
-                <button class="btn btn-danger" onclick="deleteNode('${node.id}')" style="width: 100%; margin-top: 12px;">Delete Node</button>
+                <button class="btn btn-danger delete-node-btn" data-node-id="${node.id}" style="width: 100%; margin-top: 12px;">Delete Node</button>
             </div>
         `;
+        
+        // Attach event listeners after rendering
+        attachNodePropertiesEventListeners();
     }
 
     function renderFields(fields, node) {
@@ -507,11 +510,10 @@
                 return `
                     <div class="form-group">
                         <label class="form-label">${field.label}</label>
-                        <textarea class="form-textarea" 
+                        <textarea class="form-textarea node-config-field" 
                                   data-node="${node.id}" 
                                   data-field="${field.name}"
-                                  placeholder="${field.placeholder || ''}"
-                                  onchange="updateNodeConfig(this)">${value}</textarea>
+                                  placeholder="${field.placeholder || ''}">${value}</textarea>
                     </div>
                 `;
             } else if (field.type === 'select') {
@@ -519,10 +521,9 @@
                 return `
                     <div class="form-group">
                         <label class="form-label">${field.label}</label>
-                        <select class="form-select" 
+                        <select class="form-select node-config-field" 
                                 data-node="${node.id}" 
-                                data-field="${field.name}"
-                                onchange="updateNodeConfig(this)">
+                                data-field="${field.name}">
                             ${options.map(opt => `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`).join('')}
                         </select>
                     </div>
@@ -531,25 +532,23 @@
                 return `
                     <div class="form-group">
                         <label class="form-label">${field.label}</label>
-                        <input type="number" class="form-input" 
+                        <input type="number" class="form-input node-config-field" 
                                data-node="${node.id}" 
                                data-field="${field.name}"
                                value="${value}"
                                min="${field.min || ''}"
                                max="${field.max || ''}"
-                               step="${field.step || '1'}"
-                               onchange="updateNodeConfig(this)">
+                               step="${field.step || '1'}">
                     </div>
                 `;
             } else if (field.type === 'checkbox') {
                 return `
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" 
+                            <input type="checkbox" class="node-config-field"
                                    data-node="${node.id}" 
                                    data-field="${field.name}"
-                                   ${value ? 'checked' : ''}
-                                   onchange="updateNodeConfig(this)">
+                                   ${value ? 'checked' : ''}>
                             <span class="form-label" style="margin: 0;">${field.label}</span>
                         </label>
                     </div>
@@ -558,20 +557,19 @@
                 return `
                     <div class="form-group">
                         <label class="form-label">${field.label}</label>
-                        <input type="text" class="form-input" 
+                        <input type="text" class="form-input node-config-field" 
                                data-node="${node.id}" 
                                data-field="${field.name}"
                                value="${value}"
-                               placeholder="${field.placeholder || ''}"
-                               onchange="updateNodeConfig(this)">
+                               placeholder="${field.placeholder || ''}">
                     </div>
                 `;
             }
         }).join('');
     }
 
-    // Global functions for onclick handlers
-    window.updateNodeConfig = function(el) {
+    // Function to update node configuration
+    function updateNodeConfig(el) {
         const nodeId = el.dataset.node;
         const fieldName = el.dataset.field;
         const value = el.type === 'checkbox' ? el.checked : el.value;
@@ -581,9 +579,10 @@
             node.config[fieldName] = value;
             console.log(`Updated ${nodeId}.${fieldName} = ${value}`);
         }
-    };
+    }
 
-    window.deleteNode = function(nodeId) {
+    // Function to delete a node
+    function deleteNode(nodeId) {
         if (!confirm('Delete this node?')) return;
         
         // Remove connections involving this node
@@ -606,7 +605,33 @@
         // Clear properties
         elements.nodeProperties.style.display = 'none';
         state.selectedNode = null;
-    };
+    }
+    
+    // Attach event listeners to dynamically created node properties elements
+    // Note: Since showNodeProperties() replaces innerHTML each time, old elements
+    // and their listeners are garbage collected, so we don't need to remove them
+    function attachNodePropertiesEventListeners() {
+        // Handle delete button click
+        const deleteBtn = elements.nodePropertiesContent.querySelector('.delete-node-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function() {
+                const nodeId = this.dataset.nodeId;
+                deleteNode(nodeId);
+            });
+        }
+        
+        // Handle config field changes
+        const configFields = elements.nodePropertiesContent.querySelectorAll('.node-config-field');
+        configFields.forEach(field => {
+            field.addEventListener('change', function() {
+                updateNodeConfig(this);
+            });
+        });
+    }
+    
+    // Keep global references for backward compatibility (if needed)
+    window.updateNodeConfig = updateNodeConfig;
+    window.deleteNode = deleteNode;
 
     // Port interaction handlers
     function handlePortMouseDown(e, node, port) {

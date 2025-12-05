@@ -1,3 +1,41 @@
+// ===========================================================================
+// ELECTRON MODE BOOTSTRAP (FALLBACK)
+// Primary bootstrap is done via electron-bootstrap.js preloaded with -r flag.
+// This is a fallback in case the preload doesn't work or for direct execution.
+// ===========================================================================
+if (process.env.ELECTRON === 'true' || process.env.ELECTRON_RUN_AS_NODE === '1') {
+  const path = require('path');
+  const Module = require('module');
+  const nodeModulesPath = path.join(__dirname, 'node_modules');
+  
+  // Patch Module._nodeModulePaths for robust module resolution
+  const originalNodeModulePaths = Module._nodeModulePaths;
+  Module._nodeModulePaths = function(from) {
+    const paths = originalNodeModulePaths.call(this, from);
+    if (!paths.includes(nodeModulesPath)) {
+      paths.unshift(nodeModulesPath);
+    }
+    return paths;
+  };
+  
+  // Also add to current module's paths
+  if (!module.paths.includes(nodeModulesPath)) {
+    module.paths.unshift(nodeModulesPath);
+  }
+  
+  // Update NODE_PATH for child processes
+  const currentNodePath = process.env.NODE_PATH || '';
+  if (!currentNodePath.includes(nodeModulesPath)) {
+    process.env.NODE_PATH = currentNodePath 
+      ? `${nodeModulesPath}${path.delimiter}${currentNodePath}`
+      : nodeModulesPath;
+  }
+  
+  if (process.env.DEBUG_MODULE_PATHS === 'true') {
+    console.log('[Server Bootstrap] Module paths:', module.paths.slice(0, 5));
+  }
+}
+
 // Load environment variables first
 require('dotenv').config();
 
@@ -19,8 +57,31 @@ const { IFTTTEngine } = require('./modules/ifttt'); // IFTTT Engine (replaces ol
 const { GoalManager } = require('./modules/goals');
 const ConfigPathManager = require('./modules/config-path-manager');
 const UserProfileManager = require('./modules/user-profiles');
-const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integration
-const SessionExtractor = require('./modules/session-extractor');
+// PERFORMANCE OPTIMIZATION: VDONinjaManager is loaded via plugin system, removed direct import
+// const VDONinjaManager = require('./modules/vdoninja'); // PATCH: VDO.Ninja Integration
+
+// PERFORMANCE OPTIMIZATION: Lazy-load SessionExtractor - only needed for specific API endpoints
+let SessionExtractor;
+let sessionExtractorInstance;
+const getSessionExtractor = () => {
+    if (!sessionExtractorInstance) {
+        // Safety check: ensure dependencies are initialized
+        if (typeof db === 'undefined' || typeof configPathManager === 'undefined') {
+            throw new Error('SessionExtractor cannot be initialized: db or configPathManager not yet available');
+        }
+        try {
+            if (!SessionExtractor) {
+                SessionExtractor = require('./modules/session-extractor');
+            }
+            sessionExtractorInstance = new SessionExtractor(db, configPathManager);
+            logger.info('🔐 Session Extractor initialized (lazy)');
+        } catch (error) {
+            logger.error('Failed to initialize SessionExtractor:', error.message);
+            throw error;
+        }
+    }
+    return sessionExtractorInstance;
+};
 
 // Import New Modules
 const logger = require('./modules/logger');
@@ -30,7 +91,20 @@ const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
 const Leaderboard = require('./modules/leaderboard');
-const { setupSwagger } = require('./modules/swagger-config');
+// PERFORMANCE OPTIMIZATION: Lazy-load Swagger - only when DISABLE_SWAGGER is not set
+let setupSwagger;
+const getSwaggerSetup = () => {
+    if (!setupSwagger) {
+        try {
+            setupSwagger = require('./modules/swagger-config').setupSwagger;
+        } catch (error) {
+            console.error('Failed to load Swagger configuration:', error.message);
+            // Return a no-op function to prevent crashes
+            return () => {};
+        }
+    }
+    return setupSwagger;
+};
 const PluginLoader = require('./modules/plugin-loader');
 const { setupPluginRoutes } = require('./routes/plugin-routes');
 const { setupDebugRoutes } = require('./routes/debug-routes');
@@ -43,6 +117,13 @@ const CloudSyncEngine = require('./modules/cloud-sync');
 // ========== EXPRESS APP ==========
 const app = express();
 const server = http.createServer(app);
+
+// Trust proxy configuration for rate limiting when behind a reverse proxy
+// Set to 1 for single proxy (nginx, cloudflare, etc.), or 'loopback' for localhost only
+// This ensures req.ip returns the correct client IP address
+if (process.env.TRUST_PROXY === 'true' || process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
 
 // ========== SOCKET.IO CONFIGURATION ==========
 // Configure Socket.IO with proper CORS and transport settings for OBS BrowserSource compatibility
@@ -300,9 +381,9 @@ const iftttServices = {
 const iftttEngine = new IFTTTEngine(db, logger, iftttServices);
 logger.info('⚡ IFTTT Engine initialized (replaces FlowEngine)');
 
-// Session Extractor for TikTok authentication
-const sessionExtractor = new SessionExtractor(db, configPathManager);
-logger.info('🔐 Session Extractor initialized');
+// PERFORMANCE OPTIMIZATION: Session Extractor is now lazy-loaded
+// It will be initialized on first use via getSessionExtractor()
+// This saves ~50-100ms at startup for users who don't use session extraction
 
 // New Modules
 const obs = new OBSWebSocket(db, io, logger);
@@ -311,7 +392,7 @@ const leaderboard = new Leaderboard(db, io, logger);
 
 // Plugin-System initialisieren
 const pluginsDir = path.join(__dirname, 'plugins');
-const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger);
+const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger, configPathManager);
 logger.info('🔌 Plugin Loader initialized');
 
 // Add pluginLoader to IFTTT services so actions can access plugins
@@ -354,8 +435,14 @@ logger.info('☁️  Cloud Sync Engine initialized');
 logger.info('✅ All modules initialized');
 
 // ========== SWAGGER DOCUMENTATION ==========
-setupSwagger(app);
-logger.info('📚 Swagger API Documentation available at /api-docs');
+// PERFORMANCE OPTIMIZATION: Swagger is conditionally loaded
+// Set DISABLE_SWAGGER=true to skip Swagger initialization (~50ms savings)
+if (process.env.DISABLE_SWAGGER !== 'true') {
+    getSwaggerSetup()(app);
+    logger.info('📚 Swagger API Documentation available at /api-docs');
+} else {
+    logger.info('📚 Swagger API Documentation disabled (DISABLE_SWAGGER=true)');
+}
 
 // ========== PLUGIN ROUTES ==========
 setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger, io);
@@ -893,6 +980,43 @@ app.get('/api/status', apiLimiter, (req, res) => {
     });
 });
 
+// Get live statistics in a standardized format for plugins
+// This endpoint is designed for real-time polling (recommended: every 2 seconds)
+app.get('/api/live-stats', apiLimiter, (req, res) => {
+    try {
+        const stats = tiktok.stats || {};
+        const streamDuration = tiktok.streamStartTime 
+            ? Math.floor((Date.now() - tiktok.streamStartTime) / 1000)
+            : 0;
+        
+        // Format runtime as HH:MM:SS
+        const hours = Math.floor(streamDuration / 3600);
+        const minutes = Math.floor((streamDuration % 3600) / 60);
+        const seconds = streamDuration % 60;
+        const runtimeFormatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        res.json({
+            success: true,
+            isConnected: tiktok.isActive(),
+            username: tiktok.currentUsername,
+            stats: {
+                runtime: runtimeFormatted,
+                streamDuration: streamDuration,
+                viewers: stats.viewers || 0,
+                likes: stats.likes || 0,
+                coins: stats.totalCoins || 0,
+                followers: stats.followers || 0,
+                gifts: stats.gifts || 0,
+                shares: stats.shares || 0
+            },
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        logger.error('Live stats error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Get deduplication statistics
 app.get('/api/deduplication-stats', apiLimiter, (req, res) => {
     try {
@@ -956,7 +1080,7 @@ app.post('/api/session/extract', authLimiter, async (req, res) => {
             executablePath: req.body.executablePath || null
         };
         
-        const result = await sessionExtractor.extractSessionId(options);
+        const result = await getSessionExtractor().extractSessionId(options);
         
         if (result.success) {
             logger.info('✅ Session extraction successful');
@@ -982,7 +1106,7 @@ app.post('/api/session/extract-manual', authLimiter, async (req, res) => {
             executablePath: req.body.executablePath || null
         };
         
-        const result = await sessionExtractor.extractWithManualLogin(options);
+        const result = await getSessionExtractor().extractWithManualLogin(options);
         
         if (result.success) {
             logger.info('✅ Manual session extraction successful');
@@ -1003,7 +1127,7 @@ app.post('/api/session/extract-manual', authLimiter, async (req, res) => {
 
 app.get('/api/session/status', apiLimiter, (req, res) => {
     try {
-        const status = sessionExtractor.getSessionStatus();
+        const status = getSessionExtractor().getSessionStatus();
         res.json(status);
     } catch (error) {
         logger.error('Session status error:', error);
@@ -1017,7 +1141,7 @@ app.get('/api/session/status', apiLimiter, (req, res) => {
 app.delete('/api/session/clear', authLimiter, (req, res) => {
     try {
         logger.info('🗑️  Clearing session data...');
-        const result = sessionExtractor.clearSessionData();
+        const result = getSessionExtractor().clearSessionData();
         
         if (result.success) {
             logger.info('✅ Session data cleared');
@@ -1035,7 +1159,7 @@ app.delete('/api/session/clear', authLimiter, (req, res) => {
 
 app.get('/api/session/test-browser', apiLimiter, async (req, res) => {
     try {
-        const result = await sessionExtractor.testBrowserAvailability();
+        const result = await getSessionExtractor().testBrowserAvailability();
         res.json(result);
     } catch (error) {
         logger.error('Browser test error:', error);
@@ -1148,6 +1272,119 @@ app.post('/api/settings', apiLimiter, (req, res) => {
             return res.status(400).json({ success: false, error: error.message });
         }
         logger.error('Error saving settings:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ========== EVENT LOG API (Core Integration for Plugins) ==========
+
+/**
+ * Get event logs - provides a unified interface for plugins to read stream events
+ * This is the core integration point for other plugins to access TikTok stream data
+ */
+app.get('/api/event-logs', apiLimiter, (req, res) => {
+    try {
+        // Validate limit parameter
+        let limit = 100;
+        if (req.query.limit !== undefined) {
+            const parsedLimit = parseInt(req.query.limit, 10);
+            if (isNaN(parsedLimit) || parsedLimit < 1) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Invalid limit parameter. Must be a positive integer.' 
+                });
+            }
+            limit = Math.min(parsedLimit, 1000);
+        }
+        
+        const eventType = req.query.type || null;
+        const since = req.query.since || null;
+        
+        const logs = db.getEventLogsFiltered({ limit, eventType, since });
+        res.json({ 
+            success: true, 
+            count: logs.length,
+            logs 
+        });
+    } catch (error) {
+        logger.error('Error fetching event logs:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * Get event log statistics
+ */
+app.get('/api/event-logs/stats', apiLimiter, (req, res) => {
+    try {
+        const stats = db.getEventLogStats();
+        res.json({ success: true, stats });
+    } catch (error) {
+        logger.error('Error fetching event log stats:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * Get the latest event of a specific type
+ */
+app.get('/api/event-logs/latest/:type', apiLimiter, (req, res) => {
+    try {
+        const eventType = req.params.type;
+        const validTypes = ['chat', 'gift', 'follow', 'share', 'like', 'subscribe'];
+        
+        if (!validTypes.includes(eventType)) {
+            return res.status(400).json({ 
+                success: false, 
+                error: `Invalid event type. Valid types: ${validTypes.join(', ')}` 
+            });
+        }
+        
+        const event = db.getLatestEvent(eventType);
+        res.json({ success: true, event });
+    } catch (error) {
+        logger.error('Error fetching latest event:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * Cleanup old event logs (admin operation)
+ */
+app.post('/api/event-logs/cleanup', authLimiter, (req, res) => {
+    try {
+        // Validate keepCount parameter
+        let keepCount = 1000;
+        if (req.body.keepCount !== undefined) {
+            const parsedKeepCount = parseInt(req.body.keepCount, 10);
+            if (isNaN(parsedKeepCount) || parsedKeepCount < 100) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Invalid keepCount parameter. Must be an integer >= 100.' 
+                });
+            }
+            keepCount = parsedKeepCount;
+        }
+        
+        const deleted = db.cleanupEventLogs(keepCount);
+        logger.info(`🧹 Event log cleanup: deleted ${deleted} old entries, keeping ${keepCount}`);
+        res.json({ success: true, deleted, keepCount });
+    } catch (error) {
+        logger.error('Error during event log cleanup:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * Clear all event logs (admin operation)
+ */
+app.post('/api/event-logs/clear', authLimiter, (req, res) => {
+    try {
+        db.clearEventLogs();
+        logger.info('🗑️ All event logs cleared');
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Error clearing event logs:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -2745,7 +2982,244 @@ const PORT = process.env.PORT || 3000;
                 });
             }
 
-            res.status(404).send('Page not found');
+            // Get locale from request (set by i18n middleware) or default to 'en'
+            const locale = req.locale || 'en';
+            
+            // HTML escape helper function to prevent XSS
+            const escapeHtml = (str) => {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            };
+            
+            // Check if this is a plugin UI route and the plugin is disabled
+            // Plugin routes follow pattern: /{plugin-id}/ui or /{plugin-id}/overlay
+            const pathMatch = req.path.match(/^\/([a-z0-9_-]+)\/(ui|overlay)$/i);
+            if (pathMatch) {
+                const potentialPluginId = pathMatch[1];
+                const pluginPath = path.join(__dirname, 'plugins', potentialPluginId);
+                const manifestPath = path.join(pluginPath, 'plugin.json');
+                
+                // Check if plugin directory exists with manifest
+                if (fs.existsSync(manifestPath)) {
+                    try {
+                        const manifestData = fs.readFileSync(manifestPath, 'utf8');
+                        const manifest = JSON.parse(manifestData);
+                        
+                        // Check plugin state - it might be disabled or failed to load
+                        const isLoaded = pluginLoader.plugins.has(manifest.id);
+                        
+                        if (!isLoaded) {
+                            // Check if plugin is enabled in state but failed to load
+                            const pluginState = pluginLoader.state[manifest.id] || {};
+                            const isEnabledInState = pluginState.enabled === true;
+                            const isEnabledInManifest = manifest.enabled !== false;
+                            const isIntentionallyEnabled = isEnabledInState || (pluginState.enabled === undefined && isEnabledInManifest);
+                            
+                            // Plugin exists but is not loaded - show specific page
+                            const pluginName = escapeHtml(manifest.name || manifest.id);
+                            const pluginId = escapeHtml(manifest.id);
+                            
+                            // Different messages based on whether plugin is enabled but failed to load
+                            let title, heading, message, reason;
+                            if (isIntentionallyEnabled) {
+                                // Plugin is enabled but failed to load - likely an error
+                                title = escapeHtml(req.t ? req.t('errors.plugin_load_failed_title') : 'Plugin Failed to Load');
+                                heading = escapeHtml(req.t ? req.t('errors.plugin_load_failed_heading') : '⚠️ Plugin Failed to Load');
+                                message = (req.t ? req.t('errors.plugin_load_failed_message', { pluginName }) : `The "${pluginName}" plugin is enabled but failed to load.`);
+                                reason = escapeHtml(req.t ? req.t('errors.plugin_load_failed_reason') : 'Check the server logs for errors. Try reloading the plugin or restart the application.');
+                            } else {
+                                // Plugin is disabled
+                                title = escapeHtml(req.t ? req.t('errors.plugin_disabled_title') : 'Plugin Disabled');
+                                heading = escapeHtml(req.t ? req.t('errors.plugin_disabled_heading') : '🔌 Plugin is Disabled');
+                                message = (req.t ? req.t('errors.plugin_disabled_message', { pluginName }) : `The "${pluginName}" plugin is currently disabled.`);
+                                reason = escapeHtml(req.t ? req.t('errors.plugin_disabled_reason') : 'You can enable this plugin in the Plugin Manager or click the button below.');
+                            }
+                            const enableButton = escapeHtml(req.t ? req.t('errors.enable_plugin_button') : 'Enable Plugin');
+                            const enablingText = escapeHtml(req.t ? req.t('errors.enabling_plugin') : 'Enabling...');
+                            const successText = escapeHtml(req.t ? req.t('errors.plugin_enabled_success') : 'Plugin enabled! Redirecting...');
+                            const errorText = escapeHtml(req.t ? req.t('errors.plugin_enabled_error') : 'Failed to enable plugin. Please try again.');
+                            const pluginManagerLink = escapeHtml(req.t ? req.t('errors.go_to_plugin_manager') : 'Go to Plugin Manager');
+                            const backLink = escapeHtml(req.t ? req.t('errors.back_to_dashboard') : '← Back to Dashboard');
+                            
+                            return res.status(404).send(`<!DOCTYPE html>
+<html lang="${locale}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            padding: 40px;
+            max-width: 500px;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #f472b6;
+        }
+        p {
+            color: #94a3b8;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        .plugin-name {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+            margin-top: 24px;
+        }
+        .enable-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            min-width: 200px;
+        }
+        .enable-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        .enable-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .enable-btn.success {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+        .enable-btn.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .link-secondary {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .link-secondary:hover {
+            color: #60a5fa;
+        }
+        .status-message {
+            margin-top: 12px;
+            font-size: 0.9rem;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>${heading}</h1>
+        <p>${escapeHtml(message)}</p>
+        <p>${reason}</p>
+        <div class="button-container">
+            <button class="enable-btn" id="enableBtn" 
+                    data-plugin-id="${pluginId}"
+                    data-text-enabling="${enablingText}"
+                    data-text-success="${successText}"
+                    data-text-error="${errorText}">
+                ${enableButton}
+            </button>
+            <div class="status-message" id="statusMessage"></div>
+            <a href="/dashboard.html#plugins" class="link-secondary">${pluginManagerLink}</a>
+            <a href="/dashboard.html">${backLink}</a>
+        </div>
+    </div>
+    <script src="/js/plugin-enable.js"></script>
+</body>
+</html>`);
+                        }
+                    } catch (e) {
+                        // Failed to read/parse manifest, fall through to generic 404
+                        logger.warn(`Failed to check plugin manifest for ${potentialPluginId}: ${e.message}`);
+                    }
+                }
+            }
+            
+            // Get translated messages using req.t (i18n helper attached by middleware)
+            const title = escapeHtml(req.t ? req.t('errors.page_not_found_title') : 'Page Not Found');
+            const heading = escapeHtml(req.t ? req.t('errors.page_not_found_heading') : '🔌 Page Not Found');
+            const message = escapeHtml(req.t ? req.t('errors.page_not_found_message') : 'This page or plugin is not available.');
+            const reason = escapeHtml(req.t ? req.t('errors.page_not_found_reason') : 'The plugin may be disabled or the route doesn\'t exist.');
+            const backLink = escapeHtml(req.t ? req.t('errors.back_to_dashboard') : '← Back to Dashboard');
+
+            // Return proper HTML with DOCTYPE to prevent Quirks Mode in browsers/iframes
+            res.status(404).send(`<!DOCTYPE html>
+<html lang="${locale}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            padding: 40px;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #f472b6;
+        }
+        p {
+            color: #94a3b8;
+            margin-bottom: 1.5rem;
+        }
+        a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>${heading}</h1>
+        <p>${message}<br>${reason}</p>
+        <a href="/dashboard.html">${backLink}</a>
+    </div>
+</body>
+</html>`);
         });
 
         // Browser automatisch öffnen (mit Guard gegen Duplikate)

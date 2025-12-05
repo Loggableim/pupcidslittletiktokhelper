@@ -19,6 +19,122 @@ let debugLogs = [];
 let updateInterval = null;
 let currentTab = 'dashboard';
 
+// Pattern step defaults
+const DEFAULT_STEP_INTENSITY = 50;
+const DEFAULT_STEP_DURATION = 500;
+const MODAL_RENDER_DELAY_MS = 50;
+const MAX_DEBUG_LOGS = 200;
+
+// ====================================================================
+// DEBUG LOGGING FUNCTIONS
+// ====================================================================
+
+let debugVerbose = false;
+
+function addDebugLog(level, message) {
+    // Validate level parameter
+    if (!level || typeof level !== 'string') {
+        level = 'info';
+    }
+    
+    const timestamp = new Date().toISOString().substring(11, 23); // HH:MM:SS.mmm
+    const log = {
+        timestamp,
+        level,
+        message: message || ''
+    };
+    
+    debugLogs.push(log);
+    
+    // Keep only last MAX_DEBUG_LOGS entries
+    if (debugLogs.length > MAX_DEBUG_LOGS) {
+        debugLogs.shift();
+    }
+    
+    // Update UI
+    renderDebugLog();
+    
+    // Also log to console
+    const consoleMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
+    console[consoleMethod](`[OpenShock Debug] [${level.toUpperCase()}] ${message}`);
+}
+
+function renderDebugLog() {
+    const container = document.getElementById('debugLog');
+    if (!container) return;
+    
+    if (debugLogs.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">Debug log is empty. Pattern operations will be logged here.</p>';
+        return;
+    }
+    
+    const levelColors = {
+        'error': '#ef4444',
+        'warn': '#f59e0b',
+        'info': '#3b82f6',
+        'success': '#10b981',
+        'debug': '#6b7280'
+    };
+    
+    const levelIcons = {
+        'error': '❌',
+        'warn': '⚠️',
+        'info': 'ℹ️',
+        'success': '✅',
+        'debug': '🔍'
+    };
+    
+    const logsToShow = debugVerbose ? debugLogs : debugLogs.filter(log => log.level !== 'debug');
+    
+    const html = logsToShow.map(log => {
+        const safeLevel = log.level || 'info';
+        return `
+        <div class="debug-log-entry" style="border-left: 3px solid ${levelColors[safeLevel] || '#6b7280'};">
+            <span class="debug-log-time">${log.timestamp}</span>
+            <span class="debug-log-level" style="color: ${levelColors[safeLevel] || '#6b7280'}">
+                ${levelIcons[safeLevel] || '•'} ${safeLevel.toUpperCase()}
+            </span>
+            <span class="debug-log-message">${escapeHtml(log.message || '')}</span>
+        </div>
+    `;
+    }).reverse().join('');
+    
+    container.innerHTML = html;
+    
+    // Auto-scroll to bottom (newest first, so top)
+    container.scrollTop = 0;
+}
+
+function clearDebugLog() {
+    debugLogs = [];
+    renderDebugLog();
+    addDebugLog('info', 'Debug log cleared');
+}
+
+function exportDebugLog() {
+    const dataStr = JSON.stringify(debugLogs, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+    const exportFileDefaultName = `openshock-debug-${Date.now()}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    addDebugLog('info', `Debug log exported (${debugLogs.length} entries)`);
+}
+
+function toggleDebugVerbose() {
+    debugVerbose = !debugVerbose;
+    renderDebugLog();
+    const btn = document.getElementById('toggleDebugVerbose');
+    if (btn) {
+        btn.textContent = debugVerbose ? '📊 Normal' : '📊 Verbose';
+        btn.classList.toggle('btn-primary', debugVerbose);
+    }
+    addDebugLog('info', `Verbose mode ${debugVerbose ? 'enabled' : 'disabled'}`);
+}
+
 // ====================================================================
 // INITIALIZATION
 // ====================================================================
@@ -472,49 +588,16 @@ function renderMappingList() {
 }
 
 function renderPatternList() {
-    const presetContainer = document.getElementById('presetPatternsList');
     const customContainer = document.getElementById('customPatternsList');
     
-    if (!presetContainer || !customContainer) return;
+    if (!customContainer) return;
 
-    // Separate preset and custom patterns
-    const presetPatterns = patterns.filter(p => p.preset === true);
+    // Only show custom patterns (no presets)
     const customPatterns = patterns.filter(p => p.preset !== true);
-
-    // Render preset patterns
-    if (presetPatterns.length === 0) {
-        presetContainer.innerHTML = `<p class="text-muted text-center">No preset patterns available.</p>`;
-    } else {
-        const presetHtml = presetPatterns.map(pattern => `
-            <div class="pattern-card">
-                <div class="pattern-header">
-                    <h3 class="pattern-name">${escapeHtml(pattern.name)}</h3>
-                </div>
-                <div class="pattern-body">
-                    ${pattern.description ? `<p class="pattern-description">${escapeHtml(pattern.description)}</p>` : ''}
-                    <div class="pattern-info">
-                        <span>📊 ${pattern.steps?.length || 0} steps</span>
-                        <span>⏱️ ${formatDuration(calculatePatternDuration(pattern.steps || []))}</span>
-                    </div>
-                </div>
-                <div class="pattern-footer">
-                    <select id="pattern-device-${escapeHtml(pattern.id)}" data-pattern-id="${escapeHtml(pattern.id)}" class="form-select form-select-sm pattern-device-select">
-                        <option value="">Select device...</option>
-                        ${devices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('')}
-                    </select>
-                    <button data-pattern-id="${escapeHtml(pattern.id)}"
-                            class="btn btn-sm btn-primary execute-pattern-btn">
-                        ▶️ Test
-                    </button>
-                </div>
-            </div>
-        `).join('');
-        presetContainer.innerHTML = presetHtml;
-    }
 
     // Render custom patterns
     if (customPatterns.length === 0) {
-        customContainer.innerHTML = `<p class="text-muted text-center">No custom patterns created yet.</p>`;
+        customContainer.innerHTML = `<p class="text-muted text-center">Noch keine Patterns erstellt. Klicke auf "Neues Pattern" um eines zu erstellen.</p>`;
     } else {
         const customHtml = customPatterns.map(pattern => `
             <div class="pattern-card">
@@ -534,18 +617,18 @@ function renderPatternList() {
                 <div class="pattern-body">
                     ${pattern.description ? `<p class="pattern-description">${escapeHtml(pattern.description)}</p>` : ''}
                     <div class="pattern-info">
-                        <span>📊 ${pattern.steps?.length || 0} steps</span>
+                        <span>📊 ${pattern.steps?.length || 0} Schritte</span>
                         <span>⏱️ ${formatDuration(calculatePatternDuration(pattern.steps || []))}</span>
                     </div>
                 </div>
                 <div class="pattern-footer">
                     <select id="pattern-device-${escapeHtml(pattern.id)}" data-pattern-id="${escapeHtml(pattern.id)}" class="form-select form-select-sm pattern-device-select">
-                        <option value="">Select device...</option>
+                        <option value="">Gerät wählen...</option>
                         ${devices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('')}
                     </select>
                     <button data-pattern-id="${escapeHtml(pattern.id)}"
                             class="btn btn-sm btn-primary execute-pattern-btn">
-                        ▶️ Execute
+                        ▶️ Ausführen
                     </button>
                 </div>
             </div>
@@ -710,6 +793,7 @@ function openMappingModal(mappingId = null) {
             type: mapping.eventType,
             giftName: mapping.conditions.giftName,
             minCoins: mapping.conditions.minCoins,
+            maxCoins: mapping.conditions.maxCoins,
             messagePattern: mapping.conditions.messagePattern
         };
     }
@@ -729,11 +813,11 @@ function populateTriggerFields(trigger) {
 
     // Show/hide condition groups based on event type
     const conditionGift = document.getElementById('conditionGift');
-    const conditionMinCoins = document.getElementById('conditionMinCoins');
+    const conditionCoinRange = document.getElementById('conditionCoinRange');
     const conditionMessagePattern = document.getElementById('conditionMessagePattern');
 
     if (conditionGift) conditionGift.style.display = type === 'gift' ? 'block' : 'none';
-    if (conditionMinCoins) conditionMinCoins.style.display = type === 'gift' ? 'block' : 'none';
+    if (conditionCoinRange) conditionCoinRange.style.display = type === 'gift' ? 'block' : 'none';
     if (conditionMessagePattern) conditionMessagePattern.style.display = type === 'chat' ? 'block' : 'none';
 
     // Set values if editing
@@ -741,6 +825,7 @@ function populateTriggerFields(trigger) {
         const giftNameSelect = document.getElementById('mappingGiftNameSelect');
         const giftNameInput = document.getElementById('mappingGiftName');
         const minCoinsInput = document.getElementById('mappingMinCoins');
+        const maxCoinsInput = document.getElementById('mappingMaxCoins');
         const messagePatternInput = document.getElementById('mappingMessagePattern');
 
         if (trigger.giftName) {
@@ -756,6 +841,7 @@ function populateTriggerFields(trigger) {
             }
         }
         if (minCoinsInput && trigger.minCoins !== undefined) minCoinsInput.value = trigger.minCoins;
+        if (maxCoinsInput && trigger.maxCoins !== undefined) maxCoinsInput.value = trigger.maxCoins;
         if (messagePatternInput && trigger.messagePattern) messagePatternInput.value = trigger.messagePattern;
     }
 }
@@ -811,6 +897,8 @@ async function saveMappingModal() {
     const durationSlider = document.getElementById('mappingDuration');
     const patternSelect = document.getElementById('mappingPattern');
 
+    addDebugLog('info', `Saving mapping (${isEdit ? 'edit' : 'new'})`);
+
     // Collect trigger data and convert to backend format
     const triggerData = collectTriggerData();
     
@@ -825,6 +913,7 @@ async function saveMappingModal() {
             patternId: selectedPatternId,
             deviceId: deviceSelect?.value || ''
         };
+        addDebugLog('debug', `Mapping action: pattern ${selectedPatternId}`);
     } else {
         // Create a command-type action (single pulse)
         action = {
@@ -834,6 +923,7 @@ async function saveMappingModal() {
             intensity: parseInt(intensitySlider?.value) || 50,
             duration: parseInt(durationSlider?.value) || 1000
         };
+        addDebugLog('debug', `Mapping action: command ${action.commandType}`);
     }
     
     const mapping = {
@@ -844,14 +934,19 @@ async function saveMappingModal() {
             // Convert trigger fields to conditions format
             giftName: triggerData.giftName,
             minCoins: triggerData.minCoins || 0,
+            maxCoins: triggerData.maxCoins, // Can be undefined for no upper limit
             messagePattern: triggerData.messagePattern
         },
         action: action
     };
 
+    addDebugLog('info', `Mapping data: ${JSON.stringify(mapping, null, 2)}`);
+
     try {
         const url = isEdit ? `/api/openshock/mappings/${mappingId}` : '/api/openshock/mappings';
         const method = isEdit ? 'PUT' : 'POST';
+
+        addDebugLog('info', `Sending ${method} request to ${url}`);
 
         const response = await fetch(url, {
             method,
@@ -859,16 +954,27 @@ async function saveMappingModal() {
             body: JSON.stringify(mapping)
         });
 
-        if (!response.ok) throw new Error('Failed to save mapping');
+        addDebugLog('info', `Response status: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            addDebugLog('error', `Server error: ${JSON.stringify(errorData)}`);
+            throw new Error(errorData.error || 'Failed to save mapping');
+        }
+
+        const responseData = await response.json();
+        addDebugLog('success', `Mapping saved successfully: ${JSON.stringify(responseData)}`);
 
         await loadMappings();
         renderMappingList();
         closeModal('mappingModal');
 
-        showNotification(`Mapping ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        showNotification(`Mapping ${isEdit ? 'aktualisiert' : 'erstellt'}`, 'success');
+        addDebugLog('info', `Mapping "${mapping.name}" ${isEdit ? 'updated' : 'created'} successfully`);
     } catch (error) {
         console.error('[OpenShock] Error saving mapping:', error);
-        showNotification('Error saving mapping', 'error');
+        addDebugLog('error', `Mapping save error: ${error.message}`);
+        showNotification(`Fehler beim Speichern: ${error.message}`, 'error');
     }
 }
 
@@ -881,6 +987,7 @@ function collectTriggerData() {
         const giftNameSelect = document.getElementById('mappingGiftNameSelect');
         const giftNameInput = document.getElementById('mappingGiftName');
         const minCoinsInput = document.getElementById('mappingMinCoins');
+        const maxCoinsInput = document.getElementById('mappingMaxCoins');
         
         // Prefer manual input over select dropdown (manual input takes precedence)
         if (giftNameInput?.value) {
@@ -890,6 +997,7 @@ function collectTriggerData() {
         }
         
         if (minCoinsInput?.value) trigger.minCoins = parseInt(minCoinsInput.value);
+        if (maxCoinsInput?.value) trigger.maxCoins = parseInt(maxCoinsInput.value);
     } else if (type === 'chat') {
         const messagePatternInput = document.getElementById('mappingMessagePattern');
         if (messagePatternInput?.value) trigger.messagePattern = messagePatternInput.value;
@@ -1049,15 +1157,16 @@ function openPatternModal(patternId = null) {
     const modal = document.getElementById('patternModal');
     if (!modal) return;
 
-    const isEdit = patternId !== null;
+    const isEdit = patternId !== null && patternId !== 'add';
     const pattern = isEdit ? patterns.find(p => p.id === patternId) : null;
 
     const modalTitle = document.getElementById('patternModalTitle');
     const nameInput = document.getElementById('patternName');
     const descriptionInput = document.getElementById('patternDescription');
+    const stepCountLabel = document.getElementById('stepCountLabel');
 
     if (modalTitle) {
-        modalTitle.textContent = isEdit ? 'Edit Pattern' : 'Add Pattern';
+        modalTitle.textContent = isEdit ? 'Edit Pattern' : 'Create New Pattern';
     }
 
     // Store pattern ID in modal data attribute
@@ -1070,7 +1179,27 @@ function openPatternModal(patternId = null) {
     if (nameInput) nameInput.value = pattern?.name || '';
     if (descriptionInput) descriptionInput.value = pattern?.description || '';
 
-    currentPatternSteps = pattern?.steps ? JSON.parse(JSON.stringify(pattern.steps)) : [];
+    currentPatternSteps = pattern?.steps ? structuredClone(pattern.steps) : [];
+    
+    // Update step count label
+    if (stepCountLabel) {
+        stepCountLabel.textContent = currentPatternSteps.length;
+    }
+    
+    // Reset the quick add form to defaults
+    const typeSelect = document.getElementById('stepType');
+    const intensitySlider = document.getElementById('stepIntensity');
+    const durationInput = document.getElementById('stepDuration');
+    const intensityValue = document.getElementById('stepIntensityValue');
+    
+    if (typeSelect) typeSelect.value = 'shock';
+    if (intensitySlider) intensitySlider.value = DEFAULT_STEP_INTENSITY;
+    if (durationInput) durationInput.value = DEFAULT_STEP_DURATION;
+    if (intensityValue) intensityValue.textContent = String(DEFAULT_STEP_INTENSITY);
+    
+    // Update step form visibility
+    updateStepFormVisibility();
+    
     renderPatternSteps();
 
     openModal('patternModal');
@@ -1078,25 +1207,67 @@ function openPatternModal(patternId = null) {
 
 function renderPatternSteps() {
     const container = document.getElementById('patternSteps');
+    const stepCountLabel = document.getElementById('stepCountLabel');
+    const clearAllBtn = document.getElementById('clearAllSteps');
+    const patternInfo = document.getElementById('patternInfo');
+    const totalDurationSpan = document.getElementById('totalDuration');
+    
     if (!container) return;
 
+    // Update step count
+    if (stepCountLabel) {
+        stepCountLabel.textContent = currentPatternSteps.length.toString();
+    }
+
+    // Show/hide clear all button
+    if (clearAllBtn) {
+        clearAllBtn.style.display = currentPatternSteps.length > 0 ? 'inline-block' : 'none';
+    }
+
     if (currentPatternSteps.length === 0) {
-        container.innerHTML = '<p class="text-muted text-center">No steps added yet. Click "Add Step" to begin.</p>';
+        container.innerHTML = '<div class="text-muted text-center p-3">Noch keine Schritte hinzugefügt. Füge oben deinen ersten Schritt hinzu.</div>';
+        if (patternInfo) patternInfo.style.display = 'none';
+        renderPatternPreview();
         return;
     }
+
+    // Calculate total duration (sum of all step durations)
+    let totalDuration = 0;
+    currentPatternSteps.forEach(step => {
+        totalDuration += (step.duration || 0);
+    });
+
+    // Show duration info
+    if (patternInfo) {
+        patternInfo.style.display = 'block';
+    }
+    if (totalDurationSpan) {
+        totalDurationSpan.textContent = formatDuration(totalDuration);
+    }
+
+    // Render steps with German labels
+    const stepTypeLabels = {
+        'shock': '⚡ Schock',
+        'vibrate': '📳 Vibration',
+        'pause': '⏸️ Pause'
+    };
 
     const html = currentPatternSteps.map((step, index) => `
         <div class="pattern-step">
             <div class="pattern-step-number">${index + 1}</div>
             <div class="pattern-step-content">
-                <span class="pattern-step-type">${escapeHtml(step.type)}</span>
-                <span>Intensity: ${step.intensity}%</span>
-                <span>Duration: ${step.duration}ms</span>
-                ${step.delay ? `<span>Delay: ${step.delay}ms</span>` : ''}
+                <span class="pattern-step-type"><strong>${stepTypeLabels[step.type] || step.type}</strong></span>
+                ${step.type !== 'pause' ? `<span>Intensität: ${step.intensity}%</span>` : ''}
+                <span>Dauer: ${step.duration}ms</span>
             </div>
-            <button data-step-index="${index}" class="btn btn-sm btn-danger remove-pattern-step-btn">
-                🗑️
-            </button>
+            <div class="pattern-step-actions">
+                <button data-step-index="${index}" class="btn btn-sm btn-secondary edit-pattern-step-btn" title="Bearbeiten">
+                    ✏️
+                </button>
+                <button data-step-index="${index}" class="btn btn-sm btn-danger remove-pattern-step-btn" title="Löschen">
+                    🗑️
+                </button>
+            </div>
         </div>
     `).join('');
 
@@ -1105,26 +1276,8 @@ function renderPatternSteps() {
 }
 
 function showStepForm() {
-    // Show the step form so user can configure the step
-    const stepForm = document.getElementById('stepForm');
-    if (stepForm) {
-        stepForm.classList.remove('step-form-hidden');
-    }
-    
-    // Reset form to default values
-    const typeSelect = document.getElementById('stepType');
-    const intensitySlider = document.getElementById('stepIntensity');
-    const durationInput = document.getElementById('stepDuration');
-    const delayInput = document.getElementById('stepDelay');
-    const intensityValue = document.getElementById('stepIntensityValue');
-    
-    if (typeSelect) typeSelect.value = 'shock';
-    if (intensitySlider) intensitySlider.value = 50;
-    if (durationInput) durationInput.value = 500;
-    if (delayInput) delayInput.value = 0;
-    if (intensityValue) intensityValue.textContent = 50;
-    
-    // Show/hide intensity based on step type
+    // No longer needed - the step form is now always visible
+    // Just update the visibility based on step type
     updateStepFormVisibility();
 }
 
@@ -1146,36 +1299,91 @@ function addPatternStep() {
     const typeSelect = document.getElementById('stepType');
     const intensitySlider = document.getElementById('stepIntensity');
     const durationInput = document.getElementById('stepDuration');
-    const delayInput = document.getElementById('stepDelay');
 
     const step = {
         type: typeSelect?.value || 'shock',
-        intensity: parseInt(intensitySlider?.value) || 50,
-        duration: parseInt(durationInput?.value) || 500,
-        delay: parseInt(delayInput?.value) || 0
+        intensity: parseInt(intensitySlider?.value) || DEFAULT_STEP_INTENSITY,
+        duration: parseInt(durationInput?.value) || DEFAULT_STEP_DURATION
     };
+
+    // For pause steps, intensity is not needed
+    if (step.type === 'pause') {
+        delete step.intensity;
+    }
+
+    addDebugLog('debug', `Adding step: ${JSON.stringify(step)}`);
 
     currentPatternSteps.push(step);
     renderPatternSteps();
-
-    // Reset form values
-    if (intensitySlider) intensitySlider.value = 50;
-    if (durationInput) durationInput.value = 500;
-    if (delayInput) delayInput.value = 0;
     
-    const intensityValue = document.getElementById('stepIntensityValue');
-    if (intensityValue) intensityValue.textContent = 50;
-
-    // Hide step form after adding (optional - could keep it open for adding multiple steps)
-    const stepForm = document.getElementById('stepForm');
-    if (stepForm) {
-        stepForm.classList.add('step-form-hidden');
+    // Update step count label
+    const stepCountLabel = document.getElementById('stepCountLabel');
+    if (stepCountLabel) {
+        stepCountLabel.textContent = currentPatternSteps.length;
     }
+
+    // Keep the form values for easy repeated additions (common pattern)
+    // Only reset intensity value display
+    const intensityValue = document.getElementById('stepIntensityValue');
+    if (intensityValue && intensitySlider) {
+        intensityValue.textContent = intensitySlider.value;
+    }
+    
+    // Use German labels for notification
+    const stepTypeLabels = {
+        'shock': '⚡ Schock',
+        'vibrate': '📳 Vibration',
+        'pause': '⏸️ Pause'
+    };
+    const stepLabel = stepTypeLabels[step.type] || step.type;
+    const intensityText = step.type !== 'pause' ? ` @ ${step.intensity}%` : '';
+    
+    showNotification(`Schritt ${currentPatternSteps.length} hinzugefügt: ${stepLabel}${intensityText}`, 'success');
 }
 
 function removePatternStep(index) {
     currentPatternSteps.splice(index, 1);
     renderPatternSteps();
+    
+    // Update step count label
+    const stepCountLabel = document.getElementById('stepCountLabel');
+    if (stepCountLabel) {
+        stepCountLabel.textContent = currentPatternSteps.length;
+    }
+}
+
+function editPatternStep(index) {
+    const step = currentPatternSteps[index];
+    if (!step) return;
+    
+    // Populate the form with step values
+    const typeSelect = document.getElementById('stepType');
+    const intensitySlider = document.getElementById('stepIntensity');
+    const intensityValue = document.getElementById('stepIntensityValue');
+    const durationInput = document.getElementById('stepDuration');
+    
+    if (typeSelect) typeSelect.value = step.type;
+    if (intensitySlider) {
+        intensitySlider.value = step.intensity || 50;
+        if (intensityValue) intensityValue.textContent = intensitySlider.value;
+    }
+    if (durationInput) durationInput.value = step.duration || 500;
+    
+    // Update visibility based on type
+    updateStepFormVisibility();
+    
+    // Remove the step from the array (will be re-added when user clicks "Add Step")
+    currentPatternSteps.splice(index, 1);
+    renderPatternSteps();
+    
+    // Scroll to the form
+    const quickStepForm = document.getElementById('quickStepForm');
+    if (quickStepForm) {
+        quickStepForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    
+    showNotification('Schritt zum Bearbeiten geladen. Passe die Werte an und klicke "Schritt hinzufügen".', 'info');
+    addDebugLog('info', `Editing step ${index + 1}: ${step.type}`);
 }
 
 function renderPatternPreview() {
@@ -1183,7 +1391,7 @@ function renderPatternPreview() {
     if (!container) return;
 
     if (currentPatternSteps.length === 0) {
-        container.innerHTML = '<p class="text-muted text-center pattern-timeline-text">Add steps to see preview</p>';
+        container.innerHTML = '<p class="text-muted text-center pattern-timeline-text">Schritte hinzufügen für Vorschau</p>';
         return;
     }
 
@@ -1229,22 +1437,36 @@ async function savePatternModal() {
     const isEdit = !!patternId;
 
     if (currentPatternSteps.length === 0) {
-        showNotification('Pattern must have at least one step', 'error');
+        showNotification('Pattern muss mindestens einen Schritt haben', 'error');
+        addDebugLog('error', 'Pattern save failed: No steps');
         return;
     }
 
     const nameInput = document.getElementById('patternName');
     const descriptionInput = document.getElementById('patternDescription');
 
+    const patternName = nameInput?.value?.trim();
+    if (!patternName) {
+        showNotification('Bitte gib einen Pattern-Namen ein', 'error');
+        addDebugLog('error', 'Pattern save failed: No name');
+        return;
+    }
+
     const pattern = {
-        name: nameInput?.value || 'Untitled Pattern',
+        name: patternName,
         description: descriptionInput?.value || '',
         steps: currentPatternSteps
     };
 
+    // Log pattern details
+    addDebugLog('info', `Saving pattern "${pattern.name}" with ${pattern.steps.length} steps`);
+    addDebugLog('debug', `Pattern data: ${JSON.stringify(pattern, null, 2)}`);
+
     try {
         const url = isEdit ? `/api/openshock/patterns/${patternId}` : '/api/openshock/patterns';
         const method = isEdit ? 'PUT' : 'POST';
+
+        addDebugLog('info', `Sending ${method} request to ${url}`);
 
         const response = await fetch(url, {
             method,
@@ -1252,21 +1474,32 @@ async function savePatternModal() {
             body: JSON.stringify(pattern)
         });
 
-        if (!response.ok) throw new Error('Failed to save pattern');
+        addDebugLog('info', `Response status: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            addDebugLog('error', `Server error: ${JSON.stringify(errorData)}`);
+            throw new Error(errorData.error || 'Failed to save pattern');
+        }
+
+        const responseData = await response.json();
+        addDebugLog('success', `Pattern saved successfully: ${JSON.stringify(responseData)}`);
 
         await loadPatterns();
         renderPatternList();
         closeModal('patternModal');
 
-        showNotification(`Pattern ${isEdit ? 'updated' : 'created'} successfully`, 'success');
+        showNotification(`Pattern "${patternName}" ${isEdit ? 'aktualisiert' : 'erstellt'}`, 'success');
+        addDebugLog('info', `Pattern "${patternName}" ${isEdit ? 'updated' : 'created'} successfully`);
     } catch (error) {
         console.error('[OpenShock] Error saving pattern:', error);
-        showNotification('Error saving pattern', 'error');
+        addDebugLog('error', `Pattern save error: ${error.message}`);
+        showNotification(`Fehler beim Speichern: ${error.message}`, 'error');
     }
 }
 
 async function deletePattern(id) {
-    if (!await confirmAction('Are you sure you want to delete this pattern?')) {
+    if (!await confirmAction('Möchtest du dieses Pattern wirklich löschen?')) {
         return;
     }
 
@@ -1279,16 +1512,16 @@ async function deletePattern(id) {
 
         await loadPatterns();
         renderPatternList();
-        showNotification('Pattern deleted successfully', 'success');
+        showNotification('Pattern gelöscht', 'success');
     } catch (error) {
         console.error('[OpenShock] Error deleting pattern:', error);
-        showNotification('Error deleting pattern', 'error');
+        showNotification('Fehler beim Löschen des Patterns', 'error');
     }
 }
 
 async function executePattern(id, deviceId) {
     if (!deviceId) {
-        showNotification('Please select a device', 'error');
+        showNotification('Bitte wähle ein Gerät aus', 'error');
         return;
     }
 
@@ -1301,10 +1534,10 @@ async function executePattern(id, deviceId) {
 
         if (!response.ok) throw new Error('Failed to execute pattern');
 
-        showNotification('Pattern execution started', 'success');
+        showNotification('Pattern wird ausgeführt', 'success');
     } catch (error) {
         console.error('[OpenShock] Error executing pattern:', error);
-        showNotification('Error executing pattern', 'error');
+        showNotification('Fehler beim Ausführen des Patterns', 'error');
     }
 }
 
@@ -1737,24 +1970,37 @@ function openCurveEditor() {
     const modal = document.getElementById('curveEditorModal');
     if (!modal) return;
     
+    // Show modal first
     modal.style.display = 'flex';
     
-    // Initialize curve editor if not already
-    if (!curveEditor) {
-        curveEditor = new CurveEditor();
-    } else {
-        curveEditor.clear();
-    }
-    
     // Load current settings
-    document.getElementById('curvePatternName').value = '';
-    document.getElementById('minIntensity').value = 10;
-    document.getElementById('maxIntensity').value = 80;
-    document.getElementById('stepDurationSlider').value = 500;
-    document.getElementById('stepDelaySlider').value = 100;
-    document.getElementById('resolutionSlider').value = 20;
+    const patternNameEl = document.getElementById('curvePatternName');
+    const minIntensityEl = document.getElementById('minIntensity');
+    const maxIntensityEl = document.getElementById('maxIntensity');
+    const stepDurationEl = document.getElementById('stepDurationSlider');
+    const stepDelayEl = document.getElementById('stepDelaySlider');
+    const resolutionEl = document.getElementById('resolutionSlider');
     
-    updateCurveEditorUI();
+    if (patternNameEl) patternNameEl.value = '';
+    if (minIntensityEl) minIntensityEl.value = 10;
+    if (maxIntensityEl) maxIntensityEl.value = 80;
+    if (stepDurationEl) stepDurationEl.value = 500;
+    if (stepDelayEl) stepDelayEl.value = 100;
+    if (resolutionEl) resolutionEl.value = 20;
+    
+    // Use setTimeout to ensure the modal is fully rendered before initializing canvas
+    setTimeout(() => {
+        // Initialize curve editor if not already
+        if (!curveEditor) {
+            curveEditor = new CurveEditor();
+        } else {
+            // Re-initialize canvas dimensions since modal was hidden
+            curveEditor.updateCanvasDimensions();
+            curveEditor.clear();
+        }
+        
+        updateCurveEditorUI();
+    }, MODAL_RENDER_DELAY_MS);
 }
 
 function closeCurveEditor() {
@@ -1765,19 +2011,41 @@ function closeCurveEditor() {
 }
 
 function updateCurveEditorUI() {
-    // Update slider values
-    document.getElementById('minIntensityValue').textContent = document.getElementById('minIntensity').value + '%';
-    document.getElementById('maxIntensityValue').textContent = document.getElementById('maxIntensity').value + '%';
-    document.getElementById('stepDurationValue').textContent = document.getElementById('stepDurationSlider').value + 'ms';
-    document.getElementById('stepDelayValue').textContent = document.getElementById('stepDelaySlider').value + 'ms';
-    document.getElementById('resolutionValue').textContent = document.getElementById('resolutionSlider').value;
+    // Update slider values with null checks
+    const minIntensityEl = document.getElementById('minIntensity');
+    const maxIntensityEl = document.getElementById('maxIntensity');
+    const stepDurationEl = document.getElementById('stepDurationSlider');
+    const stepDelayEl = document.getElementById('stepDelaySlider');
+    const resolutionEl = document.getElementById('resolutionSlider');
+    
+    const minIntensityValueEl = document.getElementById('minIntensityValue');
+    const maxIntensityValueEl = document.getElementById('maxIntensityValue');
+    const stepDurationValueEl = document.getElementById('stepDurationValue');
+    const stepDelayValueEl = document.getElementById('stepDelayValue');
+    const resolutionValueEl = document.getElementById('resolutionValue');
+    
+    if (minIntensityEl && minIntensityValueEl) {
+        minIntensityValueEl.textContent = minIntensityEl.value + '%';
+    }
+    if (maxIntensityEl && maxIntensityValueEl) {
+        maxIntensityValueEl.textContent = maxIntensityEl.value + '%';
+    }
+    if (stepDurationEl && stepDurationValueEl) {
+        stepDurationValueEl.textContent = stepDurationEl.value + 'ms';
+    }
+    if (stepDelayEl && stepDelayValueEl) {
+        stepDelayValueEl.textContent = stepDelayEl.value + 'ms';
+    }
+    if (resolutionEl && resolutionValueEl) {
+        resolutionValueEl.textContent = resolutionEl.value;
+    }
     
     if (curveEditor) {
-        curveEditor.minIntensity = parseInt(document.getElementById('minIntensity').value);
-        curveEditor.maxIntensity = parseInt(document.getElementById('maxIntensity').value);
-        curveEditor.stepDuration = parseInt(document.getElementById('stepDurationSlider').value);
-        curveEditor.stepDelay = parseInt(document.getElementById('stepDelaySlider').value);
-        curveEditor.resolution = parseInt(document.getElementById('resolutionSlider').value);
+        if (minIntensityEl) curveEditor.minIntensity = parseInt(minIntensityEl.value);
+        if (maxIntensityEl) curveEditor.maxIntensity = parseInt(maxIntensityEl.value);
+        if (stepDurationEl) curveEditor.stepDuration = parseInt(stepDurationEl.value);
+        if (stepDelayEl) curveEditor.stepDelay = parseInt(stepDelayEl.value);
+        if (resolutionEl) curveEditor.resolution = parseInt(resolutionEl.value);
         curveEditor.generatePreview();
     }
 }
@@ -2466,7 +2734,7 @@ function renderActionDetails(action) {
 }
 
 function calculatePatternDuration(steps) {
-    return steps.reduce((total, step) => total + step.duration + (step.delay || 0), 0);
+    return steps.reduce((total, step) => total + (step.duration || 0), 0);
 }
 
 // ====================================================================
@@ -2506,6 +2774,31 @@ function initializeEventDelegation() {
         exportLogBtn.addEventListener('click', (e) => {
             e.preventDefault();
             exportCommandLog();
+        });
+    }
+
+    // Debug log buttons
+    const clearDebugLogBtn = document.getElementById('clearDebugLog');
+    if (clearDebugLogBtn) {
+        clearDebugLogBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearDebugLog();
+        });
+    }
+
+    const exportDebugLogBtn = document.getElementById('exportDebugLog');
+    if (exportDebugLogBtn) {
+        exportDebugLogBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportDebugLog();
+        });
+    }
+
+    const toggleDebugVerboseBtn = document.getElementById('toggleDebugVerbose');
+    if (toggleDebugVerboseBtn) {
+        toggleDebugVerboseBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleDebugVerbose();
         });
     }
 
@@ -2614,6 +2907,19 @@ function initializeEventDelegation() {
         });
     }
 
+    // Clear all steps button
+    const clearAllStepsBtn = document.getElementById('clearAllSteps');
+    if (clearAllStepsBtn) {
+        clearAllStepsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('Alle Schritte löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+                currentPatternSteps = [];
+                renderPatternSteps();
+                showNotification('Alle Schritte gelöscht', 'info');
+            }
+        });
+    }
+
     const generateCurveBtn = document.getElementById('generateCurve');
     if (generateCurveBtn) {
         generateCurveBtn.addEventListener('click', (e) => {
@@ -2680,22 +2986,6 @@ function initializeEventDelegation() {
         clearQueueBtn.addEventListener('click', (e) => {
             e.preventDefault();
             clearQueue();
-        });
-    }
-
-    const clearDebugLogBtn = document.getElementById('clearDebugLog');
-    if (clearDebugLogBtn) {
-        clearDebugLogBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            clearDebugLog();
-        });
-    }
-
-    const exportDebugLogBtn = document.getElementById('exportDebugLog');
-    if (exportDebugLogBtn) {
-        exportDebugLogBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            exportDebugLog();
         });
     }
 
@@ -2867,25 +3157,12 @@ function initializeEventDelegation() {
     if (addPatternStepBtn) {
         addPatternStepBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            showStepForm();
+            addPatternStep();
         });
     }
 
-    const saveStepBtn = document.getElementById('saveStep');
-    if (saveStepBtn) {
-        saveStepBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            savePatternStep();
-        });
-    }
-
-    const cancelStepBtn = document.getElementById('cancelStep');
-    if (cancelStepBtn) {
-        cancelStepBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            cancelPatternStep();
-        });
-    }
+    // The saveStep and cancelStep buttons are no longer needed since the pattern form is always visible
+    // and adding a step is done directly via the addPatternStep button
 
     // Slider value updates
     const globalMaxIntensitySlider = document.getElementById('globalMaxIntensity');
@@ -3028,6 +3305,14 @@ function initializeEventDelegation() {
             const button = e.target.closest('.remove-pattern-step-btn');
             const stepIndex = parseInt(button.dataset.stepIndex);
             removePatternStep(stepIndex);
+        }
+
+        // Edit pattern step button
+        if (e.target.closest('.edit-pattern-step-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.edit-pattern-step-btn');
+            const stepIndex = parseInt(button.dataset.stepIndex);
+            editPatternStep(stepIndex);
         }
 
         // Test connection button (static button in settings)

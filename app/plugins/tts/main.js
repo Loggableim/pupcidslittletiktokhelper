@@ -37,64 +37,98 @@ class TTSPlugin {
         this.config = this._loadConfig();
 
         // Initialize engines (TikTok engine removed - no longer used)
+        // Only load engines that are enabled (as primary or fallback) to save system resources
         this.engines = {
-            google: null, // Initialized if API key is available
-            speechify: null, // Initialized if API key is available
-            elevenlabs: null, // Initialized if API key is available
-            openai: null // Initialized if API key is available
+            google: null, // Initialized if API key is available AND engine is enabled
+            speechify: null, // Initialized if API key is available AND engine is enabled
+            elevenlabs: null, // Initialized if API key is available AND engine is enabled
+            openai: null // Initialized if API key is available AND engine is enabled
         };
 
-        // Initialize Google engine if API key is configured
-        if (this.config.googleApiKey) {
+        // Helper function to check if an engine should be loaded
+        const shouldLoadEngine = (engineName) => {
+            // Always load the default/primary engine
+            if (this.config.defaultEngine === engineName) {
+                return true;
+            }
+            // Load fallback engines only if they are enabled
+            switch (engineName) {
+                case 'google':
+                    return this.config.enableGoogleFallback === true;
+                case 'speechify':
+                    return this.config.enableSpeechifyFallback === true;
+                case 'elevenlabs':
+                    return this.config.enableElevenlabsFallback === true;
+                case 'openai':
+                    return this.config.enableOpenAIFallback === true;
+                default:
+                    return false;
+            }
+        };
+
+        // Initialize Google engine if API key is configured AND engine is enabled
+        if (this.config.googleApiKey && shouldLoadEngine('google')) {
             this.engines.google = new GoogleEngine(
                 this.config.googleApiKey, 
                 this.logger, 
                 { performanceMode: this.config.performanceMode }
             );
             this.logger.info('TTS: ✅ Google Cloud TTS engine initialized');
-            this._logDebug('INIT', 'Google TTS engine initialized', { hasApiKey: true });
+            this._logDebug('INIT', 'Google TTS engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'google', isFallback: this.config.enableGoogleFallback });
+        } else if (this.config.googleApiKey) {
+            this.logger.info('TTS: ⏸️  Google Cloud TTS engine NOT loaded (disabled as fallback)');
+            this._logDebug('INIT', 'Google TTS engine NOT loaded', { hasApiKey: true, disabled: true });
         } else {
             this.logger.info('TTS: ⚠️  Google Cloud TTS engine NOT initialized (no API key)');
             this._logDebug('INIT', 'Google TTS engine NOT initialized', { hasApiKey: false });
         }
 
-        // Initialize Speechify engine if API key is configured
-        if (this.config.speechifyApiKey) {
+        // Initialize Speechify engine if API key is configured AND engine is enabled
+        if (this.config.speechifyApiKey && shouldLoadEngine('speechify')) {
             this.engines.speechify = new SpeechifyEngine(
                 this.config.speechifyApiKey,
                 this.logger,
                 { performanceMode: this.config.performanceMode }
             );
             this.logger.info('TTS: ✅ Speechify TTS engine initialized');
-            this._logDebug('INIT', 'Speechify TTS engine initialized', { hasApiKey: true });
+            this._logDebug('INIT', 'Speechify TTS engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'speechify', isFallback: this.config.enableSpeechifyFallback });
+        } else if (this.config.speechifyApiKey) {
+            this.logger.info('TTS: ⏸️  Speechify TTS engine NOT loaded (disabled as fallback)');
+            this._logDebug('INIT', 'Speechify TTS engine NOT loaded', { hasApiKey: true, disabled: true });
         } else {
             this.logger.info('TTS: ⚠️  Speechify TTS engine NOT initialized (no API key)');
             this._logDebug('INIT', 'Speechify TTS engine NOT initialized', { hasApiKey: false });
         }
 
-        // Initialize ElevenLabs engine if API key is configured
-        if (this.config.elevenlabsApiKey) {
+        // Initialize ElevenLabs engine if API key is configured AND engine is enabled
+        if (this.config.elevenlabsApiKey && shouldLoadEngine('elevenlabs')) {
             this.engines.elevenlabs = new ElevenLabsEngine(
                 this.config.elevenlabsApiKey,
                 this.logger,
                 { performanceMode: this.config.performanceMode }
             );
             this.logger.info('TTS: ✅ ElevenLabs TTS engine initialized');
-            this._logDebug('INIT', 'ElevenLabs TTS engine initialized', { hasApiKey: true });
+            this._logDebug('INIT', 'ElevenLabs TTS engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'elevenlabs', isFallback: this.config.enableElevenlabsFallback });
+        } else if (this.config.elevenlabsApiKey) {
+            this.logger.info('TTS: ⏸️  ElevenLabs TTS engine NOT loaded (disabled as fallback)');
+            this._logDebug('INIT', 'ElevenLabs TTS engine NOT loaded', { hasApiKey: true, disabled: true });
         } else {
             this.logger.info('TTS: ⚠️  ElevenLabs TTS engine NOT initialized (no API key)');
             this._logDebug('INIT', 'ElevenLabs TTS engine NOT initialized', { hasApiKey: false });
         }
 
-        // Initialize OpenAI engine if API key is configured
-        if (this.config.openaiApiKey) {
+        // Initialize OpenAI engine if API key is configured AND engine is enabled
+        if (this.config.openaiApiKey && shouldLoadEngine('openai')) {
             this.engines.openai = new OpenAIEngine(
                 this.config.openaiApiKey,
                 this.logger,
                 { performanceMode: this.config.performanceMode }
             );
             this.logger.info('TTS: ✅ OpenAI TTS engine initialized');
-            this._logDebug('INIT', 'OpenAI TTS engine initialized', { hasApiKey: true });
+            this._logDebug('INIT', 'OpenAI TTS engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'openai', isFallback: this.config.enableOpenAIFallback });
+        } else if (this.config.openaiApiKey) {
+            this.logger.info('TTS: ⏸️  OpenAI TTS engine NOT loaded (disabled as fallback)');
+            this._logDebug('INIT', 'OpenAI TTS engine NOT loaded', { hasApiKey: true, disabled: true });
         } else {
             this.logger.info('TTS: ⚠️  OpenAI TTS engine NOT initialized (no API key)');
             this._logDebug('INIT', 'OpenAI TTS engine NOT initialized', { hasApiKey: false });
@@ -129,6 +163,12 @@ class TTSPlugin {
             enabledForChat: this.config.enabledForChat,
             autoLanguageDetection: this.config.autoLanguageDetection,
             performanceMode: this.config.performanceMode,
+            enabledFallbacks: {
+                google: this.config.enableGoogleFallback,
+                speechify: this.config.enableSpeechifyFallback,
+                elevenlabs: this.config.enableElevenlabsFallback,
+                openai: this.config.enableOpenAIFallback
+            },
             startupTimestamp: this.startupTimestamp
         });
 
@@ -324,7 +364,12 @@ class TTSPlugin {
             languageMinTextLength: 10, // Minimum text length for reliable detection
             enableAutoFallback: true, // Enable automatic fallback to other engines when primary fails
             stripEmojis: false, // Strip emojis from TTS text (prevents emojis from being read aloud)
-            performanceMode: 'balanced' // Performance mode: 'fast' (low-resource), 'balanced', 'quality' (high-resource)
+            performanceMode: 'balanced', // Performance mode: 'fast' (low-resource), 'balanced', 'quality' (high-resource)
+            // Fallback engine activation settings - only activated engines are loaded
+            enableGoogleFallback: true, // Enable Google as fallback engine
+            enableSpeechifyFallback: false, // Enable Speechify as fallback engine
+            enableElevenlabsFallback: false, // Enable ElevenLabs as fallback engine
+            enableOpenAIFallback: false // Enable OpenAI as fallback engine
         };
 
         // Try to load from database
@@ -524,6 +569,90 @@ class TTSPlugin {
                             this.logger,
                             { ...this.config, performanceMode: updates.performanceMode }
                         );
+                    }
+                }
+
+                // Handle fallback engine enable/disable changes
+                // Note: Changes to fallback engines require a server restart to fully take effect
+                // This is because engine initialization happens at startup for resource efficiency
+                const fallbackChanged = (
+                    updates.enableGoogleFallback !== undefined ||
+                    updates.enableSpeechifyFallback !== undefined ||
+                    updates.enableElevenlabsFallback !== undefined ||
+                    updates.enableOpenAIFallback !== undefined ||
+                    updates.defaultEngine !== undefined
+                );
+                
+                if (fallbackChanged) {
+                    this._logDebug('CONFIG', 'Fallback engine settings changed', {
+                        enableGoogleFallback: updates.enableGoogleFallback,
+                        enableSpeechifyFallback: updates.enableSpeechifyFallback,
+                        enableElevenlabsFallback: updates.enableElevenlabsFallback,
+                        enableOpenAIFallback: updates.enableOpenAIFallback,
+                        defaultEngine: updates.defaultEngine
+                    });
+                    
+                    // Helper function to determine if an engine should be loaded
+                    const shouldLoadEngine = (engineName) => {
+                        const newDefaultEngine = updates.defaultEngine || this.config.defaultEngine;
+                        if (newDefaultEngine === engineName) return true;
+                        
+                        switch (engineName) {
+                            case 'google':
+                                return (updates.enableGoogleFallback !== undefined ? updates.enableGoogleFallback : this.config.enableGoogleFallback) === true;
+                            case 'speechify':
+                                return (updates.enableSpeechifyFallback !== undefined ? updates.enableSpeechifyFallback : this.config.enableSpeechifyFallback) === true;
+                            case 'elevenlabs':
+                                return (updates.enableElevenlabsFallback !== undefined ? updates.enableElevenlabsFallback : this.config.enableElevenlabsFallback) === true;
+                            case 'openai':
+                                return (updates.enableOpenAIFallback !== undefined ? updates.enableOpenAIFallback : this.config.enableOpenAIFallback) === true;
+                            default:
+                                return false;
+                        }
+                    };
+                    
+                    // Enable/Disable Google engine based on new settings
+                    if (this.config.googleApiKey) {
+                        if (shouldLoadEngine('google') && !this.engines.google) {
+                            this.engines.google = new GoogleEngine(this.config.googleApiKey, this.logger, { performanceMode: this.config.performanceMode });
+                            this.logger.info('TTS: ✅ Google engine enabled via config update');
+                        } else if (!shouldLoadEngine('google') && this.engines.google) {
+                            this.engines.google = null;
+                            this.logger.info('TTS: ⏸️  Google engine disabled via config update');
+                        }
+                    }
+                    
+                    // Enable/Disable Speechify engine based on new settings
+                    if (this.config.speechifyApiKey) {
+                        if (shouldLoadEngine('speechify') && !this.engines.speechify) {
+                            this.engines.speechify = new SpeechifyEngine(this.config.speechifyApiKey, this.logger, { performanceMode: this.config.performanceMode });
+                            this.logger.info('TTS: ✅ Speechify engine enabled via config update');
+                        } else if (!shouldLoadEngine('speechify') && this.engines.speechify) {
+                            this.engines.speechify = null;
+                            this.logger.info('TTS: ⏸️  Speechify engine disabled via config update');
+                        }
+                    }
+                    
+                    // Enable/Disable ElevenLabs engine based on new settings
+                    if (this.config.elevenlabsApiKey) {
+                        if (shouldLoadEngine('elevenlabs') && !this.engines.elevenlabs) {
+                            this.engines.elevenlabs = new ElevenLabsEngine(this.config.elevenlabsApiKey, this.logger, { performanceMode: this.config.performanceMode });
+                            this.logger.info('TTS: ✅ ElevenLabs engine enabled via config update');
+                        } else if (!shouldLoadEngine('elevenlabs') && this.engines.elevenlabs) {
+                            this.engines.elevenlabs = null;
+                            this.logger.info('TTS: ⏸️  ElevenLabs engine disabled via config update');
+                        }
+                    }
+                    
+                    // Enable/Disable OpenAI engine based on new settings
+                    if (this.config.openaiApiKey) {
+                        if (shouldLoadEngine('openai') && !this.engines.openai) {
+                            this.engines.openai = new OpenAIEngine(this.config.openaiApiKey, this.logger, { performanceMode: this.config.performanceMode });
+                            this.logger.info('TTS: ✅ OpenAI engine enabled via config update');
+                        } else if (!shouldLoadEngine('openai') && this.engines.openai) {
+                            this.engines.openai = null;
+                            this.logger.info('TTS: ⏸️  OpenAI engine disabled via config update');
+                        }
                     }
                 }
 

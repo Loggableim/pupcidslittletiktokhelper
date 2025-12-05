@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Config Import - Pup Cid's Little TikTok Helper</title>
     <link rel="stylesheet" href="/css/themes.css">
@@ -141,6 +142,9 @@
             background: rgba(34, 197, 94, 0.1);
             border: 1px solid rgba(34, 197, 94, 0.3);
             color: #4ade80;
+            white-space: pre-line; /* Preserve line breaks */
+            text-align: left; /* Better for multi-line messages */
+            font-family: inherit; /* Use normal font, not monospace */
         }
 
         .alert-error {
@@ -284,12 +288,16 @@
             <div class="help-section">
                 <h3>ℹ️ How to use this tool</h3>
                 <ol>
-                    <li>Enter the full path to your old installation directory</li>
+                    <li>Enter the full path to your old installation directory (or select the main folder containing an 'app/' subdirectory)</li>
+                    <li>Optional: Enter a custom name for the imported profile</li>
                     <li>Click "Validate Path" to check if configuration files exist</li>
                     <li>If the path is valid, click "Import Settings" to import your data</li>
                 </ol>
                 <div class="note">
-                    <strong>⚠️ Important:</strong> Existing settings will be overwritten. Consider creating a backup first!
+                    <strong>⚠️ Important:</strong> If a profile with the same name exists, a timestamp will be added automatically to avoid conflicts. The system will automatically search for config files in the app/ subdirectory if they're not found in the main directory.
+                </div>
+                <div class="note" style="margin-top: 12px; background: rgba(248, 113, 113, 0.1); color: #f87171;">
+                    <strong>🚨 Before Importing:</strong> Close the old installation of the application if it's running. Database files that are currently in use may not be imported correctly due to file locks. This is especially important on Windows systems.
                 </div>
             </div>
         </div>
@@ -310,6 +318,20 @@
                 >
             </div>
 
+            <div class="form-group">
+                <label for="profileName">Profile Name (optional):</label>
+                <input 
+                    type="text" 
+                    id="profileName" 
+                    placeholder="e.g., imported-config (leave empty for auto-generated name)"
+                    maxlength="50"
+                    pattern="[a-zA-Z0-9_-]*"
+                >
+                <small style="color: var(--color-text-muted, #888); display: block; margin-top: 4px;">
+                    This name will be used for the imported profile. Only letters, numbers, hyphens, and underscores are allowed. If a profile with this name already exists, a timestamp will be added automatically.
+                </small>
+            </div>
+
             <div>
                 <button class="button button-secondary" id="validateBtn">
                     <span id="validateText">🔍 Validate Path</span>
@@ -326,9 +348,34 @@
             </div>
         </div>
 
+        <!-- Import Warnings -->
+        <div id="warningsCard" class="card" style="display: none; border-left: 4px solid #fbbf24;">
+            <h2>⚠️ Import Warnings</h2>
+            <div id="warningsList" style="background: rgba(251, 191, 36, 0.1); padding: 16px; border-radius: 8px; margin-top: 12px;">
+                <ul id="warningsContent" style="list-style-type: disc; padding-left: 20px; margin: 0;">
+                </ul>
+            </div>
+            <div style="margin-top: 12px; padding: 12px; background: var(--color-bg-tertiary, #0f0f1e); border-radius: 6px; font-size: 0.9rem; color: var(--color-text-muted, #888);">
+                💡 <strong>Tip:</strong> If you see warnings about database locks or files in use, close the old installation and try importing again.
+            </div>
+        </div>
+
+        <!-- Import Logs -->
+        <div id="logsCard" class="card" style="display: none;">
+            <h2>📋 Import Log</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="color: var(--color-text-muted, #888); font-size: 0.9rem;">Detailed import progress</span>
+                <button id="toggleLogs" class="button" style="padding: 6px 12px; font-size: 0.85rem;">
+                    Show Details
+                </button>
+            </div>
+            <div id="logsContent" style="display: none; background: var(--color-bg-tertiary, #0f0f1e); padding: 16px; border-radius: 8px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem;">
+            </div>
+        </div>
+
         <!-- Import Results -->
         <div id="resultsCard" class="card" style="display: none;">
-            <h2>Import Results</h2>
+            <h2>✅ Import Results</h2>
             <div class="stats">
                 <div class="stat-card">
                     <div class="stat-number" id="userConfigsCount">0</div>
@@ -342,12 +389,39 @@
                     <div class="stat-number" id="uploadsCount">0</div>
                     <div class="stat-label">Uploaded Files</div>
                 </div>
+                <div class="stat-card" id="pluginsCard" style="display: none;">
+                    <div class="stat-number" id="pluginsCount">0</div>
+                    <div class="stat-label">Plugin Data Files</div>
+                </div>
+                <div class="stat-card" id="legacyDbCard" style="display: none;">
+                    <div class="stat-number" id="legacyDatabaseCount">0</div>
+                    <div class="stat-label">Legacy Database</div>
+                </div>
+                <div class="stat-card" id="legacyDataCard" style="display: none;">
+                    <div class="stat-number" id="legacyDataCount">0</div>
+                    <div class="stat-label">Legacy Data Files</div>
+                </div>
+            </div>
+            
+            <!-- Profile Switching Reminder -->
+            <div id="profileSwitchReminder" style="display: none; margin-top: 20px; padding: 16px; background: rgba(251, 191, 36, 0.1); border-left: 4px solid #fbbf24; border-radius: 8px;">
+                <h3 style="color: #fbbf24; margin-bottom: 8px;">⚠️ Don't Forget to Switch Profiles!</h3>
+                <p style="margin-bottom: 8px;">Your imported settings won't appear until you:</p>
+                <ol style="padding-left: 20px; margin-bottom: 8px;">
+                    <li>Go to <strong>Settings → User Profiles</strong></li>
+                    <li>Select the imported profile (<span id="importedProfileName" style="color: #60a5fa;">default</span>)</li>
+                    <li>Restart the application</li>
+                </ol>
+                <p style="color: var(--color-text-muted, #888); font-size: 0.9rem;">
+                    💡 The import was successful, but profiles must be manually activated.
+                </p>
             </div>
         </div>
     </div>
 
     <script>
         const importPathInput = document.getElementById('importPath');
+        const profileNameInput = document.getElementById('profileName');
         const validateBtn = document.getElementById('validateBtn');
         const importBtn = document.getElementById('importBtn');
         const validateText = document.getElementById('validateText');
@@ -356,8 +430,31 @@
         const findings = document.getElementById('findings');
         const findingsList = document.getElementById('findingsList');
         const resultsCard = document.getElementById('resultsCard');
+        const warningsCard = document.getElementById('warningsCard');
+        const warningsContent = document.getElementById('warningsContent');
+        const logsCard = document.getElementById('logsCard');
+        const logsContent = document.getElementById('logsContent');
+        const toggleLogs = document.getElementById('toggleLogs');
 
         let validationResult = null;
+        let logsVisible = false;
+
+        // Toggle logs visibility
+        toggleLogs.addEventListener('click', () => {
+            logsVisible = !logsVisible;
+            logsContent.style.display = logsVisible ? 'block' : 'none';
+            toggleLogs.textContent = logsVisible ? 'Hide Details' : 'Show Details';
+        });
+
+        // Validate profile name input in real-time
+        profileNameInput.addEventListener('input', (e) => {
+            let value = e.target.value;
+            // Remove invalid characters as user types
+            const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
+            if (value !== sanitized) {
+                e.target.value = sanitized;
+            }
+        });
 
         // Show alert message
         function showAlert(message, type = 'info') {
@@ -393,7 +490,11 @@
                 validationResult = data;
 
                 if (data.valid) {
-                    showAlert('✅ Valid configuration path found!', 'success');
+                    let successMsg = '✅ Valid configuration path found!';
+                    if (data.detectedSubdirectory) {
+                        successMsg += ` (Found in ${data.detectedSubdirectory}/ subdirectory)`;
+                    }
+                    showAlert(successMsg, 'success');
                     importBtn.disabled = false;
 
                     // Show findings
@@ -402,7 +503,10 @@
                     const items = [
                         { label: 'User Profiles (user_configs)', found: data.findings.userConfigs },
                         { label: 'User Data (user_data)', found: data.findings.userData },
-                        { label: 'Uploaded Files (uploads)', found: data.findings.uploads }
+                        { label: 'Uploaded Files (uploads)', found: data.findings.uploads },
+                        { label: 'Plugin Data (plugins/*/data)', found: data.findings.plugins },
+                        { label: 'Legacy Database (database.db)', found: data.findings.legacyDatabase },
+                        { label: 'Legacy Data Folder (data/)', found: data.findings.legacyData }
                     ];
 
                     items.forEach(item => {
@@ -431,6 +535,7 @@
         // Import settings
         importBtn.addEventListener('click', async () => {
             const importPath = importPathInput.value.trim();
+            const profileName = profileNameInput.value.trim();
             
             if (!importPath || !validationResult?.valid) {
                 showAlert('Please validate the path first', 'error');
@@ -446,19 +551,170 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ importPath })
+                    body: JSON.stringify({ importPath, profileName })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    showAlert('✅ Settings imported successfully! Please restart the application.', 'success');
+                    // Build detailed success message with profile switching instructions
+                    let successMessage = '✅ Settings imported successfully!\n\n';
+                    
+                    // List what was imported
+                    const importedItems = [];
+                    if (data.imported.userConfigs > 0) importedItems.push(`${data.imported.userConfigs} user config files`);
+                    if (data.imported.userData > 0) importedItems.push(`${data.imported.userData} user data files`);
+                    if (data.imported.uploads > 0) importedItems.push(`${data.imported.uploads} uploads`);
+                    if (data.imported.plugins > 0) importedItems.push(`${data.imported.plugins} plugin data files`);
+                    if (data.imported.legacyDatabase > 0) importedItems.push(`${data.imported.legacyDatabase} legacy database files`);
+                    if (data.imported.legacyData > 0) importedItems.push(`${data.imported.legacyData} legacy data files`);
+                    
+                    if (importedItems.length > 0) {
+                        successMessage += '📦 Imported: ' + importedItems.join(', ') + '\n\n';
+                    }
+                    
+                    // Critical: Explain profile switching if user configs or legacy database was imported
+                    if (data.imported.userConfigs > 0 || data.imported.legacyDatabase > 0) {
+                        successMessage += '⚠️ IMPORTANT - Next Steps:\n';
+                        successMessage += '1. Go to Settings → User Profiles\n';
+                        
+                        if (data.profileName && data.profileName !== 'imported-config') {
+                            successMessage += `2. Switch to the "${data.profileName}" profile\n`;
+                        } else {
+                            successMessage += '2. Switch to the imported profile (check for "default" or "imported-config")\n';
+                        }
+                        
+                        successMessage += '3. Restart the application\n\n';
+                        successMessage += '💡 Your imported settings will only be visible after switching to the imported profile!';
+                    } else {
+                        successMessage += 'Please restart the application to see your imported data.';
+                    }
+                    
+                    showAlert(successMessage, 'success');
+                    
+                    // Show warnings if any
+                    if (data.warnings && data.warnings.length > 0) {
+                        warningsContent.innerHTML = '';
+                        data.warnings.forEach(warning => {
+                            const li = document.createElement('li');
+                            li.textContent = warning;
+                            li.style.marginBottom = '8px';
+                            warningsContent.appendChild(li);
+                        });
+                        warningsCard.style.display = 'block';
+                    } else {
+                        warningsCard.style.display = 'none';
+                    }
+
+                    // Show logs if any
+                    if (data.logs && data.logs.length > 0) {
+                        logsContent.innerHTML = '';
+                        data.logs.forEach(log => {
+                            const logLine = document.createElement('div');
+                            logLine.style.marginBottom = '4px';
+                            
+                            // Color code by level
+                            let color = '#888';
+                            if (log.level === 'error') color = '#f87171';
+                            else if (log.level === 'warn') color = '#fbbf24';
+                            else if (log.level === 'info') color = '#60a5fa';
+                            else if (log.level === 'debug') color = '#888';
+                            
+                            const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                            
+                            // Create safe elements to prevent XSS
+                            const levelSpan = document.createElement('span');
+                            levelSpan.style.color = color;
+                            levelSpan.textContent = `[${timestamp}] [${log.level.toUpperCase()}]`;
+                            
+                            logLine.appendChild(levelSpan);
+                            logLine.appendChild(document.createTextNode(' ' + log.message));
+                            logsContent.appendChild(logLine);
+                        });
+                        logsCard.style.display = 'block';
+                        // Auto-expand logs if there are errors or warnings
+                        if (data.errors.length > 0 || data.warnings.length > 0) {
+                            logsVisible = true;
+                            logsContent.style.display = 'block';
+                            toggleLogs.textContent = 'Hide Details';
+                        }
+                    } else {
+                        logsCard.style.display = 'none';
+                    }
                     
                     // Show results
                     document.getElementById('userConfigsCount').textContent = data.imported.userConfigs;
                     document.getElementById('userDataCount').textContent = data.imported.userData;
                     document.getElementById('uploadsCount').textContent = data.imported.uploads;
+                    
+                    // Show plugin results if any were imported
+                    const pluginsCard = document.getElementById('pluginsCard');
+                    if (data.imported.plugins > 0) {
+                        document.getElementById('pluginsCount').textContent = data.imported.plugins;
+                        pluginsCard.style.display = 'block';
+                    } else {
+                        pluginsCard.style.display = 'none';
+                    }
+                    
+                    // Show legacy results if any were imported
+                    const legacyDbCard = document.getElementById('legacyDbCard');
+                    const legacyDataCard = document.getElementById('legacyDataCard');
+                    
+                    if (data.imported.legacyDatabase > 0) {
+                        document.getElementById('legacyDatabaseCount').textContent = data.imported.legacyDatabase;
+                        legacyDbCard.style.display = 'block';
+                    } else {
+                        legacyDbCard.style.display = 'none';
+                    }
+                    
+                    if (data.imported.legacyData > 0) {
+                        document.getElementById('legacyDataCount').textContent = data.imported.legacyData;
+                        legacyDataCard.style.display = 'block';
+                    } else {
+                        legacyDataCard.style.display = 'none';
+                    }
+                    
                     resultsCard.style.display = 'block';
+                    
+                    // Show profile switching reminder if profiles were imported
+                    const profileSwitchReminder = document.getElementById('profileSwitchReminder');
+                    const importedProfileNameSpan = document.getElementById('importedProfileName');
+                    
+                    if (data.imported.userConfigs > 0 || data.imported.legacyDatabase > 0) {
+                        // Determine which profile name to show
+                        let profileToShow = 'default';
+                        if (data.profileName && data.profileName !== 'imported-config') {
+                            profileToShow = data.profileName;
+                        } else {
+                            // Try to determine from the logs if available
+                            // Look for successful import messages with the actual destination path
+                            const successLog = data.logs?.find(log => 
+                                log.message.includes('Successfully imported') && 
+                                log.message.includes('.db to') &&
+                                log.message.includes('user_configs')
+                            );
+                            if (successLog) {
+                                // Extract filename from path like "...user_configs\default.db (1 files)"
+                                const match = successLog.message.match(/user_configs[\\\/]([\w-]+)\.db/);
+                                if (match) profileToShow = match[1];
+                            } else {
+                                // Fallback: look for "Importing database file:" message
+                                const dbImportLog = data.logs?.find(log => 
+                                    log.message.includes('Importing database file:') && 
+                                    log.message.includes('.db')
+                                );
+                                if (dbImportLog) {
+                                    const match = dbImportLog.message.match(/Importing database file: ([\w-]+)\.db/);
+                                    if (match) profileToShow = match[1];
+                                }
+                            }
+                        }
+                        
+                        importedProfileNameSpan.textContent = profileToShow;
+                        profileSwitchReminder.style.display = 'block';
+                    } else {
+                        profileSwitchReminder.style.display = 'none';
+                    }
 
                     // Scroll to results
                     resultsCard.scrollIntoView({ behavior: 'smooth' });

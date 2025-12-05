@@ -5,7 +5,7 @@
   "description": "Import settings from old installation paths to the current config location",
   "author": "Pup Cid",
   "entry": "main.js",
-  "enabled": false,
+  "enabled": true,
   "type": "utility",
   "permissions": [
     "routes",

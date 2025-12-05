@@ -1,10 +1,33 @@
 const Database = require('better-sqlite3');
 const { safeJsonParse } = require('./error-handler');
+const fs = require('fs');
+const path = require('path');
 
 class DatabaseManager {
     constructor(dbPath) {
-        this.db = new Database(dbPath);
-        this.db.pragma('journal_mode = WAL'); // Performance-Optimierung
+        this.dbPath = dbPath;
+        
+        try {
+            this.db = new Database(dbPath);
+            
+            // Test database integrity
+            try {
+                this.db.pragma('integrity_check');
+            } catch (integrityError) {
+                console.error('❌ [DATABASE] Database integrity check failed:', integrityError.message);
+                throw new Error('DATABASE_CORRUPTED');
+            }
+        } catch (error) {
+            if (error.message === 'DATABASE_CORRUPTED' || error.message.includes('malformed') || error.message.includes('corrupt')) {
+                console.error('❌ [DATABASE] Database is corrupted. Attempting recovery...');
+                this.handleCorruptedDatabase(dbPath);
+                // Retry opening after recovery
+                this.db = new Database(dbPath);
+            } else {
+                throw error;
+            }
+        }
+        
         this.initializeTables();
 
         // Batching-System für Event-Logs
@@ -12,6 +35,11 @@ class DatabaseManager {
         this.eventBatchSize = 100;
         this.eventBatchTimeout = 5000; // 5 Sekunden
         this.eventBatchTimer = null;
+
+        // Event log settings
+        this.maxEventLogEntries = 5000; // Maximum entries to keep
+        this.eventLogCleanupCounter = 0;
+        this.eventLogCleanupInterval = 500; // Run cleanup every 500 batch flushes
 
         // Flag für Shutdown-Handler (verhindert doppelte Registrierung)
         this.shutdownHandlersRegistered = false;
@@ -50,6 +78,52 @@ class DatabaseManager {
         process.once('exit', gracefulShutdown);
 
         DatabaseManager.shutdownHandlersRegistered = true;
+    }
+
+    handleCorruptedDatabase(dbPath) {
+        console.log('🔧 [DATABASE] Handling corrupted database...');
+        
+        // Close any open connection
+        try {
+            if (this.db) {
+                this.db.close();
+            }
+        } catch (e) {
+            // Ignore close errors
+        }
+        
+        // Create backup of corrupted database
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupPath = dbPath.replace(/\.db$/, `.corrupted.${timestamp}.db`);
+        
+        try {
+            if (fs.existsSync(dbPath)) {
+                console.log(`📦 [DATABASE] Backing up corrupted database to: ${backupPath}`);
+                fs.copyFileSync(dbPath, backupPath);
+                
+                // Also backup WAL and SHM files if they exist
+                const walPath = `${dbPath}-wal`;
+                const shmPath = `${dbPath}-shm`;
+                if (fs.existsSync(walPath)) {
+                    fs.copyFileSync(walPath, `${backupPath}-wal`);
+                }
+                if (fs.existsSync(shmPath)) {
+                    fs.copyFileSync(shmPath, `${backupPath}-shm`);
+                }
+                
+                // Delete the corrupted database files
+                console.log('🗑️  [DATABASE] Deleting corrupted database files...');
+                fs.unlinkSync(dbPath);
+                if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
+                if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+                
+                console.log('✅ [DATABASE] Corrupted database removed. A fresh database will be created.');
+                console.log(`💾 [DATABASE] Backup saved at: ${backupPath}`);
+            }
+        } catch (error) {
+            console.error('❌ [DATABASE] Error during database recovery:', error);
+            throw error;
+        }
     }
 
     initializeTables() {
@@ -279,6 +353,38 @@ class DatabaseManager {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
+        `);
+
+        // Shared User Statistics (for cross-plugin usage)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS user_statistics (
+                user_id TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                unique_id TEXT,
+                profile_picture_url TEXT,
+                total_coins_sent INTEGER DEFAULT 0,
+                total_gifts_sent INTEGER DEFAULT 0,
+                total_comments INTEGER DEFAULT 0,
+                total_likes INTEGER DEFAULT 0,
+                total_shares INTEGER DEFAULT 0,
+                total_follows INTEGER DEFAULT 0,
+                first_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_gift_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Index for faster queries on user_statistics
+        this.db.exec(`
+            CREATE INDEX IF NOT EXISTS idx_user_stats_coins 
+            ON user_statistics(total_coins_sent DESC)
+        `);
+
+        this.db.exec(`
+            CREATE INDEX IF NOT EXISTS idx_user_stats_username 
+            ON user_statistics(username)
         `);
 
         // Run migrations for schema updates
@@ -569,6 +675,17 @@ class DatabaseManager {
                 });
 
                 insertMany(eventsToFlush);
+                
+                // Periodic cleanup to prevent database from growing indefinitely
+                this.eventLogCleanupCounter++;
+                if (this.eventLogCleanupCounter >= this.eventLogCleanupInterval) {
+                    this.eventLogCleanupCounter = 0;
+                    const deleted = this.cleanupEventLogs(this.maxEventLogEntries);
+                    if (deleted > 0) {
+                        console.log(`[Database] Auto-cleanup: removed ${deleted} old event log entries`);
+                    }
+                }
+                
                 resolve();
             } catch (error) {
                 console.error('Error flushing event batch:', error);
@@ -591,6 +708,109 @@ class DatabaseManager {
     clearEventLogs() {
         const stmt = this.db.prepare('DELETE FROM event_logs');
         stmt.run();
+    }
+
+    // ========== EVENT LOG CLEANUP & EXTENDED API ==========
+    
+    /**
+     * Get event logs with optional filtering by event type
+     * @param {Object} options - Query options
+     * @param {number} options.limit - Maximum number of events (default: 100)
+     * @param {string} options.eventType - Filter by event type (chat, gift, follow, share, like, subscribe)
+     * @param {string} options.since - ISO timestamp to get events after
+     * @returns {Array} Event logs with parsed data
+     */
+    getEventLogsFiltered(options = {}) {
+        const { limit = 100, eventType = null, since = null } = options;
+        
+        // Build query conditionally for better maintainability
+        const conditions = [];
+        const params = [];
+        
+        if (eventType) {
+            conditions.push('event_type = ?');
+            params.push(eventType);
+        }
+        
+        if (since) {
+            conditions.push('timestamp > ?');
+            params.push(since);
+        }
+        
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+        const sql = `SELECT * FROM event_logs ${whereClause} ORDER BY timestamp DESC LIMIT ?`;
+        params.push(limit);
+        
+        const stmt = this.db.prepare(sql);
+        const rows = stmt.all(...params);
+        return rows.map(row => ({
+            ...row,
+            data: safeJsonParse(row.data, {})
+        }));
+    }
+
+    /**
+     * Get event counts grouped by type
+     * @returns {Object} Count per event type
+     */
+    getEventLogStats() {
+        const stmt = this.db.prepare(`
+            SELECT event_type, COUNT(*) as count 
+            FROM event_logs 
+            GROUP BY event_type
+        `);
+        const rows = stmt.all();
+        const stats = { total: 0 };
+        for (const row of rows) {
+            stats[row.event_type] = row.count;
+            stats.total += row.count;
+        }
+        return stats;
+    }
+
+    /**
+     * Cleanup old event logs, keeping only the most recent entries
+     * Uses timestamp for reliable chronological ordering
+     * @param {number} keepCount - Number of recent entries to keep (default: 1000)
+     * @returns {number} Number of deleted entries
+     */
+    cleanupEventLogs(keepCount = 1000) {
+        // Use timestamp for reliable chronological cleanup (not id which may have gaps)
+        const thresholdStmt = this.db.prepare(`
+            SELECT timestamp FROM event_logs 
+            ORDER BY timestamp DESC 
+            LIMIT 1 OFFSET ?
+        `);
+        const threshold = thresholdStmt.get(keepCount - 1);
+        
+        if (!threshold) {
+            // Less than keepCount entries, nothing to delete
+            return 0;
+        }
+        
+        const deleteStmt = this.db.prepare('DELETE FROM event_logs WHERE timestamp < ?');
+        const result = deleteStmt.run(threshold.timestamp);
+        return result.changes;
+    }
+
+    /**
+     * Get the latest event of a specific type
+     * @param {string} eventType - Type of event
+     * @returns {Object|null} Latest event or null
+     */
+    getLatestEvent(eventType) {
+        const stmt = this.db.prepare(`
+            SELECT * FROM event_logs 
+            WHERE event_type = ? 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+        `);
+        const row = stmt.get(eventType);
+        if (!row) return null;
+        return {
+            ...row,
+            data: safeJsonParse(row.data, {})
+        };
     }
 
     // ========== PROFILES ==========
@@ -732,7 +952,8 @@ class DatabaseManager {
      * Initialize default Emoji Rain configuration
      */
     initializeEmojiRainDefaults() {
-        console.log('🔧 [DATABASE] initializeEmojiRainDefaults() called');
+        try {
+            console.log('🔧 [DATABASE] initializeEmojiRainDefaults() called');
 
         const defaultConfig = {
             // OBS HUD Settings
@@ -878,6 +1099,11 @@ class DatabaseManager {
             console.log('✅ [DATABASE] Default config inserted successfully');
             console.log('✅ [DATABASE] Default emoji_set:', defaultConfig.emoji_set);
         }
+        } catch (error) {
+            console.error('❌ [DATABASE] Error in initializeEmojiRainDefaults:', error);
+            console.error('Stack trace:', error.stack);
+            // Don't throw - allow app to continue
+        }
     }
 
     /**
@@ -961,7 +1187,8 @@ class DatabaseManager {
 
     // ========== PATCH: VDO.NINJA DEFAULT LAYOUTS ==========
     initializeDefaultVDONinjaLayouts() {
-        const defaults = [
+        try {
+            const defaults = [
             {
                 name: 'Grid 2x2',
                 type: 'grid',
@@ -1020,6 +1247,11 @@ class DatabaseManager {
 
         for (const layout of defaults) {
             stmt.run(layout.name, layout.type, layout.config);
+        }
+        } catch (error) {
+            console.error('❌ [DATABASE] Error in initializeDefaultVDONinjaLayouts:', error);
+            console.error('Stack trace:', error.stack);
+            // Don't throw - allow app to continue
         }
     }
 
@@ -1174,7 +1406,8 @@ class DatabaseManager {
      * Initialize default Milestone configuration
      */
     initializeMilestoneDefaults() {
-        const defaultConfig = {
+        try {
+            const defaultConfig = {
             enabled: 1,
             threshold: 1000,
             mode: 'auto_increment',
@@ -1234,6 +1467,11 @@ class DatabaseManager {
             for (const tier of defaultTiers) {
                 tierInsertStmt.run(tier.name, tier.tier_level, tier.threshold, tier.enabled);
             }
+        }
+        } catch (error) {
+            console.error('❌ [DATABASE] Error in initializeMilestoneDefaults:', error);
+            console.error('Stack trace:', error.stack);
+            // Don't throw - allow app to continue
         }
     }
 
@@ -1552,6 +1790,128 @@ class DatabaseManager {
     resetUserMilestoneStats(userId) {
         const stmt = this.db.prepare('DELETE FROM milestone_user_stats WHERE user_id = ?');
         stmt.run(userId);
+    }
+
+    /**
+     * Shared User Statistics Methods
+     * These methods provide a centralized way to track user statistics across plugins
+     */
+    
+    /**
+     * Get or create user statistics
+     */
+    getUserStatistics(userId) {
+        const stmt = this.db.prepare('SELECT * FROM user_statistics WHERE user_id = ?');
+        return stmt.get(userId);
+    }
+
+    /**
+     * Get all user statistics ordered by total coins
+     */
+    getAllUserStatistics(limit = 100, minCoins = 0) {
+        const stmt = this.db.prepare(`
+            SELECT * FROM user_statistics 
+            WHERE total_coins_sent >= ? 
+            ORDER BY total_coins_sent DESC 
+            LIMIT ?
+        `);
+        return stmt.all(minCoins, limit);
+    }
+
+    /**
+     * Update user statistics (used by gift, comment, like, share, follow events)
+     */
+    updateUserStatistics(userId, username, updates) {
+        // Get existing stats or create new entry
+        let existing = this.getUserStatistics(userId);
+        
+        if (!existing) {
+            // Create new entry - use CASE for conditional timestamp
+            const insertStmt = this.db.prepare(`
+                INSERT INTO user_statistics (
+                    user_id, username, unique_id, profile_picture_url,
+                    total_coins_sent, total_gifts_sent, total_comments,
+                    total_likes, total_shares, total_follows,
+                    first_seen_at, last_seen_at, last_gift_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CASE WHEN ? > 0 THEN CURRENT_TIMESTAMP ELSE NULL END)
+            `);
+            
+            insertStmt.run(
+                userId,
+                username || 'Unknown',
+                updates.uniqueId || null,
+                updates.profilePictureUrl || null,
+                updates.coins || 0,
+                updates.gifts || 0,
+                updates.comments || 0,
+                updates.likes || 0,
+                updates.shares || 0,
+                updates.follows || 0,
+                updates.coins || 0
+            );
+        } else {
+            // Update existing entry
+            const updateStmt = this.db.prepare(`
+                UPDATE user_statistics 
+                SET 
+                    username = ?,
+                    unique_id = COALESCE(?, unique_id),
+                    profile_picture_url = COALESCE(?, profile_picture_url),
+                    total_coins_sent = total_coins_sent + ?,
+                    total_gifts_sent = total_gifts_sent + ?,
+                    total_comments = total_comments + ?,
+                    total_likes = total_likes + ?,
+                    total_shares = total_shares + ?,
+                    total_follows = total_follows + ?,
+                    last_seen_at = CURRENT_TIMESTAMP,
+                    last_gift_at = CASE WHEN ? > 0 THEN CURRENT_TIMESTAMP ELSE last_gift_at END,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+            `);
+            
+            updateStmt.run(
+                username || existing.username,
+                updates.uniqueId || null,
+                updates.profilePictureUrl || null,
+                updates.coins || 0,
+                updates.gifts || 0,
+                updates.comments || 0,
+                updates.likes || 0,
+                updates.shares || 0,
+                updates.follows || 0,
+                updates.coins || 0,
+                userId
+            );
+        }
+        
+        return this.getUserStatistics(userId);
+    }
+
+    /**
+     * Add coins to user statistics (convenience method for gift events)
+     */
+    addCoinsToUserStats(userId, username, uniqueId, profilePictureUrl, coins) {
+        return this.updateUserStatistics(userId, username, {
+            uniqueId,
+            profilePictureUrl,
+            coins,
+            gifts: 1
+        });
+    }
+
+    /**
+     * Reset user statistics (for testing or admin purposes)
+     */
+    resetUserStatistics(userId) {
+        const stmt = this.db.prepare('DELETE FROM user_statistics WHERE user_id = ?');
+        stmt.run(userId);
+    }
+
+    /**
+     * Reset all user statistics
+     */
+    resetAllUserStatistics() {
+        this.db.exec('DELETE FROM user_statistics');
     }
 
     /**

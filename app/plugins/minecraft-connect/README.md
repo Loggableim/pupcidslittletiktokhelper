@@ -281,7 +281,7 @@ Contributions are welcome! Please:
 
 ## License
 
-MIT License - See LICENSE file for details
+CC BY-NC 4.0 License - See LICENSE file for details
 
 ## Support
 

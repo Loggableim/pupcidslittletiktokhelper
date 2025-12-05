@@ -188,6 +188,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             statusEl.innerHTML = `<span class="text-red-500">✗ Init failed: ${error.message}</span>`;
         }
         showNotification(`Initialization failed: ${error.message}`, 'error');
+        // Hide the loading banner even on error - the status element shows the error state
+        if (debugInfo) debugInfo.style.display = 'none';
     }
 });
 
@@ -287,6 +289,12 @@ function populateConfig(config) {
     setValue('autoLanguageDetection', config.autoLanguageDetection !== false);
     setValue('enableAutoFallback', config.enableAutoFallback !== false);
     setValue('stripEmojis', config.stripEmojis || false);
+
+    // Fallback engine activation settings
+    setValue('enableGoogleFallback', config.enableGoogleFallback !== false);
+    setValue('enableSpeechifyFallback', config.enableSpeechifyFallback || false);
+    setValue('enableElevenlabsFallback', config.enableElevenlabsFallback || false);
+    setValue('enableOpenAIFallback', config.enableOpenAIFallback || false);
 
     // Language detection settings
     setValue('fallbackLanguage', config.fallbackLanguage || 'de');
@@ -398,6 +406,11 @@ async function saveConfig() {
             autoLanguageDetection: document.getElementById('autoLanguageDetection').checked,
             enableAutoFallback: document.getElementById('enableAutoFallback').checked,
             stripEmojis: document.getElementById('stripEmojis').checked,
+            // Fallback engine activation settings
+            enableGoogleFallback: document.getElementById('enableGoogleFallback')?.checked || false,
+            enableSpeechifyFallback: document.getElementById('enableSpeechifyFallback')?.checked || false,
+            enableElevenlabsFallback: document.getElementById('enableElevenlabsFallback')?.checked || false,
+            enableOpenAIFallback: document.getElementById('enableOpenAIFallback')?.checked || false,
             // Language detection settings
             fallbackLanguage: document.getElementById('fallbackLanguage').value,
             languageConfidenceThreshold: parseFloat(document.getElementById('languageConfidenceThreshold').value),

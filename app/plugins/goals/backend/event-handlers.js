@@ -3,6 +3,13 @@
  * Processes TikTok events and updates goals
  */
 
+const http = require('http');
+
+// Configuration constants for sync timing
+const SYNC_DELAY_ON_CONNECT_MS = 2000;  // Wait for stats to be populated after connection
+const SYNC_DELAY_ON_INIT_MS = 3000;     // Wait for server to be fully ready on init
+const API_TIMEOUT_MS = 5000;            // Timeout for API requests
+
 class GoalsEventHandlers {
     constructor(plugin) {
         this.plugin = plugin;
@@ -30,7 +37,80 @@ class GoalsEventHandlers {
             this.handleFollow(data);
         });
 
+        // Listen for TikTok connection to sync likes goals
+        this.api.registerTikTokEvent('connected', () => {
+            // Wait a moment for stats to be populated, then sync
+            setTimeout(() => {
+                this.syncLikesGoalsWithStream();
+            }, SYNC_DELAY_ON_CONNECT_MS);
+        });
+
         this.api.log('✅ Goals TikTok event handlers registered', 'info');
+    }
+
+    /**
+     * Sync all likes goals with current stream's total likes
+     * This ensures likes goals start with the correct value when:
+     * 1. The plugin initializes
+     * 2. A TikTok connection is established
+     */
+    async syncLikesGoalsWithStream() {
+        try {
+            // Fetch current stats from the API
+            const stats = await this.fetchCurrentStats();
+            if (!stats || stats.likes === undefined) {
+                this.api.log('Could not fetch current stream stats for likes sync', 'debug');
+                return;
+            }
+
+            const totalLikes = stats.likes;
+            if (totalLikes === 0) {
+                // No likes yet or not connected, skip sync
+                return;
+            }
+
+            // Get all enabled likes goals
+            const goals = this.db.getGoalsByType('likes');
+            const enabledGoals = goals.filter(g => g.enabled);
+
+            for (const goal of enabledGoals) {
+                // Only sync if current value is less than stream total
+                // (don't decrease the goal if it was manually increased)
+                if (goal.current_value < totalLikes) {
+                    this.setGoalValue(goal.id, totalLikes);
+                    this.api.log(`Synced likes goal "${goal.name}" to stream total: ${totalLikes}`, 'info');
+                }
+            }
+        } catch (error) {
+            this.api.log(`Error syncing likes goals: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Fetch current stream stats from the API
+     * @returns {Promise<Object|null>} Stats object or null if unavailable
+     */
+    fetchCurrentStats() {
+        const port = process.env.PORT || 3000;
+        return new Promise((resolve) => {
+            const req = http.get(`http://localhost:${port}/api/status`, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(data);
+                        resolve(parsed.stats || null);
+                    } catch (e) {
+                        resolve(null);
+                    }
+                });
+            });
+            req.on('error', () => resolve(null));
+            req.setTimeout(API_TIMEOUT_MS, () => {
+                req.destroy();
+                resolve(null);
+            });
+        });
     }
 
     /**
@@ -173,5 +253,8 @@ class GoalsEventHandlers {
         }
     }
 }
+
+// Export the class and constants
+GoalsEventHandlers.SYNC_DELAY_ON_INIT_MS = SYNC_DELAY_ON_INIT_MS;
 
 module.exports = GoalsEventHandlers;

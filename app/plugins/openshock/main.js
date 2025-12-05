@@ -315,6 +315,13 @@ class OpenShockPlugin {
             this.safetyManager,
             logger
         );
+        
+        // Set up pattern execution cancellation callback
+        // This allows QueueManager to check if a pattern execution has been cancelled
+        this.queueManager.setShouldCancelExecution((executionId) => {
+            const execution = this.activePatternExecutions.get(executionId);
+            return execution && execution.cancelled;
+        });
 
         // Queue Event-Handler (QueueManager wird später EventEmitter erweitern)
         // this.queueManager.on('item-processed', (item, success) => {
@@ -651,18 +658,31 @@ class OpenShockPlugin {
         this.api.registerRoute('post', '/api/openshock/mappings', async (req, res) => {
             try {
                 const mapping = req.body;
+                
+                this.api.log(`[Mapping Save] Received mapping: ${mapping.name}`, 'info');
+                this.api.log(`[Mapping Save] Event type: ${mapping.eventType}`, 'info');
+                this.api.log(`[Mapping Save] Action type: ${mapping.action?.type}`, 'info');
+                this.api.log(`[Mapping Save] Mapping data: ${JSON.stringify(mapping)}`, 'debug');
+                
                 const addedMapping = this.mappingEngine.addMapping(mapping);
+
+                this.api.log(`[Mapping Save] Mapping added to engine with ID: ${addedMapping.id}`, 'info');
 
                 // Save to database
                 this._saveMappingToDatabase(addedMapping);
 
+                this.api.log(`[Mapping Save] Mapping saved to database successfully`, 'info');
+
                 res.json({
                     success: true,
                     message: 'Mapping created successfully',
-                    id: addedMapping.id
+                    id: addedMapping.id,
+                    mapping: addedMapping
                 });
 
             } catch (error) {
+                this.api.log(`[Mapping Save] Error: ${error.message}`, 'error');
+                this.api.log(`[Mapping Save] Stack: ${error.stack}`, 'debug');
                 res.status(500).json({
                     success: false,
                     error: error.message
@@ -790,18 +810,30 @@ class OpenShockPlugin {
         this.api.registerRoute('post', '/api/openshock/patterns', async (req, res) => {
             try {
                 const pattern = req.body;
+                
+                this.api.log(`[Pattern Save] Received pattern: ${pattern.name}`, 'info');
+                this.api.log(`[Pattern Save] Steps count: ${pattern.steps?.length || 0}`, 'info');
+                this.api.log(`[Pattern Save] Steps data: ${JSON.stringify(pattern.steps)}`, 'debug');
+                
                 const addedPattern = this.patternEngine.addPattern(pattern);
+
+                this.api.log(`[Pattern Save] Pattern added to engine with ID: ${addedPattern.id}`, 'info');
 
                 // Save to database
                 this._savePatternToDatabase(addedPattern);
 
+                this.api.log(`[Pattern Save] Pattern saved to database successfully`, 'info');
+
                 res.json({
                     success: true,
                     message: 'Pattern created successfully',
-                    id: addedPattern.id
+                    id: addedPattern.id,
+                    pattern: addedPattern
                 });
 
             } catch (error) {
+                this.api.log(`[Pattern Save] Error: ${error.message}`, 'error');
+                this.api.log(`[Pattern Save] Stack: ${error.stack}`, 'debug');
                 res.status(500).json({
                     success: false,
                     error: error.message
@@ -955,7 +987,8 @@ class OpenShockPlugin {
         // Export Pattern
         this.api.registerRoute('get', '/api/openshock/patterns/export/:id', (req, res) => {
             try {
-                const id = parseInt(req.params.id);
+                // Pattern IDs are TEXT (UUIDs), not integers - use directly without parseInt
+                const id = req.params.id;
                 const pattern = this.patternEngine.getPattern(id);
 
                 if (!pattern) {
@@ -1358,6 +1391,13 @@ class OpenShockPlugin {
             // Stats
             this.stats.tiktokEventsProcessed++;
 
+            // Enhanced logging for gift events
+            if (eventType === 'gift') {
+                this.api.log(`[Gift Event] Received gift: ${eventData.giftName || eventData.gift?.name || 'unknown'}`, 'info');
+                this.api.log(`[Gift Event] Gift coins: ${eventData.giftCoins || eventData.coins || 0}`, 'info');
+                this.api.log(`[Gift Event] Event data: ${JSON.stringify(eventData)}`, 'debug');
+            }
+
             // Event-Log
             this._addEventLog({
                 type: eventType,
@@ -1370,8 +1410,13 @@ class OpenShockPlugin {
             const matches = this.mappingEngine.evaluateEvent(eventType, eventData);
 
             if (matches.length === 0) {
+                if (eventType === 'gift') {
+                    this.api.log(`[Gift Event] No mappings matched for gift: ${eventData.giftName || eventData.gift?.name || 'unknown'}`, 'warn');
+                }
                 return;
             }
+
+            this.api.log(`[Event Handler] ${matches.length} mapping(s) matched for ${eventType} event`, 'info');
 
             // Extract actions from matches
             const actions = matches.map(m => m.action);
@@ -1550,18 +1595,26 @@ class OpenShockPlugin {
             return executionId;
         }
 
-        // Alle Steps in Queue einfügen
+        // Calculate cumulative delay for each command step
+        // Pause steps add to the cumulative delay, command steps use the cumulative delay
+        let cumulativeDelay = 0;
         let queuedSteps = 0;
+        const baseTimestamp = Date.now();
+
         for (let i = 0; i < steps.length; i++) {
             const step = steps[i];
 
-            // Skip pause steps in queue
             if (step.type === 'pause') {
-                this.api.log(`[Pattern Execution] Step ${i}: Pause (${step.duration}ms) - skipped in queue`, 'debug');
+                // Pause steps add to the cumulative delay for subsequent commands
+                cumulativeDelay += step.duration || 0;
+                this.api.log(`[Pattern Execution] Step ${i}: Pause (${step.duration}ms) - cumulative delay now ${cumulativeDelay}ms`, 'debug');
                 continue;
             }
 
-            this.api.log(`[Pattern Execution] Step ${i}: ${step.type} (intensity: ${step.intensity}, duration: ${step.duration}ms, delay: ${step.delay || 0}ms)`, 'debug');
+            // For command steps (shock, vibrate, sound), schedule with cumulative delay
+            const scheduledTime = baseTimestamp + cumulativeDelay + (step.delay || 0);
+            
+            this.api.log(`[Pattern Execution] Step ${i}: ${step.type} (intensity: ${step.intensity}, duration: ${step.duration}ms) scheduled at +${cumulativeDelay}ms`, 'debug');
 
             this.queueManager.addItem({
                 id: `${executionId}-step-${i}`,
@@ -1575,15 +1628,19 @@ class OpenShockPlugin {
                 username: context.username,
                 source: `pattern:${pattern.name}`,
                 sourceData: context.sourceData,
-                timestamp: Date.now() + (step.delay || 0),
+                timestamp: scheduledTime,
                 priority: 5,
                 executionId,
                 stepIndex: i
             });
             queuedSteps++;
+
+            // After a command step, add its duration to cumulative delay
+            // This ensures the next command waits for this one to complete
+            cumulativeDelay += step.duration || 0;
         }
 
-        this.api.log(`[Pattern Execution] Queued ${queuedSteps} steps for pattern "${pattern.name}" (executionId: ${executionId})`, 'info');
+        this.api.log(`[Pattern Execution] Queued ${queuedSteps} steps for pattern "${pattern.name}" (executionId: ${executionId}), total duration: ${cumulativeDelay}ms`, 'info');
         this.stats.patternsExecuted++;
 
         return executionId;

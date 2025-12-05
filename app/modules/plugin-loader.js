@@ -1,13 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
+const express = require('express');
 
 /**
  * PluginAPI - Bereitgestellte API für Plugins
  * Ermöglicht sicheren Zugriff auf System-Funktionen
  */
 class PluginAPI {
-    constructor(pluginId, pluginDir, app, io, db, logger, pluginLoader) {
+    constructor(pluginId, pluginDir, app, io, db, logger, pluginLoader, configPathManager) {
         this.pluginId = pluginId;
         this.pluginDir = pluginDir;
         this.app = app;
@@ -15,6 +16,7 @@ class PluginAPI {
         this.db = db;
         this.logger = logger;
         this.pluginLoader = pluginLoader;
+        this.configPathManager = configPathManager;
 
         // Registrierte Routes und Events für Cleanup
         this.registeredRoutes = [];
@@ -47,13 +49,17 @@ class PluginAPI {
                 }
             };
 
-            // Route registrieren
+            // Register route on the plugin router (not the main app)
+            // This ensures routes are matched before the 404 handler even when
+            // plugins are dynamically enabled after server start
             const methodLower = method.toLowerCase();
-            if (!this.app[methodLower]) {
+            const router = this.pluginLoader.getPluginRouter();
+            
+            if (!router[methodLower]) {
                 throw new Error(`Invalid HTTP method: ${method}`);
             }
 
-            this.app[methodLower](fullPath, wrappedHandler);
+            router[methodLower](fullPath, wrappedHandler);
             this.registeredRoutes.push({ method, path: fullPath });
             this.log(`Registered route: ${method} ${fullPath}`);
 
@@ -298,19 +304,28 @@ class PluginAPI {
     getApp() {
         return this.app;
     }
+
+    /**
+     * Gibt Zugriff auf ConfigPathManager
+     * Für sichere Dateioperationen in persistenten Speicherpfaden
+     */
+    getConfigPathManager() {
+        return this.configPathManager;
+    }
 }
 
 /**
  * PluginLoader - Lädt und verwaltet Plugins
  */
 class PluginLoader extends EventEmitter {
-    constructor(pluginsDir, app, io, db, logger) {
+    constructor(pluginsDir, app, io, db, logger, configPathManager) {
         super();
         this.pluginsDir = pluginsDir;
         this.app = app;
         this.io = io;
         this.db = db;
         this.logger = logger;
+        this.configPathManager = configPathManager;
 
         // Geladene Plugins
         this.plugins = new Map();
@@ -320,6 +335,22 @@ class PluginLoader extends EventEmitter {
 
         // State laden
         this.state = this.loadState();
+
+        // Create a dedicated router for plugin routes
+        // This router is mounted on the main app and ensures plugin routes
+        // are always matched before the 404 handler, even when plugins
+        // are dynamically enabled after server start
+        this.pluginRouter = express.Router();
+        this.app.use(this.pluginRouter);
+        this.logger.info('🔌 Plugin router initialized - dynamic plugin routes will be handled correctly');
+    }
+
+    /**
+     * Get the plugin router for registering routes
+     * @returns {express.Router} The plugin router
+     */
+    getPluginRouter() {
+        return this.pluginRouter;
     }
 
     /**
@@ -351,11 +382,12 @@ class PluginLoader extends EventEmitter {
     }
 
     /**
-     * Lädt alle Plugins aus dem Plugins-Verzeichnis
+     * Load all plugins from the plugins directory
+     * PERFORMANCE: Plugins are now loaded in parallel (max 5 simultaneously)
      */
     async loadAllPlugins() {
         try {
-            // Plugins-Verzeichnis erstellen falls nicht vorhanden
+            // Create plugins directory if it doesn't exist
             if (!fs.existsSync(this.pluginsDir)) {
                 fs.mkdirSync(this.pluginsDir, { recursive: true });
                 this.logger.info(`Created plugins directory: ${this.pluginsDir}`);
@@ -367,25 +399,81 @@ class PluginLoader extends EventEmitter {
             this.logger.info(`Found ${pluginDirs.length} plugin directories`);
 
             let successCount = 0;
+            let disabledCount = 0;
             let failCount = 0;
 
-            for (const dir of pluginDirs) {
-                const pluginPath = path.join(this.pluginsDir, dir.name);
-                try {
-                    const result = await this.loadPlugin(pluginPath);
-                    if (result) {
-                        successCount++;
+            // PERFORMANCE OPTIMIZATION: Load plugins in parallel batches
+            // Using a concurrency limit of 5 to balance speed and resource usage
+            const CONCURRENCY_LIMIT = 5;
+            const results = [];
+            
+            for (let i = 0; i < pluginDirs.length; i += CONCURRENCY_LIMIT) {
+                const batch = pluginDirs.slice(i, i + CONCURRENCY_LIMIT);
+                const batchPromises = batch.map(async (dir) => {
+                    const pluginPath = path.join(this.pluginsDir, dir.name);
+                    try {
+                        const result = await this.loadPlugin(pluginPath);
+                        return { result, pluginPath, dir };
+                    } catch (error) {
+                        this.logger.warn(`Skipping plugin ${dir.name} due to errors: ${error.message}`);
+                        return { result: 'error', pluginPath, dir, error };
+                    }
+                });
+                
+                const batchResults = await Promise.allSettled(batchPromises);
+                results.push(...batchResults);
+            }
+            
+            // Process results
+            for (const settledResult of results) {
+                if (settledResult.status === 'rejected') {
+                    // Log rejected promises for debugging
+                    this.logger.error(`Plugin batch promise rejected: ${settledResult.reason?.message || 'Unknown error'}`);
+                    failCount++;
+                    continue;
+                }
+                
+                const { result, pluginPath, dir } = settledResult.value;
+                
+                if (result === 'error') {
+                    failCount++;
+                } else if (result) {
+                    successCount++;
+                } else if (result === null) {
+                    // loadPlugin returns null for disabled plugins or missing manifests
+                    // Check if it was disabled (has manifest and is explicitly disabled)
+                    const manifestPath = path.join(pluginPath, 'plugin.json');
+                    if (fs.existsSync(manifestPath)) {
+                        try {
+                            const manifestData = fs.readFileSync(manifestPath, 'utf8');
+                            const manifest = JSON.parse(manifestData);
+                            const pluginState = this.state[manifest.id] || {};
+                            const isEnabled = pluginState.enabled !== undefined ? pluginState.enabled : manifest.enabled !== false;
+                            if (!isEnabled) {
+                                disabledCount++;
+                            } else {
+                                // Has manifest but failed for other reason (missing entry, etc.)
+                                failCount++;
+                            }
+                        } catch {
+                            failCount++;
+                        }
                     } else {
+                        // No manifest - consider it a failure
                         failCount++;
                     }
-                } catch (error) {
-                    // Error already logged in loadPlugin, just count it
-                    failCount++;
-                    this.logger.warn(`Skipping plugin ${dir.name} due to errors, continuing with next plugin...`);
                 }
             }
 
-            this.logger.info(`Plugin loading complete: ${successCount} successful, ${failCount} failed`);
+            // More informative log message
+            let statusMessage = `Plugin loading complete: ${successCount} loaded`;
+            if (disabledCount > 0) {
+                statusMessage += `, ${disabledCount} disabled`;
+            }
+            if (failCount > 0) {
+                statusMessage += `, ${failCount} failed`;
+            }
+            this.logger.info(statusMessage);
 
             return Array.from(this.plugins.values());
         } catch (error) {
@@ -452,7 +540,8 @@ class PluginLoader extends EventEmitter {
                 this.io,
                 this.db,
                 this.logger,
-                this
+                this,
+                this.configPathManager
             );
 
             // Plugin instanziieren
@@ -555,7 +644,15 @@ class PluginLoader extends EventEmitter {
             if (!this.plugins.has(pluginId)) {
                 const pluginPath = path.join(this.pluginsDir, pluginId);
                 if (fs.existsSync(pluginPath)) {
-                    await this.loadPlugin(pluginPath);
+                    const loadResult = await this.loadPlugin(pluginPath);
+                    if (!loadResult) {
+                        this.logger.warn(`Plugin ${pluginId} state set to enabled, but failed to load. Check logs for details.`);
+                        // Still return true because state is enabled - user should check plugin logs
+                        // The plugin will try to load again on next server restart
+                    }
+                } else {
+                    this.logger.error(`Plugin path does not exist: ${pluginPath}`);
+                    return false;
                 }
             }
 

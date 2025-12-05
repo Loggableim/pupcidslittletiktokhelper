@@ -8,13 +8,33 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const crypto = require('crypto');
+const https = require('https');
 
 class MyInstantsAPI {
     constructor(logger) {
         this.logger = logger || console;
         this.baseUrl = 'https://www.myinstants.com';
         this.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-        this.timeout = 10000;
+        this.timeout = 15000; // Increased timeout for packaged apps
+        
+        // Create HTTPS agent with more permissive settings for packaged Electron apps
+        this.httpsAgent = new https.Agent({
+            rejectUnauthorized: true,  // Keep TLS verification enabled
+            keepAlive: true,
+            timeout: this.timeout
+        });
+        
+        // Create axios instance with default configuration
+        this.axiosInstance = axios.create({
+            httpsAgent: this.httpsAgent,
+            timeout: this.timeout,
+            headers: {
+                'User-Agent': this.userAgent,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br'
+            }
+        });
     }
 
     /**
@@ -29,25 +49,74 @@ class MyInstantsAPI {
             this.logger.info(`[MyInstants] Searching for: "${query}" (page ${page}, limit ${limit})`);
             
             const searchUrl = `${this.baseUrl}/en/search/`;
-            const response = await axios.get(searchUrl, {
-                params: { name: query },
-                timeout: this.timeout,
-                headers: { 'User-Agent': this.userAgent }
+            const response = await this.axiosInstance.get(searchUrl, {
+                params: { name: query }
             });
 
             const $ = cheerio.load(response.data);
             const results = [];
 
-            $('.instant').each((index, element) => {
-                if (results.length >= limit) return false;
+            // Try multiple selectors for better compatibility with site changes
+            // Primary: .instant class, Fallback: div with small-button, article elements
+            const selectors = ['.instant', 'div.instant', '[class*="instant"]', 'article', '.sound-item'];
+            let foundElements = false;
+            
+            for (const selector of selectors) {
+                const elements = $(selector);
+                if (elements.length > 0) {
+                    this.logger.info(`[MyInstants] Found ${elements.length} elements with selector: ${selector}`);
+                    foundElements = true;
+                    
+                    elements.each((index, element) => {
+                        if (results.length >= limit) return false;
 
-                const $elem = $(element);
-                const sound = this._extractSoundData($, $elem);
-                
-                if (sound && sound.url) {
-                    results.push(sound);
+                        const $elem = $(element);
+                        const sound = this._extractSoundData($, $elem);
+                        
+                        if (sound && sound.url) {
+                            results.push(sound);
+                        }
+                    });
+                    
+                    if (results.length > 0) break;
                 }
-            });
+            }
+            
+            // If no results found with standard selectors, try extracting from onclick patterns
+            if (results.length === 0) {
+                this.logger.info(`[MyInstants] Trying fallback extraction from onclick patterns`);
+                const allButtons = $('[onclick*="play"]');
+                allButtons.each((index, element) => {
+                    if (results.length >= limit) return false;
+                    
+                    const $button = $(element);
+                    const onclickAttr = $button.attr('onclick') || '';
+                    const soundMatch = onclickAttr.match(/play\('([^']+)'/);
+                    
+                    if (soundMatch && soundMatch[1]) {
+                        let soundUrl = soundMatch[1];
+                        if (!soundUrl.startsWith('http')) {
+                            soundUrl = `${this.baseUrl}${soundUrl}`;
+                        }
+                        
+                        // Try to find the name from parent or sibling elements
+                        const $parent = $button.closest('div, article, section');
+                        const name = $parent.find('a').first().text().trim() || 
+                                    $parent.text().trim().split('\n')[0] || 
+                                    'Sound';
+                        
+                        results.push({
+                            id: this._generateId(soundUrl),
+                            name: name.substring(0, 100),
+                            url: soundUrl,
+                            pageUrl: null,
+                            description: '',
+                            tags: [],
+                            color: null
+                        });
+                    }
+                });
+            }
 
             this.logger.info(`[MyInstants] Found ${results.length} results for "${query}"`);
             return results;
@@ -67,24 +136,68 @@ class MyInstantsAPI {
             this.logger.info(`[MyInstants] Fetching trending sounds (limit ${limit})`);
             
             const trendingUrl = `${this.baseUrl}/en/index/us/`;
-            const response = await axios.get(trendingUrl, {
-                timeout: this.timeout,
-                headers: { 'User-Agent': this.userAgent }
-            });
+            const response = await this.axiosInstance.get(trendingUrl);
 
             const $ = cheerio.load(response.data);
             const results = [];
 
-            $('.instant').each((index, element) => {
-                if (results.length >= limit) return false;
+            // Try multiple selectors for better compatibility with site changes
+            const selectors = ['.instant', 'div.instant', '[class*="instant"]', 'article', '.sound-item'];
+            
+            for (const selector of selectors) {
+                const elements = $(selector);
+                if (elements.length > 0) {
+                    this.logger.info(`[MyInstants] Found ${elements.length} trending elements with selector: ${selector}`);
+                    
+                    elements.each((index, element) => {
+                        if (results.length >= limit) return false;
 
-                const $elem = $(element);
-                const sound = this._extractSoundData($, $elem);
-                
-                if (sound && sound.url) {
-                    results.push(sound);
+                        const $elem = $(element);
+                        const sound = this._extractSoundData($, $elem);
+                        
+                        if (sound && sound.url) {
+                            results.push(sound);
+                        }
+                    });
+                    
+                    if (results.length > 0) break;
                 }
-            });
+            }
+            
+            // Fallback: extract from onclick patterns
+            if (results.length === 0) {
+                this.logger.info(`[MyInstants] Trying fallback extraction for trending`);
+                const allButtons = $('[onclick*="play"]');
+                allButtons.each((index, element) => {
+                    if (results.length >= limit) return false;
+                    
+                    const $button = $(element);
+                    const onclickAttr = $button.attr('onclick') || '';
+                    const soundMatch = onclickAttr.match(/play\('([^']+)'/);
+                    
+                    if (soundMatch && soundMatch[1]) {
+                        let soundUrl = soundMatch[1];
+                        if (!soundUrl.startsWith('http')) {
+                            soundUrl = `${this.baseUrl}${soundUrl}`;
+                        }
+                        
+                        const $parent = $button.closest('div, article, section');
+                        const name = $parent.find('a').first().text().trim() || 
+                                    $parent.text().trim().split('\n')[0] || 
+                                    'Sound';
+                        
+                        results.push({
+                            id: this._generateId(soundUrl),
+                            name: name.substring(0, 100),
+                            url: soundUrl,
+                            pageUrl: null,
+                            description: '',
+                            tags: [],
+                            color: null
+                        });
+                    }
+                });
+            }
 
             this.logger.info(`[MyInstants] Found ${results.length} trending sounds`);
             return results;
@@ -124,10 +237,7 @@ class MyInstantsAPI {
         try {
             this.logger.info(`[MyInstants] Fetching categories`);
             
-            const response = await axios.get(`${this.baseUrl}/en/categories/`, {
-                timeout: this.timeout,
-                headers: { 'User-Agent': this.userAgent }
-            });
+            const response = await this.axiosInstance.get(`${this.baseUrl}/en/categories/`);
 
             const $ = cheerio.load(response.data);
             const categories = [];
@@ -163,10 +273,7 @@ class MyInstantsAPI {
         try {
             this.logger.info(`[MyInstants] Resolving page URL: ${pageUrl}`);
             
-            const response = await axios.get(pageUrl, {
-                timeout: this.timeout,
-                headers: { 'User-Agent': this.userAgent }
-            });
+            const response = await this.axiosInstance.get(pageUrl);
 
             const $ = cheerio.load(response.data);
             
@@ -212,12 +319,38 @@ class MyInstantsAPI {
      */
     _extractSoundData($, $elem) {
         try {
-            // Find play button
-            const $button = $elem.find('.small-button, button[onclick*="play"]').first();
+            // Find play button - try multiple selectors
+            let $button = $elem.find('.small-button, button[onclick*="play"], [onclick*="play"]').first();
+            
+            // If not found in children, check if element itself has onclick
+            if (!$button.length && $elem.attr('onclick')) {
+                $button = $elem;
+            }
             
             // Extract sound URL from onclick
-            const onclickAttr = $button.attr('onclick') || '';
-            const soundMatch = onclickAttr.match(/play\('([^']+)'/);
+            const onclickAttr = $button.attr('onclick') || $elem.attr('onclick') || '';
+            let soundMatch = onclickAttr.match(/play\('([^']+)'/);
+            
+            // Try alternative pattern if first one fails
+            if (!soundMatch) {
+                soundMatch = onclickAttr.match(/play\("([^"]+)"/);
+            }
+            
+            // Try to find audio source directly
+            if (!soundMatch) {
+                const audioSrc = $elem.find('audio source').attr('src') || $elem.find('audio').attr('src');
+                if (audioSrc) {
+                    soundMatch = [null, audioSrc];
+                }
+            }
+            
+            // Look for data-sound attribute
+            if (!soundMatch) {
+                const dataSoundUrl = $elem.attr('data-sound') || $elem.find('[data-sound]').attr('data-sound');
+                if (dataSoundUrl) {
+                    soundMatch = [null, dataSoundUrl];
+                }
+            }
             
             if (!soundMatch || !soundMatch[1]) {
                 return null;
@@ -230,10 +363,11 @@ class MyInstantsAPI {
                 soundUrl = `${this.baseUrl}${soundUrl}`;
             }
 
-            // Extract name
-            const $link = $elem.find('.instant-link, a').first();
+            // Extract name - try multiple selectors
+            const $link = $elem.find('.instant-link, a[href*="/instant/"], a').first();
             const name = $link.text().trim() || 
-                        $elem.find('.small-text').first().text().trim() || 
+                        $elem.find('.small-text, .sound-name, .title, h3, h4').first().text().trim() ||
+                        $elem.text().trim().split('\n')[0] ||
                         'Unknown Sound';
 
             // Extract page URL
@@ -247,7 +381,7 @@ class MyInstantsAPI {
 
             return {
                 id: id,
-                name: name,
+                name: name.substring(0, 100), // Limit name length
                 url: soundUrl,
                 pageUrl: pageUrl,
                 description: '',

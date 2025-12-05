@@ -121,6 +121,14 @@ function openCreateModal() {
     document.querySelector('.modal-header').textContent = 'Create New Goal';
     document.getElementById('goal-form').reset();
     document.getElementById('goal-modal').classList.add('active');
+    
+    // Focus the first input field after a brief delay to ensure modal is visible
+    setTimeout(() => {
+        const firstInput = document.getElementById('goal-name');
+        if (firstInput) {
+            firstInput.focus();
+        }
+    }, 100);
 }
 
 function editGoal(id) {
@@ -145,6 +153,14 @@ function editGoal(id) {
         goal.on_reach_action === 'increment' ? 'block' : 'none';
 
     document.getElementById('goal-modal').classList.add('active');
+    
+    // Focus the first input field after a brief delay to ensure modal is visible
+    setTimeout(() => {
+        const firstInput = document.getElementById('goal-name');
+        if (firstInput) {
+            firstInput.focus();
+        }
+    }, 100);
 }
 
 function closeModal() {

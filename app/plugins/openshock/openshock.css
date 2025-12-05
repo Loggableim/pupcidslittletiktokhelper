@@ -631,6 +631,48 @@ input[type="range"]::-moz-range-thumb {
     color: #60a5fa;
 }
 
+.pattern-step-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.pattern-step-actions .btn {
+    min-width: 36px;
+}
+
+/* Quick Step Form Styling */
+#quickStepForm {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+#quickStepForm .card-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#quickStepForm .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    align-items: end;
+}
+
+#quickStepForm .form-group {
+    margin-bottom: 0;
+}
+
+#quickStepForm .btn-success {
+    margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+    #quickStepForm .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 /* Timeline visualization */
 .timeline {
     position: relative;
@@ -1563,6 +1605,117 @@ input[type="range"]::-moz-range-thumb {
     margin: 0;
 }
 
+/* Pattern Template Buttons */
+.btn-template {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    min-height: 120px;
+    text-align: center;
+    transition: all 0.2s;
+    background: #1f2937;
+    border: 2px solid #374151;
+}
+
+.btn-template:hover {
+    border-color: #60a5fa;
+    background: #374151;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.2);
+}
+
+.template-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.template-name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: #f9fafb;
+}
+
+.template-desc {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* Pattern Step List Header */
+.step-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+/* Pattern Info */
+.pattern-info {
+    margin-top: 8px;
+    padding: 8px;
+    background: #1f2937;
+    border-radius: 4px;
+    text-align: center;
+}
+
+/* Slider Large */
+.slider-large {
+    width: 100%;
+    height: 8px;
+    background: #374151;
+    border-radius: 4px;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.slider-large::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #60a5fa;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.slider-large::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #60a5fa;
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
+/* Form Hint */
+.form-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* Alert Info */
+.alert-info {
+    background: #1e3a5f;
+    border: 1px solid #3b82f6;
+    border-radius: 6px;
+    padding: 12px;
+    color: #e0e7ff;
+}
+
+.alert-info strong {
+    color: #60a5fa;
+}
+
+/* Button Block */
+.btn-block {
+    width: 100%;
+    display: block;
+}
+
 /* Margin/Padding Utilities */
 .mb-3 {
     margin-bottom: 16px;
@@ -1576,18 +1729,43 @@ input[type="range"]::-moz-range-thumb {
     margin-top: 16px;
 }
 
-/* Responsive Adjustments for Curve Editor */
+/* Debug Log Styles */
+.debug-log-entry {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background: #1f2937;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.debug-log-time {
+    color: #9ca3af;
+    min-width: 90px;
+    font-weight: 500;
+}
+
+.debug-log-level {
+    min-width: 80px;
+    font-weight: 600;
+}
+
+.debug-log-message {
+    color: #e5e7eb;
+    flex: 1;
+    word-break: break-word;
+}
+
+/* Responsive Adjustments */
 @media (max-width: 768px) {
     .modal-content-large {
         width: 100%;
         max-width: 100%;
         height: 100vh;
         border-radius: 0;
-    }
-
-    #curveCanvas {
-        width: 100%;
-        height: 300px;
     }
 
     .grid-4 {
@@ -1597,5 +1775,24 @@ input[type="range"]::-moz-range-thumb {
     .btn-action {
         padding: 8px 12px;
         font-size: 14px;
+    }
+
+    .btn-template {
+        min-height: 100px;
+        padding: 12px;
+    }
+
+    .template-icon {
+        font-size: 24px;
+    }
+
+    .debug-log-entry {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .debug-log-time,
+    .debug-log-level {
+        min-width: auto;
     }
 }

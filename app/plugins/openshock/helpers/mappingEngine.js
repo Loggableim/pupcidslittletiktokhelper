@@ -236,6 +236,30 @@ class MappingEngine {
         this.logger.info(`[MappingEngine] Matched mapping ${mapping.id}: ${mapping.name}`);
       }
 
+      // For gift events: If there's a specific gift mapping, exclude generic catch-all mappings
+      if (eventType === 'gift' && matches.length > 0) {
+        // Check if any match has a specific giftName condition
+        const hasSpecificGiftMapping = matches.some(m => 
+          m.mapping.conditions?.giftName && 
+          m.mapping.conditions.giftName.trim() !== '' &&
+          m.mapping.conditions.giftName !== '*'
+        );
+        
+        if (hasSpecificGiftMapping) {
+          // Filter out generic/catch-all mappings (no giftName or wildcard)
+          const filteredMatches = matches.filter(m => {
+            const hasSpecificGift = m.mapping.conditions?.giftName && 
+                                   m.mapping.conditions.giftName.trim() !== '' &&
+                                   m.mapping.conditions.giftName !== '*';
+            return hasSpecificGift;
+          });
+          
+          this.logger.info(`[MappingEngine] Gift event: Specific mapping found, ignoring ${matches.length - filteredMatches.length} generic mappings`);
+          matches.length = 0;
+          matches.push(...filteredMatches);
+        }
+      }
+
       // Sort by priority (higher priority first)
       matches.sort((a, b) => {
         const priorityA = a.mapping.action.priority || 5;
@@ -303,19 +327,33 @@ class MappingEngine {
           // Check gift name if specified
           if (conditions.giftName) {
             const giftName = eventData.giftName || eventData.gift?.name || '';
+            
+            this.logger.debug(`[MappingEngine] Comparing gift names - Expected: "${conditions.giftName}", Received: "${giftName}"`);
+            
             // Case-insensitive comparison
             if (giftName.toLowerCase() !== conditions.giftName.toLowerCase()) {
+              this.logger.debug(`[MappingEngine] Gift name mismatch for mapping ${mapping.id}`);
               return false;
             }
+            
+            this.logger.debug(`[MappingEngine] Gift name matched for mapping ${mapping.id}`);
           }
           
-          // Check minimum coins if specified
-          if (conditions.minCoins !== undefined) {
-            const coins = eventData.giftCoins || eventData.coins || 0;
-            if (coins < conditions.minCoins) {
-              return false;
-            }
+          // Check coin range if specified
+          const coins = eventData.giftCoins || eventData.coins || 0;
+          
+          this.logger.debug(`[MappingEngine] Gift coins: ${coins}, minCoins: ${conditions.minCoins}, maxCoins: ${conditions.maxCoins}`);
+          
+          if (conditions.minCoins !== undefined && coins < conditions.minCoins) {
+            this.logger.debug(`[MappingEngine] Coins ${coins} below minimum ${conditions.minCoins}`);
+            return false;
           }
+          
+          if (conditions.maxCoins !== undefined && coins > conditions.maxCoins) {
+            this.logger.debug(`[MappingEngine] Coins ${coins} above maximum ${conditions.maxCoins}`);
+            return false;
+          }
+          
           break;
 
         case 'chat':

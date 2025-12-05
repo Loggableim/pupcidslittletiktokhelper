@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="tts.admin_panel.title">TTS Admin Panel</title>
     <link rel="stylesheet" href="/css/tailwind.output.css">
@@ -21,6 +22,18 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+        
+        /* Electron iframe compatibility fixes */
+        input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
+            cursor: text;
+        }
+        select, button, .tab-button, .filter-btn, .log-filter-btn {
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -58,14 +71,15 @@
 
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium mb-2">Default Engine</label>
+                            <label class="block text-sm font-medium mb-2">Default Engine (Main)</label>
                             <select id="defaultEngine" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
                                 <!-- TikTok TTS removed - no longer supported -->
-                                <option value="google">Google Cloud TTS (Requires API Key)</option>
-                                <option value="speechify">Speechify TTS (Premium, Requires API Key)</option>
-                                <option value="elevenlabs">ElevenLabs TTS (Premium, Requires API Key)</option>
-                                <option value="openai">OpenAI TTS (Requires API Key)</option>
+                                <option value="google">Google Cloud TTS</option>
+                                <option value="speechify">Speechify TTS (Premium)</option>
+                                <option value="elevenlabs">ElevenLabs TTS (Premium)</option>
+                                <option value="openai">OpenAI TTS</option>
                             </select>
+                            <p class="text-xs text-gray-400 mt-1">The primary TTS engine to use. API key must be configured in the API Keys section below.</p>
                         </div>
 
                         <div>
@@ -73,6 +87,44 @@
                             <select id="defaultVoice" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
                                 <!-- Populated dynamically -->
                             </select>
+                        </div>
+
+                        <!-- Fallback Engines Activation -->
+                        <div class="border-t border-gray-700 pt-4 mt-4">
+                            <label class="block text-sm font-medium mb-3">🔄 Enabled Fallback Engines</label>
+                            <p class="text-xs text-gray-400 mb-3">Select which engines should be available as fallbacks when the main engine fails. Only enabled engines will be loaded (saves system resources).</p>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="flex items-center space-x-2 bg-gray-700 rounded p-3">
+                                    <input type="checkbox" id="enableGoogleFallback" class="w-4 h-4">
+                                    <label for="enableGoogleFallback" class="text-sm flex-1">
+                                        <span class="font-medium">Google Cloud TTS</span>
+                                        <span class="text-xs text-gray-400 block">Neural voices, high quality</span>
+                                    </label>
+                                </div>
+                                <div class="flex items-center space-x-2 bg-gray-700 rounded p-3">
+                                    <input type="checkbox" id="enableSpeechifyFallback" class="w-4 h-4">
+                                    <label for="enableSpeechifyFallback" class="text-sm flex-1">
+                                        <span class="font-medium">Speechify</span>
+                                        <span class="text-xs text-gray-400 block">1000+ voices, 60+ languages</span>
+                                    </label>
+                                </div>
+                                <div class="flex items-center space-x-2 bg-gray-700 rounded p-3">
+                                    <input type="checkbox" id="enableElevenlabsFallback" class="w-4 h-4">
+                                    <label for="enableElevenlabsFallback" class="text-sm flex-1">
+                                        <span class="font-medium">ElevenLabs</span>
+                                        <span class="text-xs text-gray-400 block">Ultra-realistic AI voices</span>
+                                    </label>
+                                </div>
+                                <div class="flex items-center space-x-2 bg-gray-700 rounded p-3">
+                                    <input type="checkbox" id="enableOpenAIFallback" class="w-4 h-4">
+                                    <label for="enableOpenAIFallback" class="text-sm flex-1">
+                                        <span class="font-medium">OpenAI TTS</span>
+                                        <span class="text-xs text-gray-400 block">TTS-1 and TTS-1-HD models</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <p class="text-xs text-yellow-500 mt-2">⚠️ Each enabled engine requires its corresponding API key to be configured in the API Keys section.</p>
                         </div>
 
                         <div>
@@ -86,76 +138,6 @@
                                 Fast mode is optimized for low-end PCs with faster timeouts (5s) and fewer retries (1). 
                                 Balanced mode is recommended for most users (10s timeout, 2 retries). 
                                 Quality mode provides maximum reliability for high-end PCs (20s timeout, 3 retries).
-                            </p>
-                        </div>
-
-                        <div id="google-api-key-section">
-                            <label class="block text-sm font-medium mb-2">Google Cloud API Key (Optional)</label>
-                            <div class="flex gap-2">
-                                <input type="password" id="googleApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                                <button type="button" id="toggle-google-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://console.cloud.google.com" target="_blank" class="text-blue-400 hover:text-blue-300">Google Cloud Console</a>. Enable the Cloud Text-to-Speech API for high-quality neural voices.</p>
-                        </div>
-
-                        <div id="speechify-api-key-section">
-                            <label class="block text-sm font-medium mb-2">Speechify API Key (Optional)</label>
-                            <div class="flex gap-2">
-                                <input type="password" id="speechifyApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                                <button type="button" id="toggle-speechify-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://speechify.com/api" target="_blank" class="text-blue-400 hover:text-blue-300">speechify.com/api</a>. Pricing: $10 per 1M characters. 1000+ voices in 60+ languages.</p>
-                        </div>
-
-                        <div id="elevenlabs-api-key-section">
-                            <label class="block text-sm font-medium mb-2">ElevenLabs API Key (Optional)</label>
-                            <div class="flex gap-2">
-                                <input type="password" id="elevenlabsApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                                <button type="button" id="toggle-elevenlabs-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://elevenlabs.io/docs/quickstart" target="_blank" class="text-blue-400 hover:text-blue-300">elevenlabs.io</a>. Ultra-realistic AI voices. 100+ voices in 30+ languages.</p>
-                        </div>
-
-                        <div id="openai-api-key-section">
-                            <label class="block text-sm font-medium mb-2">OpenAI API Key (Optional)</label>
-                            <div class="flex gap-2">
-                                <input type="password" id="openaiApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                                <button type="button" id="toggle-openai-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-400 hover:text-blue-300">OpenAI Platform</a>. See <a href="https://platform.openai.com/docs/guides/text-to-speech" target="_blank" class="text-blue-400 hover:text-blue-300">TTS docs</a>. Multiple voice options with TTS-1 and TTS-1-HD models.</p>
-                        </div>
-
-                        <!-- TikTok SessionID section temporarily hidden - TikTok TTS API endpoints not working -->
-                        <div id="tiktok-session-id-section" class="border-t border-gray-700 pt-4" style="display: none;">
-                            <label class="block text-sm font-medium mb-2">🔑 TikTok SessionID (Required for TikTok TTS)</label>
-                            <div class="flex gap-2">
-                                <input type="password" id="tiktokSessionId" placeholder="Enter SessionID..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
-                                <button type="button" id="toggle-tiktok-session" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <div class="mt-2 bg-blue-900 bg-opacity-30 border border-blue-700 rounded p-3">
-                                <p class="text-sm font-medium mb-2">📚 So finden Sie Ihre TikTok SessionID:</p>
-                                <ol class="text-xs text-gray-300 space-y-1 ml-4 list-decimal">
-                                    <li>Öffnen Sie <a href="https://www.tiktok.com" target="_blank" class="text-blue-400 hover:text-blue-300">tiktok.com</a> und melden Sie sich an</li>
-                                    <li>Drücken Sie <kbd class="px-1 bg-gray-700 rounded">F12</kbd> um die Entwicklertools zu öffnen</li>
-                                    <li>Gehen Sie zum Tab <strong>Application</strong> (Chrome) oder <strong>Storage</strong> (Firefox)</li>
-                                    <li>Erweitern Sie <strong>Cookies</strong> in der Seitenleiste</li>
-                                    <li>Klicken Sie auf <code>https://www.tiktok.com</code></li>
-                                    <li>Suchen Sie nach dem Cookie <code>sessionid</code></li>
-                                    <li>Kopieren Sie den <strong>Value</strong> und fügen Sie ihn oben ein</li>
-                                </ol>
-                            </div>
-                            <p class="text-xs text-gray-400 mt-2">
-                                <i class="fas fa-info-circle"></i> Ein Fallback-SessionID wird bereits verwendet. Für bessere Zuverlässigkeit sollten Sie Ihre eigene SessionID eingeben.
                             </p>
                         </div>
                     </div>
@@ -305,6 +287,69 @@
                                 <option value="moderate">Moderate - Replace profanity</option>
                                 <option value="strict">Strict - Drop messages with profanity</option>
                             </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Keys Section -->
+                <div class="bg-gray-800 rounded-lg p-6 shadow-xl lg:col-span-2">
+                    <h2 class="text-2xl font-bold mb-4">🔑 API Keys</h2>
+                    <p class="text-gray-400 text-sm mb-4">Configure API keys for each TTS engine. Only engines with valid API keys can be used.</p>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div id="google-api-key-section">
+                            <label class="block text-sm font-medium mb-2">Google Cloud API Key</label>
+                            <div class="flex gap-2">
+                                <input type="password" id="googleApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <button type="button" id="toggle-google-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://console.cloud.google.com" target="_blank" class="text-blue-400 hover:text-blue-300">Google Cloud Console</a>. Enable the Cloud Text-to-Speech API.</p>
+                        </div>
+
+                        <div id="speechify-api-key-section">
+                            <label class="block text-sm font-medium mb-2">Speechify API Key</label>
+                            <div class="flex gap-2">
+                                <input type="password" id="speechifyApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <button type="button" id="toggle-speechify-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Get from <a href="https://speechify.com/api" target="_blank" class="text-blue-400 hover:text-blue-300">speechify.com/api</a>. $10 per 1M characters. 1000+ voices.</p>
+                        </div>
+
+                        <div id="elevenlabs-api-key-section">
+                            <label class="block text-sm font-medium mb-2">ElevenLabs API Key</label>
+                            <div class="flex gap-2">
+                                <input type="password" id="elevenlabsApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <button type="button" id="toggle-elevenlabs-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Get from <a href="https://elevenlabs.io/docs/quickstart" target="_blank" class="text-blue-400 hover:text-blue-300">elevenlabs.io</a>. Ultra-realistic AI voices.</p>
+                        </div>
+
+                        <div id="openai-api-key-section">
+                            <label class="block text-sm font-medium mb-2">OpenAI API Key</label>
+                            <div class="flex gap-2">
+                                <input type="password" id="openaiApiKey" placeholder="Enter API key..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <button type="button" id="toggle-openai-key" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Get from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-400 hover:text-blue-300">OpenAI Platform</a>. TTS-1 and TTS-1-HD models.</p>
+                        </div>
+                    </div>
+
+                    <!-- TikTok SessionID section temporarily hidden - TikTok TTS API endpoints not working -->
+                    <div id="tiktok-session-id-section" class="border-t border-gray-700 pt-4 mt-4" style="display: none;">
+                        <label class="block text-sm font-medium mb-2">🔑 TikTok SessionID (Required for TikTok TTS)</label>
+                        <div class="flex gap-2">
+                            <input type="password" id="tiktokSessionId" placeholder="Enter SessionID..." class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                            <button type="button" id="toggle-tiktok-session" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded hover:bg-gray-600">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -536,8 +581,8 @@
     </div>
 
     <!-- Voice Assignment Modal -->
-    <div id="voiceAssignmentModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div id="voiceAssignmentModal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-75 flex items-center justify-center hidden" style="z-index: 2000;">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative" tabindex="-1">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold">🎤 Assign Voice</h2>
                 <button id="modalCloseX" class="text-gray-400 hover:text-white text-2xl">&times;</button>

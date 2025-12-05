@@ -9,6 +9,7 @@ class UpdateUI {
         this.updateDownloadBtn = document.getElementById('update-download-btn');
         this.updateDismissBtn = document.getElementById('update-dismiss-btn');
         this.currentUpdateInfo = null;
+        this.currentVersion = null;
 
         this.init();
     }
@@ -23,6 +24,9 @@ class UpdateUI {
             this.updateDismissBtn.addEventListener('click', () => this.dismissBanner());
         }
 
+        // Fetch and display current version in title
+        this.updateTitleWithVersion();
+
         // Update-Check beim Laden
         this.checkForUpdates();
 
@@ -30,6 +34,34 @@ class UpdateUI {
         setInterval(() => {
             this.checkForUpdates();
         }, 6 * 60 * 60 * 1000);
+    }
+    
+    /**
+     * Fetches current version and updates page title and header
+     */
+    async updateTitleWithVersion() {
+        try {
+            const response = await fetch('/api/update/current');
+            const data = await response.json();
+            
+            if (data.success && data.version) {
+                this.currentVersion = data.version;
+                
+                // Update document title
+                const baseTitle = "Pup Cid's Little TikTok Helper";
+                document.title = `${baseTitle} ${data.version}`;
+                
+                // Update header title if exists
+                const headerTitle = document.querySelector('.topbar-title');
+                if (headerTitle) {
+                    headerTitle.textContent = `${baseTitle} ${data.version}`;
+                }
+                
+                console.log(`✅ [Version] App version: ${data.version}`);
+            }
+        } catch (error) {
+            console.warn('[Version] Could not fetch version:', error);
+        }
     }
 
     /**

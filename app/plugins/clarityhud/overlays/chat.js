@@ -258,6 +258,23 @@ async function init() {
       console.warn('[CHAT HUD] ⚠️ Settings response not successful, using defaults');
     }
 
+    // Load initial state (existing messages)
+    try {
+      const stateResponse = await fetch('/api/clarityhud/state/chat');
+      const stateData = await stateResponse.json();
+      
+      if (stateData.success && stateData.events && stateData.events.chat) {
+        console.log('[CHAT HUD] ✅ Loading initial messages:', stateData.events.chat.length);
+        // Add existing messages to the display
+        stateData.events.chat.forEach(msg => {
+          addMessage(msg);
+        });
+      }
+    } catch (error) {
+      console.warn('[CHAT HUD] ⚠️ Could not load initial state:', error);
+      // Continue without initial messages
+    }
+
     // Initialize virtual scrolling if enabled
     if (STATE.settings.useVirtualScrolling) {
       console.log('[CHAT HUD] Initializing virtual scrolling...');

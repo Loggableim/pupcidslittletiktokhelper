@@ -286,7 +286,7 @@ Sendet Test-Print.
 
 ## 📄 Lizenz
 
-MIT
+CC BY-NC 4.0
 
 ## 👤 Autor
 

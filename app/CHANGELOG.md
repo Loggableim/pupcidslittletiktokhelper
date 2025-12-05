@@ -7,7 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Electron Performance Diagnostics Guide** (`infos/ELECTRON_PERFORMANCE_GUIDE.md`) - Comprehensive diagnostic guide
+  - GPU & Rendering diagnosis (chrome://gpu, flag verification, DevTools in packaged app)
+  - Build config validation (NODE_ENV, source maps, logging levels)
+  - Thread blocking analysis (sync API identification, flamegraph analysis)
+  - IO/DB diagnostics (SQLite pragmas, path differences, query timing)
+  - CSS/DOM performance (expensive properties, virtualization strategies)
+  - 13-step prioritized diagnostic checklist with expected results
+- **Performance Diagnostics Tool** (`tools/performance-diagnostics.js`) - Console script for real-time analysis
+  - DOM node count and nesting depth monitoring
+  - Memory heap usage tracking
+  - CSS property scan (box-shadow, filter, backdrop-filter)
+  - Long Task observer (>50ms)
+  - Input latency measurement and scroll FPS tracking
+- **Diagnostics Panel in Settings** - Comprehensive logging tool in dashboard settings
+  - GPU support detection, error logs from developer panel
+  - Launches before all other plugins for complete logging
+  - Can be deactivated, but active by default
+- **Launch Mode Selection on Splash Screen** - Users can choose between Electron app or Browser mode at startup
+  - Launch buttons enabled after backend is ready
+  - Browser mode opens dashboard in default browser and minimizes to tray
+  - Tray menu updated with German labels and both launch options
+
+### Changed
+- **SQLite Performance Optimizations** (`app/modules/database.js`)
+  - journal_mode = WAL, synchronous = NORMAL
+  - cache_size = 64MB, temp_store = MEMORY, mmap_size = 256MB
+- **Electron Performance Flags** (`electron/main.js`)
+  - Disabled `CalculateNativeWinOcclusion` for reduced overhead
+  - Enabled QUIC protocol for faster networking
+  - Force sRGB color profile for consistent rendering
+  - Disabled runtime component updates
+- **IPC Batch Operations** for reduced overhead
+  - Added `settings:getMultiple` - Fetch multiple settings in one IPC call
+  - Added `settings:setMultiple` - Set multiple settings in one IPC call
+- **Virtual Scroller Optimization** (`app/public/js/virtual-scroller.js`)
+  - requestAnimationFrame throttling for scroll events
+  - GPU layer promotion with `will-change: transform`
+  - CSS `contain: layout style paint` for isolated rendering
+  - Passive event listeners for better scroll performance
+- **CSS Performance Improvements** (`app/public/css/navigation.css`)
+  - `will-change: scroll-position` on scrollable containers
+  - `contain: layout style paint` for better paint isolation
+  - `overscroll-behavior: contain` for natural scrolling
+
 ### Fixed
+- **Quick Actions Menu Not Updating** - Menu remained grayed out after enabling plugins until page refresh
+  - Added `setupQuickActionPluginListener()` to refresh buttons on `plugins:changed` socket events
+  - Extracted `fetchActivePlugins()` and `getTranslation()` utilities to reduce duplication
+  - Added `refreshQuickActionButtons()` export for external access
+  - Updated locale files (en, de, es, fr) with `quick_action.plugin_disabled` translations
+- **Goals Modal Focus Issue in Electron** - Modal inputs unclickable due to CSS stacking and focus issues in iframe context
+  - Changed modal sizing from `right: 0; bottom: 0` to `width: 100%; height: 100%`
+  - Increased z-index from 1000 to 2000 (matching other modals)
+  - Added `-webkit-user-select: text` to form inputs for Electron compatibility
+  - Added `tabindex="-1"` to modal-content and auto-focus first input on open
+- **TTS Admin Panel Unclickable in Electron** - Tabs, buttons, and inputs not responding to clicks in Electron iframe
+  - Added `-webkit-user-select: text` and `user-select: text` for input/textarea elements
+  - Added `cursor: pointer` and `user-select: none` for buttons, tabs, filter buttons
+  - Updated Voice Assignment Modal with `w-full h-full` positioning and z-index: 2000
+- **Plugin Disabled Detection Improved** - Better error messages for disabled plugins
+  - OpenShock, Leaderboard, Stream-Alchemie, Thermaldrucker and other plugins now properly detect disabled state
+- **Chatango Integration in Electron** - Fixed white window issue in installed version
+  - Chatango embed now activates correctly in packaged Electron app
+- **Language Selector Flags** - Fixed flag icons not showing in installed version
+  - Instead of showing "de DE" or "en EN", now correctly shows flag icons with language code
 - **TikTok TTS Engine Failing with 500 Errors** - Complete rewrite of TikTok TTS endpoint handling
   - **Problem:** All third-party proxy endpoints were returning HTTP 500 errors
   - **Root Cause:** Original implementation relied on outdated proxy services (weilnet, countik, gesserit)
@@ -24,64 +89,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Known Limitation:** Long text (>300 chars) returns only first chunk - keep messages short
   - Files modified: `plugins/tts/engines/tiktok-engine.js`
   - Documentation: `docs/TIKTOK_TTS_FIX.md`
-  - Based on research from TikTok-Chat-Reader project and community TTS implementations
-
-### Changed
-- **BREAKING: Migration to Eulerstream WebSocket SDK** - Complete replacement of tiktok-live-connector
-  - Removed dependency on `tiktok-live-connector` library (https://github.com/zerodytrash/TikTok-Live-Connector)
-  - Integrated Eulerstream WebSocket SDK (`@eulerstream/euler-websocket-sdk`) as the exclusive connection method
-  - Direct WebSocket connection to Eulerstream API (https://www.eulerstream.com/docs)
-  - Eulerstream API key is now REQUIRED (set via EULER_API_KEY or SIGN_API_KEY environment variable)
-  - All TikTok LIVE event handling now uses Eulerstream's WebSocket protocol
-  - Maintained backward compatibility with existing event handlers and plugins
-  - Updated configuration options to use Eulerstream-specific settings
-  - Files modified: `modules/tiktok.js`, `package.json`, `.env.example`, `README.md`, `test-connection.js`
-  - See https://www.eulerstream.com for API key registration and documentation
-
-### Fixed
 - **CRITICAL: TikTok Connection 504 Timeout** - Fixed Euler Stream timeout issues
   - **Root Cause:** `fetchRoomInfoOnConnect: true` was causing excessive Euler Stream API calls
-  - The library was making extra WebSocket connection requests through Euler Stream which timed out (504)
   - **Solution:** Changed `fetchRoomInfoOnConnect` to `false` to reduce API calls
-  - Connection now verifies stream is live through the WebSocket connection itself (faster, more reliable)
-  - Increased HTTP timeout to minimum 30 seconds for international connections
-  - Updated request headers with modern Chrome UA and proper Accept headers
-  - Added logging to show if Euler API key is configured vs using free tier
+  - Connection now verifies stream is live through the WebSocket connection itself
   - Improved error messages for Euler Stream timeouts with clearer solutions
-  - **Note:** Euler Stream fallbacks remain ENABLED by default (they are mandatory for library function)
-  - **INTEGRATED:** Hardcoded Euler API key as Base64-encoded fallback for guaranteed connectivity
-  - Files modified: `modules/tiktok.js`
-  - See `FIX_CONNECTION_ISSUE.md` for detailed technical documentation
 - **CRITICAL: TikTok Connection Invalid Option** - Fixed connection failure caused by invalid configuration option
   - Removed non-existent `enableWebsocketUpgrade` option from TikTokLiveConnection configuration
-  - This option does not exist in tiktok-live-connector v2.1.0 and was preventing connections
-  - Fixed in 2 locations: main connection (line 100) and gift catalog update (line 1323)
-  - Updated test-connection.js to use only valid library options
-  - Connection now works correctly with valid options: `processInitialData`, `enableExtendedGiftInfo`, `requestPollingIntervalMs`, `connectWithUniqueId`, `disableEulerFallbacks`
-
-### Added
-- **Weather Control Plugin** (`plugins/weather-control/`) - Professional weather effects system
-  - 7 Modern Weather Effects: Rain, Snow, Storm, Fog, Thunder, Sunbeam, Glitch Clouds
-  - GPU-accelerated Canvas 2D rendering with 60 FPS performance
-  - Permission-based access control (Followers, Superfans, Subscribers, Team Members, Top Gifters)
-  - Configurable rate limiting (default 10 requests/minute per user)
-  - WebSocket real-time event streaming to overlays
-  - Flow action support for IFTTT automation (`weather.trigger`)
-  - Gift-based automatic triggers (coin thresholds: 100, 500, 1000, 5000+)
-  - REST API with input validation and sanitization
-  - API endpoints:
-    - `POST /api/weather/trigger` - Trigger weather effects
-    - `GET /api/weather/config` - Get configuration
-    - `POST /api/weather/config` - Update configuration
-    - `GET /api/weather/effects` - List supported effects
-    - `POST /api/weather/reset-key` - Reset API key
-  - UI configuration panel at `/weather-control/ui`
-  - Overlay at `/weather-control/overlay`
-  - Comprehensive README with setup instructions
-- **Integration Tests** (`test-weather-control.js`) - Weather Control Plugin test suite
-  - 10 comprehensive integration tests
-  - Tests API endpoints, validation, rate limiting, all weather effects
-  - All tests passing
 
 ## [1.0.3] - 2025-11-10
 

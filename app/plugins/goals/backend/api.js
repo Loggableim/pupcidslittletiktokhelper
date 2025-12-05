@@ -79,7 +79,7 @@ class GoalsAPI {
         });
 
         // Create new goal
-        this.api.registerRoute('post', '/api/goals', (req, res) => {
+        this.api.registerRoute('post', '/api/goals', async (req, res) => {
             try {
                 const goalData = {
                     id: generateId(),
@@ -94,12 +94,28 @@ class GoalsAPI {
                     });
                 }
 
+                // For likes goals, sync with current stream likes before creating
+                if (goalData.goal_type === 'likes') {
+                    try {
+                        const stats = await this.plugin.eventHandlers.fetchCurrentStats();
+                        if (stats && stats.likes > 0) {
+                            goalData.current_value = stats.likes;
+                            this.api.log(`Initialized likes goal with stream total: ${stats.likes}`, 'info');
+                        }
+                    } catch (e) {
+                        // Ignore error, will use default value
+                    }
+                }
+
                 // Create goal in database
                 const goal = this.db.createGoal(goalData);
 
                 // Initialize state machine
                 const machine = this.stateMachineManager.getMachine(goal.id);
                 machine.initialize(goal);
+
+                // Setup state machine event listeners (required for reach behavior like double/increment)
+                this.plugin.setupStateMachineListeners(machine);
 
                 // Broadcast to all clients
                 this.plugin.broadcastGoalCreated(goal);
@@ -125,6 +141,9 @@ class GoalsAPI {
                 // Update state machine
                 const machine = this.stateMachineManager.getMachine(goal.id);
                 machine.initialize(goal);
+
+                // Ensure state machine event listeners are attached (required for reach behavior like double/increment)
+                this.plugin.setupStateMachineListeners(machine);
 
                 // Broadcast to all clients
                 this.plugin.broadcastGoalUpdated(goal);

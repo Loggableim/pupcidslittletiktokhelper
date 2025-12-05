@@ -42,6 +42,12 @@ socket.on(`lastevent.settings.${OVERLAY_TYPE}`, (newSettings) => {
   }
 });
 
+// Listen for session reset (new stream started)
+socket.on('lastevent.session.reset', () => {
+  console.log('Session reset - clearing overlay');
+  container.innerHTML = '';
+});
+
 // Initialize overlay
 async function init() {
   try {

@@ -66,7 +66,7 @@ async function runTest() {
         console.log(`Loaded ${plugins1.length} plugins initially`);
         
         // Verify default active plugins
-        const defaultActive = ['emoji-rain', 'lastevent-spotlight', 'goals', 'soundboard', 'tts'];
+        const defaultActive = ['emoji-rain', 'lastevent-spotlight', 'goals', 'quiz-show', 'soundboard', 'tts'];
         const activePlugins1 = plugins1.map(p => p.id);
         
         console.log('Active plugins:', activePlugins1.sort().join(', '));
@@ -77,7 +77,7 @@ async function runTest() {
         
         assert.ok(allDefaultsActive, 'All default plugins should be active');
         assert.ok(onlyDefaultsActive, 'Only default plugins should be active');
-        assert.strictEqual(plugins1.length, 5, 'Should have exactly 5 active plugins');
+        assert.strictEqual(plugins1.length, 6, 'Should have exactly 6 active plugins');
         
         console.log('✓ Test 1 passed: Correct plugins loaded by default\n');
         
@@ -133,7 +133,7 @@ async function runTest() {
         assert.ok(emojiRainStillDisabled, 'emoji-rain should still be disabled after restart');
         
         // Verify other default plugins are still active
-        const otherDefaults = ['lastevent-spotlight', 'goals', 'soundboard', 'tts'];
+        const otherDefaults = ['lastevent-spotlight', 'goals', 'quiz-show', 'soundboard', 'tts'];
         const otherDefaultsActive = otherDefaults.every(id => activePluginIds.includes(id));
         assert.ok(otherDefaultsActive, 'Other default plugins should still be active');
         

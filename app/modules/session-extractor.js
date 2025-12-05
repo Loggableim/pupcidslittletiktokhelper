@@ -1,4 +1,19 @@
-const puppeteer = require('puppeteer');
+// Lazy-load puppeteer to reduce startup time and allow it to be optional
+// PERFORMANCE: puppeteer is ~300MB and only needed for session extraction
+let puppeteer = null;
+const loadPuppeteer = () => {
+    if (!puppeteer) {
+        try {
+            puppeteer = require('puppeteer');
+        } catch {
+            // Puppeteer not installed - this is expected in minimal installations
+            // The error will be thrown with a user-friendly message
+            throw new Error('Puppeteer is not installed. This feature requires puppeteer to be installed separately. Install with: npm install puppeteer');
+        }
+    }
+    return puppeteer;
+};
+
 const fs = require('fs');
 const path = require('path');
 
@@ -8,6 +23,9 @@ const path = require('path');
  * This module uses Puppeteer to launch a headless browser, navigate to TikTok,
  * and extract the session ID cookie. This can help improve connection reliability
  * when encountering 504 Sign API errors.
+ * 
+ * PERFORMANCE NOTE: Puppeteer is now lazy-loaded to reduce startup time.
+ * The ~300MB puppeteer package is only loaded when session extraction is actually used.
  */
 class SessionExtractor {
     constructor(db, configPathManager = null) {
@@ -21,6 +39,19 @@ class SessionExtractor {
         } else {
             // Fallback to old behavior
             this.sessionPath = path.join(process.cwd(), 'user_data', 'tiktok_session.json');
+        }
+    }
+    
+    /**
+     * Check if puppeteer is available
+     * @returns {boolean} - True if puppeteer can be loaded
+     */
+    static isPuppeteerAvailable() {
+        try {
+            require.resolve('puppeteer');
+            return true;
+        } catch {
+            return false;
         }
     }
 
@@ -58,7 +89,7 @@ class SessionExtractor {
                 ...(options.executablePath && { executablePath: options.executablePath })
             };
 
-            this.browser = await puppeteer.launch(browserOptions);
+            this.browser = await loadPuppeteer().launch(browserOptions);
             const page = await this.browser.newPage();
 
             // Set viewport
@@ -329,7 +360,8 @@ class SessionExtractor {
      */
     async testBrowserAvailability() {
         try {
-            const browser = await puppeteer.launch({
+            const pptr = loadPuppeteer();
+            const browser = await pptr.launch({
                 headless: 'new',
                 args: ['--no-sandbox', '--disable-setuid-sandbox']
             });
@@ -339,7 +371,9 @@ class SessionExtractor {
             return { 
                 available: false, 
                 error: error.message,
-                message: 'Browser automation not available. You may need to install Chrome/Chromium.'
+                message: error.message.includes('not installed') 
+                    ? 'Puppeteer is not installed. Install with: npm install puppeteer'
+                    : 'Browser automation not available. You may need to install Chrome/Chromium.'
             };
         }
     }

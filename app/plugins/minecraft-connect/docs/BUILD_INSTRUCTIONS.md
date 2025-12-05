@@ -133,7 +133,7 @@ archives_base_name=tikstreamlink
     "homepage": "https://github.com/yourusername/tikstreamlink",
     "sources": "https://github.com/yourusername/tikstreamlink"
   },
-  "license": "MIT",
+  "license": "CC-BY-NC-4.0",
   "icon": "assets/tikstreamlink/icon.png",
   "environment": "*",
   "entrypoints": {
@@ -312,7 +312,7 @@ Create `config/tikstreamlink.json`:
 
 ## License
 
-MIT License - see LICENSE file for details
+CC BY-NC 4.0 License - see LICENSE file for details
 
 ## Support
 

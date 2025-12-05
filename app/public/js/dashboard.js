@@ -1,5 +1,7 @@
 // Socket.io Verbindung - delayed until DOM ready to avoid race conditions
+// Made global (window.socket) so navigation.js can access it for plugin state changes
 let socket = null;
+window.socket = null; // Global reference for navigation.js
 
 // State
 let currentTab = 'events';
@@ -14,10 +16,38 @@ let isPreviewPlaying = false;
 let audioUnlocked = false;
 let pendingTTSQueue = [];
 
+// ========== STATS MENU NAVIGATION DATA ==========
+// Track event data for detail panels
+const statsMenuData = {
+    viewers: new Map(),      // Map of uniqueId -> { username, nickname, profilePictureUrl, lastSeen, teamMemberLevel }
+    chat: [],                // Array of { username, nickname, message, timestamp, profilePictureUrl, teamMemberLevel }
+    likes: [],               // Array of { username, nickname, likeCount, timestamp, profilePictureUrl, teamMemberLevel }
+    coins: [],               // Array of { username, nickname, giftName, coins, timestamp, profilePictureUrl }
+    followers: [],           // Array of { username, nickname, timestamp, profilePictureUrl, teamMemberLevel }
+    subscribers: [],         // Array of { username, nickname, timestamp, profilePictureUrl, teamMemberLevel }
+    gifts: [],               // Array of { username, nickname, giftName, giftPictureUrl, repeatCount, coins, timestamp }
+    counts: {
+        viewers: 0,
+        chat: 0,
+        likes: 0,
+        coins: 0,
+        followers: 0,
+        subscribers: 0,
+        gifts: 0
+    }
+};
+
+// Current active panel
+let activeStatsPanel = null;
+const MAX_PANEL_ITEMS = 50; // Maximum items to keep in each panel list
+
 // ========== INITIALIZATION ==========
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize UI first
     initializeButtons();
+    
+    // Initialize stats menu navigation
+    initializeStatsMenuNavigation();
 
     // Wait for server to be fully initialized (prevents race conditions)
     if (window.initHelper) {
@@ -45,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialize socket connection AFTER data is loaded
     socket = io();
+    window.socket = socket; // Update global reference for navigation.js
 
     // Listen for init state updates
     if (window.initHelper && socket) {
@@ -179,6 +210,9 @@ function initializeButtons() {
             if (e.key === 'Enter') createProfile();
         });
     }
+    
+    // Initialize profile search and filter
+    initProfileSearchFilter();
 
     // Config Path Management buttons
     const setCustomConfigPathBtn = document.getElementById('set-custom-config-path-btn');
@@ -585,16 +619,18 @@ function updateStats(stats) {
     if (followersEl) followersEl.textContent = stats.followers.toLocaleString();
 
     // Update stream runtime
-    if (runtimeEl && stats.streamDuration !== undefined) {
+    let formattedRuntime = '--:--:--';
+    if (stats.streamDuration !== undefined) {
         const duration = stats.streamDuration;
         const hours = Math.floor(duration / 3600);
         const minutes = Math.floor((duration % 3600) / 60);
         const seconds = duration % 60;
         
-        const formatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        runtimeEl.textContent = formatted;
-    } else if (runtimeEl) {
-        runtimeEl.textContent = '--:--:--';
+        formattedRuntime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    if (runtimeEl) {
+        runtimeEl.textContent = formattedRuntime;
     }
 
     // Update gifts counter if available
@@ -603,6 +639,45 @@ function updateStats(stats) {
         // Use stats.gifts if available, otherwise fallback to counting gifts from events
         giftsElement.textContent = (stats.gifts || 0).toLocaleString();
     }
+    
+    // ========== Update Event Log Compact Stats Bar ==========
+    const eventStatsRuntime = document.getElementById('event-stats-runtime');
+    const eventStatsViewers = document.getElementById('event-stats-viewers');
+    const eventStatsLikes = document.getElementById('event-stats-likes');
+    const eventStatsCoins = document.getElementById('event-stats-coins');
+    const eventStatsFollowers = document.getElementById('event-stats-followers');
+    const eventStatsGifts = document.getElementById('event-stats-gifts');
+    
+    if (eventStatsRuntime) eventStatsRuntime.textContent = formattedRuntime;
+    if (eventStatsViewers) eventStatsViewers.textContent = stats.viewers.toLocaleString();
+    if (eventStatsLikes) eventStatsLikes.textContent = stats.likes.toLocaleString();
+    if (eventStatsCoins) eventStatsCoins.textContent = stats.totalCoins.toLocaleString();
+    if (eventStatsFollowers) eventStatsFollowers.textContent = stats.followers.toLocaleString();
+    if (eventStatsGifts) eventStatsGifts.textContent = (stats.gifts || 0).toLocaleString();
+    
+    // Update viewer count in stats menu data
+    statsMenuData.counts.viewers = stats.viewers || 0;
+    statsMenuData.counts.likes = stats.likes || 0;
+    statsMenuData.counts.coins = stats.totalCoins || 0;
+    
+    // Update panel viewer count if panel is open
+    const panelViewersCount = document.getElementById('panel-viewers-count');
+    if (panelViewersCount) {
+        panelViewersCount.textContent = (stats.viewers || 0).toLocaleString();
+    }
+    
+    // ========== Store stats globally for plugins ==========
+    window.ltthLiveStats = {
+        runtime: formattedRuntime,
+        streamDuration: stats.streamDuration || 0,
+        viewers: stats.viewers || 0,
+        likes: stats.likes || 0,
+        coins: stats.totalCoins || 0,
+        followers: stats.followers || 0,
+        gifts: stats.gifts || 0,
+        shares: stats.shares || 0,
+        lastUpdated: Date.now()
+    };
 }
 
 // ========== STREAM TIME DEBUG ==========
@@ -645,6 +720,40 @@ function addEventToLog(type, data) {
 
     const time = new Date().toLocaleTimeString();
     const username = data.username || data.uniqueId || data.nickname || 'Viewer';
+    
+    // Build team level badge - always show
+    let teamLevelBadge = '';
+    const teamLevel = data.teamMemberLevel || 0;
+    
+    // Define colors for different team levels:
+    // White for level 0
+    // Green-yellow for levels 1-10
+    // Blue for levels 11-20
+    // Violet for levels 21+
+    let badgeColor = '';
+    let badgeIcon = '❤️';
+    let textColor = 'text-white';
+    
+    if (teamLevel === 0) {
+        badgeColor = 'bg-gray-500';
+        badgeIcon = '🤍'; // White heart for level 0
+        textColor = 'text-white';
+    } else if (teamLevel >= 21) {
+        badgeColor = 'bg-violet-600';
+        badgeIcon = '💜'; // Violet heart for level 21+
+        textColor = 'text-white';
+    } else if (teamLevel >= 11) {
+        badgeColor = 'bg-blue-500';
+        badgeIcon = '💙'; // Blue heart for levels 11-20
+        textColor = 'text-white';
+    } else {
+        // Levels 1-10: green-yellow gradient
+        badgeColor = 'bg-gradient-to-r from-green-500 to-yellow-500';
+        badgeIcon = '💚'; // Green heart for levels 1-10
+        textColor = 'text-white';
+    }
+    
+    teamLevelBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${badgeColor} ${textColor} ml-1" title="Team Level ${teamLevel}">${badgeIcon}${teamLevel}</span>`;
 
     let details = '';
     let typeIcon = '';
@@ -669,7 +778,7 @@ function addEventToLog(type, data) {
             break;
         case 'like':
             typeIcon = '❤️ Like';
-            details = `${data.likeCount} likes`;
+            details = `+${data.likeCount || 1} (Total: ${data.totalLikes || 0})`;
             break;
         case 'subscribe':
             typeIcon = '🌟 Subscribe';
@@ -683,7 +792,7 @@ function addEventToLog(type, data) {
     row.innerHTML = `
         <td class="py-2 pr-4 text-gray-400">${time}</td>
         <td class="py-2 pr-4">${typeIcon}</td>
-        <td class="py-2 pr-4 font-semibold">${username}</td>
+        <td class="py-2 pr-4 font-semibold">${username}${teamLevelBadge}</td>
         <td class="py-2">${details}</td>
     `;
 
@@ -694,6 +803,489 @@ function addEventToLog(type, data) {
     while (logTable.children.length > 100) {
         logTable.removeChild(logTable.lastChild);
     }
+    
+    // ========== Update Stats Menu Data ==========
+    trackEventForStatsMenu(type, data);
+}
+
+// ========== STATS MENU NAVIGATION ==========
+
+/**
+ * Initialize stats menu navigation
+ */
+function initializeStatsMenuNavigation() {
+    const clickableItems = document.querySelectorAll('.stats-bar-clickable');
+    const closeButtons = document.querySelectorAll('.stats-panel-close');
+    
+    // Add click handlers for menu items
+    clickableItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const panelName = item.dataset.panel;
+            toggleStatsPanel(panelName);
+        });
+        
+        // Keyboard accessibility
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const panelName = item.dataset.panel;
+                toggleStatsPanel(panelName);
+            }
+        });
+    });
+    
+    // Add close button handlers
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            closeStatsPanel();
+        });
+    });
+}
+
+/**
+ * Toggle a stats panel
+ */
+function toggleStatsPanel(panelName) {
+    const container = document.getElementById('stats-detail-container');
+    const panel = document.getElementById(`stats-panel-${panelName}`);
+    const menuItems = document.querySelectorAll('.stats-bar-clickable');
+    
+    if (!container || !panel) return;
+    
+    // If clicking the same panel, close it
+    if (activeStatsPanel === panelName) {
+        closeStatsPanel();
+        return;
+    }
+    
+    // Hide all panels
+    document.querySelectorAll('.stats-detail-panel').forEach(p => {
+        p.style.display = 'none';
+    });
+    
+    // Remove active class from all menu items
+    menuItems.forEach(item => {
+        item.classList.remove('active');
+        item.setAttribute('aria-pressed', 'false');
+    });
+    
+    // Show the selected panel and container
+    container.style.display = 'block';
+    panel.style.display = 'block';
+    
+    // Add active class to the clicked menu item
+    const activeMenuItem = document.querySelector(`.stats-bar-clickable[data-panel="${panelName}"]`);
+    if (activeMenuItem) {
+        activeMenuItem.classList.add('active');
+        activeMenuItem.setAttribute('aria-pressed', 'true');
+    }
+    
+    activeStatsPanel = panelName;
+    
+    // Refresh the panel content
+    refreshStatsPanelContent(panelName);
+    
+    // Re-initialize lucide icons for new content
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+/**
+ * Close the active stats panel
+ */
+function closeStatsPanel() {
+    const container = document.getElementById('stats-detail-container');
+    const menuItems = document.querySelectorAll('.stats-bar-clickable');
+    
+    if (container) {
+        container.style.display = 'none';
+    }
+    
+    // Hide all panels
+    document.querySelectorAll('.stats-detail-panel').forEach(p => {
+        p.style.display = 'none';
+    });
+    
+    // Remove active class from all menu items
+    menuItems.forEach(item => {
+        item.classList.remove('active');
+        item.setAttribute('aria-pressed', 'false');
+    });
+    
+    activeStatsPanel = null;
+}
+
+/**
+ * Track event data for stats menu panels
+ */
+function trackEventForStatsMenu(type, data) {
+    const timestamp = new Date().toLocaleTimeString();
+    const username = data.username || data.uniqueId || data.nickname || 'Unknown';
+    const nickname = data.nickname || data.username || 'Unknown';
+    const profilePictureUrl = data.profilePictureUrl || '';
+    const teamMemberLevel = data.teamMemberLevel || 0;
+    
+    switch (type) {
+        case 'chat':
+            statsMenuData.chat.unshift({
+                username,
+                nickname,
+                message: data.message || '',
+                timestamp,
+                profilePictureUrl,
+                teamMemberLevel
+            });
+            statsMenuData.counts.chat++;
+            // Keep only the last MAX_PANEL_ITEMS
+            if (statsMenuData.chat.length > MAX_PANEL_ITEMS) {
+                statsMenuData.chat.pop();
+            }
+            updateStatsPanelCount('chat');
+            break;
+            
+        case 'like':
+            statsMenuData.likes.unshift({
+                username,
+                nickname,
+                likeCount: data.likeCount || 1,
+                totalLikes: data.totalLikes || 0,
+                timestamp,
+                profilePictureUrl,
+                teamMemberLevel
+            });
+            // Keep only the last MAX_PANEL_ITEMS
+            if (statsMenuData.likes.length > MAX_PANEL_ITEMS) {
+                statsMenuData.likes.pop();
+            }
+            break;
+            
+        case 'gift':
+            statsMenuData.gifts.unshift({
+                username,
+                nickname,
+                giftName: data.giftName || 'Gift',
+                giftPictureUrl: data.giftPictureUrl || '',
+                repeatCount: data.repeatCount || 1,
+                coins: data.coins || 0,
+                diamondCount: data.diamondCount || 0,
+                timestamp,
+                profilePictureUrl
+            });
+            statsMenuData.counts.gifts++;
+            // Also track coins from gifts
+            statsMenuData.coins.unshift({
+                username,
+                nickname,
+                giftName: data.giftName || 'Gift',
+                coins: data.coins || 0,
+                timestamp,
+                profilePictureUrl
+            });
+            // Keep only the last MAX_PANEL_ITEMS
+            if (statsMenuData.gifts.length > MAX_PANEL_ITEMS) {
+                statsMenuData.gifts.pop();
+            }
+            if (statsMenuData.coins.length > MAX_PANEL_ITEMS) {
+                statsMenuData.coins.pop();
+            }
+            updateStatsPanelCount('gifts');
+            break;
+            
+        case 'follow':
+            statsMenuData.followers.unshift({
+                username,
+                nickname,
+                timestamp,
+                profilePictureUrl,
+                teamMemberLevel
+            });
+            statsMenuData.counts.followers++;
+            // Keep only the last MAX_PANEL_ITEMS
+            if (statsMenuData.followers.length > MAX_PANEL_ITEMS) {
+                statsMenuData.followers.pop();
+            }
+            updateStatsPanelCount('followers');
+            break;
+            
+        case 'subscribe':
+            statsMenuData.subscribers.unshift({
+                username,
+                nickname,
+                timestamp,
+                profilePictureUrl,
+                teamMemberLevel
+            });
+            statsMenuData.counts.subscribers++;
+            // Keep only the last MAX_PANEL_ITEMS
+            if (statsMenuData.subscribers.length > MAX_PANEL_ITEMS) {
+                statsMenuData.subscribers.pop();
+            }
+            updateStatsPanelCount('subscribers');
+            break;
+    }
+    
+    // Track viewer activity (anyone who interacts is a viewer)
+    if (username && username !== 'Unknown') {
+        statsMenuData.viewers.set(username, {
+            username,
+            nickname,
+            profilePictureUrl,
+            lastSeen: timestamp,
+            teamMemberLevel,
+            lastActivity: type
+        });
+    }
+    
+    // Refresh panel if it's currently open
+    if (activeStatsPanel) {
+        refreshStatsPanelContent(activeStatsPanel);
+    }
+}
+
+/**
+ * Update stats panel count display
+ */
+function updateStatsPanelCount(panelName) {
+    const countEl = document.getElementById(`panel-${panelName}-count`);
+    if (countEl) {
+        countEl.textContent = statsMenuData.counts[panelName].toLocaleString();
+    }
+    
+    // Also update the stats bar value
+    const statsEl = document.getElementById(`event-stats-${panelName}`);
+    if (statsEl) {
+        statsEl.textContent = statsMenuData.counts[panelName].toLocaleString();
+    }
+}
+
+/**
+ * Refresh stats panel content based on current data
+ */
+function refreshStatsPanelContent(panelName) {
+    const listEl = document.getElementById(`${panelName}-list`);
+    if (!listEl) return;
+    
+    let html = '';
+    
+    switch (panelName) {
+        case 'viewers':
+            const viewerCount = statsMenuData.viewers.size;
+            const countEl = document.getElementById('panel-viewers-count');
+            if (countEl) countEl.textContent = viewerCount.toLocaleString();
+            
+            if (viewerCount === 0) {
+                html = '<p class="stats-panel-empty">No viewers tracked yet</p>';
+            } else {
+                const viewers = Array.from(statsMenuData.viewers.values())
+                    .sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
+                
+                html = viewers.map(v => `
+                    <div class="stats-panel-item">
+                        <div class="stats-panel-item-avatar">
+                            ${v.profilePictureUrl ? 
+                                `<img src="${escapeHtml(v.profilePictureUrl)}" alt="${escapeHtml(v.nickname)}" onerror="this.style.display='none';this.parentNode.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><path d=\\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\\'></path><circle cx=\\'12\\' cy=\\'7\\' r=\\'4\\'></circle></svg>';">` :
+                                '<i data-lucide="user"></i>'
+                            }
+                        </div>
+                        <div class="stats-panel-item-info">
+                            <div class="stats-panel-item-name">${escapeHtml(v.nickname || v.username)}</div>
+                            <div class="stats-panel-item-detail">@${escapeHtml(v.username)} • ${getActivityIcon(v.lastActivity)}</div>
+                        </div>
+                        <div class="stats-panel-item-time">${v.lastSeen}</div>
+                    </div>
+                `).join('');
+            }
+            break;
+            
+        case 'chat':
+            const chatCountEl = document.getElementById('panel-chat-count');
+            if (chatCountEl) chatCountEl.textContent = statsMenuData.counts.chat.toLocaleString();
+            
+            if (statsMenuData.chat.length === 0) {
+                html = '<p class="stats-panel-empty">No chat messages yet</p>';
+            } else {
+                html = statsMenuData.chat.map(c => `
+                    <div class="stats-panel-item chat-item">
+                        <div class="stats-panel-item-avatar">
+                            ${c.profilePictureUrl ? 
+                                `<img src="${escapeHtml(c.profilePictureUrl)}" alt="${escapeHtml(c.nickname)}" onerror="this.style.display='none';this.parentNode.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><path d=\\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\\'></path><circle cx=\\'12\\' cy=\\'7\\' r=\\'4\\'></circle></svg>';">` :
+                                '<i data-lucide="user"></i>'
+                            }
+                        </div>
+                        <div class="stats-panel-item-info">
+                            <div class="stats-panel-item-name">${escapeHtml(c.nickname || c.username)}</div>
+                            <div class="stats-panel-item-detail">${escapeHtml(c.message)}</div>
+                        </div>
+                        <div class="stats-panel-item-time">${c.timestamp}</div>
+                    </div>
+                `).join('');
+            }
+            break;
+            
+        case 'likes':
+            const likesCountEl = document.getElementById('panel-likes-count');
+            // Use total likes from last event if available
+            const totalLikes = statsMenuData.likes.length > 0 ? 
+                (statsMenuData.likes[0].totalLikes || statsMenuData.likes.reduce((sum, l) => sum + l.likeCount, 0)) : 0;
+            if (likesCountEl) likesCountEl.textContent = totalLikes.toLocaleString();
+            
+            if (statsMenuData.likes.length === 0) {
+                html = '<p class="stats-panel-empty">No likes yet</p>';
+            } else {
+                html = statsMenuData.likes.map(l => `
+                    <div class="stats-panel-item">
+                        <div class="stats-panel-item-avatar">
+                            ${l.profilePictureUrl ? 
+                                `<img src="${escapeHtml(l.profilePictureUrl)}" alt="${escapeHtml(l.nickname)}" onerror="this.style.display='none';this.parentNode.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><path d=\\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\\'></path><circle cx=\\'12\\' cy=\\'7\\' r=\\'4\\'></circle></svg>';">` :
+                                '<i data-lucide="user"></i>'
+                            }
+                        </div>
+                        <div class="stats-panel-item-info">
+                            <div class="stats-panel-item-name">${escapeHtml(l.nickname || l.username)}</div>
+                            <div class="stats-panel-item-detail">❤️ +${l.likeCount}</div>
+                        </div>
+                        <div class="stats-panel-item-time">${l.timestamp}</div>
+                    </div>
+                `).join('');
+            }
+            break;
+            
+        case 'coins':
+            const coinsCountEl = document.getElementById('panel-coins-count');
+            const totalCoins = statsMenuData.coins.reduce((sum, c) => sum + c.coins, 0);
+            if (coinsCountEl) coinsCountEl.textContent = totalCoins.toLocaleString();
+            
+            if (statsMenuData.coins.length === 0) {
+                html = '<p class="stats-panel-empty">No coin gifts yet</p>';
+            } else {
+                html = statsMenuData.coins.map(c => `
+                    <div class="stats-panel-item">
+                        <div class="stats-panel-item-avatar">
+                            ${c.profilePictureUrl ? 
+                                `<img src="${escapeHtml(c.profilePictureUrl)}" alt="${escapeHtml(c.nickname)}" onerror="this.style.display='none';this.parentNode.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><path d=\\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\\'></path><circle cx=\\'12\\' cy=\\'7\\' r=\\'4\\'></circle></svg>';">` :
+                                '<i data-lucide="user"></i>'
+                            }
+                        </div>
+                        <div class="stats-panel-item-info">
+                            <div class="stats-panel-item-name">${escapeHtml(c.nickname || c.username)}</div>
+                            <div class="stats-panel-item-detail">${escapeHtml(c.giftName)}</div>
+                        </div>
+                        <div class="stats-panel-item-value">🪙 ${c.coins.toLocaleString()}</div>
+                        <div class="stats-panel-item-time">${c.timestamp}</div>
+                    </div>
+                `).join('');
+            }
+            break;
+            
+        case 'followers':
+            const followersCountEl = document.getElementById('panel-followers-count');
+            if (followersCountEl) followersCountEl.textContent = statsMenuData.counts.followers.toLocaleString();
+            
+            if (statsMenuData.followers.length === 0) {
+                html = '<p class="stats-panel-empty">No followers yet</p>';
+            } else {
+                html = statsMenuData.followers.map(f => `
+                    <div class="stats-panel-item">
+                        <div class="stats-panel-item-avatar">
+                            ${f.profilePictureUrl ? 
+                                `<img src="${escapeHtml(f.profilePictureUrl)}" alt="${escapeHtml(f.nickname)}" onerror="this.style.display='none';this.parentNode.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><path d=\\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\\'></path><circle cx=\\'12\\' cy=\\'7\\' r=\\'4\\'></circle></svg>';">` :
+                                '<i data-lucide="user"></i>'
+                            }
+                        </div>
+                        <div class="stats-panel-item-info">
+                            <div class="stats-panel-item-name">${escapeHtml(f.nickname || f.username)}</div>
+                            <div class="stats-panel-item-detail">⭐ New follower!</div>
+                        </div>
+                        <div class="stats-panel-item-time">${f.timestamp}</div>
+                    </div>
+                `).join('');
+            }
+            break;
+            
+        case 'subscribers':
+            const subscribersCountEl = document.getElementById('panel-subscribers-count');
+            if (subscribersCountEl) subscribersCountEl.textContent = statsMenuData.counts.subscribers.toLocaleString();
+            
+            if (statsMenuData.subscribers.length === 0) {
+                html = '<p class="stats-panel-empty">No subscribers yet</p>';
+            } else {
+                html = statsMenuData.subscribers.map(s => `
+                    <div class="stats-panel-item subscriber-item">
+                        <div class="stats-panel-item-avatar">
+                            ${s.profilePictureUrl ? 
+                                `<img src="${escapeHtml(s.profilePictureUrl)}" alt="${escapeHtml(s.nickname)}" onerror="this.style.display='none';this.parentNode.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\'><path d=\\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\\'></path><circle cx=\\'12\\' cy=\\'7\\' r=\\'4\\'></circle></svg>';">` :
+                                '<i data-lucide="crown"></i>'
+                            }
+                        </div>
+                        <div class="stats-panel-item-info">
+                            <div class="stats-panel-item-name">${escapeHtml(s.nickname || s.username)}</div>
+                            <div class="stats-panel-item-detail">👑 Subscriber / Superfan</div>
+                        </div>
+                        <div class="stats-panel-item-time">${s.timestamp}</div>
+                    </div>
+                `).join('');
+            }
+            break;
+            
+        case 'gifts':
+            const giftsCountEl = document.getElementById('panel-gifts-count');
+            if (giftsCountEl) giftsCountEl.textContent = statsMenuData.counts.gifts.toLocaleString();
+            
+            if (statsMenuData.gifts.length === 0) {
+                html = '<p class="stats-panel-empty">No gifts yet</p>';
+            } else {
+                html = statsMenuData.gifts.map(g => `
+                    <div class="stats-panel-item gift-item">
+                        <div class="stats-panel-item-avatar">
+                            ${g.giftPictureUrl ? 
+                                `<img src="${escapeHtml(g.giftPictureUrl)}" alt="${escapeHtml(g.giftName)}" onerror="this.style.display='none';this.parentNode.innerHTML='🎁';">` :
+                                '🎁'
+                            }
+                        </div>
+                        <div class="stats-panel-item-info">
+                            <div class="stats-panel-item-name">${escapeHtml(g.nickname || g.username)}</div>
+                            <div class="stats-panel-item-detail">${escapeHtml(g.giftName)} x${g.repeatCount}</div>
+                        </div>
+                        <div class="stats-panel-item-value">🪙 ${g.coins.toLocaleString()}</div>
+                        <div class="stats-panel-item-time">${g.timestamp}</div>
+                    </div>
+                `).join('');
+            }
+            break;
+    }
+    
+    listEl.innerHTML = html;
+    
+    // Re-initialize lucide icons
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+/**
+ * Get activity icon for viewer
+ */
+function getActivityIcon(activity) {
+    switch (activity) {
+        case 'chat': return '💬 Chat';
+        case 'like': return '❤️ Like';
+        case 'gift': return '🎁 Gift';
+        case 'follow': return '⭐ Follow';
+        case 'subscribe': return '👑 Sub';
+        case 'share': return '🔄 Share';
+        default: return '👀 Watching';
+    }
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ========== SETTINGS ==========
@@ -1865,6 +2457,10 @@ async function testTTS() {
 
 // ========== USER PROFILE MANAGEMENT ==========
 
+// Profile filter state
+let profileFilter = 'all'; // 'all' or 'recent'
+let profileSearchQuery = '';
+
 // Lädt das aktive Profil und zeigt es an
 async function loadActiveProfile() {
     try {
@@ -1880,7 +2476,7 @@ async function loadActiveProfile() {
     }
 }
 
-// Lädt alle verfügbaren Profile
+// Lädt alle verfügbaren Profile mit Filter- und Suchunterstützung
 async function loadProfiles() {
     try {
         const response = await fetch('/api/profiles');
@@ -1889,12 +2485,32 @@ async function loadProfiles() {
         const profileList = document.getElementById('profile-list');
         profileList.innerHTML = '';
 
-        if (data.profiles.length === 0) {
-            profileList.innerHTML = '<div class="text-gray-400 text-center py-4">Keine Profile gefunden</div>';
+        let profiles = data.profiles || [];
+
+        // Apply search filter
+        if (profileSearchQuery && profileSearchQuery.trim() !== '') {
+            const query = profileSearchQuery.toLowerCase().trim();
+            profiles = profiles.filter(p => 
+                p.username.toLowerCase().includes(query)
+            );
+        }
+
+        // Apply filter: 'recent' shows last 10 recently modified profiles
+        if (profileFilter === 'recent') {
+            // Profiles are already sorted by modified date (newest first) from API
+            profiles = profiles.slice(0, 10);
+        }
+
+        if (profiles.length === 0) {
+            if (profileSearchQuery) {
+                profileList.innerHTML = '<div class="text-gray-400 text-center py-4">No profiles found matching your search</div>';
+            } else {
+                profileList.innerHTML = '<div class="text-gray-400 text-center py-4">Keine Profile gefunden</div>';
+            }
             return;
         }
 
-        data.profiles.forEach(profile => {
+        profiles.forEach(profile => {
             const profileCard = document.createElement('div');
             profileCard.className = `bg-gray-700 rounded-lg p-4 flex items-center justify-between ${
                 profile.isActive ? 'border-2 border-blue-500' : ''
@@ -1906,7 +2522,7 @@ async function loadProfiles() {
             const nameDiv = document.createElement('div');
             nameDiv.className = 'font-semibold flex items-center gap-2';
             nameDiv.innerHTML = `
-                <span>${profile.username}</span>
+                <span>${escapeHtml(profile.username)}</span>
                 ${profile.isActive ? '<span class="text-xs bg-blue-600 px-2 py-1 rounded">AKTIV</span>' : ''}
             `;
 
@@ -1956,6 +2572,39 @@ async function loadProfiles() {
     } catch (error) {
         console.error('Error loading profiles:', error);
     }
+}
+
+// Initialize profile search and filter functionality
+function initProfileSearchFilter() {
+    const searchInput = document.getElementById('profile-search-input');
+    const filterBtns = document.querySelectorAll('.profile-filter-btn');
+    
+    // Search input handler with debounce
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                profileSearchQuery = e.target.value;
+                loadProfiles();
+            }, 300);
+        });
+    }
+    
+    // Filter button handlers
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const filter = btn.dataset.filter;
+            
+            // Update active state
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Apply filter
+            profileFilter = filter;
+            loadProfiles();
+        });
+    });
 }
 
 // Zeigt das Profile Modal
@@ -2904,6 +3553,11 @@ async function loadSessionStatus() {
         
         const statusContainer = document.getElementById('session-status-container');
         const statusText = document.getElementById('session-status-text');
+        
+        // Check if elements exist before accessing them
+        if (!statusContainer || !statusText) {
+            return;
+        }
         
         if (status.hasSession) {
             statusContainer.className = 'alert alert-success';

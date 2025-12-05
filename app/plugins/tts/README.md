@@ -426,7 +426,7 @@ Modify `_calculatePriority()` in `utils/queue-manager.js`
 
 ## 📜 License
 
-MIT License - Part of Pup Cids Little TikTok Helper
+CC BY-NC 4.0 License - Part of Pup Cids Little TikTok Helper
 
 ## 🆘 Support
 

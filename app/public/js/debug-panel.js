@@ -1,14 +1,413 @@
 /**
  * Debug Panel - Client-side component for debug logging
  * Include this script in dashboard.html to enable debug panel
+ * 
+ * Features:
+ * - Floating debug panel (Shift+F12)
+ * - Integrated diagnostics in Settings page
+ * - GPU and system info
+ * - Console log capture
  */
 
 (function() {
     'use strict';
 
+    // Diagnostics Controller (for Settings page integration)
+    const diagnostics = {
+        logs: [],
+        maxLogs: 500,
+        loggingEnabled: true,
+        consoleLoggingEnabled: true,
+        logLevel: 'info',
+        logLevels: { error: 0, warn: 1, info: 2, debug: 3 },
+        initialized: false,
 
+        init() {
+            if (this.initialized) return;
+            this.initialized = true;
+            
+            this.loadSettings();
+            this.setupUI();
+            this.interceptConsole();
+            
+            // Initial diagnostics refresh
+            setTimeout(() => this.refreshDiagnostics(), 500);
+            
+            console.log('[Diagnostics] Settings panel initialized');
+        },
 
-    // Create debug panel HTML
+        loadSettings() {
+            try {
+                const saved = localStorage.getItem('debug_panel_settings');
+                if (saved) {
+                    const settings = JSON.parse(saved);
+                    this.loggingEnabled = settings.loggingEnabled !== false;
+                    this.consoleLoggingEnabled = settings.consoleLoggingEnabled !== false;
+                    this.logLevel = settings.logLevel || 'info';
+                }
+            } catch (e) {
+                console.warn('[Diagnostics] Failed to load settings:', e);
+            }
+        },
+
+        saveSettings() {
+            try {
+                localStorage.setItem('debug_panel_settings', JSON.stringify({
+                    loggingEnabled: this.loggingEnabled,
+                    consoleLoggingEnabled: this.consoleLoggingEnabled,
+                    logLevel: this.logLevel
+                }));
+            } catch (e) {
+                console.warn('[Diagnostics] Failed to save settings:', e);
+            }
+        },
+
+        setupUI() {
+            // Get UI elements
+            const loggingCheckbox = document.getElementById('diag-logging-enabled');
+            const consoleCheckbox = document.getElementById('diag-console-logging');
+            const logLevelSelect = document.getElementById('diag-log-level');
+            const clearBtn = document.getElementById('diag-clear-logs');
+            const copyBtn = document.getElementById('diag-copy-logs');
+            const downloadBtn = document.getElementById('diag-download-logs');
+            const refreshBtn = document.getElementById('diag-refresh-btn');
+            const testGpuBtn = document.getElementById('diag-test-gpu');
+            const checkPluginsBtn = document.getElementById('diag-check-plugins');
+
+            // Set initial values and add event listeners
+            if (loggingCheckbox) {
+                loggingCheckbox.checked = this.loggingEnabled;
+                loggingCheckbox.addEventListener('change', (e) => {
+                    this.loggingEnabled = e.target.checked;
+                    this.saveSettings();
+                    this.log('info', 'Diagnostics', `Logging ${this.loggingEnabled ? 'enabled' : 'disabled'}`);
+                });
+            }
+
+            if (consoleCheckbox) {
+                consoleCheckbox.checked = this.consoleLoggingEnabled;
+                consoleCheckbox.addEventListener('change', (e) => {
+                    this.consoleLoggingEnabled = e.target.checked;
+                    this.saveSettings();
+                });
+            }
+
+            if (logLevelSelect) {
+                logLevelSelect.value = this.logLevel;
+                logLevelSelect.addEventListener('change', (e) => {
+                    this.logLevel = e.target.value;
+                    this.saveSettings();
+                    this.log('info', 'Diagnostics', `Log level set to: ${this.logLevel}`);
+                });
+            }
+
+            if (clearBtn) clearBtn.addEventListener('click', () => this.clearLogs());
+            if (copyBtn) copyBtn.addEventListener('click', () => this.copyLogs());
+            if (downloadBtn) downloadBtn.addEventListener('click', () => this.downloadLogs());
+            if (refreshBtn) refreshBtn.addEventListener('click', () => this.refreshDiagnostics());
+            if (testGpuBtn) testGpuBtn.addEventListener('click', () => this.testGpu());
+            if (checkPluginsBtn) checkPluginsBtn.addEventListener('click', () => this.checkPlugins());
+        },
+
+        interceptConsole() {
+            const self = this;
+            const originalConsole = {
+                log: console.log.bind(console),
+                warn: console.warn.bind(console),
+                error: console.error.bind(console),
+                info: console.info.bind(console),
+                debug: console.debug.bind(console)
+            };
+
+            const intercept = (level) => {
+                return function(...args) {
+                    originalConsole[level](...args);
+                    
+                    if (self.loggingEnabled && self.consoleLoggingEnabled) {
+                        const message = args.map(arg => {
+                            if (typeof arg === 'object') {
+                                try { return JSON.stringify(arg, null, 2); } 
+                                catch { return String(arg); }
+                            }
+                            return String(arg);
+                        }).join(' ');
+                        
+                        self.addLog(level === 'log' ? 'info' : level, 'Console', message);
+                    }
+                };
+            };
+
+            console.log = intercept('log');
+            console.warn = intercept('warn');
+            console.error = intercept('error');
+            console.info = intercept('info');
+            console.debug = intercept('debug');
+
+            // Capture unhandled errors
+            window.addEventListener('error', (event) => {
+                this.log('error', 'Window', `Unhandled error: ${event.message} at ${event.filename}:${event.lineno}`);
+            });
+
+            window.addEventListener('unhandledrejection', (event) => {
+                this.log('error', 'Promise', `Unhandled rejection: ${event.reason}`);
+            });
+        },
+
+        log(level, source, message) {
+            if (!this.loggingEnabled) return;
+            if (this.logLevels[level] > this.logLevels[this.logLevel]) return;
+            this.addLog(level, source, message);
+        },
+
+        addLog(level, source, message) {
+            const entry = {
+                timestamp: new Date().toISOString(),
+                level,
+                source,
+                message: String(message).substring(0, 1000)
+            };
+
+            this.logs.push(entry);
+            if (this.logs.length > this.maxLogs) {
+                this.logs = this.logs.slice(-this.maxLogs);
+            }
+
+            this.updateLogViewer(entry);
+        },
+
+        updateLogViewer(entry) {
+            const container = document.getElementById('diag-log-container');
+            if (!container) return;
+
+            const placeholder = container.querySelector('.text-gray-500');
+            if (placeholder && placeholder.textContent.includes('Logs will appear')) {
+                placeholder.remove();
+            }
+
+            const logEl = document.createElement('div');
+            logEl.className = `log-entry log-${entry.level}`;
+            
+            const colors = { error: '#ef4444', warn: '#f59e0b', info: '#60a5fa', debug: '#94a3b8' };
+            const time = new Date(entry.timestamp).toLocaleTimeString();
+            logEl.innerHTML = `<span style="color: #64748b;">[${time}]</span> <span style="color: ${colors[entry.level] || '#fff'};">[${entry.level.toUpperCase()}]</span> <span style="color: #818cf8;">[${entry.source}]</span> ${this.escapeHtml(entry.message)}`;
+            
+            container.appendChild(logEl);
+            container.scrollTop = container.scrollHeight;
+        },
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+
+        async refreshDiagnostics() {
+            this.log('info', 'Diagnostics', 'Refreshing diagnostics...');
+
+            // Platform
+            this.updateElement('diag-platform', this.getPlatformInfo());
+            
+            // Browser/Electron versions
+            this.updateVersionInfo();
+            
+            // Memory
+            this.updateMemoryInfo();
+            
+            // GPU
+            this.updateGpuInfo();
+        },
+
+        getPlatformInfo() {
+            const ua = navigator.userAgent;
+            if (ua.includes('Windows')) return 'Windows';
+            if (ua.includes('Mac')) return 'macOS';
+            if (ua.includes('Linux')) return 'Linux';
+            return navigator.platform || 'Unknown';
+        },
+
+        updateVersionInfo() {
+            if (window.ltth && window.ltth.versions) {
+                this.updateElement('diag-electron-version', window.ltth.versions.electron || 'N/A');
+                this.updateElement('diag-node-version', window.ltth.versions.node || 'N/A');
+                this.updateElement('diag-chrome-version', window.ltth.versions.chrome || 'N/A');
+            } else {
+                this.updateElement('diag-electron-version', 'N/A (Browser Mode)');
+                const ua = navigator.userAgent;
+                const match = ua.match(/(Chrome|Firefox|Safari|Edge)\/(\d+)/);
+                this.updateElement('diag-chrome-version', match ? `${match[1]} ${match[2]}` : 'Unknown');
+                this.updateElement('diag-node-version', 'N/A (Browser)');
+            }
+        },
+
+        updateMemoryInfo() {
+            if (performance.memory) {
+                const used = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
+                const total = (performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(1);
+                this.updateElement('diag-memory', `${used} MB / ${total} MB`);
+            } else {
+                this.updateElement('diag-memory', 'N/A');
+            }
+        },
+
+        updateGpuInfo() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                
+                if (gl) {
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    let renderer = 'Unknown', vendor = 'Unknown';
+                    
+                    if (debugInfo) {
+                        renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                        vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                    } else {
+                        renderer = gl.getParameter(gl.RENDERER);
+                        vendor = gl.getParameter(gl.VENDOR);
+                    }
+                    
+                    this.updateElement('diag-gpu-renderer', renderer || 'Unknown');
+                    this.updateElement('diag-gpu-vendor', vendor || 'Unknown');
+                    this.updateElement('diag-webgl', 'Supported ✓');
+                    
+                    const isHwAccel = !renderer?.toLowerCase().includes('swiftshader') && 
+                                      !renderer?.toLowerCase().includes('llvmpipe') &&
+                                      !renderer?.toLowerCase().includes('software');
+                    this.updateElement('diag-hw-accel', isHwAccel ? 'Enabled ✓' : 'Disabled (Software)');
+                } else {
+                    this.updateElement('diag-gpu-renderer', 'N/A');
+                    this.updateElement('diag-gpu-vendor', 'N/A');
+                    this.updateElement('diag-webgl', 'Not Supported ✗');
+                    this.updateElement('diag-hw-accel', 'Unknown');
+                }
+            } catch (e) {
+                this.log('error', 'Diagnostics', `GPU info error: ${e.message}`);
+            }
+        },
+
+        updateElement(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        },
+
+        clearLogs() {
+            this.logs = [];
+            const container = document.getElementById('diag-log-container');
+            if (container) {
+                container.innerHTML = '<div class="text-gray-500">Logs cleared.</div>';
+            }
+        },
+
+        copyLogs() {
+            const logText = this.logs.map(log => 
+                `[${log.timestamp}] [${log.level.toUpperCase()}] [${log.source}] ${log.message}`
+            ).join('\n');
+            
+            navigator.clipboard.writeText(logText).then(() => {
+                if (typeof showNotification === 'function') {
+                    showNotification('Logs copied to clipboard', 'success');
+                }
+            }).catch(err => {
+                this.log('error', 'Diagnostics', `Copy failed: ${err.message}`);
+            });
+        },
+
+        downloadLogs() {
+            const logText = this.logs.map(log => 
+                `[${log.timestamp}] [${log.level.toUpperCase()}] [${log.source}] ${log.message}`
+            ).join('\n');
+            
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ltth-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        },
+
+        testGpu() {
+            this.log('info', 'Diagnostics', 'Running GPU test...');
+            
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                
+                const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                
+                if (!gl) {
+                    this.log('error', 'Diagnostics', 'GPU Test: WebGL not available');
+                    return;
+                }
+                
+                // Simple shader test
+                const vs = gl.createShader(gl.VERTEX_SHADER);
+                gl.shaderSource(vs, 'attribute vec4 p;void main(){gl_Position=p;}');
+                gl.compileShader(vs);
+                
+                const fs = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fs, 'precision mediump float;void main(){gl_FragColor=vec4(1.0);}');
+                gl.compileShader(fs);
+                
+                const program = gl.createProgram();
+                gl.attachShader(program, vs);
+                gl.attachShader(program, fs);
+                gl.linkProgram(program);
+                
+                const success = gl.getProgramParameter(program, gl.LINK_STATUS);
+                
+                gl.deleteShader(vs);
+                gl.deleteShader(fs);
+                gl.deleteProgram(program);
+                
+                if (success) {
+                    this.log('info', 'Diagnostics', 'GPU Test: Passed ✓');
+                    if (typeof showNotification === 'function') {
+                        showNotification('GPU Test Passed', 'success');
+                    }
+                } else {
+                    this.log('error', 'Diagnostics', 'GPU Test: Shader compilation failed');
+                }
+            } catch (e) {
+                this.log('error', 'Diagnostics', `GPU Test failed: ${e.message}`);
+            }
+        },
+
+        async checkPlugins() {
+            this.log('info', 'Diagnostics', 'Checking plugins...');
+            
+            try {
+                const response = await fetch('/api/plugins');
+                if (!response.ok) {
+                    this.log('error', 'Diagnostics', 'Failed to fetch plugins');
+                    return;
+                }
+                
+                const data = await response.json();
+                const plugins = data.plugins || [];
+                const enabled = plugins.filter(p => p.enabled).length;
+                const disabled = plugins.filter(p => !p.enabled).length;
+                
+                this.log('info', 'Diagnostics', `Plugins: ${plugins.length} total, ${enabled} enabled, ${disabled} disabled`);
+                
+                plugins.forEach(plugin => {
+                    const status = plugin.enabled ? '✓' : '✗';
+                    this.log('debug', 'Diagnostics', `  ${status} ${plugin.name} (${plugin.id})`);
+                });
+                
+                if (typeof showNotification === 'function') {
+                    showNotification(`Found ${plugins.length} plugins (${enabled} enabled)`, 'info');
+                }
+            } catch (e) {
+                this.log('error', 'Diagnostics', `Plugin check failed: ${e.message}`);
+            }
+        }
+    };
+
+    // Create debug panel HTML (floating panel for Shift+F12)
     const panelHTML = `
         <div id="debug-panel" style="display: none; position: fixed; bottom: 20px; right: 20px; width: 500px; 
              max-height: 600px; background: #1e1e1e; border: 2px solid #00ff00; border-radius: 8px; 
@@ -64,7 +463,7 @@
         </div>
     `;
 
-    // Debug Panel Controller
+    // Debug Panel Controller (floating panel)
     const debugPanel = {
         enabled: false,
         pollInterval: 500,
@@ -167,7 +566,7 @@
         startPolling() {
             if (this.intervalHandle) return;
             
-            this.pollLogs(); // Initial poll
+            this.pollLogs();
             this.intervalHandle = setInterval(() => this.pollLogs(), this.pollInterval);
         },
 
@@ -261,12 +660,17 @@
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => debugPanel.init());
+        document.addEventListener('DOMContentLoaded', () => {
+            debugPanel.init();
+            diagnostics.init();
+        });
     } else {
         debugPanel.init();
+        diagnostics.init();
     }
 
     // Expose to window for console access
     window.debugPanel = debugPanel;
+    window.diagnostics = diagnostics;
 
 })();

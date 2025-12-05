@@ -11,6 +11,35 @@
     let runtimeInterval = null;
     let runtimeSparklineData = [];
     const MAX_SPARKLINE_POINTS = 60;
+    const SOCKET_CHECK_TIMEOUT_MS = 10000;
+    const SOCKET_CHECK_INTERVAL_MS = 100;
+
+    // ========== UTILITY FUNCTIONS ==========
+    /**
+     * Helper for i18n translation with fallback
+     */
+    function getTranslation(key, fallback) {
+        return (window.i18n && window.i18n.initialized) ? window.i18n.t(key) : fallback;
+    }
+
+    /**
+     * Fetch active plugins from API
+     * @returns {Promise<Set<string>>} Set of active plugin IDs
+     */
+    async function fetchActivePlugins() {
+        try {
+            const response = await fetch('/api/plugins');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.plugins) {
+                    return new Set(data.plugins.filter(p => p.enabled).map(p => p.id));
+                }
+            }
+        } catch (error) {
+            console.warn('[Dashboard Enhancements] Could not load plugin states:', error);
+        }
+        return new Set();
+    }
 
     // ========== INITIALIZATION ==========
     document.addEventListener('DOMContentLoaded', () => {
@@ -19,6 +48,7 @@
         initializeCompactResources();
         initializeRuntimeTracking();
         initializeResourceDetailsLink();
+        setupQuickActionPluginListener();
 
         // Re-initialize Lucide icons
         if (typeof lucide !== 'undefined') {
@@ -26,21 +56,131 @@
         }
     });
 
+    // ========== SOCKET LISTENER FOR PLUGIN CHANGES ==========
+    function setupQuickActionPluginListener() {
+        // Wait for socket to be available (dashboard.js creates it)
+        const checkSocket = setInterval(() => {
+            if (typeof socket !== 'undefined' && socket) {
+                clearInterval(checkSocket);
+                
+                socket.on('plugins:changed', async (data) => {
+                    console.log('🔌 [Dashboard Enhancements] Plugin state changed, refreshing quick action buttons:', data);
+                    // Refresh quick action button states when plugins change
+                    await refreshQuickActionButtons();
+                });
+                
+                console.log('✅ [Dashboard Enhancements] Quick action plugin change listener registered');
+            }
+        }, SOCKET_CHECK_INTERVAL_MS);
+        
+        // Stop checking after timeout
+        setTimeout(() => clearInterval(checkSocket), SOCKET_CHECK_TIMEOUT_MS);
+    }
+
+    // ========== REFRESH QUICK ACTION BUTTONS ==========
+    async function refreshQuickActionButtons() {
+        console.log('[Dashboard Enhancements] Refreshing Quick Action Buttons');
+
+        // Load active plugins (empty set means no plugins enabled, but we still need to process button states)
+        const activePlugins = await fetchActivePlugins();
+
+        console.log('[Dashboard Enhancements] Active plugins:', Array.from(activePlugins));
+
+        // Update quick action buttons based on plugin states
+        const buttons = document.querySelectorAll('.quick-action-btn[data-plugin]');
+        buttons.forEach(button => {
+            const pluginId = button.getAttribute('data-plugin');
+            const span = button.querySelector('span');
+            
+            if (pluginId && activePlugins.has(pluginId)) {
+                // Plugin is enabled - restore button
+                if (button.disabled || button.classList.contains('quick-action-disabled')) {
+                    console.log(`[Dashboard Enhancements] Re-enabling quick action button for plugin: ${pluginId}`);
+                    button.classList.remove('quick-action-disabled');
+                    button.disabled = false;
+                    button.title = '';
+                    
+                    // Restore original text if it was changed
+                    if (span && span.hasAttribute('data-original-text')) {
+                        span.textContent = span.getAttribute('data-original-text');
+                        span.removeAttribute('data-original-text');
+                    }
+                    
+                    // Set temporary 'idle' state while loadQuickActionButtonStates loads the actual state
+                    button.setAttribute('data-state', 'idle');
+                }
+            } else if (pluginId && !activePlugins.has(pluginId)) {
+                // Plugin is disabled - show disabled state
+                if (!button.disabled) {
+                    console.log(`[Dashboard Enhancements] Disabling quick action button for plugin: ${pluginId}`);
+                    button.setAttribute('data-state', 'disabled');
+                    button.classList.add('quick-action-disabled');
+                    button.disabled = true;
+                    button.title = getTranslation('dashboard.quick_action.enable_plugin_hint', 'Enable this plugin to use quick actions');
+                    
+                    // Update the span text to show disabled message
+                    if (span && !span.hasAttribute('data-original-text')) {
+                        span.setAttribute('data-original-text', span.textContent);
+                        span.textContent = getTranslation('dashboard.quick_action.plugin_disabled', 'Plugin disabled');
+                    }
+                }
+            }
+        });
+
+        // Reload states for active plugins (sets the actual on/off state)
+        await loadQuickActionButtonStates();
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    }
+
     // ========== QUICK ACTION BUTTONS ==========
     async function initializeQuickActionButtons() {
         console.log('[Dashboard Enhancements] Initializing Quick Action Buttons');
 
-        // Load initial states
+        // Load active plugins first
+        const activePlugins = await fetchActivePlugins();
+
+        // Check and update quick action buttons for disabled plugins
+        const buttons = document.querySelectorAll('.quick-action-btn[data-plugin]');
+        buttons.forEach(button => {
+            const pluginId = button.getAttribute('data-plugin');
+            if (pluginId && !activePlugins.has(pluginId)) {
+                // Plugin is disabled - show disabled state
+                button.setAttribute('data-state', 'disabled');
+                button.classList.add('quick-action-disabled');
+                button.disabled = true;
+                button.title = getTranslation('dashboard.quick_action.enable_plugin_hint', 'Enable this plugin to use quick actions');
+                
+                // Update the span text to show disabled message (only if not already set)
+                const span = button.querySelector('span');
+                if (span && !span.hasAttribute('data-original-text')) {
+                    span.setAttribute('data-original-text', span.textContent);
+                    span.textContent = getTranslation('dashboard.quick_action.plugin_disabled', 'Plugin disabled');
+                }
+                console.log(`[Dashboard Enhancements] Quick action button disabled for inactive plugin: ${pluginId}`);
+            }
+        });
+
+        // Load initial states for active plugins
         await loadQuickActionButtonStates();
 
         // Attach click handlers to all quick action buttons
-        const buttons = document.querySelectorAll('.quick-action-btn');
-        console.log(`[Dashboard Enhancements] Found ${buttons.length} quick action buttons`);
+        const allButtons = document.querySelectorAll('.quick-action-btn');
+        console.log(`[Dashboard Enhancements] Found ${allButtons.length} quick action buttons`);
 
-        buttons.forEach(button => {
+        allButtons.forEach(button => {
             button.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+
+                // Check if button is disabled
+                if (button.disabled || button.getAttribute('data-state') === 'disabled') {
+                    console.log('[Quick Action] Button is disabled (plugin not active)');
+                    return;
+                }
 
                 const action = button.getAttribute('data-action');
                 const currentState = button.getAttribute('data-state');
@@ -82,26 +222,29 @@
 
             console.log('[Load Quick Action States] Settings loaded:', settings);
 
-            // Set button states
+            // Helper function to set button state only if not disabled
+            const setButtonState = (button, state) => {
+                if (button && !button.disabled && button.getAttribute('data-state') !== 'disabled') {
+                    button.setAttribute('data-state', state);
+                    return true;
+                }
+                return false;
+            };
+
+            // Set button states (skip if plugin is disabled)
             const ttsBtn = document.getElementById('quick-tts-btn');
-            if (ttsBtn) {
-                const state = settings.tts_enabled !== 'false' ? 'on' : 'off';
-                ttsBtn.setAttribute('data-state', state);
-                console.log(`[Load Quick Action States] TTS button set to: ${state} (tts_enabled=${settings.tts_enabled})`);
+            if (setButtonState(ttsBtn, settings.tts_enabled !== 'false' ? 'on' : 'off')) {
+                console.log(`[Load Quick Action States] TTS button set to: ${ttsBtn.getAttribute('data-state')} (tts_enabled=${settings.tts_enabled})`);
             }
 
             const soundboardBtn = document.getElementById('quick-soundboard-btn');
-            if (soundboardBtn) {
-                const state = settings.soundboard_enabled !== 'false' ? 'on' : 'off';
-                soundboardBtn.setAttribute('data-state', state);
-                console.log(`[Load Quick Action States] Soundboard button set to: ${state}`);
+            if (setButtonState(soundboardBtn, settings.soundboard_enabled !== 'false' ? 'on' : 'off')) {
+                console.log(`[Load Quick Action States] Soundboard button set to: ${soundboardBtn.getAttribute('data-state')}`);
             }
 
             const flowsBtn = document.getElementById('quick-flows-btn');
-            if (flowsBtn) {
-                const state = settings.flows_enabled !== 'false' ? 'on' : 'off';
-                flowsBtn.setAttribute('data-state', state);
-                console.log(`[Load Quick Action States] Flows button set to: ${state}`);
+            if (setButtonState(flowsBtn, settings.flows_enabled !== 'false' ? 'on' : 'off')) {
+                console.log(`[Load Quick Action States] Flows button set to: ${flowsBtn.getAttribute('data-state')}`);
             }
 
             // Load Emoji Rain state from plugin
@@ -109,8 +252,8 @@
                 const emojiRainResponse = await fetch('/api/emoji-rain/status');
                 const emojiRainData = await emojiRainResponse.json();
                 const emojiRainBtn = document.getElementById('quick-emoji-rain-btn');
-                if (emojiRainBtn && emojiRainData.success) {
-                    emojiRainBtn.setAttribute('data-state', emojiRainData.enabled !== false ? 'on' : 'off');
+                if (emojiRainData.success) {
+                    setButtonState(emojiRainBtn, emojiRainData.enabled !== false ? 'on' : 'off');
                 }
             } catch (error) {
                 console.log('Emoji Rain status not available');
@@ -121,11 +264,23 @@
                 const oscResponse = await fetch('/api/settings');
                 const oscSettings = await oscResponse.json();
                 const oscBtn = document.getElementById('quick-osc-bridge-btn');
-                if (oscBtn) {
-                    oscBtn.setAttribute('data-state', oscSettings.osc_bridge_enabled === 'true' ? 'on' : 'off');
-                }
+                setButtonState(oscBtn, oscSettings.osc_bridge_enabled === 'true' ? 'on' : 'off');
             } catch (error) {
                 console.log('OSC-Bridge status not available');
+            }
+
+            // Load OpenShock Emergency Stop state
+            try {
+                const openshockResponse = await fetch('/api/openshock/safety');
+                const openshockData = await openshockResponse.json();
+                const openshockStopBtn = document.getElementById('quick-openshock-stop-btn');
+                if (openshockData.success) {
+                    const emergencyActive = openshockData.settings?.emergencyStop?.enabled === true;
+                    setButtonState(openshockStopBtn, emergencyActive ? 'on' : 'off');
+                    console.log(`[Load Quick Action States] OpenShock Emergency Stop set to: ${emergencyActive ? 'on' : 'off'}`);
+                }
+            } catch (error) {
+                console.log('OpenShock status not available');
             }
 
         } catch (error) {
@@ -164,6 +319,9 @@
                     endpoint = '/api/settings';
                     body = { osc_bridge_enabled: enabled ? 'true' : 'false' };
                     break;
+
+                case 'openshock-emergency-stop':
+                    return await handleOpenShockEmergencyStop(enabled);
 
                 default:
                     console.warn(`[Toggle Quick Action] Unknown action: ${action}`);
@@ -213,20 +371,108 @@
         }
     }
 
+    /**
+     * Handle OpenShock Emergency Stop
+     * Sends stop signals to all devices, then activates emergency stop
+     */
+    async function handleOpenShockEmergencyStop(activate) {
+        console.log(`[OpenShock Emergency Stop] ${activate ? 'Activating' : 'Clearing'} emergency stop`);
+
+        try {
+            if (activate) {
+                // Step 1: Send stop signals to all devices (vibrate with 0 intensity to interrupt any active shocks)
+                console.log('[OpenShock Emergency Stop] Sending stop signals to all devices...');
+                
+                try {
+                    // Get all devices first
+                    const devicesResponse = await fetch('/api/openshock/devices');
+                    const devicesData = await devicesResponse.json();
+                    
+                    if (devicesData.success && devicesData.devices && devicesData.devices.length > 0) {
+                        // Send stop signal to each device (Sound with intensity 1, duration 300ms - minimal safe command)
+                        for (const device of devicesData.devices) {
+                            try {
+                                await fetch(`/api/openshock/test/${device.id}`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        type: 'sound',
+                                        intensity: 1,
+                                        duration: 300
+                                    })
+                                });
+                                console.log(`[OpenShock Emergency Stop] Sent stop signal to device: ${device.name}`);
+                            } catch (deviceError) {
+                                console.warn(`[OpenShock Emergency Stop] Could not send stop to device ${device.name}:`, deviceError);
+                            }
+                        }
+                    }
+                } catch (devicesError) {
+                    console.warn('[OpenShock Emergency Stop] Could not fetch devices:', devicesError);
+                }
+
+                // Step 2: Activate Emergency Stop in plugin
+                console.log('[OpenShock Emergency Stop] Activating emergency stop in plugin...');
+                const emergencyResponse = await fetch('/api/openshock/emergency-stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const emergencyResult = await emergencyResponse.json();
+                
+                if (emergencyResult.success) {
+                    console.log('[OpenShock Emergency Stop] Emergency stop activated successfully');
+                    showQuickActionNotification('openshock-emergency-stop', true);
+                    return true;
+                } else {
+                    console.error('[OpenShock Emergency Stop] Failed to activate emergency stop:', emergencyResult.error);
+                    return false;
+                }
+            } else {
+                // Clear Emergency Stop
+                console.log('[OpenShock Emergency Stop] Clearing emergency stop...');
+                const clearResponse = await fetch('/api/openshock/emergency-clear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const clearResult = await clearResponse.json();
+                
+                if (clearResult.success) {
+                    console.log('[OpenShock Emergency Stop] Emergency stop cleared successfully');
+                    showQuickActionNotification('openshock-emergency-stop', false);
+                    return true;
+                } else {
+                    console.error('[OpenShock Emergency Stop] Failed to clear emergency stop:', clearResult.error);
+                    return false;
+                }
+            }
+        } catch (error) {
+            console.error('[OpenShock Emergency Stop] Error:', error);
+            return false;
+        }
+    }
+
     function showQuickActionNotification(action, enabled) {
         const actionNames = {
             'tts': 'Text-to-Speech',
             'soundboard': 'Soundboard',
             'flows': 'Automation Flows',
             'emoji-rain': 'Emoji Rain',
-            'osc-bridge': 'OSC-Bridge'
+            'osc-bridge': 'OSC-Bridge',
+            'openshock-emergency-stop': 'OpenShock Emergency Stop'
         };
 
         const name = actionNames[action] || action;
         const status = enabled ? 'aktiviert' : 'deaktiviert';
         const icon = enabled ? '✅' : '⏸️';
 
-        console.log(`${icon} ${name} ${status}`);
+        // Special icon for emergency stop
+        const displayIcon = action === 'openshock-emergency-stop' 
+            ? (enabled ? '🛑' : '✅') 
+            : icon;
+
+        console.log(`${displayIcon} ${name} ${status}`);
     }
 
     // ========== UPDATE CHECKER & CHANGELOG LOADER ==========
@@ -520,6 +766,12 @@
         try {
             // Try to get real resource data from resource monitor plugin
             const response = await fetch('/api/resource-monitor/metrics');
+            
+            // Check if the API endpoint exists (resource-monitor plugin may not be available)
+            if (!response.ok) {
+                throw new Error('Resource monitor plugin not available');
+            }
+            
             const data = await response.json();
 
             if (data.success && data.metrics) {
@@ -677,6 +929,7 @@
     // ========== EXPORTS ==========
     window.DashboardEnhancements = {
         reloadChangelog: initializeChangelog,
+        refreshQuickActionButtons: refreshQuickActionButtons,
         resetUpdatesDismissal: () => {
             localStorage.removeItem('updates-dismissed');
             const updatesSection = document.getElementById('updates-section');

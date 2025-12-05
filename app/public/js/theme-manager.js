@@ -203,6 +203,32 @@ class ThemeManager {
 
         // Apply theme to all iframes
         this.applyThemeToIframes(theme);
+
+        // Update sidebar logo based on theme
+        this.updateSidebarLogo(theme);
+    }
+
+    updateSidebarLogo(theme) {
+        const logoImg = document.getElementById('sidebar-logo-img');
+        const miniIcon = document.getElementById('sidebar-mini-icon');
+        
+        if (logoImg) {
+            // Day mode uses the daymode logo, night and contrast use the night-highcontrast logo
+            if (theme === 'day') {
+                logoImg.src = '/ltthlogo_daymode.png';
+            } else {
+                logoImg.src = '/ltthlogo_night-highcontrast-mode.png';
+            }
+        }
+        
+        if (miniIcon) {
+            // Day mode uses the daymode mini icon, night and contrast use the night mini icon
+            if (theme === 'day') {
+                miniIcon.src = '/mini-icon-daymode.png';
+            } else {
+                miniIcon.src = '/mini-icon-night.png';
+            }
+        }
     }
 
     applyThemeToDocument(doc, theme) {

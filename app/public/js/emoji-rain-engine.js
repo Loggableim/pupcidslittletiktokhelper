@@ -314,6 +314,18 @@ function handleCollision(event) {
                 // Only trigger bounce if enough time has passed since last bounce (prevent spam)
                 if (!emoji.lastBounceTime || now - emoji.lastBounceTime > 300) {
                     emoji.lastBounceTime = now;
+                    
+                    // Apply bounce damping - reduce velocity after bounce
+                    if (config.bounce_damping > 0) {
+                        // Clamp damping to [0, 1] to prevent velocity reversal
+                        const dampingFactor = 1 - Math.min(1, Math.max(0, config.bounce_damping));
+                        const currentVelocity = emoji.body.velocity;
+                        Body.setVelocity(emoji.body, {
+                            x: currentVelocity.x * dampingFactor,
+                            y: currentVelocity.y * dampingFactor
+                        });
+                    }
+                    
                     triggerBounceEffect(emoji);
                 }
             }
@@ -589,12 +601,12 @@ function updateLoop(currentTime) {
                 });
             }
 
-            // Apply air resistance with damping
+            // Apply air resistance (clamp to [0, 1] to prevent velocity reversal)
             const velocity = emoji.body.velocity;
-            const dampingFactor = config.bounce_damping;
+            const airResistance = Math.min(1, Math.max(0, config.physics_air));
             Body.setVelocity(emoji.body, {
-                x: velocity.x * (1 - config.physics_air - dampingFactor * 0.01),
-                y: velocity.y * (1 - config.physics_air)
+                x: velocity.x * (1 - airResistance),
+                y: velocity.y * (1 - airResistance)
             });
 
             // Update DOM element

@@ -35,7 +35,11 @@ const resolutionPresets = {
     '720p': { width: 1280, height: 720 },
     '1080p': { width: 1920, height: 1080 },
     '1440p': { width: 2560, height: 1440 },
-    '4k': { width: 3840, height: 2160 }
+    '4k': { width: 3840, height: 2160 },
+    '720p-portrait': { width: 720, height: 1280 },
+    '1080p-portrait': { width: 1080, height: 1920 },
+    '1440p-portrait': { width: 1440, height: 2560 },
+    '4k-portrait': { width: 2160, height: 3840 }
 };
 
 // Apply resolution preset

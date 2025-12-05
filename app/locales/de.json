@@ -19,9 +19,9 @@
     "osc_bridge": "OSC-Brücke",
     "hybridshock": "HybridShock",
     "openshock": "OpenShock",
+    "leaderboard": "Bestenliste",
     "quiz_show": "Quiz Show",
     "viewer_xp": "Zuschauer XP",
-    "resources": "Ressourcen",
     "weather_control": "Wetterkontrolle",
     "minecraft_connect": "Minecraft Connect",
     "plugin_manager": "Plugin-Manager",
@@ -89,7 +89,10 @@
       "soundboard": "Soundboard",
       "flows": "Automatisierungsflows",
       "emoji_rain": "Emoji-Regen",
-      "osc_bridge": "OSC-Bridge"
+      "osc_bridge": "OSC-Bridge",
+      "openshock_emergency_stop": "OpenShock Stopp",
+      "plugin_disabled": "Plugin deaktiviert",
+      "enable_plugin_hint": "Aktiviere dieses Plugin um Schnellaktionen zu nutzen"
     },
     "plugin_notice": {
       "title": "Plugin-Hinweis",
@@ -251,7 +254,10 @@
     "auto_start_title": "Autostart-Einstellungen",
     "language_settings": "Spracheinstellungen",
     "global_settings": "Globale Einstellungen",
-    "select_language": "Sprache auswählen"
+    "select_language": "Sprache auswählen",
+    "diagnostics": "Systemdiagnose & Logging",
+    "diagnostics_desc": "Überwache Systemleistung, GPU-Status und zeige Anwendungsprotokolle für die Fehlerbehebung an.",
+    "enable_logging": "Umfassendes Logging aktivieren"
   },
   "obs": {
     "title": "OBS-WebSocket-Integration",
@@ -361,7 +367,25 @@
     "not_found": "Nicht gefunden",
     "unauthorized": "Nicht autorisiert",
     "rate_limit": "Zu viele Anfragen. Bitte warte einen Moment.",
-    "unknown_error": "Ein unbekannter Fehler ist aufgetreten"
+    "unknown_error": "Ein unbekannter Fehler ist aufgetreten",
+    "page_not_found_title": "Seite nicht gefunden",
+    "page_not_found_heading": "🔌 Seite nicht gefunden",
+    "page_not_found_message": "Diese Seite oder dieses Plugin ist nicht verfügbar.",
+    "page_not_found_reason": "Das Plugin ist möglicherweise deaktiviert oder die Route existiert nicht.",
+    "back_to_dashboard": "← Zurück zum Dashboard",
+    "plugin_disabled_title": "Plugin deaktiviert",
+    "plugin_disabled_heading": "🔌 Plugin ist deaktiviert",
+    "plugin_disabled_message": "Das Plugin \"{pluginName}\" ist derzeit deaktiviert.",
+    "plugin_disabled_reason": "Du kannst dieses Plugin im Plugin-Manager aktivieren oder auf die Schaltfläche unten klicken.",
+    "plugin_load_failed_title": "Plugin konnte nicht geladen werden",
+    "plugin_load_failed_heading": "⚠️ Plugin konnte nicht geladen werden",
+    "plugin_load_failed_message": "Das Plugin \"{pluginName}\" ist aktiviert, konnte aber nicht geladen werden.",
+    "plugin_load_failed_reason": "Überprüfe die Server-Logs auf Fehler. Versuche, das Plugin neu zu laden oder starte die Anwendung neu.",
+    "enable_plugin_button": "Plugin aktivieren",
+    "enabling_plugin": "Wird aktiviert...",
+    "plugin_enabled_success": "Plugin aktiviert! Weiterleitung...",
+    "plugin_enabled_error": "Plugin konnte nicht aktiviert werden. Bitte erneut versuchen.",
+    "go_to_plugin_manager": "Zum Plugin-Manager"
   },
   "tts": {
     "title": "Text-zu-Sprache",

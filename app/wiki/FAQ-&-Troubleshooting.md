@@ -28,7 +28,7 @@
 
 ### Kostet das Tool etwas?
 
-**Nein!** 100% kostenlos und Open Source (MIT-Lizenz).
+**Nein!** 100% kostenlos und Open Source (CC BY-NC 4.0 Lizenz).
 
 ### Welche TikTok-Events werden unterstützt?
 

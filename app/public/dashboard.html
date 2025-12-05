@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="app.name">Pup Cid's Little TikTok Helper</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -59,6 +60,26 @@
             color: var(--color-accent-primary) !important;
         }
 
+        /* Profile filter button styles */
+        .profile-filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        
+        .profile-filter-btn:hover {
+            background: var(--color-active-bg) !important;
+            border-color: var(--color-active-border) !important;
+            color: var(--color-accent-primary) !important;
+        }
+
+        .profile-filter-btn.active {
+            background: var(--color-active-bg) !important;
+            border-color: var(--color-active-border) !important;
+            color: var(--color-accent-primary) !important;
+        }
+
         #plugin-search:focus {
             outline: none;
             border-color: var(--color-input-focus);
@@ -66,6 +87,12 @@
         }
 
         #plugin-sort:focus {
+            outline: none;
+            border-color: var(--color-input-focus);
+            box-shadow: 0 0 0 3px var(--color-active-bg);
+        }
+
+        #profile-search-input:focus {
             outline: none;
             border-color: var(--color-input-focus);
             box-shadow: 0 0 0 3px var(--color-active-bg);
@@ -191,6 +218,7 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 8px center;
+            font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', system-ui, sans-serif;
         }
 
         .topbar-language-select:hover {
@@ -208,6 +236,7 @@
             background: var(--color-bg-secondary);
             color: var(--color-text-primary);
             padding: 8px;
+            font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', system-ui, sans-serif;
         }
 
         /* Responsive adjustments */
@@ -395,8 +424,8 @@
         <aside id="sidebar" class="sidebar sidebar-expanded">
             <div class="sidebar-header">
                 <div class="sidebar-logo">
-                    <img src="/ltthappicon.png" alt="LTTH Logo" class="sidebar-logo-icon">
-                    <span class="sidebar-logo-text">LTTH</span>
+                    <img id="sidebar-logo-img" src="/ltthlogo_night-highcontrast-mode.png" alt="LTTH Logo" class="sidebar-logo-icon">
+                    <img id="sidebar-mini-icon" src="/mini-icon-night.png" alt="LTTH Mini" class="sidebar-mini-icon">
                 </div>
                 <button id="sidebar-toggle" class="sidebar-toggle-btn">
                     <i data-lucide="panel-left"></i>
@@ -422,7 +451,7 @@
                     <i data-lucide="git-branch"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.flows">Flows</span>
                 </a>
-                <a href="#" class="sidebar-item" data-view="goals">
+                <a href="#" class="sidebar-item" data-view="goals" data-plugin="goals">
                     <i data-lucide="target"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.goals">Goals</span>
                 </a>
@@ -439,11 +468,11 @@
                 <div class="sidebar-category">
                     <span class="sidebar-category-label" data-i18n="navigation.effects">Interactive Effects</span>
                 </div>
-                <a href="#" class="sidebar-item" data-view="tts">
+                <a href="#" class="sidebar-item" data-view="tts" data-plugin="tts">
                     <i data-lucide="mic"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.tts">TTS</span>
                 </a>
-                <a href="#" class="sidebar-item" data-view="soundboard">
+                <a href="#" class="sidebar-item" data-view="soundboard" data-plugin="soundboard">
                     <i data-lucide="music"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.soundboard">Soundboard</span>
                 </a>
@@ -491,10 +520,6 @@
                 <a href="#" class="sidebar-item" data-view="leaderboard" data-plugin="leaderboard">
                     <i data-lucide="trophy"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.leaderboard">Leaderboard</span>
-                </a>
-                <a href="#" class="sidebar-item" data-view="resource-monitor" data-plugin="resource-monitor">
-                    <i data-lucide="cpu"></i>
-                    <span class="sidebar-item-text" data-i18n="navigation.resources">Resources</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="weather-control" data-plugin="weather-control">
                     <i data-lucide="cloud-rain"></i>
@@ -544,6 +569,8 @@
 
             <!-- Topbar (Reduced) -->
             <header class="topbar">
+                <!-- Drag region for moving frameless window -->
+                <div class="topbar-drag-region"></div>
                 <div class="topbar-left">
                     <h1 class="topbar-title" data-i18n="app.name">Pup Cid's Little TikTok Helper</h1>
                 </div>
@@ -570,6 +597,18 @@
                     <button id="topbar-settings-btn" class="topbar-icon-btn" data-i18n-title="settings.global_settings" title="Global Settings">
                         <i data-lucide="settings"></i>
                     </button>
+                    <!-- Window Controls for frameless window -->
+                    <div class="window-controls">
+                        <button id="window-minimize-btn" class="window-control-btn" title="Minimize">
+                            <svg width="12" height="12" viewBox="0 0 12 12"><rect y="5" width="12" height="2" fill="currentColor"/></svg>
+                        </button>
+                        <button id="window-maximize-btn" class="window-control-btn" title="Maximize">
+                            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                        </button>
+                        <button id="window-close-btn" class="window-control-btn window-control-close" title="Close">
+                            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -607,9 +646,7 @@
                             <span data-i18n="dashboard.tiktok_live_connection">TikTok Live Connection</span>
                         </h2>
                         <div class="connection-controls">
-                            <input type="text" id="username-input" placeholder="TikTok Username (ohne @)" data-i18n="dashboard.username_placeholder"
-                            <input type="text" id="username-input" data-i18n-placeholder="dashboard.username_placeholder" placeholder="TikTok Username (without @)"
-                                   class="connection-input">
+                            <input type="text" id="username-input" data-i18n-placeholder="dashboard.username_placeholder" placeholder="TikTok Username (without @)" class="connection-input">
                             <button id="connect-btn" class="btn btn-primary">
                                 <i data-lucide="link"></i>
                                 <span data-i18n="dashboard.connect">Connect</span>
@@ -666,11 +703,11 @@
                             <span data-i18n="dashboard.quick_actions">Quick Actions</span>
                         </h2>
                         <div class="quick-actions-button-grid">
-                            <button class="quick-action-btn" id="quick-tts-btn" data-action="tts" data-state="on">
+                            <button class="quick-action-btn" id="quick-tts-btn" data-action="tts" data-state="on" data-plugin="tts">
                                 <i data-lucide="mic"></i>
                                 <span data-i18n="dashboard.quick_action.tts">Text-to-Speech</span>
                             </button>
-                            <button class="quick-action-btn" id="quick-soundboard-btn" data-action="soundboard" data-state="on">
+                            <button class="quick-action-btn" id="quick-soundboard-btn" data-action="soundboard" data-state="on" data-plugin="soundboard">
                                 <i data-lucide="music"></i>
                                 <span data-i18n="dashboard.quick_action.soundboard">Soundboard</span>
                             </button>
@@ -685,6 +722,10 @@
                             <button class="quick-action-btn" id="quick-osc-bridge-btn" data-action="osc-bridge" data-state="off" data-plugin="osc-bridge">
                                 <i data-lucide="gamepad-2"></i>
                                 <span data-i18n="dashboard.quick_action.osc_bridge">OSC-Bridge</span>
+                            </button>
+                            <button class="quick-action-btn emergency-stop-btn" id="quick-openshock-stop-btn" data-action="openshock-emergency-stop" data-state="off" data-plugin="openshock">
+                                <i data-lucide="shield-off"></i>
+                                <span data-i18n="dashboard.quick_action.openshock_emergency_stop">OpenShock Stop</span>
                             </button>
                         </div>
                     </section>
@@ -761,7 +802,11 @@
                             <span>Community Chat</span>
                         </h2>
                         <div class="shoutbox-container" id="chatango-embed-container">
-                            <script id="cid0020000424709220769" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: 100%;height: 100%;">{"handle":"pupcidsltth","arch":"js","styles":{"a":"13A318","b":100,"c":"FFFFFF","d":"FFFFFF","k":"13A318","l":"13A318","m":"13A318","n":"FFFFFF","p":"10","q":"13A318","r":100,"t":0,"surl":0,"allowpm":0,"cnrs":"0.35","fwtickm":1}}</script>
+                            <!-- Chatango embed will be loaded dynamically by chatango-theme-adapter.js -->
+                            <!-- when the chatango plugin is enabled -->
+                            <div class="chatango-loading" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--color-text-secondary);">
+                                <span data-i18n="chatango.loading">Loading Community Chat...</span>
+                            </div>
                         </div>
                     </section>
 
@@ -800,55 +845,6 @@
                         </div>
                     </section>
 
-                    <!-- 7. System Resources Section (Compact, at bottom) -->
-                    <section class="dashboard-section resource-section-compact" data-plugin="resource-monitor">
-                        <h2 class="section-title-compact">
-                            <i data-lucide="activity"></i>
-                            <span>System Resources</span>
-                            <a href="#" class="resource-details-link" data-view="resource-monitor" data-plugin="resource-monitor">
-                                Details <i data-lucide="arrow-right"></i>
-                            </a>
-                        </h2>
-                        <div class="resource-grid-compact">
-                            <div class="resource-card-compact">
-                                <div class="resource-info">
-                                    <i data-lucide="cpu"></i>
-                                    <span class="resource-label">CPU</span>
-                                    <span class="resource-value-compact" id="resource-cpu-compact">0%</span>
-                                </div>
-                                <div class="resource-bar-compact">
-                                    <div class="resource-bar-fill-compact" id="resource-cpu-bar-compact" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <div class="resource-card-compact">
-                                <div class="resource-info">
-                                    <i data-lucide="memory-stick"></i>
-                                    <span class="resource-label">RAM</span>
-                                    <span class="resource-value-compact" id="resource-ram-compact">0%</span>
-                                </div>
-                                <div class="resource-bar-compact">
-                                    <div class="resource-bar-fill-compact" id="resource-ram-bar-compact" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <div class="resource-card-compact">
-                                <div class="resource-info">
-                                    <i data-lucide="hard-drive"></i>
-                                    <span class="resource-label">GPU</span>
-                                    <span class="resource-value-compact" id="resource-gpu-compact">--</span>
-                                </div>
-                                <canvas id="gpu-sparkline" class="resource-sparkline-compact" width="100" height="20"></canvas>
-                            </div>
-                            <div class="resource-card-compact">
-                                <div class="resource-info">
-                                    <i data-lucide="wifi"></i>
-                                    <span class="resource-label">Network</span>
-                                    <span class="resource-value-compact" id="resource-network-compact">0 KB/s</span>
-                                </div>
-                                <canvas id="network-sparkline" class="resource-sparkline-compact" width="100" height="20"></canvas>
-                            </div>
-                        </div>
-                    </section>
-
                 </div>
 
                 <!-- View: Events -->
@@ -864,6 +860,173 @@
                                 Clear
                             </button>
                         </div>
+                        
+                        <!-- Compact Live Statistics Bar - Menu Navigation -->
+                        <div id="event-log-stats-bar" class="event-log-stats-bar stats-menu-nav">
+                            <div class="stats-bar-item stats-bar-runtime">
+                                <i data-lucide="clock"></i>
+                                <span class="stats-bar-label" data-i18n="dashboard.stats.runtime">Runtime</span>
+                                <span class="stats-bar-value" id="event-stats-runtime">--:--:--</span>
+                            </div>
+                            <div class="stats-bar-item stats-bar-clickable" data-panel="viewers" tabindex="0" role="button" aria-pressed="false">
+                                <i data-lucide="users"></i>
+                                <span class="stats-bar-label" data-i18n="dashboard.stats.viewers">Viewers</span>
+                                <span class="stats-bar-value" id="event-stats-viewers">0</span>
+                            </div>
+                            <div class="stats-bar-item stats-bar-clickable" data-panel="chat" tabindex="0" role="button" aria-pressed="false">
+                                <i data-lucide="message-circle"></i>
+                                <span class="stats-bar-label">Chat</span>
+                                <span class="stats-bar-value" id="event-stats-chat">0</span>
+                            </div>
+                            <div class="stats-bar-item stats-bar-clickable" data-panel="likes" tabindex="0" role="button" aria-pressed="false">
+                                <i data-lucide="heart"></i>
+                                <span class="stats-bar-label" data-i18n="dashboard.stats.likes">Likes</span>
+                                <span class="stats-bar-value" id="event-stats-likes">0</span>
+                            </div>
+                            <div class="stats-bar-item stats-bar-clickable" data-panel="coins" tabindex="0" role="button" aria-pressed="false">
+                                <i data-lucide="coins"></i>
+                                <span class="stats-bar-label" data-i18n="dashboard.stats.coins">Coins</span>
+                                <span class="stats-bar-value" id="event-stats-coins">0</span>
+                            </div>
+                            <div class="stats-bar-item stats-bar-clickable" data-panel="followers" tabindex="0" role="button" aria-pressed="false">
+                                <i data-lucide="star"></i>
+                                <span class="stats-bar-label" data-i18n="dashboard.stats.followers">Followers</span>
+                                <span class="stats-bar-value" id="event-stats-followers">0</span>
+                            </div>
+                            <div class="stats-bar-item stats-bar-clickable" data-panel="subscribers" tabindex="0" role="button" aria-pressed="false">
+                                <i data-lucide="crown"></i>
+                                <span class="stats-bar-label">Subscribers</span>
+                                <span class="stats-bar-value" id="event-stats-subscribers">0</span>
+                            </div>
+                            <div class="stats-bar-item stats-bar-clickable" data-panel="gifts" tabindex="0" role="button" aria-pressed="false">
+                                <i data-lucide="gift"></i>
+                                <span class="stats-bar-label" data-i18n="dashboard.stats.gifts">Gifts</span>
+                                <span class="stats-bar-value" id="event-stats-gifts">0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Stats Detail Panels Container -->
+                        <div id="stats-detail-container" class="stats-detail-container" style="display: none;">
+                            <!-- Viewers Panel -->
+                            <div id="stats-panel-viewers" class="stats-detail-panel" data-panel="viewers" style="display: none;">
+                                <div class="stats-panel-header">
+                                    <h3><i data-lucide="users"></i> <span data-i18n="dashboard.stats.viewers">Viewers</span></h3>
+                                    <button class="stats-panel-close" aria-label="Close panel"><i data-lucide="x"></i></button>
+                                </div>
+                                <div class="stats-panel-content">
+                                    <div class="stats-panel-summary">
+                                        <span class="stats-panel-count" id="panel-viewers-count">0</span>
+                                        <span class="stats-panel-label">currently watching</span>
+                                    </div>
+                                    <div class="stats-panel-list" id="viewers-list">
+                                        <p class="stats-panel-empty">No viewers tracked yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Chat Panel -->
+                            <div id="stats-panel-chat" class="stats-detail-panel" data-panel="chat" style="display: none;">
+                                <div class="stats-panel-header">
+                                    <h3><i data-lucide="message-circle"></i> Chat</h3>
+                                    <button class="stats-panel-close" aria-label="Close panel"><i data-lucide="x"></i></button>
+                                </div>
+                                <div class="stats-panel-content">
+                                    <div class="stats-panel-summary">
+                                        <span class="stats-panel-count" id="panel-chat-count">0</span>
+                                        <span class="stats-panel-label">messages</span>
+                                    </div>
+                                    <div class="stats-panel-list" id="chat-list">
+                                        <p class="stats-panel-empty">No chat messages yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Likes Panel -->
+                            <div id="stats-panel-likes" class="stats-detail-panel" data-panel="likes" style="display: none;">
+                                <div class="stats-panel-header">
+                                    <h3><i data-lucide="heart"></i> <span data-i18n="dashboard.stats.likes">Likes</span></h3>
+                                    <button class="stats-panel-close" aria-label="Close panel"><i data-lucide="x"></i></button>
+                                </div>
+                                <div class="stats-panel-content">
+                                    <div class="stats-panel-summary">
+                                        <span class="stats-panel-count" id="panel-likes-count">0</span>
+                                        <span class="stats-panel-label">total likes</span>
+                                    </div>
+                                    <div class="stats-panel-list" id="likes-list">
+                                        <p class="stats-panel-empty">No likes yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Coins Panel -->
+                            <div id="stats-panel-coins" class="stats-detail-panel" data-panel="coins" style="display: none;">
+                                <div class="stats-panel-header">
+                                    <h3><i data-lucide="coins"></i> <span data-i18n="dashboard.stats.coins">Coins</span></h3>
+                                    <button class="stats-panel-close" aria-label="Close panel"><i data-lucide="x"></i></button>
+                                </div>
+                                <div class="stats-panel-content">
+                                    <div class="stats-panel-summary">
+                                        <span class="stats-panel-count" id="panel-coins-count">0</span>
+                                        <span class="stats-panel-label">total coins</span>
+                                    </div>
+                                    <div class="stats-panel-list" id="coins-list">
+                                        <p class="stats-panel-empty">No coin gifts yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Followers Panel -->
+                            <div id="stats-panel-followers" class="stats-detail-panel" data-panel="followers" style="display: none;">
+                                <div class="stats-panel-header">
+                                    <h3><i data-lucide="star"></i> <span data-i18n="dashboard.stats.followers">Followers</span></h3>
+                                    <button class="stats-panel-close" aria-label="Close panel"><i data-lucide="x"></i></button>
+                                </div>
+                                <div class="stats-panel-content">
+                                    <div class="stats-panel-summary">
+                                        <span class="stats-panel-count" id="panel-followers-count">0</span>
+                                        <span class="stats-panel-label">new followers</span>
+                                    </div>
+                                    <div class="stats-panel-list" id="followers-list">
+                                        <p class="stats-panel-empty">No followers yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Subscribers Panel -->
+                            <div id="stats-panel-subscribers" class="stats-detail-panel" data-panel="subscribers" style="display: none;">
+                                <div class="stats-panel-header">
+                                    <h3><i data-lucide="crown"></i> Subscribers / Superfans</h3>
+                                    <button class="stats-panel-close" aria-label="Close panel"><i data-lucide="x"></i></button>
+                                </div>
+                                <div class="stats-panel-content">
+                                    <div class="stats-panel-summary">
+                                        <span class="stats-panel-count" id="panel-subscribers-count">0</span>
+                                        <span class="stats-panel-label">subscribers</span>
+                                    </div>
+                                    <div class="stats-panel-list" id="subscribers-list">
+                                        <p class="stats-panel-empty">No subscribers yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Gifts Panel -->
+                            <div id="stats-panel-gifts" class="stats-detail-panel" data-panel="gifts" style="display: none;">
+                                <div class="stats-panel-header">
+                                    <h3><i data-lucide="gift"></i> <span data-i18n="dashboard.stats.gifts">Gifts</span></h3>
+                                    <button class="stats-panel-close" aria-label="Close panel"><i data-lucide="x"></i></button>
+                                </div>
+                                <div class="stats-panel-content">
+                                    <div class="stats-panel-summary">
+                                        <span class="stats-panel-count" id="panel-gifts-count">0</span>
+                                        <span class="stats-panel-label">gifts received</span>
+                                    </div>
+                                    <div class="stats-panel-list" id="gifts-list">
+                                        <p class="stats-panel-empty">No gifts yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="table-container">
                             <table class="data-table">
                                 <thead>
@@ -928,7 +1091,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/goals/ui" title="Live Goals Configuration"></iframe>
+                            <iframe data-src="/goals/ui" title="Live Goals Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -947,7 +1110,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/plugins/tts/ui/admin-panel.html" title="TTS Configuration"></iframe>
+                            <iframe data-src="/plugins/tts/ui/admin-panel.html" title="TTS Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1258,7 +1421,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/emoji-rain/ui" title="Emoji Rain Configuration"></iframe>
+                            <iframe data-src="/emoji-rain/ui" title="Emoji Rain Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1277,7 +1440,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/vdoninja/ui" title="VDO.Ninja Multi-Guest Manager"></iframe>
+                            <iframe data-src="/vdoninja/ui" title="VDO.Ninja Multi-Guest Manager"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1296,7 +1459,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/gift-milestone/ui" title="Gift Milestone Configuration"></iframe>
+                            <iframe data-src="/gift-milestone/ui" title="Gift Milestone Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1315,7 +1478,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/multicam/ui" title="Multi-Cam Configuration"></iframe>
+                            <iframe data-src="/multicam/ui" title="Multi-Cam Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1334,7 +1497,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/osc-bridge/ui" title="OSC-Bridge Configuration"></iframe>
+                            <iframe data-src="/osc-bridge/ui" title="OSC-Bridge Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1353,7 +1516,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/hybridshock/ui" title="HybridShock Configuration"></iframe>
+                            <iframe data-src="/hybridshock/ui" title="HybridShock Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1372,7 +1535,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/openshock/ui" title="OpenShock Configuration"></iframe>
+                            <iframe data-src="/openshock/ui" title="OpenShock Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1391,7 +1554,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/quiz-show/ui" title="Quiz Show Configuration"></iframe>
+                            <iframe data-src="/quiz-show/ui" title="Quiz Show Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1410,7 +1573,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/viewer-xp/admin" title="Viewer XP Admin Panel"></iframe>
+                            <iframe data-src="/viewer-xp/admin" title="Viewer XP Admin Panel"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1429,26 +1592,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/leaderboard/ui" title="Leaderboard Configuration"></iframe>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- View: Resource Monitor -->
-                <div id="view-resource-monitor" class="content-view" data-plugin="resource-monitor">
-                    <section class="view-section">
-                        <div class="view-header">
-                            <h2 class="view-title">
-                                <i data-lucide="cpu"></i>
-                                System Resource Monitor
-                            </h2>
-                            <a href="/resource-monitor/ui" target="_blank" class="btn btn-sm btn-ghost">
-                                <i data-lucide="external-link"></i>
-                                Open in New Tab
-                            </a>
-                        </div>
-                        <div class="iframe-container">
-                            <iframe src="/resource-monitor/ui" title="Resource Monitor"></iframe>
+                            <iframe data-src="/leaderboard/ui" title="Leaderboard Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1467,7 +1611,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/weather-control/ui" title="Weather Control"></iframe>
+                            <iframe data-src="/weather-control/ui" title="Weather Control"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1486,7 +1630,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/minecraft-connect/ui" title="Minecraft Connect"></iframe>
+                            <iframe data-src="/minecraft-connect/ui" title="Minecraft Connect"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1505,7 +1649,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/streamalchemy/ui" title="Stream Alchemy"></iframe>
+                            <iframe data-src="/streamalchemy/ui" title="Stream Alchemy"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1524,7 +1668,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/gcce/ui" title="Global Chat Command Engine"></iframe>
+                            <iframe data-src="/gcce/ui" title="Global Chat Command Engine"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1543,7 +1687,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/thermal-printer/ui" title="Thermal Printer"></iframe>
+                            <iframe data-src="/thermal-printer/ui" title="Thermal Printer"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1562,7 +1706,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/config-import/ui" title="Config Import"></iframe>
+                            <iframe data-src="/config-import/ui" title="Config Import"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1581,7 +1725,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/lastevent-spotlight/ui" title="LastEvent Spotlight"></iframe>
+                            <iframe data-src="/lastevent-spotlight/ui" title="LastEvent Spotlight"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1600,7 +1744,7 @@
                             </a>
                         </div>
                         <div class="iframe-container">
-                            <iframe src="/clarityhud/ui" title="ClarityHUD Configuration"></iframe>
+                            <iframe data-src="/clarityhud/ui" title="ClarityHUD Configuration"></iframe>
                         </div>
                     </section>
                 </div>
@@ -1771,19 +1915,19 @@
                                     <div class="form-group">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="auto-connect-enabled">
-                                            <spandata-i18n="settings.auto_connect">Auto-connect to last TikTok user on startup</span>
+                                            <span data-i18n="settings.auto_connect">Auto-connect to last TikTok user on startup</span>
                                         </label>
                                     </div>
                                     <div class="form-group">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="auto-update-check" checked>
-                                            <spandata-i18n="settings.auto_update_check">Check for updates on startup</span>
+                                            <span data-i18n="settings.auto_update_check">Check for updates on startup</span>
                                         </label>
                                     </div>
                                     <div class="form-group">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="update-notifications" checked>
-                                            <spandata-i18n="settings.show_update_notifications">Show update notifications</span>
+                                            <span data-i18n="settings.show_update_notifications">Show update notifications</span>
                                         </label>
                                     </div>
                                 </div>
@@ -1833,7 +1977,7 @@
                                     <div class="form-group">
                                         <label class="checkbox-label">
                                             <input type="checkbox" id="autostart-enabled">
-                                            <spandata-i18n="settings.enable_auto_start">Enable Auto-Start</span>
+                                            <span data-i18n="settings.enable_auto_start">Enable Auto-Start</span>
                                         </label>
                                     </div>
                                 </div>
@@ -1877,6 +2021,25 @@
                                         ⚠️ Profile changes require application restart
                                     </p>
                                 </div>
+                                
+                                <!-- Profile Search and Filter -->
+                                <div class="form-group mb-4">
+                                    <label>Search & Filter Profiles</label>
+                                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                        <input type="text" id="profile-search-input" placeholder="Search profiles..." class="form-input" style="flex: 1;">
+                                    </div>
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <button id="filter-recent-btn" class="btn btn-ghost btn-sm profile-filter-btn" data-filter="recent" title="Show last 10 recently modified profiles">
+                                            <i data-lucide="clock"></i>
+                                            Recent (10)
+                                        </button>
+                                        <button id="filter-all-btn" class="btn btn-ghost btn-sm profile-filter-btn active" data-filter="all" title="Show all profiles">
+                                            <i data-lucide="list"></i>
+                                            All
+                                        </button>
+                                    </div>
+                                </div>
+                                
                                 <div id="profile-list" class="space-y-2 mb-4">
                                     <!-- Profiles will be loaded dynamically -->
                                 </div>
@@ -1947,6 +2110,148 @@
                                     </p>
                                 </div>
                             </div>
+
+                            <!-- System Diagnostics & Logging -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="activity"></i>
+                                    <span data-i18n="settings.diagnostics">System Diagnostics & Logging</span>
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4" data-i18n="settings.diagnostics_desc">
+                                    Monitor system performance, GPU status, and view application logs for debugging.
+                                </p>
+                                
+                                <!-- System Info -->
+                                <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                                    <h4 class="text-sm font-semibold text-gray-300 mb-3">
+                                        <i data-lucide="cpu" class="inline-block w-4 h-4 mr-1"></i>
+                                        System Information
+                                    </h4>
+                                    <div class="space-y-2 text-sm" id="system-diagnostics-info">
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">Platform:</span>
+                                            <span id="diag-platform" class="font-mono">Loading...</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">Node.js Version:</span>
+                                            <span id="diag-node-version" class="font-mono">-</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">Electron Version:</span>
+                                            <span id="diag-electron-version" class="font-mono">N/A (Browser)</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">Chrome Version:</span>
+                                            <span id="diag-chrome-version" class="font-mono">-</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">Memory Usage:</span>
+                                            <span id="diag-memory" class="font-mono">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- GPU Info -->
+                                <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                                    <h4 class="text-sm font-semibold text-gray-300 mb-3">
+                                        <i data-lucide="monitor" class="inline-block w-4 h-4 mr-1"></i>
+                                        GPU & Rendering
+                                    </h4>
+                                    <div class="space-y-2 text-sm" id="gpu-diagnostics-info">
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">GPU Renderer:</span>
+                                            <span id="diag-gpu-renderer" class="font-mono text-xs">-</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">GPU Vendor:</span>
+                                            <span id="diag-gpu-vendor" class="font-mono">-</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">WebGL Support:</span>
+                                            <span id="diag-webgl" class="font-mono">-</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <span class="text-gray-400">Hardware Acceleration:</span>
+                                            <span id="diag-hw-accel" class="font-mono">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Logging Controls -->
+                                <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                                    <h4 class="text-sm font-semibold text-gray-300 mb-3">
+                                        <i data-lucide="scroll-text" class="inline-block w-4 h-4 mr-1"></i>
+                                        Logging Settings
+                                    </h4>
+                                    <div class="space-y-3">
+                                        <div class="form-group mb-2">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="diag-logging-enabled" checked>
+                                                <span data-i18n="settings.enable_logging">Enable Comprehensive Logging</span>
+                                            </label>
+                                            <p class="text-xs text-gray-500 ml-6">Logs all plugin activities, errors, and system events</p>
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="diag-console-logging" checked>
+                                                <span>Log to Browser Console</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label class="text-sm text-gray-400">Log Level</label>
+                                            <select id="diag-log-level" class="form-input mt-1" style="max-width: 200px;">
+                                                <option value="error">Error Only</option>
+                                                <option value="warn">Warnings & Errors</option>
+                                                <option value="info" selected>Info (Recommended)</option>
+                                                <option value="debug">Debug (Verbose)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Live Log Viewer -->
+                                <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <h4 class="text-sm font-semibold text-gray-300">
+                                            <i data-lucide="terminal" class="inline-block w-4 h-4 mr-1"></i>
+                                            Live Log Viewer
+                                        </h4>
+                                        <div class="flex gap-2">
+                                            <button id="diag-clear-logs" class="btn btn-ghost btn-sm">
+                                                <i data-lucide="trash-2"></i>
+                                                Clear
+                                            </button>
+                                            <button id="diag-copy-logs" class="btn btn-ghost btn-sm">
+                                                <i data-lucide="copy"></i>
+                                                Copy
+                                            </button>
+                                            <button id="diag-download-logs" class="btn btn-ghost btn-sm">
+                                                <i data-lucide="download"></i>
+                                                Export
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="diag-log-container" class="bg-gray-900 rounded p-3 font-mono text-xs overflow-y-auto" style="height: 200px; max-height: 300px;">
+                                        <div class="text-gray-500">Logs will appear here...</div>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="flex flex-wrap gap-2">
+                                    <button id="diag-refresh-btn" class="btn btn-primary btn-sm">
+                                        <i data-lucide="refresh-cw"></i>
+                                        Refresh Diagnostics
+                                    </button>
+                                    <button id="diag-test-gpu" class="btn btn-ghost btn-sm">
+                                        <i data-lucide="monitor"></i>
+                                        Test GPU
+                                    </button>
+                                    <button id="diag-check-plugins" class="btn btn-ghost btn-sm">
+                                        <i data-lucide="puzzle"></i>
+                                        Check Plugins
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -2014,7 +2319,8 @@
 
     <!-- Chatango Bottom-Right Widget -->
     <div id="chatango-widget-container" data-plugin="chatango">
-        <script id="cid0020000424709349923" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: 200px;height: 300px;">{"handle":"pupcidsltth","arch":"js","styles":{"a":"13A318","b":100,"c":"FFFFFF","d":"FFFFFF","k":"13A318","l":"13A318","m":"13A318","n":"FFFFFF","p":"10","q":"13A318","r":100,"t":0,"pos":"br","cv":1,"cvbg":"13a318","cvw":75,"cvh":30,"surl":0,"allowpm":0,"cnrs":"0.35","ticker":1,"fwtickm":1}}</script>
+        <!-- Chatango widget will be loaded dynamically by chatango-theme-adapter.js -->
+        <!-- when the chatango plugin is enabled -->
     </div>
 
     <!-- Scripts -->
@@ -2026,10 +2332,12 @@
     <script src="/js/audio-unlock.js"></script>
     <!-- Initialization helper to prevent race conditions -->
     <script src="/js/init-helper.js"></script>
+    <!-- Lazy loader for non-critical modules (must load before navigation.js) -->
+    <script src="/js/lazy-loader.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/navigation.js"></script>
     <script src="/js/dashboard-enhancements.js"></script>
-    <script src="/js/vdoninja-dashboard.js"></script>
+    <!-- vdoninja-dashboard.js is now lazy-loaded when VDO.Ninja view is accessed -->
     <script src="/js/plugin-manager.js"></script>
     <script src="/js/update-checker.js"></script>
     <script src="/js/audio-settings.js"></script>

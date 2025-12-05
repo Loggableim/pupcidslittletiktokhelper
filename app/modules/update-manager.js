@@ -30,6 +30,18 @@ class UpdateManager {
         this.currentVersion = this.getCurrentVersion();
         this.backupDir = path.join(this.projectRoot, '.backups');
         this.isGitRepo = this.checkIsGitRepo();
+        // Base URL for installer downloads
+        this.installerBaseUrl = 'https://ltth.app/downloads';
+    }
+
+    /**
+     * Generates the download URL for an installer for a specific version
+     * @param {string} version - The version string (e.g., "1.1.0" or "1.0.0")
+     * @returns {string} The installer download URL
+     */
+    getInstallerUrl(version) {
+        // Format: ltth.app/downloads/ltthsetup1.0.0, ltth.app/downloads/ltthsetup1.1.0
+        return `${this.installerBaseUrl}/ltthsetup${version}`;
     }
 
     /**
@@ -85,6 +97,7 @@ class UpdateManager {
                 publishedAt: release.published_at,
                 downloadUrl: release.zipball_url,
                 tarballUrl: release.tarball_url,
+                installerUrl: this.getInstallerUrl(latestVersion),
                 updateMethod: this.isGitRepo ? 'git' : 'zip',
                 updateCommand: this.isGitRepo ? 'git pull' : 'download-zip'
             };

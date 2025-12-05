@@ -16,6 +16,7 @@ class ClarityHUDBackend {
       share: [],
       gift: [],
       subscribe: [],
+      treasure: [],
       join: []
     };
 
@@ -333,10 +334,24 @@ class ClarityHUDBackend {
           badge: null
         };
 
+        const testTreasureEvent = {
+          uniqueId: 'treasurehunter999',
+          nickname: 'TreasureHunter',
+          giftName: 'Treasure Chest',
+          repeatCount: 1,
+          diamondCount: 1000,
+          coins: 1000,
+          giftPictureUrl: null,
+          giftType: 1, // Treasure chest type
+          profilePictureUrl: null,
+          badge: null
+        };
+
         // Send all test events
         await this.handleChatEvent(testChatEvent);
         await this.handleFollowEvent(testFollowEvent);
         await this.handleGiftEvent(testGiftEvent);
+        await this.handleGiftEvent(testTreasureEvent);
 
         this.api.log('Test full HUD events sent', 'info');
 
@@ -538,17 +553,21 @@ class ClarityHUDBackend {
         raw: data
       };
 
-      // Add to gift queue (with type and timestamp for internal storage)
-      this.addToQueue('gift', {
-        type: 'gift',
+      // Determine event type based on whether it's a treasure chest
+      const eventType = isTreasureChest ? 'treasure' : 'gift';
+      const eventName = isTreasureChest ? 'clarityhud.update.treasure' : 'clarityhud.update.gift';
+
+      // Add to appropriate queue (with type and timestamp for internal storage)
+      this.addToQueue(eventType, {
+        type: eventType,
         timestamp: Date.now(),
         ...giftEvent
       });
 
       // Broadcast to full HUD (without type/timestamp - overlay will add them)
-      this.api.emit('clarityhud.update.gift', giftEvent);
+      this.api.emit(eventName, giftEvent);
 
-      this.api.log(`Gift event from ${giftEvent.user.nickname}: ${giftEvent.gift.name} x${giftEvent.gift.count}`, 'debug');
+      this.api.log(`${isTreasureChest ? 'Treasure' : 'Gift'} event from ${giftEvent.user.nickname}: ${giftEvent.gift.name} x${giftEvent.gift.count}`, 'debug');
     } catch (error) {
       this.api.log(`Error handling gift event: ${error.message}`, 'error');
     }

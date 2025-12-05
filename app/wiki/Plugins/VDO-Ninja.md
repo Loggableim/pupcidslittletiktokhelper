@@ -1025,6 +1025,7 @@ For 6+ guests:
 
 **TikTok Stream Tool:**
 **Author:** Loggableim / PupcidsLittleTiktokHelper
+**License:** CC BY-NC 4.0
 **Integration:** Claude AI Assistant
 
 ---

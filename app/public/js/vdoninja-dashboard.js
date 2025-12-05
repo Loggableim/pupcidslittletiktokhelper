@@ -19,9 +19,16 @@ const vdoState = {
 // INITIALIZATION
 // ============================================
 
-document.addEventListener('DOMContentLoaded', () => {
+// Support for both initial load and lazy loading
+// If DOM is already loaded, run immediately; otherwise wait for DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initVDONinja();
+    });
+} else {
+    // DOM already loaded (lazy loading scenario)
     initVDONinja();
-});
+}
 
 async function initVDONinja() {
     console.log('🎥 Initializing VDO.Ninja Dashboard Client...');

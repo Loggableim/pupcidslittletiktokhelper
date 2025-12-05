@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenShock Control Panel</title>
     <link rel="stylesheet" href="/css/themes.css">
@@ -162,6 +163,21 @@
                     <p class="text-muted text-center">No commands executed yet.</p>
                 </div>
             </div>
+
+            <!-- Debug Log -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🐛 Debug Log</h2>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary btn-sm" id="clearDebugLog">🗑️ Clear</button>
+                        <button class="btn btn-secondary btn-sm" id="exportDebugLog">📥 Export</button>
+                        <button class="btn btn-secondary btn-sm" id="toggleDebugVerbose">📊 Verbose</button>
+                    </div>
+                </div>
+                <div class="log-container" id="debugLog" style="max-height: 300px; overflow-y: auto;">
+                    <p class="text-muted text-center">Debug log is empty. Pattern operations will be logged here.</p>
+                </div>
+            </div>
         </div>
 
         <!-- Tab 2: Event Mapper -->
@@ -301,40 +317,26 @@
         <div id="patterns" class="tab-content">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Shock Patterns</h2>
+                    <h2 class="card-title">⚡ Custom Patterns</h2>
                     <div class="btn-group">
-                        <button class="btn btn-success" id="addPattern">➕ Add Pattern</button>
-                        <button class="btn btn-secondary" id="importPatterns">📥 Import</button>
-                        <button class="btn btn-secondary" id="exportPatterns">📤 Export</button>
+                        <button class="btn btn-success" id="addPattern">➕ Neues Pattern</button>
+                        <button class="btn btn-secondary" id="importPatterns">📥 Importieren</button>
+                        <button class="btn btn-secondary" id="exportPatterns">📤 Exportieren</button>
                     </div>
                 </div>
 
-                <!-- Preset Patterns -->
-                <div class="mb-3">
-                    <h3 class="pattern-section-title">Preset Patterns</h3>
-                    <div class="grid-3" id="presetPatternsList">
-                        <!-- Preset patterns will be rendered here -->
+                <!-- Info -->
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>💡 Info:</strong> Patterns sind Sequenzen von Schock-, Vibrations- und Pausen-Aktionen. 
+                        Erstelle eigene Patterns mit individuellen Schritten und Kombinationen.
                     </div>
                 </div>
 
-                <!-- Custom Patterns -->
-                <div>
-                    <h3 class="pattern-section-title">Custom Patterns</h3>
-                    <div class="grid-3" id="customPatternsList">
-                        <p class="text-muted text-center">No custom patterns created yet.</p>
-                    </div>
+                <!-- Custom Patterns List -->
+                <div class="grid-3" id="customPatternsList">
+                    <p class="text-muted text-center">Noch keine Patterns erstellt. Klicke auf "Neues Pattern" um eines zu erstellen.</p>
                 </div>
-            </div>
-
-            <!-- Visual Pattern Curve Generator -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">🎨 Visual Pattern Curve Generator</h2>
-                    <button class="btn btn-primary" id="openCurveEditor">Open Curve Editor</button>
-                </div>
-                <p class="text-muted">
-                    Create custom patterns visually by drawing curves and combining different action types (shock, vibrate, sound) with precise intensity and duration control.
-                </p>
             </div>
         </div>
 
@@ -476,9 +478,17 @@
                         <small class="form-help-text">Or enter custom name below:</small>
                         <input type="text" class="form-input" id="mappingGiftName" placeholder="e.g., Rose, TikTok (leave empty to use selection above)">
                     </div>
-                    <div class="form-group" id="conditionMinCoins">
-                        <label class="form-label">Min Coins</label>
-                        <input type="number" class="form-input" id="mappingMinCoins" value="0" min="0">
+                    <div class="grid-2" id="conditionCoinRange">
+                        <div class="form-group">
+                            <label class="form-label">Min Coins</label>
+                            <input type="number" class="form-input" id="mappingMinCoins" value="0" min="0" placeholder="0 = keine Untergrenze">
+                            <small class="form-hint">Minimum Coins (0 = keine Grenze)</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Coins</label>
+                            <input type="number" class="form-input" id="mappingMaxCoins" value="" min="0" placeholder="leer = keine Obergrenze">
+                            <small class="form-hint">Maximum Coins (leer = keine Grenze)</small>
+                        </div>
                     </div>
                     <div class="form-group hidden" id="conditionMessagePattern">
                         <label class="form-label">Message Pattern (regex)</label>
@@ -561,207 +571,88 @@
         </div>
     </div>
 
-    <!-- Modal: Pattern Editor -->
+    <!-- Modal: Pattern Editor (Simplified) -->
     <div id="patternModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="patternModalTitle">Add Pattern</h2>
+                <h2 class="modal-title" id="patternModalTitle">⚡ Neues Pattern erstellen</h2>
                 <button class="modal-close" id="closePatternModal">×</button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Pattern Name</label>
-                    <input type="text" class="form-input" id="patternName" placeholder="e.g., Escalating Shock">
+                <!-- Pattern Info -->
+                <div class="alert alert-info mb-3">
+                    <strong>💡 So funktioniert's:</strong> Füge einzelne Schritte hinzu (Shock, Vibration, Sound, Pause). 
+                    Die Schritte werden nacheinander ausgeführt.
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-input" id="patternDescription" placeholder="Brief description of this pattern">
+                    <label class="form-label"><strong>Pattern-Name</strong></label>
+                    <input type="text" class="form-input" id="patternName" placeholder="z.B. Sanftes Aufwachen, Intensiver Blitz, ...">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Steps</label>
-                    <div class="step-list" id="patternSteps">
-                        <!-- Steps will be rendered here -->
-                    </div>
-                    <button class="btn btn-secondary btn-sm mt-2" id="addPatternStep">➕ Add Step</button>
+                    <label class="form-label">Beschreibung (optional)</label>
+                    <input type="text" class="form-input" id="patternDescription" placeholder="Kurze Beschreibung des Patterns">
                 </div>
 
-                <!-- Step Form (for adding/editing) -->
-                <div class="card mt-3 step-form-hidden" id="stepForm">
+                <!-- Step Builder - Simplified -->
+                <div class="card mt-3" id="quickStepForm">
                     <div class="card-header">
-                        <h3 class="modal-title-small">Step Configuration</h3>
+                        <h3 class="modal-title-small">➕ Schritt hinzufügen</h3>
                     </div>
                     <div class="modal-body-padding">
-                        <div class="form-group">
-                            <label class="form-label">Action Type</label>
-                            <select class="form-select" id="stepType">
-                                <option value="shock">⚡ Shock</option>
-                                <option value="vibrate">📳 Vibrate</option>
-                                <option value="sound">🔔 Sound</option>
-                                <option value="pause">⏸️ Pause</option>
-                            </select>
-                            <small class="form-help-text">Choose the type of action for this step</small>
+                        <div class="grid-2 mb-3">
+                            <div class="form-group">
+                                <label class="form-label">Aktion</label>
+                                <select class="form-select" id="stepType">
+                                    <option value="shock">⚡ Schock</option>
+                                    <option value="vibrate">📳 Vibration</option>
+                                    <option value="pause">⏸️ Pause</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Dauer (Millisekunden)</label>
+                                <input type="number" class="form-input" id="stepDuration" value="500" min="300" max="30000" step="100">
+                                <small class="form-hint">Min: 300ms, Max: 30000ms</small>
+                            </div>
                         </div>
                         <div class="form-group" id="stepIntensityGroup">
-                            <div class="slider-label">
-                                <span class="form-label">Intensity</span>
-                                <span class="slider-value" id="stepIntensityValue">50</span>
-                            </div>
-                            <input type="range" id="stepIntensity" min="1" max="100" value="50">
-                            <small class="form-help-text">Set the strength of the action (1-100%)</small>
+                            <label class="form-label">Intensität: <span id="stepIntensityValue">50</span>%</label>
+                            <input type="range" id="stepIntensity" min="1" max="100" value="50" class="slider-large">
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Duration (ms)</label>
-                            <input type="number" class="form-input" id="stepDuration" value="500" min="100" max="30000" step="100">
-                            <small class="form-help-text">How long this step should last (100-30000 milliseconds)</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Delay After Step (ms)</label>
-                            <input type="number" class="form-input" id="stepDelay" value="0" min="0" max="10000" step="100">
-                            <small class="form-help-text">Optional delay before the next step (0-10000 milliseconds)</small>
-                        </div>
-                        <div class="btn-group">
-                            <button class="btn btn-primary btn-sm" id="saveStep">💾 Save Step</button>
-                            <button class="btn btn-secondary btn-sm" id="cancelStep">❌ Cancel</button>
-                        </div>
+                        <button class="btn btn-success btn-block" id="addPatternStep">
+                            ➕ Schritt zum Pattern hinzufügen
+                        </button>
                     </div>
                 </div>
 
-                <!-- Preview Timeline -->
+                <!-- Step List -->
                 <div class="form-group mt-3">
-                    <label class="form-label">Pattern Preview</label>
+                    <div class="step-list-header">
+                        <label class="form-label"><strong>Pattern-Schritte</strong> (<span id="stepCountLabel">0</span> Schritte)</label>
+                        <button class="btn btn-sm btn-danger" id="clearAllSteps" style="display: none;">🗑️ Alle löschen</button>
+                    </div>
+                    <div class="step-list" id="patternSteps">
+                        <div class="text-muted text-center p-3">Noch keine Schritte hinzugefügt. Füge oben deinen ersten Schritt hinzu.</div>
+                    </div>
+                </div>
+
+                <!-- Visual Preview -->
+                <div class="form-group mt-3">
+                    <label class="form-label">Vorschau</label>
                     <div class="pattern-timeline" id="patternPreview">
-                        <p class="text-muted text-center pattern-timeline-text">Add steps to see preview</p>
+                        <p class="text-muted text-center pattern-timeline-text">Schritte hinzufügen für Vorschau</p>
+                    </div>
+                    <div class="pattern-info" id="patternInfo" style="display: none;">
+                        <small class="text-muted">
+                            <strong>Gesamtdauer:</strong> <span id="totalDuration">0</span>ms
+                        </small>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" id="savePatternBtn">💾 Save Pattern</button>
-                <button class="btn btn-secondary" id="cancelPatternBtn">❌ Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Visual Curve Editor -->
-    <div id="curveEditorModal" class="modal">
-        <div class="modal-content modal-xl">
-            <div class="modal-header">
-                <h2 class="modal-title">🎨 Visual Pattern Curve Editor</h2>
-                <button class="modal-close" id="closeCurveEditor">×</button>
-            </div>
-            <div class="modal-body">
-                <!-- Toolbar -->
-                <div class="curve-editor-toolbar">
-                    <div class="toolbar-section">
-                        <label class="form-label">Pattern Name:</label>
-                        <input type="text" class="form-input" id="curvePatternName" placeholder="My Custom Pattern" style="width: 250px;">
-                    </div>
-                    <div class="toolbar-section">
-                        <label class="form-label">Action Type:</label>
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-action active" data-action="shock">⚡ Shock</button>
-                            <button class="btn btn-sm btn-action" data-action="vibrate">📳 Vibrate</button>
-                            <button class="btn btn-sm btn-action" data-action="sound">🔔 Sound</button>
-                        </div>
-                    </div>
-                    <div class="toolbar-section">
-                        <label class="form-label">Curve Template:</label>
-                        <select class="form-select" id="curveTemplate" style="width: 150px;">
-                            <option value="custom">Custom (Draw)</option>
-                            <option value="linear-up">Linear Ramp Up</option>
-                            <option value="linear-down">Linear Ramp Down</option>
-                            <option value="exponential-up">Exponential Up</option>
-                            <option value="exponential-down">Exponential Down</option>
-                            <option value="sine">Sine Wave</option>
-                            <option value="pulse">Pulse Wave</option>
-                            <option value="sawtooth">Sawtooth</option>
-                            <option value="triangle">Triangle</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Main Canvas Area -->
-                <div class="curve-editor-canvas-container">
-                    <div class="canvas-header">
-                        <div class="canvas-info">
-                            <span><strong>Intensity:</strong> <span id="currentIntensity">50</span>%</span>
-                            <span><strong>Time:</strong> <span id="currentTime">0</span>ms</span>
-                            <span><strong>Steps:</strong> <span id="stepCount">0</span></span>
-                        </div>
-                        <div class="canvas-controls">
-                            <button class="btn btn-sm btn-secondary" id="clearCanvas">🗑️ Clear</button>
-                            <button class="btn btn-sm btn-secondary" id="undoStep">↶ Undo</button>
-                            <button class="btn btn-sm btn-primary" id="applyTemplate">📐 Apply Template</button>
-                        </div>
-                    </div>
-                    <canvas id="curveCanvas"></canvas>
-                    <div class="canvas-footer">
-                        <div class="axis-label">Time (milliseconds)</div>
-                    </div>
-                </div>
-
-                <!-- Controls Panel -->
-                <div class="curve-editor-controls">
-                    <div class="control-group">
-                        <label class="form-label">Intensity Range</label>
-                        <div class="dual-slider">
-                            <div class="slider-wrapper">
-                                <span class="slider-label-sm">Min:</span>
-                                <input type="range" id="minIntensity" min="1" max="100" value="10" class="form-range">
-                                <span class="slider-value-sm" id="minIntensityValue">10%</span>
-                            </div>
-                            <div class="slider-wrapper">
-                                <span class="slider-label-sm">Max:</span>
-                                <input type="range" id="maxIntensity" min="1" max="100" value="80" class="form-range">
-                                <span class="slider-value-sm" id="maxIntensityValue">80%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-group">
-                        <label class="form-label">Step Duration (ms)</label>
-                        <div class="slider-wrapper">
-                            <input type="range" id="stepDurationSlider" min="100" max="5000" value="500" step="50" class="form-range">
-                            <span class="slider-value-sm" id="stepDurationValue">500ms</span>
-                        </div>
-                    </div>
-
-                    <div class="control-group">
-                        <label class="form-label">Step Delay (ms)</label>
-                        <div class="slider-wrapper">
-                            <input type="range" id="stepDelaySlider" min="0" max="2000" value="100" step="50" class="form-range">
-                            <span class="slider-value-sm" id="stepDelayValue">100ms</span>
-                        </div>
-                    </div>
-
-                    <div class="control-group">
-                        <label class="form-label">Resolution (steps)</label>
-                        <div class="slider-wrapper">
-                            <input type="range" id="resolutionSlider" min="5" max="50" value="20" step="1" class="form-range">
-                            <span class="slider-value-sm" id="resolutionValue">20</span>
-                        </div>
-                        <small class="form-help-text">Number of steps to generate from the curve</small>
-                    </div>
-                </div>
-
-                <!-- Preview Timeline -->
-                <div class="curve-editor-timeline">
-                    <h3 class="timeline-title">Pattern Preview</h3>
-                    <div id="curveTimelinePreview" class="timeline-preview">
-                        <div class="timeline-empty">Draw on the canvas above to create your pattern</div>
-                    </div>
-                    <div class="timeline-stats">
-                        <span><strong>Total Duration:</strong> <span id="totalDuration">0</span>ms</span>
-                        <span><strong>Avg Intensity:</strong> <span id="avgIntensity">0</span>%</span>
-                        <span><strong>Peak Intensity:</strong> <span id="peakIntensity">0</span>%</span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" id="saveCurvePattern">💾 Save Pattern</button>
-                <button class="btn btn-success" id="previewCurvePattern">▶️ Preview Pattern</button>
-                <button class="btn btn-secondary" id="cancelCurveEditor">❌ Cancel</button>
+                <button class="btn btn-primary btn-lg" id="savePatternBtn">💾 Pattern speichern</button>
+                <button class="btn btn-secondary" id="cancelPatternBtn">❌ Abbrechen</button>
             </div>
         </div>
     </div>

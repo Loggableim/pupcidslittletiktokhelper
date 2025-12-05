@@ -54,6 +54,12 @@ class GoalsPlugin extends EventEmitter {
             // Register Flow actions
             this.registerFlowActions();
 
+            // Sync likes goals with current stream stats (if connected)
+            // Use a short delay to ensure server is ready
+            setTimeout(() => {
+                this.eventHandlers.syncLikesGoalsWithStream();
+            }, GoalsEventHandlers.SYNC_DELAY_ON_INIT_MS);
+
             this.api.log('✅ Goals Plugin initialized successfully', 'info');
             this.api.log(`   - Multi-goal system ready`, 'info');
             this.api.log(`   - 6 templates available`, 'info');
@@ -89,9 +95,18 @@ class GoalsPlugin extends EventEmitter {
 
     /**
      * Setup listeners for state machine events
+     * Checks if listeners are already attached to prevent duplicates
      */
     setupStateMachineListeners(machine) {
         const { EVENTS } = require('./engine/state-machine');
+
+        // Check if listeners are already attached to prevent duplicates
+        // Since all listeners are set up atomically in this function, checking one is sufficient
+        // This is a performance optimization to avoid iterating through all event types
+        if (machine.listenerCount(EVENTS.REACH_BEHAVIOR_APPLIED) > 0) {
+            this.api.log(`Skipping listener setup for goal ${machine.goalId} - already attached`, 'debug');
+            return;
+        }
 
         machine.on(EVENTS.STATE_CHANGED, (data) => {
             this.api.log(`Goal ${data.goalId} state: ${data.oldState} -> ${data.newState}`, 'debug');
@@ -111,9 +126,20 @@ class GoalsPlugin extends EventEmitter {
 
             // Update database with new target if changed
             if (data.newTarget) {
-                this.db.updateGoal(data.goalId, {
-                    target_value: data.newTarget
-                });
+                try {
+                    const updatedGoal = this.db.updateGoal(data.goalId, {
+                        target_value: data.newTarget
+                    });
+
+                    // Broadcast updated goal to all clients (including OBS overlay)
+                    if (updatedGoal) {
+                        this.broadcastGoalUpdated(updatedGoal);
+                    } else {
+                        this.api.log(`Goal ${data.goalId} not found after update attempt`, 'warn');
+                    }
+                } catch (error) {
+                    this.api.log(`Error updating goal target after reach behavior: ${error.message}`, 'error');
+                }
             }
         });
     }

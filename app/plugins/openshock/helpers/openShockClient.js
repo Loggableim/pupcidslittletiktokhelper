@@ -59,14 +59,15 @@ class OpenShockClient {
         this.minCooldownMs = 100; // Minimum 100ms between commands to same device
 
         // Axios instance with default config
+        // Note: OpenShock API uses 'OpenShockToken' header (no hyphen) for authentication
         this.axiosInstance = axios.create({
             baseURL: this.baseUrl,
             timeout: this.defaultTimeout,
             headers: {
-                'Open-Shock-Token': this.apiKey,
+                'OpenShockToken': this.apiKey,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'User-Agent': 'OpenShockClient/1.0'
+                'User-Agent': 'TikTokHelper/1.0 OpenShockClient'
             }
         });
 
@@ -218,10 +219,10 @@ class OpenShockClient {
                 baseURL: this.baseUrl,
                 timeout: this.defaultTimeout,
                 headers: {
-                    'Open-Shock-Token': this.apiKey,
+                    'OpenShockToken': this.apiKey,
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'User-Agent': 'OpenShockClient/1.0'
+                    'User-Agent': 'TikTokHelper/1.0 OpenShockClient'
                 }
             });
 
@@ -390,6 +391,11 @@ class OpenShockClient {
      * @returns {Promise<Object>} Command response
      */
     async _sendCommand(deviceId, type, intensity, duration, options = {}) {
+        // Check if client is properly configured
+        if (!this.isConfigured) {
+            throw new Error('OpenShock API key not configured. Please set your API key in the plugin settings.');
+        }
+
         // Validate parameters
         this._validateCommandParams(deviceId, type, intensity, duration);
 

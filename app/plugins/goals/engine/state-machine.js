@@ -114,7 +114,7 @@ class GoalStateMachine extends EventEmitter {
     canTransition(fromState, toState) {
         const validTransitions = {
             [STATES.IDLE]: [STATES.UPDATING, STATES.HIDDEN],
-            [STATES.UPDATING]: [STATES.ANIMATING_UPDATE, STATES.IDLE],
+            [STATES.UPDATING]: [STATES.ANIMATING_UPDATE, STATES.IDLE, STATES.REACHED],
             [STATES.ANIMATING_UPDATE]: [STATES.IDLE, STATES.REACHED],
             [STATES.REACHED]: [STATES.ANIMATING_REACH],
             [STATES.ANIMATING_REACH]: [STATES.PROCESSING_REACH],
@@ -176,11 +176,28 @@ class GoalStateMachine extends EventEmitter {
 
     /**
      * Update goal value
+     * Handles rapid updates gracefully by forcing state to IDLE when needed
      */
     updateValue(newValue, animate = true) {
         if (this.state === STATES.HIDDEN) {
             console.warn(`[GoalStateMachine:${this.goalId}] Cannot update value while hidden`);
             return false;
+        }
+
+        // If we're in an updating/animating state, force back to IDLE first
+        // This handles rapid updates that arrive before animations complete.
+        // We intentionally bypass the normal transition() method here because:
+        // 1. The normal state transitions don't allow going backward (e.g., ANIMATING_UPDATE -> IDLE)
+        // 2. When updates arrive faster than animations complete, we need to interrupt
+        //    the current animation and process the new value immediately
+        // 3. This ensures the goal UI always shows the latest value and never gets stuck
+        if (this.state === STATES.UPDATING || 
+            this.state === STATES.ANIMATING_UPDATE ||
+            this.state === STATES.ANIMATING_REACH ||
+            this.state === STATES.PROCESSING_REACH) {
+            // Force reset to IDLE to allow new update (bypass transition validation)
+            this.previousState = this.state;
+            this.state = STATES.IDLE;
         }
 
         this.data.previousValue = this.data.currentValue;
@@ -275,6 +292,16 @@ class GoalStateMachine extends EventEmitter {
 
             case 'double':
                 this.data.targetValue = this.data.targetValue * 2;
+                // Catch-up logic: ensure target is always above current value
+                // Keep doubling until target exceeds current value
+                // This handles cases where tool connects later with a value
+                // that has already passed multiple milestones
+                // Use a safety limit to prevent infinite loops (max 100 iterations)
+                let doubleIterations = 0;
+                while (this.data.currentValue >= this.data.targetValue && doubleIterations < 100) {
+                    this.data.targetValue = this.data.targetValue * 2;
+                    doubleIterations++;
+                }
                 this.emit(EVENTS.REACH_BEHAVIOR_APPLIED, {
                     goalId: this.goalId,
                     action: 'double',
@@ -285,6 +312,18 @@ class GoalStateMachine extends EventEmitter {
 
             case 'increment':
                 this.data.targetValue = this.data.targetValue + this.data.onReachIncrement;
+                // Catch-up logic: ensure target is always above current value
+                // Calculate the next target that exceeds current value
+                // This handles cases where tool connects later with a value
+                // that has already passed multiple milestones
+                // Example: currentValue=10002, targetValue=1000, increment=1000
+                // Should set targetValue to 11000 (the next milestone after 10002)
+                // Use a safety limit to prevent infinite loops (max 10000 iterations)
+                let incrementIterations = 0;
+                while (this.data.currentValue >= this.data.targetValue && incrementIterations < 10000) {
+                    this.data.targetValue = this.data.targetValue + this.data.onReachIncrement;
+                    incrementIterations++;
+                }
                 this.emit(EVENTS.REACH_BEHAVIOR_APPLIED, {
                     goalId: this.goalId,
                     action: 'increment',
