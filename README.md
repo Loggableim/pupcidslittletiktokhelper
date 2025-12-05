@@ -54,9 +54,9 @@ Dieses Tool wird von mir als Solo-Entwickler zusammen mit Claude AI entwickelt. 
 - Komplexe Bedingungen mit 8 Operatoren
 
 ### 🔌 Plugin-System
-- Modular plugin-based architecture
-- Easy to extend with custom functionality
-- 20+ built-in plugins
+- Modulare plugin-basierte Architektur
+- Einfach erweiterbar mit eigener Funktionalität
+- 20+ eingebaute Plugins
 
 ---
 
@@ -77,8 +77,8 @@ Die Desktop-Version mit Electron bietet eine vollständige, eigenständige Insta
 
 ```bash
 # Repository klonen
-git clone https://github.com/Loggableim/pupcidslittletiktokhelper.git
-cd pupcidslittletiktokhelper
+git clone https://github.com/Loggableim/ltth_dev.git
+cd ltth_dev
 
 # Dependencies installieren
 npm install
@@ -304,7 +304,7 @@ Dieses Tool ist nicht offiziell von TikTok unterstützt. Nutzung auf eigene Vera
 ## 💬 Support
 
 - 📖 [Vollständige Dokumentation](app/README.md)
-- 🐛 [GitHub Issues](https://github.com/Loggableim/pupcidslittletiktokhelper/issues)
+- 🐛 [GitHub Issues](https://github.com/Loggableim/ltth_dev/issues)
 - 📧 [loggableim@gmail.com](mailto:loggableim@gmail.com)
 
 ---
