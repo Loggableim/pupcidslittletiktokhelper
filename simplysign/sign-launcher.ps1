@@ -152,21 +152,32 @@ try {
     $signToolPath = Get-Command signtool.exe -ErrorAction SilentlyContinue
     
     if ($signToolPath) {
-        $verifyProcess = Start-Process -FilePath $signToolPath.Source `
-                                       -ArgumentList @("verify", "/pa", "`"$launcherFullPath`"") `
-                                       -Wait `
-                                       -PassThru `
-                                       -NoNewWindow `
-                                       -RedirectStandardOutput "nul" `
-                                       -RedirectStandardError "nul"
+        # Create temporary files for output redirection
+        $tempOut = [System.IO.Path]::GetTempFileName()
+        $tempErr = [System.IO.Path]::GetTempFileName()
         
-        if ($verifyProcess.ExitCode -ne 0) {
-            Write-Status "      WARNING: Signature verification failed" -Type Warning
-            Write-Status "      The file was signed but signature may be invalid" -Type Warning
-            throw "Signature verification failed"
+        try {
+            $verifyProcess = Start-Process -FilePath $signToolPath.Source `
+                                           -ArgumentList @("verify", "/pa", "`"$launcherFullPath`"") `
+                                           -Wait `
+                                           -PassThru `
+                                           -NoNewWindow `
+                                           -RedirectStandardOutput $tempOut `
+                                           -RedirectStandardError $tempErr
+            
+            if ($verifyProcess.ExitCode -ne 0) {
+                Write-Status "      WARNING: Signature verification failed" -Type Warning
+                Write-Status "      The file was signed but signature may be invalid" -Type Warning
+                throw "Signature verification failed"
+            }
+            
+            Write-Status "      Signature verified successfully!" -Type Success
         }
-        
-        Write-Status "      Signature verified successfully!" -Type Success
+        finally {
+            # Clean up temporary files
+            if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
+            if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
+        }
     }
     else {
         Write-Status "      Skipping verification (signtool.exe not found)" -Type Warning

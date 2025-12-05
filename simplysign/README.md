@@ -118,7 +118,7 @@ http://timestamp.digicert.com
 
 **Alternative timestamp servers:**
 - `http://timestamp.comodoca.com` (Sectigo/Comodo)
-- `http://timestamp.globalsign.com/scripts/timerstamp.dll` (GlobalSign)
+- `http://timestamp.globalsign.com/scripts/timestamp.dll` (GlobalSign)
 - `http://timestamp.sectigo.com` (Sectigo)
 
 Timestamping ensures the signature remains valid even after the certificate expires.
