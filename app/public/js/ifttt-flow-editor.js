@@ -181,19 +181,43 @@
         const conditionsByCategory = groupByCategory(state.conditions);
         const actionsByCategory = groupByCategory(state.actions);
 
-        elements.triggerList.innerHTML = renderComponentList(state.triggers, 'trigger');
-        elements.conditionList.innerHTML = renderComponentList(state.conditions.slice(0, 8), 'condition'); // Show top conditions
-        elements.actionList.innerHTML = renderComponentList(state.actions.slice(0, 10), 'action'); // Show top actions
+        // Render all items grouped by category
+        elements.triggerList.innerHTML = renderComponentListByCategory(triggersByCategory, 'trigger');
+        elements.conditionList.innerHTML = renderComponentListByCategory(conditionsByCategory, 'condition');
+        elements.actionList.innerHTML = renderComponentListByCategory(actionsByCategory, 'action');
     }
 
     function groupByCategory(items) {
         return items.reduce((acc, item) => {
-            if (!acc[item.category]) {
-                acc[item.category] = [];
+            const category = item.category || 'other';
+            if (!acc[category]) {
+                acc[category] = [];
             }
-            acc[item.category].push(item);
+            acc[category].push(item);
             return acc;
         }, {});
+    }
+
+    function renderComponentListByCategory(itemsByCategory, type) {
+        // Sort categories, put core categories first
+        const coreCategories = ['tiktok', 'system', 'timer', 'tts', 'alert', 'overlay', 'audio'];
+        const categories = Object.keys(itemsByCategory).sort((a, b) => {
+            const aIsCore = coreCategories.includes(a);
+            const bIsCore = coreCategories.includes(b);
+            if (aIsCore && !bIsCore) return -1;
+            if (!aIsCore && bIsCore) return 1;
+            return a.localeCompare(b);
+        });
+
+        return categories.map(category => {
+            const items = itemsByCategory[category];
+            return `
+                <div class="component-subcategory">
+                    <div class="subcategory-label">${capitalizeFirst(category)}</div>
+                    ${renderComponentList(items, type)}
+                </div>
+            `;
+        }).join('');
     }
 
     function renderComponentList(items, type) {
@@ -246,10 +270,18 @@
             'file-text': '📄',
             'save': '💾',
             'zap': '⚡',
-            'git-branch': '🌿'
+            'git-branch': '🌿',
+            'rotate-ccw': '🔄',
+            'toggle-right': '🔀',
+            'plus': '➕'
         };
         
         return icons[icon] || (type === 'trigger' ? '⚡' : type === 'condition' ? '❓' : '▶️');
+    }
+
+    // Helper function to capitalize first letter
+    function capitalizeFirst(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     // Setup event listeners
