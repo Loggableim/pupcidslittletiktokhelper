@@ -395,6 +395,9 @@ const pluginsDir = path.join(__dirname, 'plugins');
 const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger, configPathManager);
 logger.info('🔌 Plugin Loader initialized');
 
+// Set TikTok module reference for dynamic event registration
+pluginLoader.setTikTokModule(tiktok);
+
 // Add pluginLoader to IFTTT services so actions can access plugins
 iftttServices.pluginLoader = pluginLoader;
 

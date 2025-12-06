@@ -336,6 +336,10 @@ class PluginLoader extends EventEmitter {
         // State laden
         this.state = this.loadState();
 
+        // TikTok module reference (set after TikTok module is initialized)
+        // This allows dynamic registration of TikTok events when plugins are enabled at runtime
+        this.tiktok = null;
+
         // Create a dedicated router for plugin routes
         // This router is mounted on the main app and ensures plugin routes
         // are always matched before the 404 handler, even when plugins
@@ -351,6 +355,16 @@ class PluginLoader extends EventEmitter {
      */
     getPluginRouter() {
         return this.pluginRouter;
+    }
+
+    /**
+     * Set the TikTok module reference for dynamic event registration
+     * This should be called after TikTok module is initialized
+     * @param {TikTokConnector} tiktok - TikTok connector instance
+     */
+    setTikTokModule(tiktok) {
+        this.tiktok = tiktok;
+        this.logger.info('🎯 TikTok module reference set in PluginLoader - plugins can now register events dynamically');
     }
 
     /**
@@ -586,6 +600,16 @@ class PluginLoader extends EventEmitter {
             };
             this.saveState();
 
+            // Register TikTok events if TikTok module is available
+            // This ensures events are registered even when plugins are loaded dynamically
+            if (this.tiktok && pluginAPI.registeredTikTokEvents.length > 0) {
+                this.logger.info(`Registering ${pluginAPI.registeredTikTokEvents.length} TikTok event(s) for plugin ${manifest.id}`);
+                for (const { event, callback } of pluginAPI.registeredTikTokEvents) {
+                    this.tiktok.on(event, callback);
+                    this.logger.debug(`  ✓ Registered TikTok event: ${event}`);
+                }
+            }
+
             this.logger.info(`Loaded plugin: ${manifest.name} (${manifest.id}) v${manifest.version}`);
             this.emit('plugin:loaded', pluginInfo);
 
@@ -814,12 +838,26 @@ class PluginLoader extends EventEmitter {
 
     /**
      * Registriert TikTok-Events für ein Plugin
+     * @param {TikTokConnector} tiktok - TikTok connector instance
+     * @param {string} pluginId - Optional: Register events for specific plugin only
      */
-    registerPluginTikTokEvents(tiktok) {
-        for (const [id, plugin] of this.plugins.entries()) {
+    registerPluginTikTokEvents(tiktok, pluginId = null) {
+        const pluginsToRegister = pluginId 
+            ? [[pluginId, this.plugins.get(pluginId)]].filter(([_, p]) => p !== undefined)
+            : Array.from(this.plugins.entries());
+
+        let totalEventsRegistered = 0;
+        for (const [id, plugin] of pluginsToRegister) {
             for (const { event, callback } of plugin.api.registeredTikTokEvents) {
                 tiktok.on(event, callback);
+                totalEventsRegistered++;
             }
+        }
+
+        if (pluginId) {
+            this.logger.info(`Registered ${totalEventsRegistered} TikTok event handler(s) for plugin ${pluginId}`);
+        } else {
+            this.logger.info(`Registered ${totalEventsRegistered} TikTok event handler(s) across all plugins`);
         }
     }
 }
