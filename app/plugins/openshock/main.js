@@ -25,6 +25,7 @@ const MappingEngine = require('./helpers/mappingEngine');
 const PatternEngine = require('./helpers/patternEngine');
 const SafetyManager = require('./helpers/safetyManager');
 const QueueManager = require('./helpers/queueManager');
+const ZappieHellManager = require('./helpers/zappieHellManager');
 
 class OpenShockPlugin {
     constructor(api) {
@@ -70,6 +71,7 @@ class OpenShockPlugin {
         this.patternEngine = null;
         this.safetyManager = null;
         this.queueManager = null;
+        this.zappieHellManager = null;
 
         // State
         this.devices = [];
@@ -258,6 +260,9 @@ class OpenShockPlugin {
             )
         `);
 
+        // ZappieHell tables
+        ZappieHellManager.initializeTables(db, this.api);
+
         this.api.log('OpenShock database tables initialized', 'info');
     }
 
@@ -321,6 +326,37 @@ class OpenShockPlugin {
         this.queueManager.setShouldCancelExecution((executionId) => {
             const execution = this.activePatternExecutions.get(executionId);
             return execution && execution.cancelled;
+        });
+
+        // ZappieHell Manager
+        this.zappieHellManager = new ZappieHellManager(
+            this.api.getDatabase(),
+            logger,
+            this.openShockClient,
+            this.patternEngine,
+            this.queueManager
+        );
+
+        // Load ZappieHell data from database
+        this.zappieHellManager.loadFromDatabase();
+
+        // Listen to ZappieHell events
+        this.zappieHellManager.on('goals:update', (data) => {
+            this._broadcastZappieHellUpdate(data);
+        });
+
+        this.zappieHellManager.on('goals:completed', (data) => {
+            this._broadcastZappieHellCompleted(data);
+        });
+
+        this.zappieHellManager.on('audio:play', (data) => {
+            // Emit to Socket.io for TTS/audio playback
+            this.api.getSocketIO().emit('zappiehell:audio:play', data);
+        });
+
+        this.zappieHellManager.on('overlay:animate', (data) => {
+            // Emit to Socket.io for overlay animations
+            this.api.getSocketIO().emit('zappiehell:overlay:animate', data);
         });
 
         // Queue Event-Handler (QueueManager wird später EventEmitter erweitern)
@@ -1268,6 +1304,280 @@ class OpenShockPlugin {
             }
         });
 
+        // ============ API ROUTES - ROTATING GIFTS OVERLAY ============
+
+        // Get Active Gift Mappings for Overlay
+        this.api.registerRoute('get', '/api/openshock/gifts/active', (req, res) => {
+            try {
+                const activeMappings = Array.from(this.mappingEngine.mappings.values())
+                    .filter(m => m.enabled && m.eventType === 'gift')
+                    .map(m => {
+                        const giftName = m.conditions?.giftName || 'Unknown Gift';
+                        let giftIconUrl = null;
+                        let giftId = null;
+
+                        // Try to get gift info from database
+                        const db = this.api.getDatabase();
+                        const gifts = db.getGiftCatalog();
+                        const gift = gifts.find(g => g.name === giftName);
+                        
+                        if (gift) {
+                            giftIconUrl = gift.image_url;
+                            giftId = gift.id;
+                        }
+
+                        // Extract pattern info
+                        let patternName = 'Direct Command';
+                        let patternDurationMs = 0;
+                        let intensity = 0;
+
+                        if (m.action.type === 'pattern') {
+                            const pattern = this.patternEngine.getPattern(m.action.patternId);
+                            if (pattern) {
+                                patternName = pattern.name;
+                                // Calculate total pattern duration
+                                patternDurationMs = pattern.steps.reduce((sum, step) => sum + (step.duration || 0), 0);
+                            }
+                            intensity = m.action.intensity || 50;
+                        } else if (m.action.type === 'command') {
+                            patternDurationMs = m.action.duration || 1000;
+                            intensity = m.action.intensity || 50;
+                        }
+
+                        return {
+                            id: m.id,
+                            giftName,
+                            giftId,
+                            giftIconUrl,
+                            patternName,
+                            patternDurationMs,
+                            intensity,
+                            active: m.enabled
+                        };
+                    });
+
+                res.json({
+                    success: true,
+                    gifts: activeMappings
+                });
+            } catch (error) {
+                this.api.log(`Error getting active gift mappings: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // ============ API ROUTES - ZAPPIEHELL ============
+
+        // Get all goals
+        this.api.registerRoute('get', '/api/openshock/zappiehell/goals', (req, res) => {
+            try {
+                const goals = this.zappieHellManager.getAllGoals();
+                res.json({
+                    success: true,
+                    goals
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Get active goals
+        this.api.registerRoute('get', '/api/openshock/zappiehell/goals/active', (req, res) => {
+            try {
+                const goals = this.zappieHellManager.getActiveGoals();
+                res.json({
+                    success: true,
+                    goals
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Create goal
+        this.api.registerRoute('post', '/api/openshock/zappiehell/goals', (req, res) => {
+            try {
+                const goal = this.zappieHellManager.addGoal(req.body);
+                this._broadcastZappieHellUpdate({ goals: this.zappieHellManager.getAllGoals() });
+                res.json({
+                    success: true,
+                    goal
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Update goal
+        this.api.registerRoute('put', '/api/openshock/zappiehell/goals/:id', (req, res) => {
+            try {
+                const goal = this.zappieHellManager.updateGoal(req.params.id, req.body);
+                this._broadcastZappieHellUpdate({ goals: this.zappieHellManager.getAllGoals() });
+                res.json({
+                    success: true,
+                    goal
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Delete goal
+        this.api.registerRoute('delete', '/api/openshock/zappiehell/goals/:id', (req, res) => {
+            try {
+                this.zappieHellManager.deleteGoal(req.params.id);
+                this._broadcastZappieHellUpdate({ goals: this.zappieHellManager.getAllGoals() });
+                res.json({
+                    success: true,
+                    message: 'Goal deleted'
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Reset goal
+        this.api.registerRoute('post', '/api/openshock/zappiehell/goals/:id/reset', (req, res) => {
+            try {
+                this.zappieHellManager.resetGoal(req.params.id);
+                this._broadcastZappieHellUpdate({ goals: this.zappieHellManager.getAllGoals() });
+                res.json({
+                    success: true,
+                    message: 'Goal reset'
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Reset all stream goals
+        this.api.registerRoute('post', '/api/openshock/zappiehell/goals/reset-stream', (req, res) => {
+            try {
+                this.zappieHellManager.resetStreamGoals();
+                this._broadcastZappieHellUpdate({ goals: this.zappieHellManager.getAllGoals() });
+                res.json({
+                    success: true,
+                    message: 'Stream goals reset'
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Get all event chains
+        this.api.registerRoute('get', '/api/openshock/zappiehell/chains', (req, res) => {
+            try {
+                const chains = this.zappieHellManager.getAllEventChains();
+                res.json({
+                    success: true,
+                    chains
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Create event chain
+        this.api.registerRoute('post', '/api/openshock/zappiehell/chains', (req, res) => {
+            try {
+                const chain = this.zappieHellManager.addEventChain(req.body);
+                res.json({
+                    success: true,
+                    chain
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Update event chain
+        this.api.registerRoute('put', '/api/openshock/zappiehell/chains/:id', (req, res) => {
+            try {
+                const chain = this.zappieHellManager.updateEventChain(req.params.id, req.body);
+                res.json({
+                    success: true,
+                    chain
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Delete event chain
+        this.api.registerRoute('delete', '/api/openshock/zappiehell/chains/:id', (req, res) => {
+            try {
+                this.zappieHellManager.deleteEventChain(req.params.id);
+                res.json({
+                    success: true,
+                    message: 'Event chain deleted'
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Test execute event chain
+        this.api.registerRoute('post', '/api/openshock/zappiehell/chains/:id/execute', async (req, res) => {
+            try {
+                const chain = this.zappieHellManager.eventChains.get(req.params.id);
+                if (!chain) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Event chain not found'
+                    });
+                }
+
+                // Execute in background
+                this.zappieHellManager.executeEventChain(chain, { source: 'manual_test' });
+
+                res.json({
+                    success: true,
+                    message: 'Event chain execution started'
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         this.api.log('OpenShock routes registered', 'info');
     }
 
@@ -1275,8 +1585,65 @@ class OpenShockPlugin {
      * Socket.IO Events registrieren
      */
     _registerSocketEvents() {
-        // Keine eingehenden Socket-Events nötig
-        // Wir senden nur broadcasts
+        const io = this.api.getSocketIO();
+
+        // Client requests active goals state
+        io.on('connection', (socket) => {
+            // Send initial ZappieHell state when client connects
+            socket.on('zappiehell:request:state', () => {
+                const goals = this.zappieHellManager.getActiveGoals();
+                socket.emit('zappiehell:goals:state', { goals });
+            });
+
+            // Send initial gift mappings when client connects
+            socket.on('openshock:request:gifts', () => {
+                const activeMappings = Array.from(this.mappingEngine.mappings.values())
+                    .filter(m => m.enabled && m.eventType === 'gift')
+                    .map(m => {
+                        const giftName = m.conditions?.giftName || 'Unknown Gift';
+                        let giftIconUrl = null;
+                        let giftId = null;
+
+                        const db = this.api.getDatabase();
+                        const gifts = db.getGiftCatalog();
+                        const gift = gifts.find(g => g.name === giftName);
+                        
+                        if (gift) {
+                            giftIconUrl = gift.image_url;
+                            giftId = gift.id;
+                        }
+
+                        let patternName = 'Direct Command';
+                        let patternDurationMs = 0;
+                        let intensity = 0;
+
+                        if (m.action.type === 'pattern') {
+                            const pattern = this.patternEngine.getPattern(m.action.patternId);
+                            if (pattern) {
+                                patternName = pattern.name;
+                                patternDurationMs = pattern.steps.reduce((sum, step) => sum + (step.duration || 0), 0);
+                            }
+                            intensity = m.action.intensity || 50;
+                        } else if (m.action.type === 'command') {
+                            patternDurationMs = m.action.duration || 1000;
+                            intensity = m.action.intensity || 50;
+                        }
+
+                        return {
+                            id: m.id,
+                            giftName,
+                            giftId,
+                            giftIconUrl,
+                            patternName,
+                            patternDurationMs,
+                            intensity,
+                            active: m.enabled
+                        };
+                    });
+
+                socket.emit('openshock:gifts:active_list', { gifts: activeMappings });
+            });
+        });
 
         this.api.log('OpenShock Socket.IO events registered', 'info');
     }
@@ -1396,6 +1763,12 @@ class OpenShockPlugin {
                 this.api.log(`[Gift Event] Received gift: ${eventData.giftName || eventData.gift?.name || 'unknown'}`, 'info');
                 this.api.log(`[Gift Event] Gift coins: ${eventData.giftCoins || eventData.coins || 0}`, 'info');
                 this.api.log(`[Gift Event] Event data: ${JSON.stringify(eventData)}`, 'debug');
+
+                // Add coins to ZappieHell goals
+                const coins = eventData.giftCoins || eventData.coins || 0;
+                if (coins > 0) {
+                    await this.zappieHellManager.addCoins(coins, 'gift');
+                }
             }
 
             // Event-Log
@@ -2140,6 +2513,29 @@ class OpenShockPlugin {
             uptime,
             queueSize: queueStatus.queueSize || 0,
             activePatternExecutions: this.activePatternExecutions.size
+        });
+    }
+
+    /**
+     * ZappieHell goals update broadcasten
+     */
+    _broadcastZappieHellUpdate(data) {
+        this.api.emit('zappiehell:goals:update', data);
+    }
+
+    /**
+     * ZappieHell goal completed broadcasten
+     */
+    _broadcastZappieHellCompleted(data) {
+        this.api.emit('zappiehell:goals:completed', data);
+    }
+
+    /**
+     * Gift mappings update broadcasten
+     */
+    _broadcastGiftMappingsUpdate() {
+        this.api.emit('openshock:gifts:updated', {
+            timestamp: Date.now()
         });
     }
 
