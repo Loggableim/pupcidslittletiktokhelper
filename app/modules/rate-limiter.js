@@ -90,6 +90,8 @@ const pluginLimiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting for localhost/127.0.0.1 to allow unrestricted local admin access
     // Use req.ip (when trust proxy is enabled) or req.socket.remoteAddress as fallback
+    // SECURITY NOTE: This is safe for local-only applications. If exposing to the internet,
+    // ensure proper network security and consider additional IP validation.
     const ip = req.ip || req.socket.remoteAddress;
     return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
   },

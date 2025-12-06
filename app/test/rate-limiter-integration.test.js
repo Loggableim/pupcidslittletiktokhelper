@@ -30,7 +30,11 @@ const server = app.listen(0, () => {  // Use port 0 to get random available port
   const port = server.address().port;
   console.log(`Test server started on port ${port}\n`);
   
-  runTests(port);
+  runTests(port).catch(error => {
+    console.error('Test execution failed:', error);
+    server.close();
+    process.exit(1);
+  });
 });
 
 async function runTests(port) {
