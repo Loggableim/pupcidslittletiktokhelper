@@ -79,7 +79,11 @@ class ZappieHellManager extends EventEmitter {
       }
     } catch (error) {
       const errorMsg = `[ZappieHellManager] Error initializing tables: ${error.message}`;
-      console.error(errorMsg);
+      if (api && api.log) {
+        api.log(errorMsg, 'error');
+      } else {
+        console.error(errorMsg);
+      }
       throw error;
     }
   }
