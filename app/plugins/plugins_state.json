@@ -1,38 +1,38 @@
 {
   "advanced-timer": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.701Z"
+    "loadedAt": "2025-12-06T15:41:43.925Z"
   },
   "config-import": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.702Z"
+    "loadedAt": "2025-12-06T15:41:43.926Z"
   },
   "emoji-rain": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.725Z"
+    "loadedAt": "2025-12-06T15:41:43.938Z"
   },
   "goals": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.726Z"
+    "loadedAt": "2025-12-06T15:41:43.938Z"
   },
   "leaderboard": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.739Z"
+    "loadedAt": "2025-12-06T15:41:43.946Z"
   },
   "lastevent-spotlight": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.755Z"
+    "loadedAt": "2025-12-06T15:41:43.955Z"
   },
   "soundboard": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.868Z"
+    "loadedAt": "2025-12-06T15:41:44.059Z"
   },
   "quiz-show": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.877Z"
+    "loadedAt": "2025-12-06T15:41:44.060Z"
   },
   "tts": {
     "enabled": true,
-    "loadedAt": "2025-12-06T01:05:21.940Z"
+    "loadedAt": "2025-12-06T15:41:44.121Z"
   }
 }

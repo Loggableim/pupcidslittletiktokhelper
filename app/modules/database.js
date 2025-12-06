@@ -383,7 +383,10 @@ class DatabaseManager {
             )
         `);
 
-        // Index for faster queries on user_statistics
+        // Run migrations BEFORE creating indexes to ensure schema is up-to-date
+        this.runMigrations();
+
+        // Index for faster queries on user_statistics (after migration)
         this.db.exec(`
             CREATE INDEX IF NOT EXISTS idx_user_stats_coins 
             ON user_statistics(streamer_id, total_coins_sent DESC)
@@ -393,9 +396,6 @@ class DatabaseManager {
             CREATE INDEX IF NOT EXISTS idx_user_stats_username 
             ON user_statistics(streamer_id, username)
         `);
-
-        // Run migrations for schema updates
-        this.runMigrations();
 
         // Default-Einstellungen setzen
         this.setDefaultSettings();
@@ -1844,13 +1844,13 @@ class DatabaseManager {
         let userStats = this.getUserMilestoneStats(userId, sid);
         
         if (!userStats) {
-            // Create new user stats
+            // Create new user stats with initial coins
             const insertStmt = this.db.prepare(`
                 INSERT INTO milestone_user_stats (user_id, streamer_id, username, cumulative_coins)
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, 0)
             `);
-            insertStmt.run(userId, sid, username, coins);
-            userStats = { user_id: userId, streamer_id: sid, username, cumulative_coins: coins, current_milestone: 0, last_tier_reached: 0 };
+            insertStmt.run(userId, sid, username);
+            userStats = { user_id: userId, streamer_id: sid, username, cumulative_coins: 0, current_milestone: 0, last_tier_reached: 0 };
         }
 
         const previousCoins = userStats.cumulative_coins || 0;
