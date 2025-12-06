@@ -3586,8 +3586,21 @@ function initZappieHellTab() {
     document.getElementById('copyZappieHellOverlayUrl').addEventListener('click', () => {
         const input = document.getElementById('zappiehellOverlayUrl');
         input.select();
-        document.execCommand('copy');
-        showToast('success', 'Overlay URL copied to clipboard!');
+        
+        // Use modern Clipboard API with fallback
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(input.value)
+                .then(() => showToast('success', 'Overlay URL copied to clipboard!'))
+                .catch(() => {
+                    // Fallback to deprecated method
+                    document.execCommand('copy');
+                    showToast('success', 'Overlay URL copied to clipboard!');
+                });
+        } else {
+            // Fallback for older browsers
+            document.execCommand('copy');
+            showToast('success', 'Overlay URL copied to clipboard!');
+        }
     });
 
     // Step type selector handler
@@ -4232,7 +4245,7 @@ function saveChainStep() {
             try {
                 stepData.body = JSON.parse(document.getElementById('webhookBody').value);
             } catch (e) {
-                showToast('error', 'Invalid JSON in webhook body');
+                showToast('error', `Invalid JSON in webhook body: ${e.message}`);
                 return;
             }
             break;

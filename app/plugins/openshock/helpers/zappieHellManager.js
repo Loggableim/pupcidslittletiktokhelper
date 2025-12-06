@@ -6,6 +6,7 @@
  */
 
 const EventEmitter = require('events');
+const axios = require('axios');
 
 class ZappieHellManager extends EventEmitter {
   constructor(db, logger, openShockClient, patternEngine, queueManager) {
@@ -31,7 +32,7 @@ class ZappieHellManager extends EventEmitter {
   /**
    * Initialize database tables for ZappieHell
    */
-  static initializeTables(db, logger) {
+  static initializeTables(db) {
     try {
       // Goals table
       db.exec(`
@@ -75,7 +76,8 @@ class ZappieHellManager extends EventEmitter {
 
       logger.info('[ZappieHellManager] Database tables initialized');
     } catch (error) {
-      logger.error('[ZappieHellManager] Error initializing tables:', error.message);
+      const errorMsg = `[ZappieHellManager] Error initializing tables: ${error.message}`;
+      console.error(errorMsg);
       throw error;
     }
   }
@@ -320,8 +322,6 @@ class ZappieHellManager extends EventEmitter {
    * Execute webhook step
    */
   async _executeWebhookStep(step, context) {
-    const axios = require('axios');
-    
     const url = step.url;
     const method = (step.method || 'POST').toUpperCase();
     const body = step.body || {};

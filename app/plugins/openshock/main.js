@@ -709,6 +709,11 @@ class OpenShockPlugin {
 
                 this.api.log(`[Mapping Save] Mapping saved to database successfully`, 'info');
 
+                // Broadcast update if this is a gift mapping
+                if (addedMapping.eventType === 'gift') {
+                    this._broadcastGiftMappingsUpdate();
+                }
+
                 res.json({
                     success: true,
                     message: 'Mapping created successfully',
@@ -737,6 +742,11 @@ class OpenShockPlugin {
                 // Save to database
                 this._saveMappingToDatabase(updatedMapping);
 
+                // Broadcast update if this is a gift mapping
+                if (updatedMapping.eventType === 'gift') {
+                    this._broadcastGiftMappingsUpdate();
+                }
+
                 res.json({
                     success: true,
                     message: 'Mapping updated successfully'
@@ -755,10 +765,18 @@ class OpenShockPlugin {
             try {
                 const id = req.params.id;
 
+                const mapping = this.mappingEngine.getMapping(id);
+                const wasGiftMapping = mapping && mapping.eventType === 'gift';
+
                 this.mappingEngine.deleteMapping(id);
 
                 // Delete from database
                 this._deleteMappingFromDatabase(id);
+
+                // Broadcast update if this was a gift mapping
+                if (wasGiftMapping) {
+                    this._broadcastGiftMappingsUpdate();
+                }
 
                 res.json({
                     success: true,
