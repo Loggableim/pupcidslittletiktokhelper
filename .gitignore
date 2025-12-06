@@ -28,6 +28,10 @@ coverage/
 app/user_data/
 app/data/
 
+# Logs and runtime files
+app/logs/
+app/plugins/plugins_state.json
+
 # Temporary files
 tmp/
 temp/
