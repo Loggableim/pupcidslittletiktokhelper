@@ -1796,8 +1796,8 @@
 
     async function saveLayout() {
         const name = document.getElementById('layoutName').value.trim();
-        const width = parseInt(document.getElementById('layoutWidth').value);
-        const height = parseInt(document.getElementById('layoutHeight').value);
+        const width = parseInt(document.getElementById('layoutWidth').value, 10);
+        const height = parseInt(document.getElementById('layoutHeight').value, 10);
         const orientation = document.getElementById('layoutOrientation').value;
         const isDefault = document.getElementById('layoutIsDefault').checked;
         
@@ -1878,10 +1878,10 @@
         draggables.forEach(el => {
             const elementType = el.dataset.element;
             elements[elementType] = {
-                x: parseInt(el.style.left) || 0,
-                y: parseInt(el.style.top) || 0,
-                width: parseInt(el.style.width) || 300,
-                height: parseInt(el.style.height) || 100,
+                x: parseInt(el.style.left, 10) || 0,
+                y: parseInt(el.style.top, 10) || 0,
+                width: parseInt(el.style.width, 10) || 300,
+                height: parseInt(el.style.height, 10) || 100,
                 visible: !el.classList.contains('hidden')
             };
         });
@@ -1946,11 +1946,302 @@
     // Load layouts when tab is opened
     const layoutEditorTab = document.querySelector('[data-tab="layout-editor"]');
     if (layoutEditorTab) {
-        layoutEditorTab.addEventListener('click', loadLayouts);
+        layoutEditorTab.addEventListener('click', () => {
+            loadLayouts();
+            // Double requestAnimationFrame ensures DOM is fully rendered before initializing
+            // First frame: tab content is made visible
+            // Second frame: elements are fully laid out and ready for interaction
+            requestAnimationFrame(() => {
+                requestAnimationFrame(initializeDraggableElements);
+            });
+        });
+    }
+
+    // Initialize drag and drop for layout elements
+    function initializeDraggableElements() {
+        const canvas = document.getElementById('previewCanvas');
+        if (!canvas) return;
+
+        const draggables = canvas.querySelectorAll('.draggable');
+        
+        draggables.forEach(element => {
+            // Skip if already initialized
+            if (element.dataset.draggableInitialized) return;
+            element.dataset.draggableInitialized = 'true';
+            
+            let isDragging = false;
+            let isResizing = false;
+            let startX, startY, startLeft, startTop, startWidth, startHeight;
+
+            const onMouseMove = (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    element.style.left = Math.max(0, startLeft + deltaX) + 'px';
+                    element.style.top = Math.max(0, startTop + deltaY) + 'px';
+                } else if (isResizing) {
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    element.style.width = Math.max(100, startWidth + deltaX) + 'px';
+                    element.style.height = Math.max(50, startHeight + deltaY) + 'px';
+                }
+            };
+
+            const onMouseUp = () => {
+                if (isDragging || isResizing) {
+                    element.classList.remove('dragging', 'resizing');
+                    isDragging = false;
+                    isResizing = false;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+            };
+
+            // Make element draggable
+            element.addEventListener('mousedown', (e) => {
+                // Check if clicking on resize handle
+                if (e.target.classList.contains('element-resize-handle')) {
+                    isResizing = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = parseInt(element.style.width, 10) || element.offsetWidth;
+                    startHeight = parseInt(element.style.height, 10) || element.offsetHeight;
+                    element.classList.add('resizing');
+                    e.preventDefault();
+                } else {
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startLeft = parseInt(element.style.left, 10) || element.offsetLeft;
+                    startTop = parseInt(element.style.top, 10) || element.offsetTop;
+                    element.classList.add('dragging');
+                    e.preventDefault();
+                }
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            // Add double-click to toggle visibility
+            element.addEventListener('dblclick', () => {
+                element.classList.toggle('hidden');
+                showMessage(`Element ${element.classList.contains('hidden') ? 'ausgeblendet' : 'eingeblendet'}`, 'info', 'layoutSaveMessage');
+            });
+        });
     }
 
     // ============================================
     // END LAYOUT EDITOR
+    // ============================================
+
+    // ============================================
+    // GIFT-JOKER MANAGEMENT
+    // ============================================
+
+    let giftJokers = [];
+    let editingGiftJokerId = null;
+    let giftCatalog = [];
+
+    async function loadGiftCatalog() {
+        try {
+            const response = await fetch('/api/quiz-show/gift-catalog');
+            const data = await response.json();
+            
+            if (data.success) {
+                giftCatalog = data.gifts;
+                populateGiftSelector();
+            }
+        } catch (error) {
+            console.error('Error loading gift catalog:', error);
+        }
+    }
+
+    function populateGiftSelector() {
+        const selector = document.getElementById('giftSelector');
+        if (!selector) return;
+
+        selector.innerHTML = '<option value="">-- Geschenk wählen --</option>' +
+            giftCatalog.map(gift => {
+                const giftId = parseInt(gift.id, 10);
+                const diamondCount = parseInt(gift.diamond_count, 10) || 0;
+                const giftName = escapeHtml(gift.name);
+                return `
+                    <option value="${giftId}" data-name="${giftName}">
+                        ${giftName} (ID: ${giftId}, 💎 ${diamondCount})
+                    </option>
+                `;
+            }).join('');
+
+        // When a gift is selected, populate the form fields
+        selector.addEventListener('change', (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            if (selectedOption.value) {
+                document.getElementById('giftJokerId').value = selectedOption.value;
+                document.getElementById('giftJokerName').value = selectedOption.dataset.name;
+            }
+        });
+    }
+
+    async function loadGiftJokers() {
+        try {
+            const response = await fetch('/api/quiz-show/gift-jokers');
+            const data = await response.json();
+            
+            if (data.success) {
+                giftJokers = data.mappings;
+                renderGiftJokersTable();
+            }
+        } catch (error) {
+            console.error('Error loading gift-jokers:', error);
+        }
+    }
+
+    function renderGiftJokersTable() {
+        const tbody = document.getElementById('giftJokerTableBody');
+        if (!tbody) return;
+
+        if (giftJokers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="no-data">Keine Zuordnungen vorhanden</td></tr>';
+            return;
+        }
+
+        const jokerNames = {
+            '25': '25% Joker',
+            '50': '50:50 Joker',
+            'info': 'Info Joker',
+            'time': 'Zeit Joker'
+        };
+
+        tbody.innerHTML = giftJokers.map(mapping => `
+            <tr>
+                <td>${mapping.gift_id}</td>
+                <td>${escapeHtml(mapping.gift_name)}</td>
+                <td>${jokerNames[mapping.joker_type] || mapping.joker_type}</td>
+                <td><span class="status-badge ${mapping.enabled ? 'status-connected' : 'status-error'}">${mapping.enabled ? 'Aktiv' : 'Inaktiv'}</span></td>
+                <td>
+                    <button class="btn-icon" onclick="window.quizShow.editGiftJoker(${mapping.gift_id})" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon" onclick="window.quizShow.deleteGiftJoker(${mapping.gift_id})" title="Löschen">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function showGiftJokerForm() {
+        const panel = document.getElementById('giftJokerFormPanel');
+        if (panel) {
+            panel.style.display = 'block';
+            document.getElementById('giftSelector').value = '';
+            document.getElementById('giftJokerId').value = '';
+            document.getElementById('giftJokerName').value = '';
+            document.getElementById('giftJokerType').value = '50';
+            document.getElementById('giftJokerEnabled').checked = true;
+            editingGiftJokerId = null;
+        }
+    }
+
+    function hideGiftJokerForm() {
+        const panel = document.getElementById('giftJokerFormPanel');
+        if (panel) {
+            panel.style.display = 'none';
+        }
+        editingGiftJokerId = null;
+    }
+
+    async function editGiftJoker(giftId) {
+        const mapping = giftJokers.find(m => m.gift_id === giftId);
+        if (!mapping) return;
+
+        editingGiftJokerId = giftId;
+        
+        document.getElementById('giftJokerId').value = mapping.gift_id;
+        document.getElementById('giftJokerName').value = mapping.gift_name;
+        document.getElementById('giftJokerType').value = mapping.joker_type;
+        document.getElementById('giftJokerEnabled').checked = mapping.enabled;
+        
+        const panel = document.getElementById('giftJokerFormPanel');
+        if (panel) {
+            panel.style.display = 'block';
+        }
+    }
+
+    async function saveGiftJoker() {
+        const giftId = parseInt(document.getElementById('giftJokerId').value, 10);
+        const giftName = document.getElementById('giftJokerName').value.trim();
+        const jokerType = document.getElementById('giftJokerType').value;
+        const enabled = document.getElementById('giftJokerEnabled').checked;
+
+        if (!giftId || !giftName || isNaN(giftId)) {
+            showMessage('Bitte alle Felder korrekt ausfüllen', 'error', 'giftJokerSaveMessage');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/quiz-show/gift-jokers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ giftId, giftName, jokerType, enabled })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Zuordnung gespeichert', 'success', 'giftJokerSaveMessage');
+                giftJokers = data.mappings;
+                renderGiftJokersTable();
+                hideGiftJokerForm();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'giftJokerSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error saving gift-joker:', error);
+            showMessage('Fehler beim Speichern', 'error', 'giftJokerSaveMessage');
+        }
+    }
+
+    async function deleteGiftJoker(giftId) {
+        if (!confirm('Zuordnung wirklich löschen?')) return;
+
+        try {
+            const response = await fetch(`/api/quiz-show/gift-jokers/${giftId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Zuordnung gelöscht', 'success');
+                await loadGiftJokers();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting gift-joker:', error);
+            showMessage('Fehler beim Löschen', 'error');
+        }
+    }
+
+    // Initialize gift-joker event listeners
+    if (document.getElementById('addGiftJokerBtn')) {
+        document.getElementById('addGiftJokerBtn').addEventListener('click', showGiftJokerForm);
+    }
+    if (document.getElementById('saveGiftJokerBtn')) {
+        document.getElementById('saveGiftJokerBtn').addEventListener('click', saveGiftJoker);
+    }
+    if (document.getElementById('cancelGiftJokerBtn')) {
+        document.getElementById('cancelGiftJokerBtn').addEventListener('click', hideGiftJokerForm);
+    }
+
+    // Load gift-jokers when tab is opened
+    const giftJokersTab = document.querySelector('[data-tab="gift-jokers"]');
+    if (giftJokersTab) {
+        giftJokersTab.addEventListener('click', () => {
+            loadGiftCatalog();
+            loadGiftJokers();
+        });
+    }
+
+    // ============================================
+    // END GIFT-JOKER MANAGEMENT
     // ============================================
 
     // Expose functions to window for onclick handlers
@@ -1961,6 +2252,8 @@
         deletePackage,
         viewPackageQuestions,
         editLayout,
-        deleteLayout
+        deleteLayout,
+        editGiftJoker,
+        deleteGiftJoker
     };
 })();
