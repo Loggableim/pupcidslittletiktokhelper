@@ -77,6 +77,7 @@
 
         // Settings
         addListener('saveSettingsBtn', 'click', saveSettings);
+        addListener('testOpenAIKeySettingsBtn', 'click', testOpenAIKeyFromSettings);
 
         // Leaderboard
         addListener('exportLeaderboardBtn', 'click', exportLeaderboard);
@@ -396,6 +397,7 @@
             jokersPerRound: parseInt(document.getElementById('jokersPerRound').value),
             ttsEnabled: document.getElementById('ttsEnabled').checked,
             ttsVoice: document.getElementById('ttsVoice').value,
+            ttsVolume: parseInt(document.getElementById('ttsVolume').value),
             marathonLength: parseInt(document.getElementById('marathonLength').value),
             gameMode: document.getElementById('gameModeSelect').value,
             categoryFilter: document.getElementById('categoryFilter').value,
@@ -413,6 +415,7 @@
         };
 
         try {
+            // Save main config
             const response = await fetch('/api/quiz-show/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -420,6 +423,12 @@
             });
 
             const data = await response.json();
+
+            // Save AI config if fields exist
+            const apiKeyField = document.getElementById('openaiApiKeySettings');
+            if (apiKeyField && apiKeyField.value.trim()) {
+                await saveOpenAIConfigFromSettings();
+            }
 
             if (data.success) {
                 showMessage('Einstellungen gespeichert', 'success', 'saveMessage');
@@ -429,6 +438,28 @@
         } catch (error) {
             console.error('Error saving settings:', error);
             showMessage('Fehler beim Speichern', 'error', 'saveMessage');
+        }
+    }
+
+    async function saveOpenAIConfigFromSettings() {
+        const apiKey = document.getElementById('openaiApiKeySettings').value.trim();
+        const model = document.getElementById('openaiModelSettings').value;
+        const packageSize = parseInt(document.getElementById('defaultPackageSizeSettings').value);
+
+        if (!apiKey) return;
+
+        try {
+            const response = await fetch('/api/quiz-show/ai-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey, model, defaultPackageSize: packageSize })
+            });
+
+            const data = await response.json();
+            return data.success;
+        } catch (error) {
+            console.error('Error saving AI config:', error);
+            return false;
         }
     }
 
@@ -622,6 +653,7 @@
         document.getElementById('jokersPerRound').value = config.jokersPerRound || 3;
         document.getElementById('ttsEnabled').checked = config.ttsEnabled || false;
         document.getElementById('ttsVoice').value = config.ttsVoice || 'default';
+        document.getElementById('ttsVolume').value = config.ttsVolume || 80;
         document.getElementById('marathonLength').value = config.marathonLength || 15;
         document.getElementById('gameModeSelect').value = config.gameMode || 'classic';
         document.getElementById('categoryFilter').value = config.categoryFilter || 'Alle';
@@ -637,6 +669,34 @@
         document.getElementById('voterIconAnimation').value = config.voterIconAnimation || 'fade';
         document.getElementById('voterIconPosition').value = config.voterIconPosition || 'above';
         document.getElementById('voterIconShowOnScoreboard').checked = config.voterIconShowOnScoreboard || false;
+        
+        // Load AI settings from state
+        loadAISettings();
+    }
+
+    async function loadAISettings() {
+        try {
+            const response = await fetch('/api/quiz-show/ai-config');
+            const data = await response.json();
+            
+            if (data.success && data.config) {
+                const apiKeyField = document.getElementById('openaiApiKeySettings');
+                const modelField = document.getElementById('openaiModelSettings');
+                const packageSizeField = document.getElementById('defaultPackageSizeSettings');
+                
+                if (apiKeyField && data.config.hasKey) {
+                    apiKeyField.placeholder = '••••••••••••';
+                }
+                if (modelField && data.config.model) {
+                    modelField.value = data.config.model;
+                }
+                if (packageSizeField && data.config.defaultPackageSize) {
+                    packageSizeField.value = data.config.defaultPackageSize;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading AI settings:', error);
+        }
     }
 
     function updateQuestionsList() {
@@ -1389,6 +1449,44 @@
             console.error('Error testing API key:', error);
             showMessage('Fehler beim Testen', 'error', 'openaiConfigMessage');
             document.getElementById('testOpenAIKeyBtn').disabled = false;
+        }
+    }
+
+    async function testOpenAIKeyFromSettings() {
+        const apiKey = document.getElementById('openaiApiKeySettings').value.trim();
+
+        if (!apiKey) {
+            showMessage('Bitte geben Sie einen API-Schlüssel ein', 'error', 'openaiConfigMessageSettings');
+            return;
+        }
+
+        try {
+            // Show loading state
+            const btn = document.getElementById('testOpenAIKeySettingsBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '🔄 Teste...';
+            btn.disabled = true;
+
+            const response = await fetch('/api/quiz-show/openai/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey })
+            });
+
+            const data = await response.json();
+            
+            btn.textContent = originalText;
+            btn.disabled = false;
+
+            if (data.success) {
+                showMessage('✓ API-Schlüssel ist gültig!', 'success', 'openaiConfigMessageSettings');
+            } else {
+                showMessage('✗ ' + data.error, 'error', 'openaiConfigMessageSettings');
+            }
+        } catch (error) {
+            console.error('Error testing API key:', error);
+            showMessage('Fehler beim Testen', 'error', 'openaiConfigMessageSettings');
+            document.getElementById('testOpenAIKeySettingsBtn').disabled = false;
         }
     }
 

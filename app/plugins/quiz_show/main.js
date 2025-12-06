@@ -1221,6 +1221,78 @@ class QuizShowPlugin {
             }
         });
 
+        // Test OpenAI API key
+        this.api.registerRoute('post', '/api/quiz-show/openai/test', async (req, res) => {
+            try {
+                const { apiKey } = req.body;
+
+                if (!apiKey) {
+                    return res.status(400).json({ success: false, error: 'API-Schlüssel erforderlich' });
+                }
+
+                const OpenAIQuizService = require('./openai-service');
+                const service = new OpenAIQuizService(apiKey, 'gpt-5-mini');
+                const isValid = await service.testApiKey();
+                
+                if (isValid) {
+                    res.json({ success: true, message: 'API-Schlüssel ist gültig' });
+                } else {
+                    res.status(400).json({ success: false, error: 'Ungültiger API-Schlüssel' });
+                }
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get AI configuration (unified endpoint for settings tab)
+        this.api.registerRoute('get', '/api/quiz-show/ai-config', (req, res) => {
+            try {
+                const config = this.db.prepare('SELECT api_key, model, default_package_size FROM openai_config WHERE id = 1').get();
+                
+                const response = {
+                    hasKey: !!config?.api_key,
+                    model: config?.model || 'gpt-5-mini',
+                    defaultPackageSize: config?.default_package_size || 10
+                };
+
+                res.json({ success: true, config: response });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update AI configuration (unified endpoint for settings tab)
+        this.api.registerRoute('post', '/api/quiz-show/ai-config', async (req, res) => {
+            try {
+                const { apiKey, model, defaultPackageSize } = req.body;
+
+                if (apiKey !== undefined && apiKey) {
+                    // Test the API key if provided
+                    const OpenAIQuizService = require('./openai-service');
+                    const service = new OpenAIQuizService(apiKey, model || 'gpt-5-mini');
+                    const isValid = await service.testApiKey();
+                    
+                    if (!isValid) {
+                        return res.status(400).json({ success: false, error: 'Ungültiger API-Schlüssel' });
+                    }
+
+                    this.db.prepare('UPDATE openai_config SET api_key = ? WHERE id = 1').run(apiKey);
+                }
+
+                if (model !== undefined) {
+                    this.db.prepare('UPDATE openai_config SET model = ? WHERE id = 1').run(model);
+                }
+
+                if (defaultPackageSize !== undefined) {
+                    this.db.prepare('UPDATE openai_config SET default_package_size = ? WHERE id = 1').run(defaultPackageSize);
+                }
+
+                res.json({ success: true, message: 'AI-Konfiguration gespeichert' });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // ============================================
         // Question Package Routes
         // ============================================

@@ -474,37 +474,39 @@
                     </div>
                     <div class="panel-body">
                         <div class="form-group">
-                            <label>Joker pro Runde (gesamt):</label>
+                            <label title="Maximale Anzahl an Jokern, die pro Runde insgesamt eingesetzt werden können">Joker pro Runde (gesamt):</label>
                             <input type="number" id="jokersPerRound" class="form-control" min="0" max="10" value="3">
+                            <div class="help-text small">Begrenzt die Gesamtanzahl aller Joker-Einsätze pro Fragerunde</div>
                         </div>
 
                         <div class="form-group checkbox-group">
-                            <label>
+                            <label title="Aktiviert den 50:50 Joker - entfernt zwei falsche Antwortoptionen">
                                 <input type="checkbox" id="joker50Enabled" checked>
                                 <span>50:50 Joker aktiviert (!joker50)</span>
                             </label>
-                            <div class="help-text small">Entfernt zwei falsche Antworten</div>
+                            <div class="help-text small">Entfernt zwei falsche Antworten und lässt nur zwei Optionen übrig</div>
                         </div>
 
                         <div class="form-group checkbox-group">
-                            <label>
+                            <label title="Aktiviert den Info Joker - zeigt eine falsche Antwort zur Orientierung">
                                 <input type="checkbox" id="jokerInfoEnabled" checked>
                                 <span>Info Joker aktiviert (!jokerInfo)</span>
                             </label>
-                            <div class="help-text small">Zeigt eine falsche Antwort als Hinweis</div>
+                            <div class="help-text small">Zeigt eine falsche Antwort als Hinweis zur Eingrenzung</div>
                         </div>
 
                         <div class="form-group checkbox-group">
-                            <label>
+                            <label title="Aktiviert den Zeit Joker - verlängert die verfügbare Zeit zum Antworten">
                                 <input type="checkbox" id="jokerTimeEnabled" checked>
                                 <span>Zeit Joker aktiviert (!jokerTime)</span>
                             </label>
-                            <div class="help-text small">Verlängert die Countdown-Zeit</div>
+                            <div class="help-text small">Verlängert die Countdown-Zeit um den eingestellten Bonus</div>
                         </div>
 
                         <div class="form-group">
-                            <label>Zeit-Bonus (Sekunden):</label>
+                            <label title="Wie viele Sekunden durch den Zeit-Joker hinzugefügt werden">Zeit-Bonus (Sekunden):</label>
                             <input type="number" id="jokerTimeBoost" class="form-control" min="5" max="60" value="15">
+                            <div class="help-text small">Zusätzliche Zeit, die beim Einsatz des Zeit-Jokers gewährt wird</div>
                         </div>
                     </div>
                 </div>
@@ -516,14 +518,14 @@
                     </div>
                     <div class="panel-body">
                         <div class="form-group checkbox-group">
-                            <label>
+                            <label title="Aktiviert die automatische Vorlesefunktion für Fragen">
                                 <input type="checkbox" id="ttsEnabled">
                                 <span>TTS Aktiviert (Fragen vorlesen)</span>
                             </label>
                         </div>
 
                         <div class="form-group">
-                            <label>TTS Stimme:</label>
+                            <label title="Wählen Sie die Stimme für die Sprachausgabe">TTS Stimme:</label>
                             <select id="ttsVoice" class="form-control">
                                 <option value="default">Standard</option>
                                 <option value="de-DE-Standard-A">Deutsch (Weiblich A)</option>
@@ -532,6 +534,66 @@
                                 <option value="de-DE-Standard-D">Deutsch (Männlich D)</option>
                             </select>
                         </div>
+
+                        <div class="form-group">
+                            <label title="Lautstärke der TTS-Wiedergabe (0-100%)">TTS Lautstärke (%):</label>
+                            <input type="number" id="ttsVolume" class="form-control" min="0" max="100" value="80">
+                            <div class="help-text small">Steuert die Lautstärke der automatischen Sprachausgabe</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>🤖 AI Einstellungen</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label title="Ihr OpenAI API-Schlüssel für die KI-gestützte Fragengenerierung">OpenAI API-Schlüssel:</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input 
+                                    type="password" 
+                                    id="openaiApiKeySettings" 
+                                    class="form-control" 
+                                    placeholder="sk-..." 
+                                    style="flex: 1;"
+                                >
+                                <span id="apiKeyStatusSettings" class="status-badge" style="display: none;"></span>
+                            </div>
+                            <div class="help-text small">Wird sicher gespeichert und für die automatische Fragengenerierung verwendet</div>
+                        </div>
+                        
+                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="form-group">
+                                <label title="Das AI-Modell für die Fragengenerierung">AI-Modell:</label>
+                                <select id="openaiModelSettings" class="form-control">
+                                    <option value="gpt-5-mini">GPT-5 Mini (Empfohlen)</option>
+                                    <option value="gpt-5-nano">GPT-5 Nano</option>
+                                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                    <option value="gpt-4o">GPT-4o</option>
+                                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label title="Standard-Anzahl der Fragen bei AI-Generierung">Standard Paketgröße:</label>
+                                <input 
+                                    type="number" 
+                                    id="defaultPackageSizeSettings" 
+                                    class="form-control" 
+                                    min="5" 
+                                    max="50" 
+                                    value="10"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 15px;">
+                            <button id="testOpenAIKeySettingsBtn" class="btn btn-secondary">🧪 API-Schlüssel Testen</button>
+                        </div>
+                        <div id="openaiConfigMessageSettings" class="message hidden" style="margin-top: 10px;"></div>
                     </div>
                 </div>
 
