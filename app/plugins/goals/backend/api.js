@@ -29,12 +29,12 @@ class GoalsAPI {
     registerRoutes() {
         // UI route
         this.api.registerRoute('get', '/goals/ui', (req, res) => {
-            res.sendFile(path.join(__dirname, '..', 'ui.html'));
+            res.sendFile(path.join(this.api.getPluginDir(), 'ui.html'));
         });
 
         // Overlay route - each goal gets its own overlay
         this.api.registerRoute('get', '/goals/overlay', (req, res) => {
-            res.sendFile(path.join(__dirname, '..', 'overlay', 'index.html'));
+            res.sendFile(path.join(this.api.getPluginDir(), 'overlay', 'index.html'));
         });
 
         // Get all goals
