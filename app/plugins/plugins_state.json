@@ -1,0 +1,38 @@
+{
+  "advanced-timer": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:27.885Z"
+  },
+  "config-import": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:27.886Z"
+  },
+  "emoji-rain": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:27.896Z"
+  },
+  "goals": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:27.897Z"
+  },
+  "leaderboard": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:27.901Z"
+  },
+  "lastevent-spotlight": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:27.904Z"
+  },
+  "soundboard": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:27.991Z"
+  },
+  "quiz-show": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:27.995Z"
+  },
+  "tts": {
+    "enabled": true,
+    "loadedAt": "2025-12-06T01:11:28.043Z"
+  }
+}
