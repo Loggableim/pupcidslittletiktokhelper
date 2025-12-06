@@ -47,6 +47,7 @@
             <button class="tab-button" data-tab="gifts">🎁 Gift Catalog</button>
             <button class="tab-button" data-tab="safety">🛡️ Safety</button>
             <button class="tab-button" data-tab="patterns">🎵 Patterns</button>
+            <button class="tab-button" data-tab="zappiehell">⚡ ZappieHell</button>
             <button class="tab-button" data-tab="advanced">⚙️ Advanced</button>
         </div>
 
@@ -340,7 +341,62 @@
             </div>
         </div>
 
-        <!-- Tab 6: Advanced -->
+        <!-- Tab 6: ZappieHell -->
+        <div id="zappiehell" class="tab-content">
+            <!-- ZappieHell Overview -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">⚡ ZappieHell Goals & Event Chains</h2>
+                </div>
+                <div class="info-box">
+                    <strong>💡 Info:</strong> ZappieHell is a goal-based system that triggers event chains when coin targets are reached.
+                    Goals can be stream-specific (reset after each stream) or global (persistent across streams).
+                    Event chains can include OpenShock actions, delays, TTS, webhooks, and overlay animations.
+                </div>
+            </div>
+
+            <!-- Goals Management -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🎯 Goals</h2>
+                    <button class="btn btn-success" id="addGoalBtn">➕ Add Goal</button>
+                </div>
+                <div id="goalsList">
+                    <p class="text-muted">Loading goals...</p>
+                </div>
+            </div>
+
+            <!-- Event Chains Management -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔗 Event Chains</h2>
+                    <button class="btn btn-success" id="addChainBtn">➕ Add Event Chain</button>
+                </div>
+                <div id="chainsList">
+                    <p class="text-muted">Loading event chains...</p>
+                </div>
+            </div>
+
+            <!-- Overlay Links -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📺 ZappieHell Overlay</h2>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">OBS Browser Source URL</label>
+                    <div class="input-group">
+                        <input type="text" class="form-input" id="zappiehellOverlayUrl" readonly>
+                        <button class="btn btn-secondary" id="copyZappieHellOverlayUrl">📋 Copy</button>
+                    </div>
+                </div>
+                <div class="info-box">
+                    <strong>💡 How to use:</strong> Copy the URL above and add it as a Browser Source in OBS.
+                    The overlay will display active goals with progress bars and celebrate when goals are completed.
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 7: Advanced -->
         <div id="advanced" class="tab-content">
             <!-- API Settings -->
             <div class="card">
@@ -653,6 +709,232 @@
             <div class="modal-footer">
                 <button class="btn btn-primary btn-lg" id="savePatternBtn">💾 Pattern speichern</button>
                 <button class="btn btn-secondary" id="cancelPatternBtn">❌ Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Goal Editor -->
+    <div id="goalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="goalModalTitle">⚡ Add ZappieHell Goal</h2>
+                <button class="modal-close" id="closeGoalModal">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="goalId">
+                
+                <div class="form-group">
+                    <label class="form-label">Goal Name *</label>
+                    <input type="text" class="form-input" id="goalName" placeholder="e.g., ZappieHell Level 1" required>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Target Coins *</label>
+                        <input type="number" class="form-input" id="goalTargetCoins" placeholder="5000" min="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Current Coins</label>
+                        <input type="number" class="form-input" id="goalCurrentCoins" placeholder="0" min="0" value="0">
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Goal Type</label>
+                        <select class="form-select" id="goalType">
+                            <option value="stream">🔴 Stream (resets after stream ends)</option>
+                            <option value="global">🌐 Global (persistent across streams)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Event Chain</label>
+                        <select class="form-select" id="goalChainId">
+                            <option value="">-- No chain --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="goalActive" checked>
+                        <span>Active</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-lg" id="saveGoalBtn">💾 Save Goal</button>
+                <button class="btn btn-secondary" id="cancelGoalBtn">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Event Chain Editor -->
+    <div id="chainModal" class="modal">
+        <div class="modal-content-large">
+            <div class="modal-header">
+                <h2 class="modal-title" id="chainModalTitle">🔗 Add Event Chain</h2>
+                <button class="modal-close" id="closeChainModal">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="chainId">
+                
+                <div class="form-group">
+                    <label class="form-label">Chain Name *</label>
+                    <input type="text" class="form-input" id="chainName" placeholder="e.g., ZappieHell Level 1 Chain" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-input" id="chainDescription" rows="2" placeholder="Describe what this chain does..."></textarea>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="modal-title-small">Chain Steps</h3>
+                        <button class="btn btn-success btn-sm" id="addChainStepBtn">➕ Add Step</button>
+                    </div>
+                    <div id="chainStepsList">
+                        <p class="text-muted" style="padding: 20px;">No steps added yet. Click "Add Step" to begin.</p>
+                    </div>
+                </div>
+
+                <div class="info-box mt-3">
+                    <strong>💡 Available Step Types:</strong>
+                    <ul style="margin-top: 8px; margin-left: 20px;">
+                        <li><strong>OpenShock:</strong> Trigger OpenShock pattern or direct command</li>
+                        <li><strong>Delay:</strong> Wait for specified duration before next step</li>
+                        <li><strong>Audio/TTS:</strong> Play audio or text-to-speech</li>
+                        <li><strong>Webhook:</strong> Send HTTP request to external URL</li>
+                        <li><strong>Overlay:</strong> Trigger overlay animation</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-lg" id="saveChainBtn">💾 Save Event Chain</button>
+                <button class="btn btn-secondary" id="cancelChainBtn">❌ Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Chain Step Editor -->
+    <div id="stepModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="stepModalTitle">➕ Add Chain Step</h2>
+                <button class="modal-close" id="closeStepModal">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="stepIndex">
+                
+                <div class="form-group">
+                    <label class="form-label">Step Type *</label>
+                    <select class="form-select" id="stepTypeSelect">
+                        <option value="openshock">⚡ OpenShock</option>
+                        <option value="delay">⏱️ Delay</option>
+                        <option value="audio">🔊 Audio/TTS</option>
+                        <option value="webhook">🌐 Webhook</option>
+                        <option value="overlay">📺 Overlay Animation</option>
+                    </select>
+                </div>
+
+                <!-- OpenShock Step Fields -->
+                <div id="openshockStepFields" class="step-fields">
+                    <div class="form-group">
+                        <label class="form-label">Pattern</label>
+                        <select class="form-select" id="stepPatternId">
+                            <option value="">-- Direct Command --</option>
+                        </select>
+                    </div>
+
+                    <div class="grid-2" id="directCommandFields">
+                        <div class="form-group">
+                            <label class="form-label">Command Type</label>
+                            <select class="form-select" id="stepCommandType">
+                                <option value="vibrate">📳 Vibrate</option>
+                                <option value="shock">⚡ Shock</option>
+                                <option value="sound">🔊 Sound</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Device</label>
+                            <select class="form-select" id="stepDeviceId">
+                                <option value="">-- First Available --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Intensity (1-100)</label>
+                            <input type="number" class="form-input" id="stepIntensity" value="50" min="1" max="100">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Duration (ms)</label>
+                            <input type="number" class="form-input" id="stepDurationMs" value="1000" min="300" max="30000">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delay Step Fields -->
+                <div id="delayStepFields" class="step-fields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Delay Duration (ms)</label>
+                        <input type="number" class="form-input" id="delayDurationMs" value="2000" min="100" max="60000">
+                    </div>
+                </div>
+
+                <!-- Audio Step Fields -->
+                <div id="audioStepFields" class="step-fields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Audio ID or TTS Text</label>
+                        <input type="text" class="form-input" id="audioText" placeholder="Enter text for TTS or audio ID">
+                    </div>
+                </div>
+
+                <!-- Webhook Step Fields -->
+                <div id="webhookStepFields" class="step-fields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">URL *</label>
+                        <input type="url" class="form-input" id="webhookUrl" placeholder="https://example.com/webhook">
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Method</label>
+                            <select class="form-select" id="webhookMethod">
+                                <option value="POST">POST</option>
+                                <option value="GET">GET</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Request Body (JSON)</label>
+                        <textarea class="form-input" id="webhookBody" rows="4" placeholder='{"key": "value"}'>{}</textarea>
+                    </div>
+                </div>
+
+                <!-- Overlay Step Fields -->
+                <div id="overlayStepFields" class="step-fields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Animation Type</label>
+                        <input type="text" class="form-input" id="overlayAnimationType" placeholder="e.g., flash, pulse">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Duration (ms)</label>
+                        <input type="number" class="form-input" id="overlayDuration" value="1000" min="100" max="10000">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-lg" id="saveStepBtn">💾 Save Step</button>
+                <button class="btn btn-secondary" id="cancelStepBtn">❌ Cancel</button>
             </div>
         </div>
     </div>
