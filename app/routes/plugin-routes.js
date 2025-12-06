@@ -6,7 +6,9 @@ const { extract } = require('zip-lib');
 /**
  * Plugin Routes - Verwaltet Plugin-Upload, Aktivierung, Deaktivierung, etc.
  */
-function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger, io = null) {
+function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger, io = null, pluginLimiter = null) {
+    // Use pluginLimiter if provided, otherwise fall back to apiLimiter
+    const limiter = pluginLimiter || apiLimiter;
     // Multer für ZIP-Upload konfigurieren
     const pluginUploadDir = path.join(__dirname, '..', 'plugins', '_uploads');
     if (!fs.existsSync(pluginUploadDir)) {
@@ -38,7 +40,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     /**
      * GET /api/plugins - Liste aller Plugins
      */
-    app.get('/api/plugins', apiLimiter, (req, res) => {
+    app.get('/api/plugins', limiter, (req, res) => {
         try {
             const plugins = pluginLoader.getAllPlugins();
 
@@ -103,7 +105,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     /**
      * GET /api/plugins/:id - Plugin-Details
      */
-    app.get('/api/plugins/:id', apiLimiter, (req, res) => {
+    app.get('/api/plugins/:id', limiter, (req, res) => {
         try {
             const { id } = req.params;
             const plugin = pluginLoader.getPlugin(id);
@@ -288,7 +290,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     /**
      * POST /api/plugins/:id/enable - Plugin aktivieren
      */
-    app.post('/api/plugins/:id/enable', apiLimiter, async (req, res) => {
+    app.post('/api/plugins/:id/enable', limiter, async (req, res) => {
         try {
             const { id } = req.params;
             const success = await pluginLoader.enablePlugin(id);
@@ -321,7 +323,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     /**
      * POST /api/plugins/:id/disable - Plugin deaktivieren
      */
-    app.post('/api/plugins/:id/disable', apiLimiter, async (req, res) => {
+    app.post('/api/plugins/:id/disable', limiter, async (req, res) => {
         try {
             const { id } = req.params;
             const success = await pluginLoader.disablePlugin(id);
@@ -354,7 +356,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     /**
      * POST /api/plugins/:id/reload - Plugin neu laden
      */
-    app.post('/api/plugins/:id/reload', apiLimiter, async (req, res) => {
+    app.post('/api/plugins/:id/reload', limiter, async (req, res) => {
         try {
             const { id } = req.params;
             const success = await pluginLoader.reloadPlugin(id);
@@ -387,7 +389,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     /**
      * POST /api/plugins/reload - Alle Plugins neu laden
      */
-    app.post('/api/plugins/reload', apiLimiter, async (req, res) => {
+    app.post('/api/plugins/reload', limiter, async (req, res) => {
         try {
             // Alle Plugins entladen
             const pluginIds = Array.from(pluginLoader.plugins.keys());
@@ -419,7 +421,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     /**
      * DELETE /api/plugins/:id - Plugin löschen
      */
-    app.delete('/api/plugins/:id', apiLimiter, async (req, res) => {
+    app.delete('/api/plugins/:id', limiter, async (req, res) => {
         try {
             const { id } = req.params;
             const success = await pluginLoader.deletePlugin(id);
@@ -452,7 +454,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     /**
      * GET /api/plugins/:id/log - Plugin-Log abrufen (last 100 lines)
      */
-    app.get('/api/plugins/:id/log', apiLimiter, (req, res) => {
+    app.get('/api/plugins/:id/log', limiter, (req, res) => {
         try {
             const { id } = req.params;
             const logPath = path.join(__dirname, '..', 'logs', `${id}.log`);

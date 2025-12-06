@@ -657,28 +657,30 @@ class PluginLoader extends EventEmitter {
      */
     async enablePlugin(pluginId) {
         try {
-            // State aktualisieren
+            // Wenn Plugin noch nicht geladen, jetzt laden
+            if (!this.plugins.has(pluginId)) {
+                const pluginPath = path.join(this.pluginsDir, pluginId);
+                if (!fs.existsSync(pluginPath)) {
+                    this.logger.error(`Plugin path does not exist: ${pluginPath}`);
+                    throw new Error(`Plugin directory not found: ${pluginPath}`);
+                }
+                
+                // Try to load the plugin BEFORE updating state
+                const loadResult = await this.loadPlugin(pluginPath);
+                if (!loadResult) {
+                    this.logger.error(`Plugin ${pluginId} failed to load. Check server logs for detailed error information.`);
+                    throw new Error(`Plugin ${pluginId} failed to load. Please check the server logs for detailed error information about what went wrong during initialization.`);
+                }
+                
+                this.logger.info(`Plugin ${pluginId} loaded successfully`);
+            }
+
+            // State aktualisieren only after successful load
             if (!this.state[pluginId]) {
                 this.state[pluginId] = {};
             }
             this.state[pluginId].enabled = true;
             this.saveState();
-
-            // Wenn Plugin noch nicht geladen, jetzt laden
-            if (!this.plugins.has(pluginId)) {
-                const pluginPath = path.join(this.pluginsDir, pluginId);
-                if (fs.existsSync(pluginPath)) {
-                    const loadResult = await this.loadPlugin(pluginPath);
-                    if (!loadResult) {
-                        this.logger.warn(`Plugin ${pluginId} state set to enabled, but failed to load. Check logs for details.`);
-                        // Still return true because state is enabled - user should check plugin logs
-                        // The plugin will try to load again on next server restart
-                    }
-                } else {
-                    this.logger.error(`Plugin path does not exist: ${pluginPath}`);
-                    return false;
-                }
-            }
 
             this.logger.info(`Enabled plugin: ${pluginId}`);
             this.emit('plugin:enabled', pluginId);
@@ -686,7 +688,12 @@ class PluginLoader extends EventEmitter {
             return true;
         } catch (error) {
             this.logger.error(`Failed to enable plugin ${pluginId}: ${error.message}`);
-            return false;
+            // Reset state to disabled since enabling failed
+            if (this.state[pluginId]) {
+                this.state[pluginId].enabled = false;
+                this.saveState();
+            }
+            throw error;
         }
     }
 

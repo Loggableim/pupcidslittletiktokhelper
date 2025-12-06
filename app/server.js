@@ -86,7 +86,7 @@ const getSessionExtractor = () => {
 // Import New Modules
 const logger = require('./modules/logger');
 const debugLogger = require('./modules/debug-logger');
-const { apiLimiter, authLimiter, uploadLimiter } = require('./modules/rate-limiter');
+const { apiLimiter, authLimiter, uploadLimiter, pluginLimiter } = require('./modules/rate-limiter');
 const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
@@ -450,7 +450,7 @@ if (process.env.DISABLE_SWAGGER !== 'true') {
 }
 
 // ========== PLUGIN ROUTES ==========
-setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger, io);
+setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger, io, pluginLimiter);
 
 // ========== DEBUG ROUTES ==========
 setupDebugRoutes(app, debugLogger, logger);

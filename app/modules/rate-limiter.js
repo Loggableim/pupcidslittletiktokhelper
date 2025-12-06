@@ -5,6 +5,7 @@
  * - General API: 100 requests/minute
  * - Auth endpoints: 10 requests/minute
  * - File uploads: 20 requests/minute
+ * - Plugin management: 30 requests/minute (more lenient for admin operations)
  */
 
 const rateLimit = require('express-rate-limit');
@@ -73,8 +74,32 @@ const uploadLimiter = rateLimit({
   }
 });
 
+// More lenient rate limiter for plugin management operations (30 req/min)
+// Plugin operations are typically admin actions and may require multiple
+// rapid requests (e.g., refreshing all plugins, enabling multiple plugins)
+const pluginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: {
+    error: 'Too many plugin operations, please slow down and try again in a moment'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    logger.warn('Plugin management rate limit exceeded', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method
+    });
+    res.status(429).json({
+      error: 'Too many plugin operations, please slow down and try again in a moment'
+    });
+  }
+});
+
 module.exports = {
   apiLimiter,
   authLimiter,
-  uploadLimiter
+  uploadLimiter,
+  pluginLimiter
 };
