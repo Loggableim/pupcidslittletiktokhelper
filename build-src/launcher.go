@@ -52,6 +52,10 @@ func checkNodeModules(appDir string) bool {
 func installDependencies(appDir string) error {
 	fmt.Println("Installiere Abhaengigkeiten... (Das kann beim ersten Start ein paar Minuten dauern)")
 	
+	// NOTE: Do NOT use "--cache false" flag!
+	// It treats "false" as a directory path, creating unwanted "app/false/" npm cache directory.
+	// This causes npm remnants/leftovers that pollute the workspace.
+	// Use plain "npm install" instead for clean installation.
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", "npm", "install")
