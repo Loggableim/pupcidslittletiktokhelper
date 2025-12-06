@@ -212,26 +212,25 @@ class ThemeManager {
         const logoImg = document.getElementById('sidebar-logo-img');
         const miniIcon = document.getElementById('sidebar-mini-icon');
         
+        // Logo map for different themes
+        const logoMap = {
+            day: '/ltthlogo_daymode.jpg',
+            contrast: '/ltthlogo_highcontrast.jpg',
+            night: '/ltthlogo_nightmode.jpg'
+        };
+        
+        const miniLogoMap = {
+            day: '/ltthmini_daymode.jpg',
+            contrast: '/ltthmini_highcontrast.jpg',
+            night: '/ltthmini_nightmode.jpg'
+        };
+        
         if (logoImg) {
-            // Switch logo based on theme: daymode, nightmode, or highcontrast
-            if (theme === 'day') {
-                logoImg.src = '/ltthlogo_daymode.jpg';
-            } else if (theme === 'contrast') {
-                logoImg.src = '/ltthlogo_highcontrast.jpg';
-            } else {
-                logoImg.src = '/ltthlogo_nightmode.jpg';
-            }
+            logoImg.src = logoMap[theme] || logoMap.night;
         }
         
         if (miniIcon) {
-            // Switch mini icon based on theme: daymode, nightmode, or highcontrast
-            if (theme === 'day') {
-                miniIcon.src = '/ltthmini_daymode.jpg';
-            } else if (theme === 'contrast') {
-                miniIcon.src = '/ltthmini_highcontrast.jpg';
-            } else {
-                miniIcon.src = '/ltthmini_nightmode.jpg';
-            }
+            miniIcon.src = miniLogoMap[theme] || miniLogoMap.night;
         }
     }
 
