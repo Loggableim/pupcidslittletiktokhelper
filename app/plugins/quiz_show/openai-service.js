@@ -76,10 +76,83 @@ class OpenAIQuizService {
                 .filter(q => this.validateQuestion(q))
                 .map(q => this.formatQuestion(q, category));
 
+            // Verify difficulty distribution
+            const actualDistribution = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            validatedQuestions.forEach(q => {
+                if (q.difficulty >= 1 && q.difficulty <= 4) {
+                    actualDistribution[q.difficulty]++;
+                }
+            });
+
+            // Log warning if distribution doesn't match expected
+            const distributionMatch = 
+                actualDistribution[1] === difficultyDistribution[1] &&
+                actualDistribution[2] === difficultyDistribution[2] &&
+                actualDistribution[3] === difficultyDistribution[3] &&
+                actualDistribution[4] === difficultyDistribution[4];
+
+            if (!distributionMatch) {
+                console.warn('AI difficulty distribution mismatch:', {
+                    expected: difficultyDistribution,
+                    actual: actualDistribution
+                });
+                
+                // Adjust difficulties to match expected distribution if possible
+                this.adjustDifficulties(validatedQuestions, difficultyDistribution);
+            }
+
             return validatedQuestions;
         } catch (error) {
             throw new Error(`OpenAI question generation failed: ${error.message}`);
         }
+    }
+
+    /**
+     * Adjust question difficulties to match the expected distribution
+     * @param {Array} questions - Array of questions
+     * @param {Object} targetDistribution - Target difficulty distribution
+     */
+    adjustDifficulties(questions, targetDistribution) {
+        // Count current distribution
+        const currentDistribution = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        questions.forEach(q => currentDistribution[q.difficulty]++);
+
+        // Adjust each difficulty level
+        for (let difficulty = 1; difficulty <= 4; difficulty++) {
+            const target = targetDistribution[difficulty];
+            const current = currentDistribution[difficulty];
+            const diff = target - current;
+
+            if (diff > 0) {
+                // Need more questions of this difficulty
+                // Find questions of other difficulties to reassign
+                for (let otherDiff = 1; otherDiff <= 4; otherDiff++) {
+                    if (otherDiff === difficulty) continue;
+                    
+                    const otherCurrent = currentDistribution[otherDiff];
+                    const otherTarget = targetDistribution[otherDiff];
+                    
+                    if (otherCurrent > otherTarget) {
+                        // This difficulty has extras, reassign some
+                        const toReassign = Math.min(diff, otherCurrent - otherTarget);
+                        let reassigned = 0;
+                        
+                        for (let i = 0; i < questions.length && reassigned < toReassign; i++) {
+                            if (questions[i].difficulty === otherDiff) {
+                                questions[i].difficulty = difficulty;
+                                currentDistribution[otherDiff]--;
+                                currentDistribution[difficulty]++;
+                                reassigned++;
+                            }
+                        }
+                        
+                        if (currentDistribution[difficulty] === target) break;
+                    }
+                }
+            }
+        }
+
+        console.log('Adjusted difficulty distribution:', currentDistribution);
     }
 
     buildPrompt(category, count, difficultyDistribution, existingQuestions) {
@@ -93,12 +166,24 @@ WICHTIGE ANFORDERUNGEN:
 1. Jede Frage muss EXAKT 4 Antwortmöglichkeiten haben (A, B, C, D)
 2. Nur EINE Antwort ist korrekt
 3. Die Fragen müssen in DEUTSCHER Sprache sein
-4. Schwierigkeitsverteilung:
-   - ${difficultyDistribution[1]} Fragen mit Schwierigkeit 1 (Einfach)
-   - ${difficultyDistribution[2]} Fragen mit Schwierigkeit 2 (Mittel)
-   - ${difficultyDistribution[3]} Fragen mit Schwierigkeit 3 (Schwer)
-   - ${difficultyDistribution[4]} Fragen mit Schwierigkeit 4 (Expert)
+4. Schwierigkeitsverteilung - STRIKTE EINHALTUNG ERFORDERLICH:
+   - GENAU ${difficultyDistribution[1]} Fragen mit difficulty: 1 (Einfach - Allgemeinwissen, das die meisten kennen)
+   - GENAU ${difficultyDistribution[2]} Fragen mit difficulty: 2 (Mittel - erfordert etwas Nachdenken)
+   - GENAU ${difficultyDistribution[3]} Fragen mit difficulty: 3 (Schwer - Expertenwissen erforderlich)
+   - GENAU ${difficultyDistribution[4]} Fragen mit difficulty: 4 (Expert - sehr spezielles Wissen)
 5. Jede Frage sollte eine kurze Info/Erklärung zur richtigen Antwort enthalten${existingQuestionsText}
+
+SCHWIERIGKEITSGRAD-DEFINITIONEN:
+- Difficulty 1 (Einfach): Allgemeinwissen, das die meisten Menschen kennen sollten
+- Difficulty 2 (Mittel): Erfordert grundlegendes Fachwissen oder logisches Denken
+- Difficulty 3 (Schwer): Spezialisiertes Wissen oder komplexe Zusammenhänge
+- Difficulty 4 (Expert): Sehr detailliertes Expertenwissen oder obskure Fakten
+
+KRITISCH: Stelle sicher, dass die Anzahl der Fragen pro Schwierigkeitsgrad EXAKT der Verteilung entspricht!
+Die ersten ${difficultyDistribution[1]} Fragen sollen difficulty: 1 haben,
+die nächsten ${difficultyDistribution[2]} sollen difficulty: 2 haben,
+die nächsten ${difficultyDistribution[3]} sollen difficulty: 3 haben,
+und die letzten ${difficultyDistribution[4]} sollen difficulty: 4 haben.
 
 Antworte NUR mit einem JSON-Objekt in diesem EXAKTEN Format:
 {
@@ -114,7 +199,7 @@ Antworte NUR mit einem JSON-Objekt in diesem EXAKTEN Format:
 }
 
 Wobei "correct" der Index der richtigen Antwort ist (0 für A, 1 für B, 2 für C, 3 für D).
-Die "difficulty" muss 1, 2, 3 oder 4 sein.
+Die "difficulty" muss 1, 2, 3 oder 4 sein und der oben definierten Verteilung entsprechen.
 WICHTIG: Antworte NUR mit dem JSON-Objekt, kein zusätzlicher Text!`;
     }
 

@@ -100,6 +100,13 @@ class QuizShowPlugin {
         // Timer interval
         this.timerInterval = null;
 
+        // TTS pre-generation cache
+        this.ttsCache = {
+            nextQuestionId: null,
+            audioUrl: null,
+            text: null
+        };
+
         // Statistics
         this.stats = {
             totalRounds: 0,
@@ -582,6 +589,10 @@ class QuizShowPlugin {
 
         this.api.registerRoute('get', '/quiz-show/overlay', (req, res) => {
             res.sendFile(path.join(__dirname, 'quiz_show_overlay.html'));
+        });
+
+        this.api.registerRoute('get', '/quiz-show/leaderboard-overlay', (req, res) => {
+            res.sendFile(path.join(__dirname, 'quiz_show_leaderboard_overlay.html'));
         });
 
         // Serve static assets
@@ -1216,6 +1227,78 @@ class QuizShowPlugin {
                 }
 
                 res.json({ success: true, message: 'Konfiguration gespeichert' });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Test OpenAI API key
+        this.api.registerRoute('post', '/api/quiz-show/openai/test', async (req, res) => {
+            try {
+                const { apiKey } = req.body;
+
+                if (!apiKey) {
+                    return res.status(400).json({ success: false, error: 'API-Schlüssel erforderlich' });
+                }
+
+                const OpenAIQuizService = require('./openai-service');
+                const service = new OpenAIQuizService(apiKey, 'gpt-5-mini');
+                const isValid = await service.testApiKey();
+                
+                if (isValid) {
+                    res.json({ success: true, message: 'API-Schlüssel ist gültig' });
+                } else {
+                    res.status(400).json({ success: false, error: 'Ungültiger API-Schlüssel' });
+                }
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get AI configuration (unified endpoint for settings tab)
+        this.api.registerRoute('get', '/api/quiz-show/ai-config', (req, res) => {
+            try {
+                const config = this.db.prepare('SELECT api_key, model, default_package_size FROM openai_config WHERE id = 1').get();
+                
+                const response = {
+                    hasKey: !!config?.api_key,
+                    model: config?.model || 'gpt-5-mini',
+                    defaultPackageSize: config?.default_package_size || 10
+                };
+
+                res.json({ success: true, config: response });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update AI configuration (unified endpoint for settings tab)
+        this.api.registerRoute('post', '/api/quiz-show/ai-config', async (req, res) => {
+            try {
+                const { apiKey, model, defaultPackageSize } = req.body;
+
+                if (apiKey !== undefined && apiKey) {
+                    // Test the API key if provided
+                    const OpenAIQuizService = require('./openai-service');
+                    const service = new OpenAIQuizService(apiKey, model || 'gpt-5-mini');
+                    const isValid = await service.testApiKey();
+                    
+                    if (!isValid) {
+                        return res.status(400).json({ success: false, error: 'Ungültiger API-Schlüssel' });
+                    }
+
+                    this.db.prepare('UPDATE openai_config SET api_key = ? WHERE id = 1').run(apiKey);
+                }
+
+                if (model !== undefined) {
+                    this.db.prepare('UPDATE openai_config SET model = ? WHERE id = 1').run(model);
+                }
+
+                if (defaultPackageSize !== undefined) {
+                    this.db.prepare('UPDATE openai_config SET default_package_size = ? WHERE id = 1').run(defaultPackageSize);
+                }
+
+                res.json({ success: true, message: 'AI-Konfiguration gespeichert' });
             } catch (error) {
                 res.status(500).json({ success: false, error: error.message });
             }
@@ -2015,34 +2098,22 @@ class QuizShowPlugin {
         // Play timer start sound
         this.playSound('timer_start');
 
-        // TTS announcement if enabled
+        // TTS announcement if enabled - use new playTTS method
         if (this.config.ttsEnabled) {
             const ttsText = `Neue Frage: ${selectedQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
-            
-            // Parse voice format: "engine:voiceId" or "default"
-            let engine = null;
-            let voiceId = null;
-            
             const voiceConfig = this.config.ttsVoice || 'default';
-            if (voiceConfig !== 'default' && voiceConfig.includes(':')) {
-                const parts = voiceConfig.split(':');
-                engine = parts[0];
-                voiceId = parts[1];
-            }
             
-            // Call TTS plugin via HTTP API
-            try {
-                const port = process.env.PORT || 3000;
-                await axios.post(`http://localhost:${port}/api/tts/speak`, {
-                    text: ttsText,
-                    userId: 'quiz-show',
-                    username: 'Quiz Show',
-                    voiceId: voiceId,
-                    engine: engine,
-                    source: 'quiz-show'
-                });
-            } catch (error) {
+            // Play TTS (will use pre-generated audio if available)
+            this.playTTS(selectedQuestion.id, ttsText, voiceConfig).catch(error => {
                 this.api.log(`TTS error: ${error.message}`, 'error');
+            });
+            
+            // Pre-generate TTS for the next question in background
+            const nextQuestion = this.getNextQuestion();
+            if (nextQuestion) {
+                this.preGenerateTTS(nextQuestion).catch(error => {
+                    this.api.log(`TTS pre-generation error: ${error.message}`, 'warn');
+                });
             }
         }
 
@@ -2050,6 +2121,70 @@ class QuizShowPlugin {
         this.broadcastGameState();
 
         this.api.log(`Round started with question: ${selectedQuestion.question}`, 'info');
+    }
+
+    /**
+     * Get the next question that will be asked (for TTS pre-generation)
+     */
+    getNextQuestion() {
+        try {
+            // Get all questions from database
+            let questions = this.db.prepare('SELECT * FROM questions').all();
+            
+            if (questions.length === 0) return null;
+
+            // Apply category filter if set
+            if (this.config.categoryFilter && this.config.categoryFilter !== 'Alle') {
+                questions = questions.filter(q => q.category === this.config.categoryFilter);
+            }
+
+            // Apply package filter if any packages are selected
+            const selectedPackages = this.db.prepare('SELECT id FROM question_packages WHERE is_selected = 1').all();
+            if (selectedPackages.length > 0) {
+                const packageIds = selectedPackages.map(p => p.id);
+                questions = questions.filter(q => q.package_id && packageIds.includes(q.package_id));
+            }
+
+            // Parse answers JSON
+            questions = questions.map(q => ({
+                ...q,
+                answers: typeof q.answers === 'string' ? JSON.parse(q.answers) : q.answers
+            }));
+
+            // Filter out questions asked recently (within 24 hours)
+            const oneDayAgo = Date.now() - this.QUESTION_COOLDOWN_MS;
+            const recentlyAskedIds = this.db.prepare(
+                'SELECT DISTINCT question_id FROM question_history WHERE asked_at > ?'
+            ).all(new Date(oneDayAgo).toISOString()).map(row => row.question_id);
+
+            // Filter out recently asked questions AND questions asked in this session
+            const availableQuestions = questions.filter(q => 
+                !recentlyAskedIds.includes(q.id) && !this.gameState.askedQuestionIds.has(q.id)
+            );
+
+            if (availableQuestions.length === 0) {
+                // If no questions available, just use a random question (but not current one)
+                const otherQuestions = questions.filter(q => q.id !== this.gameState.currentQuestionId);
+                if (otherQuestions.length === 0) return null;
+                
+                if (this.config.randomQuestions) {
+                    return otherQuestions[Math.floor(Math.random() * otherQuestions.length)];
+                } else {
+                    return otherQuestions[0];
+                }
+            }
+
+            // Select next question
+            if (this.config.randomQuestions) {
+                const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+                return availableQuestions[randomIndex];
+            } else {
+                return availableQuestions[0];
+            }
+        } catch (error) {
+            this.api.log(`Error getting next question for pre-generation: ${error.message}`, 'warn');
+            return null;
+        }
     }
 
     startTimer() {
@@ -2709,6 +2844,134 @@ class QuizShowPlugin {
             },
             askedQuestionIds: new Set() // Reset asked questions tracking
         };
+        
+        // Clear TTS cache on reset
+        this.ttsCache = {
+            nextQuestionId: null,
+            audioUrl: null,
+            text: null
+        };
+    }
+
+    /**
+     * Pre-generate TTS for the next question to eliminate playback delay
+     * @param {Object} nextQuestion - The next question to pre-generate TTS for
+     */
+    async preGenerateTTS(nextQuestion) {
+        if (!this.config.ttsEnabled) return;
+        if (!nextQuestion) return;
+
+        try {
+            // Check if we already have TTS for this question
+            if (this.ttsCache.nextQuestionId === nextQuestion.id) {
+                this.api.log('TTS already pre-generated for next question', 'debug');
+                return;
+            }
+
+            // Prepare answers (shuffle if configured, same as in startRound)
+            let answers = [...nextQuestion.answers];
+            let correctIndex = nextQuestion.correct;
+
+            if (this.config.shuffleAnswers) {
+                const answerMapping = answers.map((ans, idx) => ({ ans, originalIdx: idx }));
+                for (let i = answerMapping.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [answerMapping[i], answerMapping[j]] = [answerMapping[j], answerMapping[i]];
+                }
+                answers = answerMapping.map(item => item.ans);
+                correctIndex = answerMapping.findIndex(item => item.originalIdx === nextQuestion.correct);
+            }
+
+            const ttsText = `Neue Frage: ${nextQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
+            
+            // Parse voice format: "engine:voiceId" or "default"
+            let engine = null;
+            let voiceId = null;
+            
+            const voiceConfig = this.config.ttsVoice || 'default';
+            if (voiceConfig !== 'default' && voiceConfig.includes(':')) {
+                const parts = voiceConfig.split(':');
+                engine = parts[0];
+                voiceId = parts[1];
+            }
+            
+            // Pre-generate TTS audio via HTTP API
+            const port = process.env.PORT || 3000;
+            const response = await axios.post(`http://localhost:${port}/api/tts/generate`, {
+                text: ttsText,
+                userId: 'quiz-show-preload',
+                username: 'Quiz Show',
+                voiceId: voiceId,
+                engine: engine,
+                source: 'quiz-show',
+                preload: true // Flag to indicate this is for pre-loading
+            });
+
+            // Cache the audio URL or data
+            if (response.data && response.data.success) {
+                this.ttsCache = {
+                    nextQuestionId: nextQuestion.id,
+                    audioUrl: response.data.audioUrl,
+                    text: ttsText
+                };
+                this.api.log(`TTS pre-generated for question ${nextQuestion.id}`, 'debug');
+            }
+        } catch (error) {
+            this.api.log(`TTS pre-generation error: ${error.message}`, 'warn');
+            // Don't fail the quiz on TTS errors
+        }
+    }
+
+    /**
+     * Play pre-generated TTS or generate on-the-fly if not available
+     */
+    async playTTS(questionId, ttsText, voiceConfig) {
+        if (!this.config.ttsEnabled) return;
+
+        try {
+            // Check if we have pre-generated TTS for this question
+            if (this.ttsCache.nextQuestionId === questionId && this.ttsCache.audioUrl) {
+                this.api.log('Playing pre-generated TTS', 'debug');
+                
+                // Play the cached TTS
+                const port = process.env.PORT || 3000;
+                await axios.post(`http://localhost:${port}/api/tts/play`, {
+                    audioUrl: this.ttsCache.audioUrl,
+                    source: 'quiz-show'
+                });
+
+                // Clear the cache after use
+                this.ttsCache = {
+                    nextQuestionId: null,
+                    audioUrl: null,
+                    text: null
+                };
+            } else {
+                // Fall back to on-the-fly generation
+                this.api.log('Generating TTS on-the-fly (no pre-generated audio)', 'debug');
+                
+                let engine = null;
+                let voiceId = null;
+                
+                if (voiceConfig !== 'default' && voiceConfig.includes(':')) {
+                    const parts = voiceConfig.split(':');
+                    engine = parts[0];
+                    voiceId = parts[1];
+                }
+                
+                const port = process.env.PORT || 3000;
+                await axios.post(`http://localhost:${port}/api/tts/speak`, {
+                    text: ttsText,
+                    userId: 'quiz-show',
+                    username: 'Quiz Show',
+                    voiceId: voiceId,
+                    engine: engine,
+                    source: 'quiz-show'
+                });
+            }
+        } catch (error) {
+            this.api.log(`TTS playback error: ${error.message}`, 'error');
+        }
     }
 
     getMVPPlayer() {
