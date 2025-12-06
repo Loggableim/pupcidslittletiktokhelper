@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"html/template"
 	"io"
@@ -126,20 +127,70 @@ func (l *Launcher) checkNodeModules() bool {
 }
 
 func (l *Launcher) installDependencies() error {
+	l.logger.Println("[INFO] Starting npm install...")
+	l.updateProgress(45, "npm install wird gestartet...")
+	time.Sleep(500 * time.Millisecond)
+	
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
 	} else {
 		cmd = exec.Command("npm", "install", "--cache", "false")
 	}
-
+	
 	cmd.Dir = l.appDir
-
-	err := cmd.Run()
+	
+	// Capture output for logging and progress updates
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		return fmt.Errorf("Failed to create stdout pipe: %v", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("Failed to create stderr pipe: %v", err)
+	}
+	
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		l.logger.Printf("[ERROR] Failed to start npm install: %v\n", err)
+		return fmt.Errorf("Failed to start npm install: %v", err)
+	}
+	
+	// Track progress with live updates
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			l.logger.Printf("[npm stdout] %s\n", line)
+			// Show progress in UI
+			if len(line) > 0 {
+				// Truncate long lines for display
+				displayLine := line
+				if len(displayLine) > 60 {
+					displayLine = displayLine[:57] + "..."
+				}
+				l.updateProgress(50, fmt.Sprintf("npm: %s", displayLine))
+			}
+		}
+	}()
+	
+	// Log errors
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			l.logger.Printf("[npm stderr] %s\n", line)
+		}
+	}()
+	
+	// Wait for command to complete
+	err = cmd.Wait()
+	if err != nil {
+		l.logger.Printf("[ERROR] npm install failed: %v\n", err)
 		return fmt.Errorf("Installation fehlgeschlagen: %v", err)
 	}
-
+	
+	l.logger.Println("[SUCCESS] npm install completed successfully")
 	return nil
 }
 
@@ -173,11 +224,17 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 
 // checkServerHealth checks if the server is responding
 func (l *Launcher) checkServerHealth() bool {
+	return l.checkServerHealthOnPort(3000)
+}
+
+// checkServerHealthOnPort checks if the server is responding on a specific port
+func (l *Launcher) checkServerHealthOnPort(port int) bool {
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 	}
 
-	resp, err := client.Get("http://localhost:3000/dashboard.html")
+	url := fmt.Sprintf("http://localhost:%d/dashboard.html", port)
+	resp, err := client.Get(url)
 	if err != nil {
 		return false
 	}
@@ -294,35 +351,80 @@ func (l *Launcher) runLauncher() {
 	}()
 
 	// Wait for server to be ready
-	l.updateProgress(95, "Warte auf Server-Start...")
-	l.logger.Println("[INFO] Waiting for server health check (30s timeout)...")
+	l.updateProgress(93, "Warte auf Server-Start...")
+	l.logger.Println("[INFO] Waiting for server health check (60s timeout)...")
+	l.logger.Println("[INFO] Checking if server responds on http://localhost:3000...")
 
 	// Check server health with process monitoring
-	healthCheckTimeout := time.After(30 * time.Second)
-	healthCheckTicker := time.NewTicker(500 * time.Millisecond)
+	healthCheckTimeout := time.After(60 * time.Second)
+	healthCheckTicker := time.NewTicker(1 * time.Second)
 	defer healthCheckTicker.Stop()
 
 	serverReady := false
+	attemptCount := 0
+	lastLogTime := time.Now()
+	
 	for !serverReady {
 		select {
 		case err := <-processDied:
 			// Process exited before server was ready
 			l.logger.Printf("[ERROR] Node.js process exited prematurely: %v\n", err)
+			l.logger.Println("[ERROR] Server crashed during startup!")
+			l.logger.Println("[ERROR] ===========================================")
+			l.logger.Println("[ERROR] Bitte prüfe app/logs/launcher_*.log für Details")
+			l.logger.Println("[ERROR] Häufige Ursachen:")
+			l.logger.Println("[ERROR]  - Fehlende .env Datei (kopiere .env.example zu .env)")
+			l.logger.Println("[ERROR]  - Port 3000 bereits belegt")
+			l.logger.Println("[ERROR]  - Fehlende Dependencies (führe 'npm install' aus)")
+			l.logger.Println("[ERROR]  - Syntax-Fehler im Code")
+			l.logger.Println("[ERROR] ===========================================")
+			
 			l.updateProgress(95, "FEHLER: Node.js Server ist abgestürzt!")
-			l.updateProgress(95, "Prüfe die Log-Datei in app/logs/ für Details.")
-			l.updateProgress(95, "Mögliche Ursachen: fehlende Dependencies, Syntax-Fehler, Port bereits belegt")
+			time.Sleep(1 * time.Second)
+			l.updateProgress(96, "Prüfe die Log-Datei in app/logs/ für Details.")
+			time.Sleep(1 * time.Second)
+			l.updateProgress(97, "Häufige Ursache: Fehlende .env Datei")
+			time.Sleep(1 * time.Second)
+			l.updateProgress(98, "Kopiere app/.env.example zu app/.env")
 			time.Sleep(30 * time.Second)
 			l.closeLogging()
 			os.Exit(1)
 		case <-healthCheckTicker.C:
-			if l.checkServerHealth() {
-				serverReady = true
+			attemptCount++
+			
+			// Log progress every 5 seconds
+			if time.Since(lastLogTime) >= 5 * time.Second {
+				l.logger.Printf("[INFO] Health check attempt %d (waiting for server to respond)...\n", attemptCount)
+				l.updateProgress(93 + (attemptCount / 5), fmt.Sprintf("Warte auf Server... (Versuch %d)", attemptCount))
+				lastLogTime = time.Now()
+			}
+			
+			// Try multiple ports (server might have failed over)
+			ports := []int{3000, 3001, 3002, 3003, 3004}
+			for _, port := range ports {
+				if l.checkServerHealthOnPort(port) {
+					l.logger.Printf("[SUCCESS] Server responded on port %d!\n", port)
+					if port != 3000 {
+						l.logger.Printf("[INFO] Note: Server is running on port %d instead of 3000\n", port)
+					}
+					serverReady = true
+					break
+				}
 			}
 		case <-healthCheckTimeout:
-			l.logger.Println("[ERROR] Server health check timed out")
-			l.logger.Println("[ERROR] Server did not start successfully. Check the log above for error messages from the Node.js process.")
-			l.updateProgress(95, "FEHLER: Server-Start Timeout")
-			l.updateProgress(95, "Server konnte nicht gestartet werden. Prüfe die Log-Datei in app/logs/")
+			l.logger.Println("[ERROR] Server health check timed out after 60 seconds")
+			l.logger.Println("[ERROR] Server did not respond. Check the log above for error messages.")
+			l.logger.Println("[ERROR] ===========================================")
+			l.logger.Println("[ERROR] Mögliche Probleme:")
+			l.logger.Println("[ERROR]  - Server startet, aber hängt sich bei Initialisierung auf")
+			l.logger.Println("[ERROR]  - Dependencies werden geladen (kann lange dauern)")
+			l.logger.Println("[ERROR]  - Datenbank-Migration läuft")
+			l.logger.Println("[ERROR]  - Port 3000 ist blockiert durch Firewall")
+			l.logger.Println("[ERROR] ===========================================")
+			
+			l.updateProgress(95, "FEHLER: Server-Start Timeout (60s)")
+			time.Sleep(1 * time.Second)
+			l.updateProgress(96, "Server antwortet nicht. Prüfe app/logs/")
 			time.Sleep(30 * time.Second)
 			l.closeLogging()
 			os.Exit(1)
