@@ -89,8 +89,8 @@ const pluginLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting for localhost/127.0.0.1 to allow unrestricted local admin access
-    // Check multiple sources for IP address to handle different Express configurations
-    const ip = req.ip || req.socket.remoteAddress || req.connection?.remoteAddress;
+    // Use req.ip (when trust proxy is enabled) or req.socket.remoteAddress as fallback
+    const ip = req.ip || req.socket.remoteAddress;
     return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
   },
   handler: (req, res) => {
