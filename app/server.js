@@ -3278,12 +3278,52 @@ process.on('SIGINT', async () => {
 });
 
 // Error Handling
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', async (error) => {
     logger.error('❌ Uncaught Exception:', error);
+    
+    // Wenn im TTY-Modus (Terminal), warte auf Tastendruck
+    if (process.stdin.isTTY) {
+        console.error('\n='.repeat(80));
+        console.error('KRITISCHER FEHLER - Das Programm muss beendet werden');
+        console.error('='.repeat(80));
+        console.error('\nDrücke eine beliebige Taste zum Beenden...');
+        
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        await new Promise((resolve) => {
+            process.stdin.once('data', () => {
+                process.stdin.setRawMode(false);
+                process.stdin.pause();
+                resolve();
+            });
+        });
+    }
+    
+    process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', async (reason, promise) => {
     logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    
+    // Wenn im TTY-Modus (Terminal), warte auf Tastendruck
+    if (process.stdin.isTTY) {
+        console.error('\n='.repeat(80));
+        console.error('KRITISCHER FEHLER - Unbehandelter Promise-Fehler');
+        console.error('='.repeat(80));
+        console.error('\nDrücke eine beliebige Taste zum Beenden...');
+        
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        await new Promise((resolve) => {
+            process.stdin.once('data', () => {
+                process.stdin.setRawMode(false);
+                process.stdin.pause();
+                resolve();
+            });
+        });
+    }
+    
+    process.exit(1);
 });
 
 module.exports = { app, server, io, db, tiktok, alerts, iftttEngine, goals, leaderboard, subscriptionTiers };

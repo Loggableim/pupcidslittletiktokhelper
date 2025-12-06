@@ -380,11 +380,19 @@ class Launcher {
             });
 
             // Warte auf Server-Exit
-            serverProcess.on('exit', (code) => {
+            serverProcess.on('exit', async (code) => {
                 this.log.newLine();
                 this.log.separator();
                 this.log.info(`Server wurde beendet (Exit Code: ${code || 0})`);
                 this.log.separator();
+                
+                // Bei Fehler (Exit Code != 0) warte auf Tastendruck
+                if (code && code !== 0) {
+                    this.log.newLine();
+                    this.log.warn('Drücke eine beliebige Taste zum Beenden...');
+                    await this.waitForKey();
+                }
+                
                 process.exit(code || 0);
             });
 
