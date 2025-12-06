@@ -1948,7 +1948,9 @@
     if (layoutEditorTab) {
         layoutEditorTab.addEventListener('click', () => {
             loadLayouts();
-            // Wait for DOM to be ready before initializing draggables
+            // Double requestAnimationFrame ensures DOM is fully rendered before initializing
+            // First frame: tab content is made visible
+            // Second frame: elements are fully laid out and ready for interaction
             requestAnimationFrame(() => {
                 requestAnimationFrame(initializeDraggableElements);
             });
@@ -2059,11 +2061,16 @@
         if (!selector) return;
 
         selector.innerHTML = '<option value="">-- Geschenk wählen --</option>' +
-            giftCatalog.map(gift => `
-                <option value="${gift.id}" data-name="${escapeHtml(gift.name)}">
-                    ${escapeHtml(gift.name)} (ID: ${gift.id}, 💎 ${gift.diamond_count})
-                </option>
-            `).join('');
+            giftCatalog.map(gift => {
+                const giftId = parseInt(gift.id, 10);
+                const diamondCount = parseInt(gift.diamond_count, 10) || 0;
+                const giftName = escapeHtml(gift.name);
+                return `
+                    <option value="${giftId}" data-name="${giftName}">
+                        ${giftName} (ID: ${giftId}, 💎 ${diamondCount})
+                    </option>
+                `;
+            }).join('');
 
         // When a gift is selected, populate the form fields
         selector.addEventListener('change', (e) => {
