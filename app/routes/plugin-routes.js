@@ -293,24 +293,17 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
     app.post('/api/plugins/:id/enable', limiter, async (req, res) => {
         try {
             const { id } = req.params;
-            const success = await pluginLoader.enablePlugin(id);
-
-            if (success) {
-                // Notify all clients that plugins have changed
-                if (io) {
-                    io.emit('plugins:changed', { action: 'enabled', pluginId: id });
-                }
-                
-                res.json({
-                    success: true,
-                    message: `Plugin ${id} aktiviert`
-                });
-            } else {
-                res.status(500).json({
-                    success: false,
-                    error: 'Plugin konnte nicht aktiviert werden'
-                });
+            await pluginLoader.enablePlugin(id);
+            
+            // Notify all clients that plugins have changed
+            if (io) {
+                io.emit('plugins:changed', { action: 'enabled', pluginId: id });
             }
+            
+            res.json({
+                success: true,
+                message: `Plugin ${id} aktiviert`
+            });
         } catch (error) {
             logger.error(`Failed to enable plugin: ${error.message}`);
             res.status(500).json({

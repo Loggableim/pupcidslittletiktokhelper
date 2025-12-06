@@ -241,7 +241,4 @@ module.exports = FailingPlugin;
 }
 
 // Run the test
-runTest().catch(error => {
-    console.error('Test execution failed:', error);
-    process.exit(1);
-});
+runTest();
