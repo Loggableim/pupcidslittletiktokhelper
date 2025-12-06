@@ -148,6 +148,7 @@ class GoalsPlugin extends EventEmitter {
      * Register Flow actions
      */
     registerFlowActions() {
+        // Legacy flow action registrations for backward compatibility
         // Set goal value
         this.api.registerFlowAction('goals.set_value', async (params) => {
             const { goalId, value } = params;
@@ -187,6 +188,123 @@ class GoalsPlugin extends EventEmitter {
         });
 
         this.api.log('✅ Goals Flow actions registered', 'info');
+
+        // Register IFTTT actions for visual flow editor
+        this.registerIFTTTActions();
+    }
+
+    /**
+     * Register IFTTT actions for the visual flow editor
+     */
+    registerIFTTTActions() {
+        // Set Goal Value Action
+        this.api.registerIFTTTAction('goals:set_value', {
+            name: 'Set Goal Value',
+            description: 'Set a goal to a specific value',
+            category: 'goals',
+            icon: 'target',
+            fields: [
+                { name: 'goalId', label: 'Goal ID', type: 'number', required: true, min: 1 },
+                { name: 'value', label: 'Value', type: 'number', required: true, min: 0 }
+            ],
+            executor: async (action, context, services) => {
+                const goalId = parseInt(action.goalId);
+                const value = parseFloat(action.value);
+                
+                if (!goalId || isNaN(value)) {
+                    throw new Error('Goal ID and value are required');
+                }
+                
+                this.eventHandlers.setGoalValue(goalId, value);
+                services.logger?.info(`🎯 Goals: Set goal ${goalId} to ${value}`);
+                
+                return { success: true, goalId, value };
+            }
+        });
+
+        // Increment Goal Action
+        this.api.registerIFTTTAction('goals:increment', {
+            name: 'Increment Goal',
+            description: 'Increment a goal by a specified amount',
+            category: 'goals',
+            icon: 'plus',
+            fields: [
+                { name: 'goalId', label: 'Goal ID', type: 'number', required: true, min: 1 },
+                { name: 'amount', label: 'Amount', type: 'number', default: 1, min: 0 }
+            ],
+            executor: async (action, context, services) => {
+                const goalId = parseInt(action.goalId);
+                const amount = parseFloat(action.amount) || 1;
+                
+                if (!goalId) {
+                    throw new Error('Goal ID is required');
+                }
+                
+                this.eventHandlers.incrementGoal(goalId, amount);
+                services.logger?.info(`🎯 Goals: Incremented goal ${goalId} by ${amount}`);
+                
+                return { success: true, goalId, amount };
+            }
+        });
+
+        // Reset Goal Action
+        this.api.registerIFTTTAction('goals:reset', {
+            name: 'Reset Goal',
+            description: 'Reset a goal to 0',
+            category: 'goals',
+            icon: 'rotate-ccw',
+            fields: [
+                { name: 'goalId', label: 'Goal ID', type: 'number', required: true, min: 1 }
+            ],
+            executor: async (action, context, services) => {
+                const goalId = parseInt(action.goalId);
+                
+                if (!goalId) {
+                    throw new Error('Goal ID is required');
+                }
+                
+                const goal = this.db.resetGoal(goalId);
+                const machine = this.stateMachineManager.getMachine(goalId);
+                machine.reset();
+                this.broadcastGoalReset(goal);
+                services.logger?.info(`🎯 Goals: Reset goal ${goalId}`);
+                
+                return { success: true, goalId };
+            }
+        });
+
+        // Toggle Goal Action
+        this.api.registerIFTTTAction('goals:toggle', {
+            name: 'Toggle Goal Enabled',
+            description: 'Enable or disable a goal',
+            category: 'goals',
+            icon: 'toggle-right',
+            fields: [
+                { name: 'goalId', label: 'Goal ID', type: 'number', required: true, min: 1 }
+            ],
+            executor: async (action, context, services) => {
+                const goalId = parseInt(action.goalId);
+                
+                if (!goalId) {
+                    throw new Error('Goal ID is required');
+                }
+                
+                const goal = this.db.getGoal(goalId);
+                if (!goal) {
+                    throw new Error('Goal not found');
+                }
+                
+                const updated = this.db.updateGoal(goalId, {
+                    enabled: goal.enabled ? 0 : 1
+                });
+                this.broadcastGoalUpdated(updated);
+                services.logger?.info(`🎯 Goals: Toggled goal ${goalId} to ${updated.enabled ? 'enabled' : 'disabled'}`);
+                
+                return { success: true, goalId, enabled: updated.enabled };
+            }
+        });
+
+        this.api.log('✅ Goals IFTTT actions registered for flow editor', 'info');
     }
 
     /**
