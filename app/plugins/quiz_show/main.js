@@ -25,12 +25,14 @@ class QuizShowPlugin {
             joker50Enabled: true,
             jokerInfoEnabled: true,
             jokerTimeEnabled: true,
+            joker25Enabled: true, // NEW: 25% joker (removes 1 wrong answer)
             jokerTimeBoost: 15,
             jokersPerRound: 3,
             gameMode: 'classic', // classic, fastestFinger, elimination, marathon
             marathonLength: 15,
             ttsEnabled: false,
             ttsVoice: 'default',
+            ttsVolume: 80, // NEW: TTS volume (0-100%)
             autoMode: false, // Auto advance to next question
             autoModeDelay: 5, // Seconds to wait before auto-advancing
             answerDisplayDuration: 5, // Seconds to display the correct answer (including info text)
@@ -41,7 +43,20 @@ class QuizShowPlugin {
             voterIconCompactMode: true, // Enable compact mode for many voters
             voterIconAnimation: 'fade', // fade, slide
             voterIconPosition: 'above', // above, beside, embedded
-            voterIconShowOnScoreboard: false // Show avatars in scoreboard
+            voterIconShowOnScoreboard: false, // Show avatars in scoreboard
+            // NEW: Leaderboard display configuration
+            leaderboardShowAfterRound: true,
+            leaderboardRoundDisplayType: 'both', // 'round', 'season', 'both'
+            leaderboardEndGameDisplayType: 'season', // 'round', 'season'
+            leaderboardAutoHideDelay: 10, // seconds
+            leaderboardAnimationStyle: 'fade', // 'fade', 'slide', 'zoom'
+            // NEW: Gift-Joker Integration
+            giftJokersEnabled: true,
+            giftJokerMappings: {}, // { giftId: jokerType } - loaded from database
+            giftJokerShowInHUD: true, // Show gift graphics in HUD
+            // NEW: Custom Layout
+            activeLayoutId: null, // ID of active layout from overlay_layouts table
+            customLayoutEnabled: false // Use custom layout vs default
         };
 
         // Current game state
@@ -57,12 +72,13 @@ class QuizShowPlugin {
             correctUsers: [],
             roundState: 'idle', // idle, running, ended
             jokersUsed: {
+                '25': 0, // NEW: 25% joker
                 '50': 0,
                 'info': 0,
                 'time': 0
             },
             jokerEvents: [],
-            hiddenAnswers: [], // For 50:50 joker
+            hiddenAnswers: [], // For 50:50 and 25% joker
             revealedWrongAnswer: null, // For info joker
             eliminatedUsers: new Set(), // For elimination mode
             marathonProgress: 0, // For marathon mode
@@ -97,6 +113,9 @@ class QuizShowPlugin {
 
         // Load saved configuration
         await this.loadConfig();
+
+        // Load gift-joker mappings from database
+        this.loadGiftJokerMappings();
 
         // Register routes
         this.registerRoutes();
@@ -222,6 +241,43 @@ class QuizShowPlugin {
                     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
                 );
 
+                CREATE TABLE IF NOT EXISTS gift_joker_mappings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    gift_id INTEGER NOT NULL UNIQUE,
+                    gift_name TEXT NOT NULL,
+                    joker_type TEXT NOT NULL CHECK(joker_type IN ('25', '50', 'time', 'info')),
+                    enabled BOOLEAN DEFAULT TRUE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS overlay_layouts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    resolution_width INTEGER NOT NULL,
+                    resolution_height INTEGER NOT NULL,
+                    orientation TEXT NOT NULL CHECK(orientation IN ('horizontal', 'vertical')),
+                    is_default BOOLEAN DEFAULT FALSE,
+                    layout_config TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS tts_config (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    volume_global INTEGER DEFAULT 80 CHECK(volume_global >= 0 AND volume_global <= 100),
+                    volume_session INTEGER DEFAULT 80 CHECK(volume_session >= 0 AND volume_session <= 100),
+                    enabled BOOLEAN DEFAULT TRUE
+                );
+
+                CREATE TABLE IF NOT EXISTS leaderboard_display_config (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    show_after_round BOOLEAN DEFAULT TRUE,
+                    round_display_type TEXT DEFAULT 'both' CHECK(round_display_type IN ('round', 'season', 'both')),
+                    end_game_display_type TEXT DEFAULT 'season' CHECK(end_game_display_type IN ('round', 'season')),
+                    auto_hide_delay INTEGER DEFAULT 10,
+                    animation_style TEXT DEFAULT 'fade' CHECK(animation_style IN ('fade', 'slide', 'zoom'))
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
                 CREATE INDEX IF NOT EXISTS idx_questions_difficulty ON questions(difficulty);
                 CREATE INDEX IF NOT EXISTS idx_questions_package ON questions(package_id);
@@ -229,6 +285,8 @@ class QuizShowPlugin {
                 CREATE INDEX IF NOT EXISTS idx_package_category ON question_packages(category);
                 CREATE INDEX IF NOT EXISTS idx_question_history_asked_at ON question_history(asked_at);
                 CREATE INDEX IF NOT EXISTS idx_question_history_question_id ON question_history(question_id);
+                CREATE INDEX IF NOT EXISTS idx_gift_joker_gift_id ON gift_joker_mappings(gift_id);
+                CREATE INDEX IF NOT EXISTS idx_overlay_layouts_orientation ON overlay_layouts(orientation);
             `);
 
             // Ensure default season exists
@@ -258,6 +316,46 @@ class QuizShowPlugin {
             if (!openaiConfig) {
                 this.db.prepare('INSERT INTO openai_config (id, api_key, model, default_package_size) VALUES (1, NULL, ?, ?)')
                     .run('gpt-5-mini', 10);
+            }
+
+            // Initialize TTS config if not exists
+            const ttsConfig = this.db.prepare('SELECT id FROM tts_config WHERE id = 1').get();
+            if (!ttsConfig) {
+                this.db.prepare('INSERT INTO tts_config (id, volume_global, volume_session, enabled) VALUES (1, 80, 80, 1)')
+                    .run();
+            }
+
+            // Initialize leaderboard display config if not exists
+            const leaderboardDisplayConfig = this.db.prepare('SELECT id FROM leaderboard_display_config WHERE id = 1').get();
+            if (!leaderboardDisplayConfig) {
+                this.db.prepare('INSERT INTO leaderboard_display_config (id, show_after_round, round_display_type, end_game_display_type, auto_hide_delay, animation_style) VALUES (1, 1, ?, ?, 10, ?)')
+                    .run('both', 'season', 'fade');
+            }
+
+            // Initialize default overlay layouts if none exist
+            const layoutCount = this.db.prepare('SELECT COUNT(*) as count FROM overlay_layouts').get().count;
+            if (layoutCount === 0) {
+                // Default horizontal layout (1920x1080)
+                const horizontalLayout = {
+                    question: { x: 50, y: 100, width: 1820, height: 200 },
+                    answers: { x: 50, y: 350, width: 1820, height: 500 },
+                    timer: { x: 860, y: 900, width: 200, height: 200 },
+                    leaderboard: { x: 1400, y: 100, width: 470, height: 800 },
+                    jokerInfo: { x: 50, y: 900, width: 400, height: 150 }
+                };
+                this.db.prepare('INSERT INTO overlay_layouts (name, resolution_width, resolution_height, orientation, is_default, layout_config) VALUES (?, ?, ?, ?, ?, ?)')
+                    .run('Default Horizontal', 1920, 1080, 'horizontal', 1, JSON.stringify(horizontalLayout));
+
+                // Default vertical layout (1080x1920)
+                const verticalLayout = {
+                    question: { x: 40, y: 100, width: 1000, height: 300 },
+                    answers: { x: 40, y: 450, width: 1000, height: 800 },
+                    timer: { x: 440, y: 1300, width: 200, height: 200 },
+                    leaderboard: { x: 40, y: 1550, width: 1000, height: 320 },
+                    jokerInfo: { x: 40, y: 50, width: 400, height: 100 }
+                };
+                this.db.prepare('INSERT INTO overlay_layouts (name, resolution_width, resolution_height, orientation, is_default, layout_config) VALUES (?, ?, ?, ?, ?, ?)')
+                    .run('Default Vertical', 1080, 1920, 'vertical', 1, JSON.stringify(verticalLayout));
             }
 
             // Clean up question history older than 24 hours
@@ -446,6 +544,21 @@ class QuizShowPlugin {
             await this.api.setConfig('stats', this.stats);
         } catch (error) {
             this.api.log('Error saving config: ' + error.message, 'error');
+        }
+    }
+
+    loadGiftJokerMappings() {
+        try {
+            const mappings = this.db.prepare('SELECT * FROM gift_joker_mappings WHERE enabled = 1').all();
+            this.config.giftJokerMappings = {};
+            
+            for (const mapping of mappings) {
+                this.config.giftJokerMappings[mapping.gift_id] = mapping.joker_type;
+            }
+            
+            this.api.log(`Loaded ${mappings.length} gift-joker mappings`, 'info');
+        } catch (error) {
+            this.api.log('Error loading gift-joker mappings: ' + error.message, 'warn');
         }
     }
 
@@ -1288,6 +1401,329 @@ class QuizShowPlugin {
                 res.status(500).json({ success: false, error: error.message });
             }
         });
+
+        // ===== NEW: Gift-Joker Mapping Routes =====
+        
+        // Get all gift-joker mappings
+        this.api.registerRoute('get', '/api/quiz-show/gift-jokers', (req, res) => {
+            try {
+                const mappings = this.db.prepare('SELECT * FROM gift_joker_mappings ORDER BY gift_id').all();
+                res.json({ success: true, mappings });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Add or update gift-joker mapping
+        this.api.registerRoute('post', '/api/quiz-show/gift-jokers', (req, res) => {
+            try {
+                const { giftId, giftName, jokerType, enabled } = req.body;
+
+                if (!giftId || !giftName || !jokerType) {
+                    return res.status(400).json({ success: false, error: 'Missing required fields' });
+                }
+
+                if (!['25', '50', 'time', 'info'].includes(jokerType)) {
+                    return res.status(400).json({ success: false, error: 'Invalid joker type' });
+                }
+
+                // Check if mapping exists
+                const existing = this.db.prepare('SELECT id FROM gift_joker_mappings WHERE gift_id = ?').get(giftId);
+                
+                if (existing) {
+                    // Update existing mapping
+                    this.db.prepare('UPDATE gift_joker_mappings SET gift_name = ?, joker_type = ?, enabled = ? WHERE gift_id = ?')
+                        .run(giftName, jokerType, enabled !== false ? 1 : 0, giftId);
+                } else {
+                    // Insert new mapping
+                    this.db.prepare('INSERT INTO gift_joker_mappings (gift_id, gift_name, joker_type, enabled) VALUES (?, ?, ?, ?)')
+                        .run(giftId, giftName, jokerType, enabled !== false ? 1 : 0);
+                }
+
+                // Reload gift joker mappings into config
+                this.loadGiftJokerMappings();
+
+                const mappings = this.db.prepare('SELECT * FROM gift_joker_mappings ORDER BY gift_id').all();
+                res.json({ success: true, mappings });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Delete gift-joker mapping
+        this.api.registerRoute('delete', '/api/quiz-show/gift-jokers/:giftId', (req, res) => {
+            try {
+                const giftId = parseInt(req.params.giftId);
+                this.db.prepare('DELETE FROM gift_joker_mappings WHERE gift_id = ?').run(giftId);
+                
+                // Reload gift joker mappings into config
+                this.loadGiftJokerMappings();
+
+                res.json({ success: true });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ===== NEW: Overlay Layout Routes =====
+        
+        // Get all layouts
+        this.api.registerRoute('get', '/api/quiz-show/layouts', (req, res) => {
+            try {
+                const layouts = this.db.prepare('SELECT * FROM overlay_layouts ORDER BY created_at DESC').all()
+                    .map(layout => ({
+                        ...layout,
+                        layout_config: JSON.parse(layout.layout_config)
+                    }));
+                res.json({ success: true, layouts });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get a specific layout
+        this.api.registerRoute('get', '/api/quiz-show/layouts/:id', (req, res) => {
+            try {
+                const layoutId = parseInt(req.params.id);
+                const layout = this.db.prepare('SELECT * FROM overlay_layouts WHERE id = ?').get(layoutId);
+                
+                if (!layout) {
+                    return res.status(404).json({ success: false, error: 'Layout not found' });
+                }
+
+                layout.layout_config = JSON.parse(layout.layout_config);
+                res.json({ success: true, layout });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Create new layout
+        this.api.registerRoute('post', '/api/quiz-show/layouts', (req, res) => {
+            try {
+                const { name, resolutionWidth, resolutionHeight, orientation, layoutConfig, isDefault } = req.body;
+
+                if (!name || !resolutionWidth || !resolutionHeight || !orientation || !layoutConfig) {
+                    return res.status(400).json({ success: false, error: 'Missing required fields' });
+                }
+
+                if (!['horizontal', 'vertical'].includes(orientation)) {
+                    return res.status(400).json({ success: false, error: 'Invalid orientation' });
+                }
+
+                // If this is set as default, unset all other defaults for the same orientation
+                if (isDefault) {
+                    this.db.prepare('UPDATE overlay_layouts SET is_default = 0 WHERE orientation = ?').run(orientation);
+                }
+
+                const result = this.db.prepare(
+                    'INSERT INTO overlay_layouts (name, resolution_width, resolution_height, orientation, is_default, layout_config) VALUES (?, ?, ?, ?, ?, ?)'
+                ).run(name, resolutionWidth, resolutionHeight, orientation, isDefault ? 1 : 0, JSON.stringify(layoutConfig));
+
+                const newLayout = this.db.prepare('SELECT * FROM overlay_layouts WHERE id = ?').get(result.lastInsertRowid);
+                newLayout.layout_config = JSON.parse(newLayout.layout_config);
+
+                res.json({ success: true, layout: newLayout });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update layout
+        this.api.registerRoute('put', '/api/quiz-show/layouts/:id', (req, res) => {
+            try {
+                const layoutId = parseInt(req.params.id);
+                const { name, resolutionWidth, resolutionHeight, orientation, layoutConfig, isDefault } = req.body;
+
+                const existing = this.db.prepare('SELECT id FROM overlay_layouts WHERE id = ?').get(layoutId);
+                if (!existing) {
+                    return res.status(404).json({ success: false, error: 'Layout not found' });
+                }
+
+                if (!['horizontal', 'vertical'].includes(orientation)) {
+                    return res.status(400).json({ success: false, error: 'Invalid orientation' });
+                }
+
+                // If this is set as default, unset all other defaults for the same orientation
+                if (isDefault) {
+                    this.db.prepare('UPDATE overlay_layouts SET is_default = 0 WHERE orientation = ? AND id != ?').run(orientation, layoutId);
+                }
+
+                this.db.prepare(
+                    'UPDATE overlay_layouts SET name = ?, resolution_width = ?, resolution_height = ?, orientation = ?, is_default = ?, layout_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+                ).run(name, resolutionWidth, resolutionHeight, orientation, isDefault ? 1 : 0, JSON.stringify(layoutConfig), layoutId);
+
+                const updatedLayout = this.db.prepare('SELECT * FROM overlay_layouts WHERE id = ?').get(layoutId);
+                updatedLayout.layout_config = JSON.parse(updatedLayout.layout_config);
+
+                res.json({ success: true, layout: updatedLayout });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Delete layout
+        this.api.registerRoute('delete', '/api/quiz-show/layouts/:id', (req, res) => {
+            try {
+                const layoutId = parseInt(req.params.id);
+                const result = this.db.prepare('DELETE FROM overlay_layouts WHERE id = ?').run(layoutId);
+
+                if (result.changes === 0) {
+                    return res.status(404).json({ success: false, error: 'Layout not found' });
+                }
+
+                res.json({ success: true });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ===== NEW: TTS Configuration Routes =====
+        
+        // Get TTS config
+        this.api.registerRoute('get', '/api/quiz-show/tts-config', (req, res) => {
+            try {
+                const ttsConfig = this.db.prepare('SELECT * FROM tts_config WHERE id = 1').get();
+                res.json({ success: true, config: ttsConfig || { volume_global: 80, volume_session: 80, enabled: true } });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update TTS config
+        this.api.registerRoute('post', '/api/quiz-show/tts-config', (req, res) => {
+            try {
+                const { volumeGlobal, volumeSession, enabled } = req.body;
+
+                // Validate volume values
+                if (volumeGlobal !== undefined && (volumeGlobal < 0 || volumeGlobal > 100)) {
+                    return res.status(400).json({ success: false, error: 'Volume must be between 0 and 100' });
+                }
+                if (volumeSession !== undefined && (volumeSession < 0 || volumeSession > 100)) {
+                    return res.status(400).json({ success: false, error: 'Volume must be between 0 and 100' });
+                }
+
+                // Update or insert
+                const existing = this.db.prepare('SELECT id FROM tts_config WHERE id = 1').get();
+                
+                if (existing) {
+                    const updates = [];
+                    const values = [];
+                    
+                    if (volumeGlobal !== undefined) {
+                        updates.push('volume_global = ?');
+                        values.push(volumeGlobal);
+                    }
+                    if (volumeSession !== undefined) {
+                        updates.push('volume_session = ?');
+                        values.push(volumeSession);
+                    }
+                    if (enabled !== undefined) {
+                        updates.push('enabled = ?');
+                        values.push(enabled ? 1 : 0);
+                    }
+                    
+                    if (updates.length > 0) {
+                        this.db.prepare(`UPDATE tts_config SET ${updates.join(', ')} WHERE id = 1`).run(...values);
+                    }
+                } else {
+                    this.db.prepare('INSERT INTO tts_config (id, volume_global, volume_session, enabled) VALUES (1, ?, ?, ?)')
+                        .run(volumeGlobal || 80, volumeSession || 80, enabled !== false ? 1 : 0);
+                }
+
+                // Update config in memory
+                this.config.ttsVolume = volumeSession !== undefined ? volumeSession : (volumeGlobal || this.config.ttsVolume);
+
+                const ttsConfig = this.db.prepare('SELECT * FROM tts_config WHERE id = 1').get();
+                res.json({ success: true, config: ttsConfig });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // ===== NEW: Leaderboard Display Configuration Routes =====
+        
+        // Get leaderboard display config
+        this.api.registerRoute('get', '/api/quiz-show/leaderboard-config', (req, res) => {
+            try {
+                const config = this.db.prepare('SELECT * FROM leaderboard_display_config WHERE id = 1').get();
+                res.json({ success: true, config: config || {
+                    show_after_round: true,
+                    round_display_type: 'both',
+                    end_game_display_type: 'season',
+                    auto_hide_delay: 10,
+                    animation_style: 'fade'
+                }});
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update leaderboard display config
+        this.api.registerRoute('post', '/api/quiz-show/leaderboard-config', (req, res) => {
+            try {
+                const { showAfterRound, roundDisplayType, endGameDisplayType, autoHideDelay, animationStyle } = req.body;
+
+                // Validate values
+                if (roundDisplayType && !['round', 'season', 'both'].includes(roundDisplayType)) {
+                    return res.status(400).json({ success: false, error: 'Invalid round display type' });
+                }
+                if (endGameDisplayType && !['round', 'season'].includes(endGameDisplayType)) {
+                    return res.status(400).json({ success: false, error: 'Invalid end game display type' });
+                }
+                if (animationStyle && !['fade', 'slide', 'zoom'].includes(animationStyle)) {
+                    return res.status(400).json({ success: false, error: 'Invalid animation style' });
+                }
+
+                // Update or insert
+                const existing = this.db.prepare('SELECT id FROM leaderboard_display_config WHERE id = 1').get();
+                
+                if (existing) {
+                    const updates = [];
+                    const values = [];
+                    
+                    if (showAfterRound !== undefined) {
+                        updates.push('show_after_round = ?');
+                        values.push(showAfterRound ? 1 : 0);
+                    }
+                    if (roundDisplayType) {
+                        updates.push('round_display_type = ?');
+                        values.push(roundDisplayType);
+                    }
+                    if (endGameDisplayType) {
+                        updates.push('end_game_display_type = ?');
+                        values.push(endGameDisplayType);
+                    }
+                    if (autoHideDelay !== undefined) {
+                        updates.push('auto_hide_delay = ?');
+                        values.push(autoHideDelay);
+                    }
+                    if (animationStyle) {
+                        updates.push('animation_style = ?');
+                        values.push(animationStyle);
+                    }
+                    
+                    if (updates.length > 0) {
+                        this.db.prepare(`UPDATE leaderboard_display_config SET ${updates.join(', ')} WHERE id = 1`).run(...values);
+                    }
+                } else {
+                    this.db.prepare('INSERT INTO leaderboard_display_config (id, show_after_round, round_display_type, end_game_display_type, auto_hide_delay, animation_style) VALUES (1, ?, ?, ?, ?, ?)')
+                        .run(showAfterRound !== false ? 1 : 0, roundDisplayType || 'both', endGameDisplayType || 'season', autoHideDelay || 10, animationStyle || 'fade');
+                }
+
+                // Update config in memory
+                if (showAfterRound !== undefined) this.config.leaderboardShowAfterRound = showAfterRound;
+                if (roundDisplayType) this.config.leaderboardRoundDisplayType = roundDisplayType;
+                if (endGameDisplayType) this.config.leaderboardEndGameDisplayType = endGameDisplayType;
+                if (autoHideDelay !== undefined) this.config.leaderboardAutoHideDelay = autoHideDelay;
+                if (animationStyle) this.config.leaderboardAnimationStyle = animationStyle;
+
+                const config = this.db.prepare('SELECT * FROM leaderboard_display_config WHERE id = 1').get();
+                res.json({ success: true, config });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
     }
 
     getDefaultHUDConfig() {
@@ -1543,6 +1979,7 @@ class QuizShowPlugin {
             correctUsers: [],
             roundState: 'running',
             jokersUsed: {
+                '25': 0,
                 '50': 0,
                 'info': 0,
                 'time': 0
@@ -1982,7 +2419,8 @@ class QuizShowPlugin {
         const command = message.toLowerCase().trim();
 
         // Check joker limits
-        const totalJokers = this.gameState.jokersUsed['50'] +
+        const totalJokers = this.gameState.jokersUsed['25'] +
+                          this.gameState.jokersUsed['50'] +
                           this.gameState.jokersUsed['info'] +
                           this.gameState.jokersUsed['time'];
 
@@ -1993,7 +2431,12 @@ class QuizShowPlugin {
         let jokerType = null;
         let jokerData = null;
 
-        if (command === '!joker50' && this.config.joker50Enabled && this.gameState.jokersUsed['50'] === 0) {
+        if (command === '!joker25' && this.config.joker25Enabled && this.gameState.jokersUsed['25'] === 0) {
+            // 25% Joker - removes 1 wrong answer
+            jokerType = '25';
+            jokerData = this.activate25Joker();
+            this.gameState.jokersUsed['25']++;
+        } else if (command === '!joker50' && this.config.joker50Enabled && this.gameState.jokersUsed['50'] === 0) {
             // 50:50 Joker
             jokerType = '50';
             jokerData = this.activate5050Joker();
@@ -2032,9 +2475,29 @@ class QuizShowPlugin {
         }
     }
 
+    activate25Joker() {
+        const correctIndex = this.gameState.currentQuestion.correct;
+        const wrongIndices = [0, 1, 2, 3].filter(i => 
+            i !== correctIndex && !this.gameState.hiddenAnswers.includes(i)
+        );
+
+        // Remove 1 wrong answer
+        if (wrongIndices.length > 0) {
+            const randomIdx = Math.floor(Math.random() * wrongIndices.length);
+            const toHide = wrongIndices[randomIdx];
+            this.gameState.hiddenAnswers.push(toHide);
+
+            return { hiddenAnswers: [toHide] };
+        }
+
+        return null;
+    }
+
     activate5050Joker() {
         const correctIndex = this.gameState.currentQuestion.correct;
-        const wrongIndices = [0, 1, 2, 3].filter(i => i !== correctIndex);
+        const wrongIndices = [0, 1, 2, 3].filter(i => 
+            i !== correctIndex && !this.gameState.hiddenAnswers.includes(i)
+        );
 
         // Remove 2 wrong answers
         const toHide = [];
@@ -2044,7 +2507,7 @@ class QuizShowPlugin {
             wrongIndices.splice(randomIdx, 1);
         }
 
-        this.gameState.hiddenAnswers = toHide;
+        this.gameState.hiddenAnswers.push(...toHide);
 
         return { hiddenAnswers: toHide };
     }
@@ -2115,6 +2578,7 @@ class QuizShowPlugin {
             correctUsers: [],
             roundState: 'idle',
             jokersUsed: {
+                '25': 0,
                 '50': 0,
                 'info': 0,
                 'time': 0
