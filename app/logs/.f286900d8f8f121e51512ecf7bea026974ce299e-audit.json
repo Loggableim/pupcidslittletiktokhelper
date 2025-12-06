@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "/home/runner/work/pupcidslittletiktokhelper/pupcidslittletiktokhelper/app/logs/.f286900d8f8f121e51512ecf7bea026974ce299e-audit.json",
+    "files": [
+        {
+            "date": 1764979835468,
+            "name": "/home/runner/work/pupcidslittletiktokhelper/pupcidslittletiktokhelper/app/logs/error-2025-12-06.log",
+            "hash": "c3765ce738c3fbb788a9172359cf007328315f96a00faabedd5e059b02c9ac6f"
+        }
+    ],
+    "hashType": "sha256"
+}
