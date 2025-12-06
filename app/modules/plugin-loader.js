@@ -657,6 +657,14 @@ class PluginLoader extends EventEmitter {
      */
     async enablePlugin(pluginId) {
         try {
+            // Set plugin state to enabled BEFORE attempting to load
+            // This ensures loadPlugin() sees it as enabled and doesn't skip it
+            if (!this.state[pluginId]) {
+                this.state[pluginId] = {};
+            }
+            this.state[pluginId].enabled = true;
+            this.saveState();
+
             // Wenn Plugin noch nicht geladen, jetzt laden
             if (!this.plugins.has(pluginId)) {
                 const pluginPath = path.join(this.pluginsDir, pluginId);
@@ -665,7 +673,7 @@ class PluginLoader extends EventEmitter {
                     throw new Error(`Plugin directory not found: ${pluginPath}`);
                 }
                 
-                // Try to load the plugin BEFORE updating state
+                // Try to load the plugin with state already set to enabled
                 const loadResult = await this.loadPlugin(pluginPath);
                 if (!loadResult) {
                     this.logger.error(`Plugin ${pluginId} failed to load. Check server logs for detailed error information.`);
@@ -674,13 +682,6 @@ class PluginLoader extends EventEmitter {
                 
                 this.logger.info(`Plugin ${pluginId} loaded successfully`);
             }
-
-            // State aktualisieren only after successful load
-            if (!this.state[pluginId]) {
-                this.state[pluginId] = {};
-            }
-            this.state[pluginId].enabled = true;
-            this.saveState();
 
             this.logger.info(`Enabled plugin: ${pluginId}`);
             this.emit('plugin:enabled', pluginId);
