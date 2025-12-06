@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,20 +18,22 @@ import (
 )
 
 type Launcher struct {
-	nodePath string
-	appDir   string
-	progress int
-	status   string
-	clients  map[chan string]bool
-	logFile  *os.File
-	logger   *log.Logger
+	nodePath     string
+	appDir       string
+	progress     int
+	status       string
+	clients      map[chan string]bool
+	logFile      *os.File
+	logger       *log.Logger
+	envFileFixed bool // Track if we auto-created .env file
 }
 
 func NewLauncher() *Launcher {
 	return &Launcher{
-		status:   "Initialisiere...",
-		progress: 0,
-		clients:  make(map[chan string]bool),
+		status:       "Initialisiere...",
+		progress:     0,
+		clients:      make(map[chan string]bool),
+		envFileFixed: false,
 	}
 }
 
@@ -257,6 +260,80 @@ func (l *Launcher) waitForServer(timeout time.Duration) error {
 	return fmt.Errorf("Server did not start within %v", timeout)
 }
 
+// autoFixEnvFile checks if .env exists and creates it from .env.example if missing
+func (l *Launcher) autoFixEnvFile() error {
+	envPath := filepath.Join(l.appDir, ".env")
+	envExamplePath := filepath.Join(l.appDir, ".env.example")
+	
+	// Check if .env already exists
+	if _, err := os.Stat(envPath); err == nil {
+		l.logger.Println("[INFO] .env file already exists")
+		return nil
+	}
+	
+	// Check if .env.example exists
+	if _, err := os.Stat(envExamplePath); os.IsNotExist(err) {
+		l.logger.Println("[WARNING] .env.example not found, cannot auto-create .env")
+		return fmt.Errorf(".env.example not found")
+	}
+	
+	l.logger.Println("[AUTO-FIX] Creating .env from .env.example...")
+	l.updateProgress(85, "🔧 Auto-Fix: Erstelle .env Datei...")
+	
+	// Read .env.example
+	input, err := os.ReadFile(envExamplePath)
+	if err != nil {
+		l.logger.Printf("[ERROR] Failed to read .env.example: %v\n", err)
+		return err
+	}
+	
+	// Write to .env
+	err = os.WriteFile(envPath, input, 0644)
+	if err != nil {
+		l.logger.Printf("[ERROR] Failed to write .env: %v\n", err)
+		return err
+	}
+	
+	l.logger.Println("[SUCCESS] .env file created successfully")
+	l.updateProgress(86, "✅ .env Datei erstellt!")
+	l.envFileFixed = true // Mark that we fixed the .env file
+	time.Sleep(1 * time.Second)
+	
+	return nil
+}
+
+// checkPortAvailable checks if a port is available
+func (l *Launcher) checkPortAvailable(port int) bool {
+	address := fmt.Sprintf("localhost:%d", port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return false
+	}
+	listener.Close()
+	return true
+}
+
+// autoFixPort checks if port 3000 is available and logs status
+func (l *Launcher) autoFixPort() {
+	l.logger.Println("[INFO] Checking if port 3000 is available...")
+	
+	if l.checkPortAvailable(3000) {
+		l.logger.Println("[SUCCESS] Port 3000 is available")
+		return
+	}
+	
+	l.logger.Println("[WARNING] Port 3000 is already in use")
+	l.updateProgress(87, "⚠️ Port 3000 belegt - Server wird alternativen Port nutzen")
+	time.Sleep(2 * time.Second)
+	
+	// Check if server is already running on 3000
+	if l.checkServerHealthOnPort(3000) {
+		l.logger.Println("[INFO] Server is already running on port 3000")
+		l.updateProgress(88, "ℹ️ Server läuft bereits auf Port 3000")
+		time.Sleep(2 * time.Second)
+	}
+}
+
 func (l *Launcher) runLauncher() {
 	time.Sleep(1 * time.Second) // Give browser time to load
 
@@ -328,7 +405,23 @@ func (l *Launcher) runLauncher() {
 	}
 	time.Sleep(300 * time.Millisecond)
 
-	// Phase 4: Start tool (80-100%)
+	// Phase 3.5: Auto-fix common issues (80-89%)
+	l.updateProgress(82, "Prüfe Konfiguration...")
+	l.logger.Println("[Phase 3.5] Auto-fixing common issues...")
+	time.Sleep(300 * time.Millisecond)
+	
+	// Auto-fix: Create .env file if missing
+	if err := l.autoFixEnvFile(); err != nil {
+		l.logger.Printf("[WARNING] Could not auto-create .env: %v\n", err)
+	}
+	
+	// Auto-fix: Check port availability
+	l.autoFixPort()
+	
+	l.updateProgress(89, "Konfiguration geprüft!")
+	time.Sleep(300 * time.Millisecond)
+
+	// Phase 4: Start tool (90-100%)
 	l.updateProgress(90, "Starte Tool...")
 	l.logger.Println("[Phase 4] Starting Node.js server...")
 	time.Sleep(500 * time.Millisecond)
@@ -379,15 +472,42 @@ func (l *Launcher) runLauncher() {
 			l.logger.Println("[ERROR]  - Syntax-Fehler im Code")
 			l.logger.Println("[ERROR] ===========================================")
 			
+			// Check if we just fixed the .env file - if so, retry once
+			if l.envFileFixed {
+				l.logger.Println("[AUTO-FIX] .env file was just created - attempting restart...")
+				l.updateProgress(95, "🔄 .env erstellt - starte Server neu...")
+				time.Sleep(3 * time.Second)
+				
+				// Mark that we already tried the fix
+				l.envFileFixed = false
+				
+				// Start server again
+				cmd, err = l.startTool()
+				if err != nil {
+					l.logger.Printf("[ERROR] Retry failed to start server: %v\n", err)
+				} else {
+					// Monitor the restarted process
+					go func() {
+						processDied <- cmd.Wait()
+					}()
+					
+					l.updateProgress(96, "🔄 Server neugestartet - warte auf Antwort...")
+					l.logger.Println("[INFO] Server restarted after .env fix - waiting for health check...")
+					
+					// Reset the ticker for another try
+					continue
+				}
+			}
+			
 			l.updateProgress(95, "⚠️ Server konnte nicht starten!")
 			time.Sleep(2 * time.Second)
-			l.updateProgress(96, "📋 Prüfe app/logs/launcher_*.log für Details")
+			l.updateProgress(96, "📋 Alle Auto-Fixes wurden versucht")
 			time.Sleep(2 * time.Second)
-			l.updateProgress(97, "💡 Lösung 1: Kopiere app/.env.example zu app/.env")
+			l.updateProgress(97, "💡 Prüfe app/logs/launcher_*.log für Details")
 			time.Sleep(2 * time.Second)
-			l.updateProgress(98, "💡 Lösung 2: Prüfe ob Port 3000 frei ist")
+			l.updateProgress(98, "💡 Oder führe manuell: cd app && npm install")
 			time.Sleep(2 * time.Second)
-			l.updateProgress(99, "💡 Lösung 3: Führe 'cd app && npm install' aus")
+			l.updateProgress(99, "💡 Oder prüfe ob Port 3000 frei ist")
 			time.Sleep(2 * time.Second)
 			l.updateProgress(100, "❌ Launcher wird in 15 Sekunden geschlossen...")
 			time.Sleep(15 * time.Second)
