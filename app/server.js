@@ -357,9 +357,10 @@ const initState = require('./modules/initialization-state');
 
 // ========== DATABASE INITIALISIEREN ==========
 const dbPath = profileManager.getProfilePath(activeProfile);
-const db = new Database(dbPath);
+const db = new Database(dbPath, activeProfile); // Pass streamer_id as activeProfile
 logger.info(`✅ Database initialized: ${dbPath}`);
 logger.info(`💡 All settings (including API keys) are stored here and will survive app updates!`);
+logger.info(`👤 Streamer ID for scoped data: ${activeProfile}`);
 initState.setDatabaseReady();
 
 // ========== MODULE INITIALISIEREN ==========
@@ -388,7 +389,8 @@ logger.info('⚡ IFTTT Engine initialized (replaces FlowEngine)');
 // New Modules
 const obs = new OBSWebSocket(db, io, logger);
 const subscriptionTiers = new SubscriptionTiers(db, io, logger);
-const leaderboard = new Leaderboard(db, io, logger);
+const leaderboard = new Leaderboard(db, io, activeProfile); // Pass streamer_id as activeProfile
+logger.info(`✅ Leaderboard initialized with streamer scope: ${activeProfile}`);
 
 // Plugin-System initialisieren
 const pluginsDir = path.join(__dirname, 'plugins');
