@@ -1811,6 +1811,9 @@ class QuizShowPlugin {
                 // Get MVP for display
                 const mvp = this.getMVPPlayer();
 
+                // Show end game leaderboard
+                await this.showLeaderboardAtEnd();
+
                 this.api.emit('quiz-show:stopped', {});
                 this.api.emit('quiz-show:quiz-ended', { mvp });
                 socket.emit('quiz-show:stopped', { success: true });
@@ -2161,6 +2164,13 @@ class QuizShowPlugin {
 
         this.api.log(`Round ended. Correct answers: ${results.correctUsers.length}/${this.gameState.answers.size}`, 'info');
 
+        // Show leaderboard after round if configured
+        if (this.config.leaderboardShowAfterRound) {
+            setTimeout(() => {
+                this.showLeaderboardAfterRound();
+            }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
+        }
+
         // Auto mode - automatically start next round after delay
         if (this.config.autoMode) {
             const delay = (this.config.autoModeDelay || 5) * 1000;
@@ -2169,6 +2179,99 @@ class QuizShowPlugin {
                     this.api.log('Error auto-starting next round: ' + err.message, 'error');
                 });
             }, delay);
+        }
+    }
+
+    async showLeaderboardAfterRound() {
+        try {
+            const displayType = this.config.leaderboardRoundDisplayType || 'both';
+            const animationStyle = this.config.leaderboardAnimationStyle || 'fade';
+            
+            let leaderboard = [];
+
+            if (displayType === 'round' || displayType === 'both') {
+                // Get round leaderboard (current question results)
+                const results = this.calculateResults();
+                leaderboard = results.correctUsers.map((user, index) => ({
+                    username: user.username,
+                    points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
+                    rank: index + 1
+                }));
+            }
+
+            if (displayType === 'season' || displayType === 'both') {
+                // Get season leaderboard
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                if (activeSeason) {
+                    const seasonLeaderboard = this.db.prepare(
+                        'SELECT user_id, username, points FROM leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                    ).all(activeSeason.id);
+                    
+                    leaderboard = seasonLeaderboard.map((entry, index) => ({
+                        username: entry.username,
+                        points: entry.points,
+                        rank: index + 1
+                    }));
+                }
+            }
+
+            // Emit leaderboard display event
+            this.api.emit('quiz-show:show-leaderboard', {
+                leaderboard,
+                displayType,
+                animationStyle
+            });
+
+            // Auto-hide leaderboard after configured delay
+            if (this.config.leaderboardAutoHideDelay > 0) {
+                setTimeout(() => {
+                    this.api.emit('quiz-show:hide-leaderboard');
+                }, this.config.leaderboardAutoHideDelay * 1000);
+            }
+        } catch (error) {
+            this.api.log('Error showing leaderboard: ' + error.message, 'error');
+        }
+    }
+
+    async showLeaderboardAtEnd() {
+        try {
+            const displayType = this.config.leaderboardEndGameDisplayType || 'season';
+            const animationStyle = this.config.leaderboardAnimationStyle || 'fade';
+            
+            let leaderboard = [];
+
+            if (displayType === 'season') {
+                // Get season leaderboard
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                if (activeSeason) {
+                    const seasonLeaderboard = this.db.prepare(
+                        'SELECT user_id, username, points FROM leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                    ).all(activeSeason.id);
+                    
+                    leaderboard = seasonLeaderboard.map((entry, index) => ({
+                        username: entry.username,
+                        points: entry.points,
+                        rank: index + 1
+                    }));
+                }
+            } else {
+                // Show last round results
+                const results = this.calculateResults();
+                leaderboard = results.correctUsers.map((user, index) => ({
+                    username: user.username,
+                    points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
+                    rank: index + 1
+                }));
+            }
+
+            // Emit leaderboard display event
+            this.api.emit('quiz-show:show-leaderboard', {
+                leaderboard,
+                displayType,
+                animationStyle
+            });
+        } catch (error) {
+            this.api.log('Error showing end game leaderboard: ' + error.message, 'error');
         }
     }
 
@@ -2551,6 +2654,7 @@ class QuizShowPlugin {
             jokerEvents: this.gameState.jokerEvents,
             hiddenAnswers: this.gameState.hiddenAnswers,
             revealedWrongAnswer: this.gameState.revealedWrongAnswer,
+            giftJokerMappings: this.config.giftJokerMappings || {}, // NEW: Include gift-joker mappings
             votersPerAnswer: this.gameState.votersPerAnswer, // Include voter icon data
             voterIconsConfig: {
                 enabled: this.config.voterIconsEnabled,
