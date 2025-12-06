@@ -32,7 +32,7 @@ class ZappieHellManager extends EventEmitter {
   /**
    * Initialize database tables for ZappieHell
    */
-  static initializeTables(db) {
+  static initializeTables(db, api) {
     try {
       // Goals table
       db.exec(`
@@ -74,10 +74,16 @@ class ZappieHellManager extends EventEmitter {
         )
       `);
 
-      logger.info('[ZappieHellManager] Database tables initialized');
+      if (api && api.log) {
+        api.log('[ZappieHellManager] Database tables initialized', 'info');
+      }
     } catch (error) {
       const errorMsg = `[ZappieHellManager] Error initializing tables: ${error.message}`;
-      console.error(errorMsg);
+      if (api && api.log) {
+        api.log(errorMsg, 'error');
+      } else {
+        console.error(errorMsg);
+      }
       throw error;
     }
   }
