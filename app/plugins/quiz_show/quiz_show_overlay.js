@@ -427,6 +427,14 @@
         socket.on('quiz-show:quiz-ended', handleQuizEnded);
         socket.on('quiz-show:brand-kit-updated', handleBrandKitUpdated);
         socket.on('quiz-show:error', handleQuizError);
+        
+        // NEW: Leaderboard events
+        socket.on('quiz-show:show-leaderboard', handleShowLeaderboard);
+        socket.on('quiz-show:hide-leaderboard', handleHideLeaderboard);
+        socket.on('quiz-show:leaderboard-updated', handleLeaderboardUpdated);
+        
+        // NEW: Custom layout events
+        socket.on('quiz-show:layout-updated', handleLayoutUpdated);
     }
 
     function handleQuizError(data) {
@@ -594,6 +602,11 @@
                 updateVoterIcons();
             }
 
+            // Update joker info display
+            if (state.jokerEvents) {
+                updateJokerInfo(state.jokerEvents, state.giftJokerMappings || {});
+            }
+
             if (currentState === States.IDLE || currentState === States.WAIT_NEXT) {
                 transitionToState(States.QUESTION_INTRO);
             }
@@ -647,7 +660,10 @@
 
         showJokerNotification(joker);
 
-        if (joker.type === '50' && joker.data && joker.data.hiddenAnswers) {
+        if (joker.type === '25' && joker.data && joker.data.hiddenAnswers) {
+            // 25% joker - hide 1 wrong answer
+            animateHideAnswers(joker.data.hiddenAnswers);
+        } else if (joker.type === '50' && joker.data && joker.data.hiddenAnswers) {
             animateHideAnswers(joker.data.hiddenAnswers);
         } else if (joker.type === 'info' && joker.data && joker.data.revealedWrongAnswer !== undefined) {
             animateMarkWrongAnswer(joker.data.revealedWrongAnswer);
@@ -1309,6 +1325,238 @@
             container.innerHTML = '';
             container.classList.remove('has-voters');
         });
+    }
+
+    // ============================================
+    // LEADERBOARD DISPLAY
+    // ============================================
+
+    function handleShowLeaderboard(data) {
+        try {
+            const { leaderboard, displayType, animationStyle } = data;
+            
+            if (!leaderboard || leaderboard.length === 0) {
+                console.log('No leaderboard data to display');
+                return;
+            }
+
+            const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+            const leaderboardList = document.getElementById('leaderboardList');
+            const leaderboardType = document.getElementById('leaderboardType');
+
+            if (!leaderboardOverlay || !leaderboardList || !leaderboardType) {
+                console.error('Leaderboard elements not found');
+                return;
+            }
+
+            // Set display type
+            leaderboardType.textContent = displayType === 'round' ? 'Runde' : displayType === 'season' ? 'Season' : 'Runde + Season';
+
+            // Clear existing entries
+            leaderboardList.innerHTML = '';
+
+            // Create leaderboard entries
+            leaderboard.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.className = 'leaderboard-entry';
+
+                const rank = document.createElement('div');
+                rank.className = `leaderboard-rank rank-${index + 1}`;
+                rank.textContent = `#${index + 1}`;
+
+                const username = document.createElement('div');
+                username.className = 'leaderboard-username';
+                username.textContent = entry.username || 'Unknown';
+
+                const points = document.createElement('div');
+                points.className = 'leaderboard-points';
+                points.textContent = `${entry.points || 0} Pkt`;
+
+                li.appendChild(rank);
+                li.appendChild(username);
+                li.appendChild(points);
+                leaderboardList.appendChild(li);
+            });
+
+            // Set animation style
+            leaderboardOverlay.setAttribute('data-animation', animationStyle || 'fade');
+
+            // Show leaderboard
+            leaderboardOverlay.classList.remove('hidden');
+
+            console.log('Leaderboard displayed:', displayType);
+        } catch (error) {
+            console.error('Error displaying leaderboard:', error);
+        }
+    }
+
+    function handleHideLeaderboard() {
+        try {
+            const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+            if (leaderboardOverlay) {
+                leaderboardOverlay.classList.add('hidden');
+            }
+            console.log('Leaderboard hidden');
+        } catch (error) {
+            console.error('Error hiding leaderboard:', error);
+        }
+    }
+
+    function handleLeaderboardUpdated(data) {
+        try {
+            // If leaderboard is currently visible, update it
+            const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+            if (leaderboardOverlay && !leaderboardOverlay.classList.contains('hidden')) {
+                handleShowLeaderboard(data);
+            }
+        } catch (error) {
+            console.error('Error updating leaderboard:', error);
+        }
+    }
+
+    // ============================================
+    // JOKER INFO DISPLAY
+    // ============================================
+
+    function updateJokerInfo(jokerEvents, giftJokerMappings) {
+        try {
+            const jokerInfoOverlay = document.getElementById('jokerInfoOverlay');
+            const jokerList = document.getElementById('jokerList');
+
+            if (!jokerInfoOverlay || !jokerList) {
+                return;
+            }
+
+            // Clear existing jokers
+            jokerList.innerHTML = '';
+
+            // Define available jokers
+            const availableJokers = [
+                { type: '25', label: '25% Joker', icon: '🎯', used: false },
+                { type: '50', label: '50:50 Joker', icon: '⚖️', used: false },
+                { type: 'info', label: 'Info Joker', icon: 'ℹ️', used: false },
+                { type: 'time', label: 'Zeit Joker', icon: '⏱️', used: false }
+            ];
+
+            // Mark used jokers
+            jokerEvents.forEach(event => {
+                const joker = availableJokers.find(j => j.type === event.type);
+                if (joker) {
+                    joker.used = true;
+                    joker.giftActivated = event.isGiftActivated;
+                    joker.giftIcon = event.giftIcon;
+                }
+            });
+
+            // Create joker items
+            availableJokers.forEach(joker => {
+                const item = document.createElement('div');
+                item.className = `joker-item ${joker.used ? 'used' : ''}`;
+                if (joker.used && joker.giftActivated) {
+                    item.classList.add('activated');
+                }
+
+                const icon = document.createElement('div');
+                icon.className = 'joker-icon';
+                
+                if (joker.used && joker.giftActivated && joker.giftIcon) {
+                    const img = document.createElement('img');
+                    img.src = joker.giftIcon;
+                    img.className = 'joker-gift-icon';
+                    img.alt = joker.label;
+                    icon.appendChild(img);
+                } else {
+                    icon.textContent = joker.icon;
+                }
+
+                const label = document.createElement('div');
+                label.className = 'joker-label';
+                label.textContent = joker.label;
+
+                item.appendChild(icon);
+                item.appendChild(label);
+                jokerList.appendChild(item);
+            });
+
+            // Show joker info if there are joker events
+            if (jokerEvents.length > 0) {
+                jokerInfoOverlay.classList.remove('hidden');
+            } else {
+                jokerInfoOverlay.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error updating joker info:', error);
+        }
+    }
+
+    // ============================================
+    // CUSTOM LAYOUT SUPPORT
+    // ============================================
+
+    function handleLayoutUpdated(data) {
+        try {
+            const { layout, customLayoutEnabled } = data;
+
+            if (!customLayoutEnabled || !layout) {
+                // Disable custom layout
+                document.getElementById('overlay-container').removeAttribute('data-custom-layout');
+                return;
+            }
+
+            const overlayContainer = document.getElementById('overlay-container');
+            overlayContainer.setAttribute('data-custom-layout', 'true');
+
+            // Apply layout configuration via CSS variables
+            const config = typeof layout.layout_config === 'string' 
+                ? JSON.parse(layout.layout_config) 
+                : layout.layout_config;
+
+            const root = document.documentElement;
+
+            // Question section
+            if (config.question) {
+                root.style.setProperty('--question-top', `${config.question.y}px`);
+                root.style.setProperty('--question-left', `${config.question.x}px`);
+                root.style.setProperty('--question-width', `${config.question.width}px`);
+                root.style.setProperty('--question-height', `${config.question.height}px`);
+            }
+
+            // Answers section
+            if (config.answers) {
+                root.style.setProperty('--answers-top', `${config.answers.y}px`);
+                root.style.setProperty('--answers-left', `${config.answers.x}px`);
+                root.style.setProperty('--answers-width', `${config.answers.width}px`);
+                root.style.setProperty('--answers-height', `${config.answers.height}px`);
+            }
+
+            // Timer section
+            if (config.timer) {
+                root.style.setProperty('--timer-top', `${config.timer.y}px`);
+                root.style.setProperty('--timer-left', `${config.timer.x}px`);
+                root.style.setProperty('--timer-width', `${config.timer.width}px`);
+                root.style.setProperty('--timer-height', `${config.timer.height}px`);
+            }
+
+            // Leaderboard
+            if (config.leaderboard) {
+                root.style.setProperty('--leaderboard-top', `${config.leaderboard.y}px`);
+                root.style.setProperty('--leaderboard-left', `${config.leaderboard.x}px`);
+                root.style.setProperty('--leaderboard-width', `${config.leaderboard.width}px`);
+                root.style.setProperty('--leaderboard-height', `${config.leaderboard.height}px`);
+            }
+
+            // Joker info
+            if (config.jokerInfo) {
+                root.style.setProperty('--joker-info-top', `${config.jokerInfo.y}px`);
+                root.style.setProperty('--joker-info-left', `${config.jokerInfo.x}px`);
+                root.style.setProperty('--joker-info-width', `${config.jokerInfo.width}px`);
+                root.style.setProperty('--joker-info-height', `${config.jokerInfo.height}px`);
+            }
+
+            console.log('Custom layout applied:', layout.name);
+        } catch (error) {
+            console.error('Error applying custom layout:', error);
+        }
     }
 
     // ============================================

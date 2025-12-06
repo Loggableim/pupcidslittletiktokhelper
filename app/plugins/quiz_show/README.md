@@ -25,19 +25,26 @@ Ein vollständig funktionierendes interaktives Quiz-Show-Plugin im Stil von "Wer
 - ✅ Case-insensitive Matching
 - ✅ Superfan-Joker Support
 
-### 4. Joker-System (Nur Superfans)
+### 4. Joker-System
+- ✅ **!joker25**: 25% Joker (entfernt 1 falsche Antwort) - NEU!
 - ✅ **!joker50**: 50:50 Joker (entfernt 2 falsche Antworten)
 - ✅ **!jokerInfo**: Info Joker (zeigt eine falsche Antwort)
 - ✅ **!jokerTime**: Zeit Joker (verlängert Countdown)
 - ✅ Konfigurierbare Joker-Limits pro Runde
 - ✅ Visuelle Joker-Aktivierungs-Animationen
+- ✅ **Gift-Joker Integration**: TikTok-Geschenke können Jokern zugeordnet werden - NEU!
+- ✅ **Joker HUD**: Aktive Joker werden im Overlay angezeigt - NEU!
 
 ### 5. Leaderboard
 - ✅ Persistente Punkteverfolgung pro User
+- ✅ Season-basiertes Leaderboard System - NEU!
 - ✅ Sortierung nach Punkten
 - ✅ Export/Import Funktionalität
 - ✅ Reset-Option
 - ✅ Live-Updates
+- ✅ **Automatische Anzeige**: Leaderboard wird nach jeder Runde automatisch angezeigt - NEU!
+- ✅ **Konfigurierbar**: Runden-Leaderboard, Season-Leaderboard oder beides - NEU!
+- ✅ **Animationen**: Einblenden, Gleiten, Zoomen - NEU!
 
 ### 6. Modern UI
 - ✅ Tab-basiertes Interface (Dashboard, Fragen, Einstellungen, Leaderboard)
@@ -48,6 +55,33 @@ Ein vollständig funktionierendes interaktives Quiz-Show-Plugin im Stil von "Wer
 
 ### 7. High-End Overlay
 - ✅ Glassmorphism Design
+- ✅ Neon-Glow-Effekte
+- ✅ Circular Progress Timer mit Farbverlauf
+- ✅ Smooth Animationen (GPU-beschleunigt)
+- ✅ State Machine für flüssige Übergänge
+- ✅ Joker-Animationen
+- ✅ Richtige-Antwort-Reveal-Effekt
+- ✅ **Responsive Design**: Funktioniert in horizontaler und vertikaler Ausrichtung - NEU!
+- ✅ **Custom Layouts**: Drag-and-Drop Editor für benutzerdefinierte Layouts - NEU!
+- ✅ **Orientation Support**: Automatische Anpassung an Portrait/Landscape - NEU!
+
+### 8. TTS Integration - NEU!
+- ✅ **Lautstärkeregelung**: Globale und Session-spezifische TTS-Lautstärke (0-100%)
+- ✅ **Konfigurierbar**: Ein-/Ausschaltbar per Einstellung
+- ✅ **Ansagen**: Automatische Ansage der richtigen Antwort und Zusatzinfos
+
+### 9. Layout Editor - NEU!
+- ✅ **Drag & Drop**: Visuelle Positionierung aller Overlay-Elemente
+- ✅ **Auflösungsauswahl**: Unterstützt beliebige Auflösungen (Standard: 1920x1080, 1080x1920)
+- ✅ **Vorschau**: Live-Vorschau des Layouts während der Bearbeitung
+- ✅ **Speichern & Laden**: Mehrere Layouts pro Ausrichtung speicherbar
+- ✅ **Standard-Layouts**: Vorkonfigurierte Layouts für horizontal und vertikal
+
+### 10. Gift Catalogue Integration - NEU!
+- ✅ **Joker-Zuordnung**: TikTok-Geschenke können Jokern zugeordnet werden
+- ✅ **Automatische Aktivierung**: Geschenk senden = Joker aktivieren
+- ✅ **Verwaltung**: Einfaches Zuordnungs-Interface im Admin-Panel
+- ✅ **Anzeige**: Gift-Grafiken werden im Joker-HUD angezeigt
 - ✅ Neon-Glow-Effekte
 - ✅ Circular Progress Timer mit Farbverlauf
 - ✅ Smooth Animationen (GPU-beschleunigt)

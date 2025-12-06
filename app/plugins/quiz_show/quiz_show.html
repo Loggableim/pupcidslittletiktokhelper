@@ -39,6 +39,12 @@
             <button class="tab-button" data-tab="hud">
                 <span>🎨 HUD Overlay</span>
             </button>
+            <button class="tab-button" data-tab="layout-editor">
+                <span>📐 Layout Editor</span>
+            </button>
+            <button class="tab-button" data-tab="gift-jokers">
+                <span>🎁 Gift-Joker</span>
+            </button>
         </div>
 
         <!-- Dashboard Tab -->
@@ -925,6 +931,278 @@
                             <strong>Drag & Drop:</strong> Öffnen Sie das Overlay und halten Sie Strg/Cmd gedrückt, um Elemente zu verschieben. Drücken Sie 'G', um Snap-to-Grid zu aktivieren/deaktivieren.
                         </div>
                         <div id="hudSaveMessage" class="message hidden"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layout Editor Tab -->
+        <div id="layout-editor" class="tab-content">
+            <div class="content-grid">
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>📐 Layout Editor</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="help-text">
+                            Erstellen Sie benutzerdefinierte Layouts für Ihr Quiz-Overlay. Wählen Sie eine Auflösung und positionieren Sie alle Elemente.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layout List -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>📋 Gespeicherte Layouts</h2>
+                        <button id="createNewLayoutBtn" class="btn btn-primary btn-sm">➕ Neues Layout</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="layoutsList" class="layouts-list">
+                            <!-- Layouts will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layout Configuration -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>⚙️ Layout Konfiguration</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Layout Name</label>
+                            <input type="text" id="layoutName" class="form-control" placeholder="Mein Custom Layout">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Breite (px)</label>
+                                <input type="number" id="layoutWidth" class="form-control" value="1920" min="800" max="3840">
+                            </div>
+                            <div class="form-group">
+                                <label>Höhe (px)</label>
+                                <input type="number" id="layoutHeight" class="form-control" value="1080" min="600" max="2160">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ausrichtung</label>
+                            <select id="layoutOrientation" class="form-control">
+                                <option value="horizontal">Horizontal (Landscape)</option>
+                                <option value="vertical">Vertikal (Portrait)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="layoutIsDefault">
+                                Als Standard-Layout für diese Ausrichtung setzen
+                            </label>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="saveLayoutBtn" class="btn btn-primary">💾 Layout Speichern</button>
+                            <button id="deleteLayoutBtn" class="btn btn-danger">🗑️ Layout Löschen</button>
+                            <button id="cancelLayoutBtn" class="btn btn-secondary">❌ Abbrechen</button>
+                        </div>
+                        <div id="layoutSaveMessage" class="message hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Element Positions -->
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>📍 Element Positionen</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="layout-preview" id="layoutPreview">
+                            <div class="preview-canvas" id="previewCanvas">
+                                <div class="layout-element draggable" id="elem-question" data-element="question">
+                                    <div class="element-label">❓ Frage</div>
+                                    <div class="element-resize-handle"></div>
+                                </div>
+                                <div class="layout-element draggable" id="elem-answers" data-element="answers">
+                                    <div class="element-label">🅰️ Antworten</div>
+                                    <div class="element-resize-handle"></div>
+                                </div>
+                                <div class="layout-element draggable" id="elem-timer" data-element="timer">
+                                    <div class="element-label">⏱️ Timer</div>
+                                    <div class="element-resize-handle"></div>
+                                </div>
+                                <div class="layout-element draggable" id="elem-leaderboard" data-element="leaderboard">
+                                    <div class="element-label">🏆 Leaderboard</div>
+                                    <div class="element-resize-handle"></div>
+                                </div>
+                                <div class="layout-element draggable" id="elem-jokerInfo" data-element="jokerInfo">
+                                    <div class="element-label">🎯 Joker Info</div>
+                                    <div class="element-resize-handle"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="help-text">
+                            Ziehen Sie die Elemente auf der Vorschau, um ihre Position anzupassen. Ziehen Sie an den Ecken, um die Größe zu ändern.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gift-Joker Mapping Tab -->
+        <div id="gift-jokers" class="tab-content">
+            <div class="content-grid">
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>🎁 Gift-Joker Zuordnung</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="help-text">
+                            Ordnen Sie TikTok-Geschenke bestimmten Jokern zu. Wenn ein Viewer ein zugeordnetes Geschenk sendet, wird automatisch der entsprechende Joker aktiviert.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gift-Joker List -->
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>📋 Aktive Zuordnungen</h2>
+                        <button id="addGiftJokerBtn" class="btn btn-primary btn-sm">➕ Zuordnung Hinzufügen</button>
+                    </div>
+                    <div class="panel-body">
+                        <table class="data-table" id="giftJokerTable">
+                            <thead>
+                                <tr>
+                                    <th>Geschenk ID</th>
+                                    <th>Geschenk Name</th>
+                                    <th>Joker Typ</th>
+                                    <th>Status</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="giftJokerTableBody">
+                                <!-- Gift-Joker mappings will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Add/Edit Gift-Joker Mapping -->
+                <div class="panel full-width" id="giftJokerFormPanel" style="display: none;">
+                    <div class="panel-header">
+                        <h2>➕ Zuordnung Hinzufügen/Bearbeiten</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Geschenk ID</label>
+                                <input type="number" id="giftJokerId" class="form-control" placeholder="z.B. 5655">
+                            </div>
+                            <div class="form-group">
+                                <label>Geschenk Name</label>
+                                <input type="text" id="giftJokerName" class="form-control" placeholder="z.B. Rose">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Joker Typ</label>
+                            <select id="giftJokerType" class="form-control">
+                                <option value="25">25% Joker (1 falsche Antwort entfernen)</option>
+                                <option value="50">50:50 Joker (2 falsche Antworten entfernen)</option>
+                                <option value="info">Info Joker (eine falsche Antwort markieren)</option>
+                                <option value="time">Zeit Joker (Zeit verlängern)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="giftJokerEnabled" checked>
+                                Aktiviert
+                            </label>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="saveGiftJokerBtn" class="btn btn-primary">💾 Zuordnung Speichern</button>
+                            <button id="cancelGiftJokerBtn" class="btn btn-secondary">❌ Abbrechen</button>
+                        </div>
+                        <div id="giftJokerSaveMessage" class="message hidden"></div>
+                    </div>
+                </div>
+
+                <!-- TTS Configuration -->
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>🔊 TTS Lautstärke</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Globale TTS Lautstärke (0-100%)</label>
+                            <input type="range" id="ttsVolumeGlobal" class="form-range" min="0" max="100" value="80">
+                            <div class="range-value" id="ttsVolumeGlobalValue">80%</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Session TTS Lautstärke (0-100%)</label>
+                            <input type="range" id="ttsVolumeSession" class="form-range" min="0" max="100" value="80">
+                            <div class="range-value" id="ttsVolumeSessionValue">80%</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="ttsEnabled" checked>
+                                TTS Aktiviert
+                            </label>
+                        </div>
+
+                        <button id="saveTTSConfigBtn" class="btn btn-primary">💾 TTS Einstellungen Speichern</button>
+                        <div id="ttsConfigSaveMessage" class="message hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard Display Configuration -->
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>🏆 Leaderboard Anzeige</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="leaderboardShowAfterRound" checked>
+                                Leaderboard nach jeder Runde anzeigen
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Runden-Anzeige Typ</label>
+                            <select id="leaderboardRoundDisplayType" class="form-control">
+                                <option value="round">Nur Runden-Leaderboard</option>
+                                <option value="season">Nur Season-Leaderboard</option>
+                                <option value="both">Runde + Season</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Spielende-Anzeige Typ</label>
+                            <select id="leaderboardEndGameDisplayType" class="form-control">
+                                <option value="round">Runden-Leaderboard</option>
+                                <option value="season">Season-Leaderboard</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Auto-Hide Verzögerung (Sekunden)</label>
+                            <input type="number" id="leaderboardAutoHideDelay" class="form-control" value="10" min="0" max="60">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Animationsstil</label>
+                            <select id="leaderboardAnimationStyle" class="form-control">
+                                <option value="fade">Einblenden (Fade)</option>
+                                <option value="slide">Hereingleiten (Slide)</option>
+                                <option value="zoom">Zoomen (Zoom)</option>
+                            </select>
+                        </div>
+
+                        <button id="saveLeaderboardConfigBtn" class="btn btn-primary">💾 Leaderboard Einstellungen Speichern</button>
+                        <div id="leaderboardConfigSaveMessage" class="message hidden"></div>
                     </div>
                 </div>
             </div>
