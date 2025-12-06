@@ -224,20 +224,17 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 	cmd := exec.Command(l.nodePath, launchJS)
 	cmd.Dir = l.appDir
 
-	// Redirect both stdout and stderr to log file and console
+	// Redirect both stdout and stderr to log file only (not os.Stdout because GUI mode has no console)
 	if l.logFile != nil {
-		multiWriter := io.MultiWriter(os.Stdout, l.logFile)
-		cmd.Stdout = multiWriter
-		cmd.Stderr = multiWriter
-	} else {
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = l.logFile
+		cmd.Stderr = l.logFile
 	}
-	cmd.Stdin = os.Stdin
+	// Note: We don't redirect stdin in GUI mode as there's no console
 
-	l.logger.Println("Starting Node.js server...")
-	l.logger.Printf("Command: %s %s\n", l.nodePath, launchJS)
-	l.logger.Printf("Working directory: %s\n", l.appDir)
+	l.logAndSync("Starting Node.js server...")
+	l.logAndSync("Command: %s %s", l.nodePath, launchJS)
+	l.logAndSync("Working directory: %s", l.appDir)
+	l.logAndSync("--- Node.js Server Output Start ---")
 
 	err := cmd.Start()
 	if err != nil {
@@ -483,11 +480,18 @@ func (l *Launcher) runLauncher() {
 		select {
 		case err := <-processDied:
 			// Process exited before server was ready
+			// Ensure log file is flushed to capture all server output
+			if l.logFile != nil {
+				l.logFile.Sync()
+				time.Sleep(100 * time.Millisecond) // Give a moment for any buffered writes
+			}
+			
+			l.logAndSync("--- Node.js Server Output End ---")
 			l.logAndSync("[ERROR] ===========================================")
 			l.logAndSync("[ERROR] Node.js process exited prematurely: %v", err)
 			l.logAndSync("[ERROR] Server crashed during startup!")
+			l.logAndSync("[ERROR] Check the server output above for the actual error")
 			l.logAndSync("[ERROR] ===========================================")
-			l.logAndSync("[ERROR] Bitte prüfe app/logs/launcher_*.log für Details")
 			l.logAndSync("[ERROR] Häufige Ursachen:")
 			l.logAndSync("[ERROR]  - Fehlende .env Datei (kopiere .env.example zu .env)")
 			l.logAndSync("[ERROR]  - Port 3000 bereits belegt")
