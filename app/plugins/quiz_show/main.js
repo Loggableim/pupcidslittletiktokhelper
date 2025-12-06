@@ -7,8 +7,11 @@ class QuizShowPlugin {
     constructor(api) {
         this.api = api;
 
-        // Database instance
+        // Plugin-specific database for questions, packages, sounds, etc. (not scoped)
         this.db = null;
+        
+        // Main scoped database for viewer-related data (quiz_leaderboard_entries)
+        this.mainDb = null;
 
         // Constants
         this.QUESTION_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -165,11 +168,14 @@ class QuizShowPlugin {
                 this.api.log('Database migration completed', 'info');
             }
 
-            // Initialize database with WAL mode for better concurrency
+            // Initialize plugin-specific database for questions/packages (not scoped)
             this.db = new Database(dbPath);
             this.db.pragma('journal_mode = WAL');
             
-            // Create tables if they don't exist
+            // Get main scoped database for viewer data (quiz_leaderboard_entries)
+            this.mainDb = this.api.getDatabase().db;
+            
+            // Create plugin-specific tables (questions, packages, etc.)
             this.db.exec(`
                 CREATE TABLE IF NOT EXISTS questions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -210,15 +216,6 @@ class QuizShowPlugin {
                     start_date DATETIME NOT NULL,
                     end_date DATETIME,
                     is_active BOOLEAN DEFAULT TRUE
-                );
-
-                CREATE TABLE IF NOT EXISTS leaderboard_entries (
-                    season_id INTEGER NOT NULL,
-                    user_id TEXT NOT NULL,
-                    username TEXT NOT NULL,
-                    points INTEGER NOT NULL DEFAULT 0,
-                    PRIMARY KEY (season_id, user_id),
-                    FOREIGN KEY (season_id) REFERENCES leaderboard_seasons(id) ON DELETE CASCADE
                 );
 
                 CREATE TABLE IF NOT EXISTS game_sounds (
@@ -281,12 +278,25 @@ class QuizShowPlugin {
                 CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
                 CREATE INDEX IF NOT EXISTS idx_questions_difficulty ON questions(difficulty);
                 CREATE INDEX IF NOT EXISTS idx_questions_package ON questions(package_id);
-                CREATE INDEX IF NOT EXISTS idx_leaderboard_season ON leaderboard_entries(season_id);
                 CREATE INDEX IF NOT EXISTS idx_package_category ON question_packages(category);
                 CREATE INDEX IF NOT EXISTS idx_question_history_asked_at ON question_history(asked_at);
                 CREATE INDEX IF NOT EXISTS idx_question_history_question_id ON question_history(question_id);
                 CREATE INDEX IF NOT EXISTS idx_gift_joker_gift_id ON gift_joker_mappings(gift_id);
                 CREATE INDEX IF NOT EXISTS idx_overlay_layouts_orientation ON overlay_layouts(orientation);
+            `);
+            
+            // Create quiz_leaderboard_entries in main scoped database (per-streamer)
+            this.mainDb.exec(`
+                CREATE TABLE IF NOT EXISTS quiz_quiz_leaderboard_entries (
+                    season_id INTEGER NOT NULL,
+                    user_id TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    points INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (season_id, user_id)
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_quiz_leaderboard_season ON quiz_quiz_leaderboard_entries(season_id);
+                CREATE INDEX IF NOT EXISTS idx_quiz_leaderboard_points ON quiz_quiz_leaderboard_entries(points DESC);
             `);
 
             // Ensure default season exists
@@ -445,7 +455,7 @@ class QuizShowPlugin {
                 this.api.log('Migrating old questions to SQLite...', 'info');
                 
                 const insert = this.db.prepare('INSERT INTO questions (question, answers, correct, category, difficulty, info) VALUES (?, ?, ?, ?, ?, ?)');
-                const insertMany = this.db.transaction((questions) => {
+                const insertMany = this.mainDb.transaction((questions) => {
                     for (const q of questions) {
                         insert.run(
                             q.question,
@@ -467,8 +477,8 @@ class QuizShowPlugin {
                 
                 const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
                 if (activeSeason) {
-                    const insert = this.db.prepare('INSERT INTO leaderboard_entries (season_id, user_id, username, points) VALUES (?, ?, ?, ?)');
-                    const insertMany = this.db.transaction((entries) => {
+                    const insert = this.mainDb.prepare('INSERT INTO quiz_leaderboard_entries (season_id, user_id, username, points) VALUES (?, ?, ?, ?)');
+                    const insertMany = this.mainDb.transaction((entries) => {
                         for (const [userId, data] of entries) {
                             insert.run(activeSeason.id, userId, data.username, data.points);
                         }
@@ -613,7 +623,7 @@ class QuizShowPlugin {
                 if (activeSeason) {
                     leaderboard = this.db.prepare(`
                         SELECT user_id as userId, username, points 
-                        FROM leaderboard_entries 
+                        FROM quiz_leaderboard_entries 
                         WHERE season_id = ? 
                         ORDER BY points DESC
                     `).all(activeSeason.id);
@@ -835,7 +845,7 @@ class QuizShowPlugin {
                     VALUES (?, ?, ?, ?, ?, ?)
                 `);
 
-                const insertMany = this.db.transaction((questions) => {
+                const insertMany = this.mainDb.transaction((questions) => {
                     let added = 0;
                     for (const q of questions) {
                         if (q.question && q.answers && q.answers.length === 4 && q.correct !== undefined) {
@@ -911,7 +921,7 @@ class QuizShowPlugin {
             try {
                 const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
                 if (activeSeason) {
-                    this.db.prepare('DELETE FROM leaderboard_entries WHERE season_id = ?').run(activeSeason.id);
+                    this.mainDb.prepare('DELETE FROM quiz_leaderboard_entries WHERE season_id = ?').run(activeSeason.id);
                 }
 
                 this.api.emit('quiz-show:leaderboard-updated', []);
@@ -930,7 +940,7 @@ class QuizShowPlugin {
                 if (activeSeason) {
                     data = this.db.prepare(`
                         SELECT user_id as userId, username, points 
-                        FROM leaderboard_entries 
+                        FROM quiz_leaderboard_entries 
                         WHERE season_id = ? 
                         ORDER BY points DESC
                     `).all(activeSeason.id);
@@ -956,15 +966,15 @@ class QuizShowPlugin {
                 }
 
                 // Clear existing entries
-                this.db.prepare('DELETE FROM leaderboard_entries WHERE season_id = ?').run(activeSeason.id);
+                this.mainDb.prepare('DELETE FROM quiz_leaderboard_entries WHERE season_id = ?').run(activeSeason.id);
 
                 // Insert new entries
                 const insert = this.db.prepare(`
-                    INSERT INTO leaderboard_entries (season_id, user_id, username, points) 
+                    INSERT INTO quiz_leaderboard_entries (season_id, user_id, username, points) 
                     VALUES (?, ?, ?, ?)
                 `);
                 
-                const insertMany = this.db.transaction((entries) => {
+                const insertMany = this.mainDb.transaction((entries) => {
                     for (const entry of entries) {
                         if (entry.userId && entry.username !== undefined && entry.points !== undefined) {
                             insert.run(activeSeason.id, entry.userId, entry.username, entry.points);
@@ -976,7 +986,7 @@ class QuizShowPlugin {
 
                 const leaderboardData = this.db.prepare(`
                     SELECT user_id as userId, username, points 
-                    FROM leaderboard_entries 
+                    FROM quiz_leaderboard_entries 
                     WHERE season_id = ? 
                     ORDER BY points DESC
                 `).all(activeSeason.id);
@@ -1037,7 +1047,7 @@ class QuizShowPlugin {
                 const seasonId = parseInt(req.params.id);
                 const leaderboard = this.db.prepare(`
                     SELECT user_id as userId, username, points 
-                    FROM leaderboard_entries 
+                    FROM quiz_leaderboard_entries 
                     WHERE season_id = ? 
                     ORDER BY points DESC
                 `).all(seasonId);
@@ -1277,7 +1287,7 @@ class QuizShowPlugin {
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 `);
 
-                const insertMany = this.db.transaction((questions) => {
+                const insertMany = this.mainDb.transaction((questions) => {
                     for (const q of questions) {
                         insertQuestion.run(
                             q.question,
@@ -2349,35 +2359,35 @@ class QuizShowPlugin {
 
             // Check if entry exists
             const existing = this.db.prepare(`
-                SELECT points FROM leaderboard_entries 
+                SELECT points FROM quiz_leaderboard_entries 
                 WHERE season_id = ? AND user_id = ?
             `).get(activeSeason.id, userId);
 
             if (existing) {
                 // Update existing entry
                 this.db.prepare(`
-                    UPDATE leaderboard_entries 
+                    UPDATE quiz_leaderboard_entries 
                     SET points = points + ?, username = ? 
                     WHERE season_id = ? AND user_id = ?
                 `).run(points, username, activeSeason.id, userId);
             } else {
                 // Insert new entry
                 this.db.prepare(`
-                    INSERT INTO leaderboard_entries (season_id, user_id, username, points) 
+                    INSERT INTO quiz_leaderboard_entries (season_id, user_id, username, points) 
                     VALUES (?, ?, ?, ?)
                 `).run(activeSeason.id, userId, username, points);
             }
 
             // Get updated total points
             const updated = this.db.prepare(`
-                SELECT points FROM leaderboard_entries 
+                SELECT points FROM quiz_leaderboard_entries 
                 WHERE season_id = ? AND user_id = ?
             `).get(activeSeason.id, userId);
 
             // Broadcast leaderboard update
             const leaderboardData = this.db.prepare(`
                 SELECT user_id as userId, username, points 
-                FROM leaderboard_entries 
+                FROM quiz_leaderboard_entries 
                 WHERE season_id = ? 
                 ORDER BY points DESC
             `).all(activeSeason.id);
@@ -2708,7 +2718,7 @@ class QuizShowPlugin {
 
             const mvp = this.db.prepare(`
                 SELECT user_id as userId, username, points 
-                FROM leaderboard_entries 
+                FROM quiz_leaderboard_entries 
                 WHERE season_id = ? 
                 ORDER BY points DESC 
                 LIMIT 1

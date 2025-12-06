@@ -11,11 +11,19 @@
 const logger = require('./logger');
 
 class LeaderboardManager {
-  constructor(db, io = null) {
+  constructor(db, io = null, streamerId = null) {
     this.db = db;
     this.io = io;
+    this.streamerId = streamerId || 'default';
     this.initDatabase();
     this.sessionStart = Date.now();
+  }
+
+  /**
+   * Set the streamer ID for scoped queries
+   */
+  setStreamerId(streamerId) {
+    this.streamerId = streamerId;
   }
 
   /**
@@ -24,7 +32,8 @@ class LeaderboardManager {
   initDatabase() {
     this.db.prepare(`
       CREATE TABLE IF NOT EXISTS leaderboard_stats (
-        username TEXT PRIMARY KEY,
+        username TEXT NOT NULL,
+        streamer_id TEXT NOT NULL,
         total_coins INTEGER DEFAULT 0,
         message_count INTEGER DEFAULT 0,
         like_count INTEGER DEFAULT 0,
@@ -34,7 +43,8 @@ class LeaderboardManager {
         first_seen INTEGER NOT NULL,
         last_seen INTEGER NOT NULL,
         session_coins INTEGER DEFAULT 0,
-        session_messages INTEGER DEFAULT 0
+        session_messages INTEGER DEFAULT 0,
+        PRIMARY KEY (username, streamer_id)
       )
     `).run();
 
@@ -46,16 +56,18 @@ class LeaderboardManager {
    */
   updateStats(username, eventType, data = {}) {
     const now = Date.now();
+    const sid = this.streamerId || 'default';
 
     // Get existing stats
     let stats = this.db.prepare(
-      'SELECT * FROM leaderboard_stats WHERE username = ?'
-    ).get(username);
+      'SELECT * FROM leaderboard_stats WHERE username = ? AND streamer_id = ?'
+    ).get(username, sid);
 
     if (!stats) {
       // Create new entry
       stats = {
         username,
+        streamer_id: sid,
         total_coins: 0,
         message_count: 0,
         like_count: 0,
@@ -101,11 +113,11 @@ class LeaderboardManager {
     // Upsert to database
     this.db.prepare(`
       INSERT INTO leaderboard_stats (
-        username, total_coins, message_count, like_count, share_count,
+        username, streamer_id, total_coins, message_count, like_count, share_count,
         gift_count, follow_count, first_seen, last_seen,
         session_coins, session_messages
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(username) DO UPDATE SET
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(username, streamer_id) DO UPDATE SET
         total_coins = ?,
         message_count = ?,
         like_count = ?,
@@ -117,6 +129,7 @@ class LeaderboardManager {
         session_messages = ?
     `).run(
       stats.username,
+      stats.streamer_id,
       stats.total_coins,
       stats.message_count,
       stats.like_count,
@@ -139,7 +152,7 @@ class LeaderboardManager {
       stats.session_messages
     );
 
-    logger.debug('Leaderboard stats updated', { username, eventType });
+    logger.debug('Leaderboard stats updated', { username, eventType, streamerId: sid });
 
     // Emit Socket.IO event for real-time updates
     if (this.io) {
@@ -162,6 +175,7 @@ class LeaderboardManager {
       period = 'all_time';
     }
 
+    const sid = this.streamerId || 'default';
     const column = period === 'session' ? 'session_coins' : 'total_coins';
 
     return this.db.prepare(`
@@ -171,10 +185,10 @@ class LeaderboardManager {
         gift_count,
         last_seen
       FROM leaderboard_stats
-      WHERE ${column} > 0
+      WHERE streamer_id = ? AND ${column} > 0
       ORDER BY ${column} DESC
       LIMIT ?
-    `).all(limit);
+    `).all(sid, limit);
   }
 
   /**
@@ -188,6 +202,7 @@ class LeaderboardManager {
       period = 'all_time';
     }
 
+    const sid = this.streamerId || 'default';
     const column = period === 'session' ? 'session_messages' : 'message_count';
 
     return this.db.prepare(`
@@ -196,10 +211,10 @@ class LeaderboardManager {
         ${column} as message_count,
         last_seen
       FROM leaderboard_stats
-      WHERE ${column} > 0
+      WHERE streamer_id = ? AND ${column} > 0
       ORDER BY ${column} DESC
       LIMIT ?
-    `).all(limit);
+    `).all(sid, limit);
   }
 
   /**
@@ -213,17 +228,18 @@ class LeaderboardManager {
       period = 'all_time';
     }
 
+    const sid = this.streamerId || 'default';
     const column = period === 'session' ? 'session_coins' : 'total_coins';
 
     const rank = this.db.prepare(`
       SELECT COUNT(*) + 1 as rank
       FROM leaderboard_stats
-      WHERE ${column} > (
+      WHERE streamer_id = ? AND ${column} > (
         SELECT ${column}
         FROM leaderboard_stats
-        WHERE username = ?
+        WHERE username = ? AND streamer_id = ?
       )
-    `).get(username);
+    `).get(sid, username, sid);
 
     return rank ? rank.rank : null;
   }
@@ -232,37 +248,42 @@ class LeaderboardManager {
    * Get user stats
    */
   getUserStats(username) {
+    const sid = this.streamerId || 'default';
     return this.db.prepare(
-      'SELECT * FROM leaderboard_stats WHERE username = ?'
-    ).get(username);
+      'SELECT * FROM leaderboard_stats WHERE username = ? AND streamer_id = ?'
+    ).get(username, sid);
   }
 
   /**
    * Reset session stats
    */
   resetSessionStats() {
+    const sid = this.streamerId || 'default';
     this.db.prepare(`
       UPDATE leaderboard_stats
       SET session_coins = 0, session_messages = 0
-    `).run();
+      WHERE streamer_id = ?
+    `).run(sid);
 
     this.sessionStart = Date.now();
-    logger.info('Session leaderboard stats reset');
+    logger.info('Session leaderboard stats reset for streamer:', sid);
   }
 
   /**
    * Reset all stats
    */
   resetAllStats() {
-    this.db.prepare('DELETE FROM leaderboard_stats').run();
+    const sid = this.streamerId || 'default';
+    this.db.prepare('DELETE FROM leaderboard_stats WHERE streamer_id = ?').run(sid);
     this.sessionStart = Date.now();
-    logger.info('All leaderboard stats reset');
+    logger.info('All leaderboard stats reset for streamer:', sid);
   }
 
   /**
    * Get leaderboard summary
    */
   getSummary() {
+    const sid = this.streamerId || 'default';
     const stats = this.db.prepare(`
       SELECT
         COUNT(*) as total_users,
@@ -270,7 +291,8 @@ class LeaderboardManager {
         SUM(message_count) as total_messages,
         SUM(gift_count) as total_gifts
       FROM leaderboard_stats
-    `).get();
+      WHERE streamer_id = ?
+    `).get(sid);
 
     return {
       ...stats,
@@ -283,7 +305,8 @@ class LeaderboardManager {
    * Export leaderboard data
    */
   exportData() {
-    return this.db.prepare('SELECT * FROM leaderboard_stats ORDER BY total_coins DESC').all();
+    const sid = this.streamerId || 'default';
+    return this.db.prepare('SELECT * FROM leaderboard_stats WHERE streamer_id = ? ORDER BY total_coins DESC').all(sid);
   }
 
   /**

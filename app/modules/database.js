@@ -4,8 +4,9 @@ const fs = require('fs');
 const path = require('path');
 
 class DatabaseManager {
-    constructor(dbPath) {
+    constructor(dbPath, streamerId = null) {
         this.dbPath = dbPath;
+        this.streamerId = streamerId; // Current streamer ID for scoped queries
         
         try {
             this.db = new Database(dbPath);
@@ -341,24 +342,29 @@ class DatabaseManager {
         `);
 
         // Per-User Milestone Tracking
+        // SCOPED BY STREAMER: Each viewer has separate milestone progress per streamer
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS milestone_user_stats (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL UNIQUE,
+                user_id TEXT NOT NULL,
+                streamer_id TEXT NOT NULL,
                 username TEXT NOT NULL,
                 cumulative_coins INTEGER DEFAULT 0,
                 current_milestone INTEGER DEFAULT 0,
                 last_tier_reached INTEGER DEFAULT 0,
                 last_trigger_at DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, streamer_id)
             )
         `);
 
         // Shared User Statistics (for cross-plugin usage)
+        // SCOPED BY STREAMER: Each viewer has separate stats per streamer
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS user_statistics (
-                user_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                streamer_id TEXT NOT NULL,
                 username TEXT NOT NULL,
                 unique_id TEXT,
                 profile_picture_url TEXT,
@@ -372,29 +378,44 @@ class DatabaseManager {
                 last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 last_gift_at DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, streamer_id)
             )
         `);
 
-        // Index for faster queries on user_statistics
+        // Run migrations BEFORE creating indexes to ensure schema is up-to-date
+        this.runMigrations();
+
+        // Index for faster queries on user_statistics (after migration)
         this.db.exec(`
             CREATE INDEX IF NOT EXISTS idx_user_stats_coins 
-            ON user_statistics(total_coins_sent DESC)
+            ON user_statistics(streamer_id, total_coins_sent DESC)
         `);
 
         this.db.exec(`
             CREATE INDEX IF NOT EXISTS idx_user_stats_username 
-            ON user_statistics(username)
+            ON user_statistics(streamer_id, username)
         `);
-
-        // Run migrations for schema updates
-        this.runMigrations();
 
         // Default-Einstellungen setzen
         this.setDefaultSettings();
         this.initializeEmojiRainDefaults();
         this.initializeDefaultVDONinjaLayouts(); // PATCH: VDO.Ninja Default Layouts
         this.initializeMilestoneDefaults(); // Gift Milestone Celebration Plugin
+    }
+
+    /**
+     * Set the streamer ID for scoped queries
+     */
+    setStreamerId(streamerId) {
+        this.streamerId = streamerId;
+    }
+
+    /**
+     * Get the current streamer ID
+     */
+    getStreamerId() {
+        return this.streamerId;
     }
 
     runMigrations() {
@@ -410,6 +431,113 @@ class DatabaseManager {
             }
         } catch (error) {
             console.error('Migration error:', error);
+        }
+
+        // Migration: Add streamer_id to user_statistics for scoped user profiles
+        try {
+            const userStatsTableInfo = this.db.prepare("PRAGMA table_info(user_statistics)").all();
+            const hasStreamerId = userStatsTableInfo.some(col => col.name === 'streamer_id');
+            
+            if (!hasStreamerId) {
+                console.log('Running migration: Adding streamer_id to user_statistics table for scoped profiles');
+                
+                // Create new table with streamer_id
+                this.db.exec(`
+                    CREATE TABLE user_statistics_new (
+                        user_id TEXT NOT NULL,
+                        streamer_id TEXT NOT NULL,
+                        username TEXT NOT NULL,
+                        unique_id TEXT,
+                        profile_picture_url TEXT,
+                        total_coins_sent INTEGER DEFAULT 0,
+                        total_gifts_sent INTEGER DEFAULT 0,
+                        total_comments INTEGER DEFAULT 0,
+                        total_likes INTEGER DEFAULT 0,
+                        total_shares INTEGER DEFAULT 0,
+                        total_follows INTEGER DEFAULT 0,
+                        first_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        last_gift_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (user_id, streamer_id)
+                    )
+                `);
+                
+                // Migrate existing data with default streamer_id
+                const defaultStreamerId = this.streamerId || 'default';
+                this.db.exec(`
+                    INSERT INTO user_statistics_new 
+                    SELECT user_id, '${defaultStreamerId}' as streamer_id, username, unique_id, 
+                           profile_picture_url, total_coins_sent, total_gifts_sent, 
+                           total_comments, total_likes, total_shares, total_follows,
+                           first_seen_at, last_seen_at, last_gift_at, created_at, updated_at
+                    FROM user_statistics
+                `);
+                
+                // Drop old table and rename new one
+                this.db.exec('DROP TABLE user_statistics');
+                this.db.exec('ALTER TABLE user_statistics_new RENAME TO user_statistics');
+                
+                // Recreate indexes
+                this.db.exec(`
+                    CREATE INDEX IF NOT EXISTS idx_user_stats_coins 
+                    ON user_statistics(streamer_id, total_coins_sent DESC)
+                `);
+                this.db.exec(`
+                    CREATE INDEX IF NOT EXISTS idx_user_stats_username 
+                    ON user_statistics(streamer_id, username)
+                `);
+                
+                console.log('Migration completed: user_statistics now scoped by streamer_id');
+            }
+        } catch (error) {
+            console.error('Migration error for user_statistics:', error);
+        }
+
+        // Migration: Add streamer_id to milestone_user_stats
+        try {
+            const milestoneTableInfo = this.db.prepare("PRAGMA table_info(milestone_user_stats)").all();
+            const hasStreamerId = milestoneTableInfo.some(col => col.name === 'streamer_id');
+            
+            if (!hasStreamerId) {
+                console.log('Running migration: Adding streamer_id to milestone_user_stats table');
+                
+                // Create new table with streamer_id
+                this.db.exec(`
+                    CREATE TABLE milestone_user_stats_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT NOT NULL,
+                        streamer_id TEXT NOT NULL,
+                        username TEXT NOT NULL,
+                        cumulative_coins INTEGER DEFAULT 0,
+                        current_milestone INTEGER DEFAULT 0,
+                        last_tier_reached INTEGER DEFAULT 0,
+                        last_trigger_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(user_id, streamer_id)
+                    )
+                `);
+                
+                // Migrate existing data
+                const defaultStreamerId = this.streamerId || 'default';
+                this.db.exec(`
+                    INSERT INTO milestone_user_stats_new 
+                    SELECT id, user_id, '${defaultStreamerId}' as streamer_id, username, 
+                           cumulative_coins, current_milestone, last_tier_reached,
+                           last_trigger_at, created_at, updated_at
+                    FROM milestone_user_stats
+                `);
+                
+                // Drop old table and rename
+                this.db.exec('DROP TABLE milestone_user_stats');
+                this.db.exec('ALTER TABLE milestone_user_stats_new RENAME TO milestone_user_stats');
+                
+                console.log('Migration completed: milestone_user_stats now scoped by streamer_id');
+            }
+        } catch (error) {
+            console.error('Migration error for milestone_user_stats:', error);
         }
     }
 
@@ -1691,34 +1819,38 @@ class DatabaseManager {
     /**
      * Get user milestone stats
      */
-    getUserMilestoneStats(userId) {
-        const stmt = this.db.prepare('SELECT * FROM milestone_user_stats WHERE user_id = ?');
-        return stmt.get(userId);
+    getUserMilestoneStats(userId, streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        const stmt = this.db.prepare('SELECT * FROM milestone_user_stats WHERE user_id = ? AND streamer_id = ?');
+        return stmt.get(userId, sid);
     }
 
     /**
-     * Get all user milestone stats
+     * Get all user milestone stats for current streamer
      */
-    getAllUserMilestoneStats() {
-        const stmt = this.db.prepare('SELECT * FROM milestone_user_stats ORDER BY cumulative_coins DESC');
-        return stmt.all();
+    getAllUserMilestoneStats(streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        const stmt = this.db.prepare('SELECT * FROM milestone_user_stats WHERE streamer_id = ? ORDER BY cumulative_coins DESC');
+        return stmt.all(sid);
     }
 
     /**
      * Add coins to a specific user's milestone tracker
      */
-    addCoinsToUserMilestone(userId, username, coins) {
+    addCoinsToUserMilestone(userId, username, coins, streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        
         // Get or create user stats
-        let userStats = this.getUserMilestoneStats(userId);
+        let userStats = this.getUserMilestoneStats(userId, sid);
         
         if (!userStats) {
-            // Create new user stats
+            // Create new user stats with initial coins
             const insertStmt = this.db.prepare(`
-                INSERT INTO milestone_user_stats (user_id, username, cumulative_coins)
-                VALUES (?, ?, ?)
+                INSERT INTO milestone_user_stats (user_id, streamer_id, username, cumulative_coins)
+                VALUES (?, ?, ?, 0)
             `);
-            insertStmt.run(userId, username, coins);
-            userStats = { user_id: userId, username, cumulative_coins: coins, current_milestone: 0, last_tier_reached: 0 };
+            insertStmt.run(userId, sid, username);
+            userStats = { user_id: userId, streamer_id: sid, username, cumulative_coins: 0, current_milestone: 0, last_tier_reached: 0 };
         }
 
         const previousCoins = userStats.cumulative_coins || 0;
@@ -1752,18 +1884,18 @@ class DatabaseManager {
                     last_tier_reached = ?,
                     last_trigger_at = CURRENT_TIMESTAMP,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
+                WHERE user_id = ? AND streamer_id = ?
             `);
-            updateStmt.run(newCoins, newTierLevel, userId);
+            updateStmt.run(newCoins, newTierLevel, userId, sid);
         } else {
             updateStmt = this.db.prepare(`
                 UPDATE milestone_user_stats
                 SET cumulative_coins = ?,
                     last_tier_reached = ?,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
+                WHERE user_id = ? AND streamer_id = ?
             `);
-            updateStmt.run(newCoins, newTierLevel, userId);
+            updateStmt.run(newCoins, newTierLevel, userId, sid);
         }
 
         return {
@@ -1777,19 +1909,21 @@ class DatabaseManager {
     }
 
     /**
-     * Reset all user milestone stats
+     * Reset all user milestone stats for current streamer
      */
-    resetAllUserMilestoneStats() {
-        const stmt = this.db.prepare('DELETE FROM milestone_user_stats');
-        stmt.run();
+    resetAllUserMilestoneStats(streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        const stmt = this.db.prepare('DELETE FROM milestone_user_stats WHERE streamer_id = ?');
+        stmt.run(sid);
     }
 
     /**
      * Reset a specific user's milestone stats
      */
-    resetUserMilestoneStats(userId) {
-        const stmt = this.db.prepare('DELETE FROM milestone_user_stats WHERE user_id = ?');
-        stmt.run(userId);
+    resetUserMilestoneStats(userId, streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        const stmt = this.db.prepare('DELETE FROM milestone_user_stats WHERE user_id = ? AND streamer_id = ?');
+        stmt.run(userId, sid);
     }
 
     /**
@@ -1800,44 +1934,49 @@ class DatabaseManager {
     /**
      * Get or create user statistics
      */
-    getUserStatistics(userId) {
-        const stmt = this.db.prepare('SELECT * FROM user_statistics WHERE user_id = ?');
-        return stmt.get(userId);
+    getUserStatistics(userId, streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        const stmt = this.db.prepare('SELECT * FROM user_statistics WHERE user_id = ? AND streamer_id = ?');
+        return stmt.get(userId, sid);
     }
 
     /**
      * Get all user statistics ordered by total coins
      */
-    getAllUserStatistics(limit = 100, minCoins = 0) {
+    getAllUserStatistics(limit = 100, minCoins = 0, streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
         const stmt = this.db.prepare(`
             SELECT * FROM user_statistics 
-            WHERE total_coins_sent >= ? 
+            WHERE streamer_id = ? AND total_coins_sent >= ? 
             ORDER BY total_coins_sent DESC 
             LIMIT ?
         `);
-        return stmt.all(minCoins, limit);
+        return stmt.all(sid, minCoins, limit);
     }
 
     /**
      * Update user statistics (used by gift, comment, like, share, follow events)
      */
-    updateUserStatistics(userId, username, updates) {
+    updateUserStatistics(userId, username, updates, streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        
         // Get existing stats or create new entry
-        let existing = this.getUserStatistics(userId);
+        let existing = this.getUserStatistics(userId, sid);
         
         if (!existing) {
             // Create new entry - use CASE for conditional timestamp
             const insertStmt = this.db.prepare(`
                 INSERT INTO user_statistics (
-                    user_id, username, unique_id, profile_picture_url,
+                    user_id, streamer_id, username, unique_id, profile_picture_url,
                     total_coins_sent, total_gifts_sent, total_comments,
                     total_likes, total_shares, total_follows,
                     first_seen_at, last_seen_at, last_gift_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CASE WHEN ? > 0 THEN CURRENT_TIMESTAMP ELSE NULL END)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CASE WHEN ? > 0 THEN CURRENT_TIMESTAMP ELSE NULL END)
             `);
             
             insertStmt.run(
                 userId,
+                sid,
                 username || 'Unknown',
                 updates.uniqueId || null,
                 updates.profilePictureUrl || null,
@@ -1866,7 +2005,7 @@ class DatabaseManager {
                     last_seen_at = CURRENT_TIMESTAMP,
                     last_gift_at = CASE WHEN ? > 0 THEN CURRENT_TIMESTAMP ELSE last_gift_at END,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
+                WHERE user_id = ? AND streamer_id = ?
             `);
             
             updateStmt.run(
@@ -1880,38 +2019,42 @@ class DatabaseManager {
                 updates.shares || 0,
                 updates.follows || 0,
                 updates.coins || 0,
-                userId
+                userId,
+                sid
             );
         }
         
-        return this.getUserStatistics(userId);
+        return this.getUserStatistics(userId, sid);
     }
 
     /**
      * Add coins to user statistics (convenience method for gift events)
      */
-    addCoinsToUserStats(userId, username, uniqueId, profilePictureUrl, coins) {
+    addCoinsToUserStats(userId, username, uniqueId, profilePictureUrl, coins, streamerId = null) {
         return this.updateUserStatistics(userId, username, {
             uniqueId,
             profilePictureUrl,
             coins,
             gifts: 1
-        });
+        }, streamerId);
     }
 
     /**
      * Reset user statistics (for testing or admin purposes)
      */
-    resetUserStatistics(userId) {
-        const stmt = this.db.prepare('DELETE FROM user_statistics WHERE user_id = ?');
-        stmt.run(userId);
+    resetUserStatistics(userId, streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        const stmt = this.db.prepare('DELETE FROM user_statistics WHERE user_id = ? AND streamer_id = ?');
+        stmt.run(userId, sid);
     }
 
     /**
-     * Reset all user statistics
+     * Reset all user statistics for current streamer
      */
-    resetAllUserStatistics() {
-        this.db.exec('DELETE FROM user_statistics');
+    resetAllUserStatistics(streamerId = null) {
+        const sid = streamerId || this.streamerId || 'default';
+        const stmt = this.db.prepare('DELETE FROM user_statistics WHERE streamer_id = ?');
+        stmt.run(sid);
     }
 
     /**

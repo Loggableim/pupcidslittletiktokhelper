@@ -2,26 +2,19 @@
  * Viewer XP Database Module
  * 
  * Manages persistent storage for viewer XP, levels, badges, streaks, and statistics.
- * Uses better-sqlite3 for high-performance, scalable storage.
+ * Uses the scoped database to ensure data isolation per streamer.
  */
 
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
 class ViewerXPDatabase {
   constructor(api) {
     this.api = api;
-    const dataDir = path.join(process.cwd(), 'user_data', 'viewer-xp');
     
-    // Ensure directory exists
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    
-    const dbPath = path.join(dataDir, 'viewer-xp.db');
-    this.db = new Database(dbPath);
-    this.db.pragma('journal_mode = WAL'); // Write-Ahead Logging for performance
+    // CRITICAL FIX: Use the main scoped database instead of a separate file
+    // This ensures viewer XP data is properly isolated per streamer
+    this.db = api.getDatabase().db; // Get the underlying better-sqlite3 instance
     
     // Batch queue for high-volume writes
     this.batchQueue = [];
@@ -842,7 +835,8 @@ class ViewerXPDatabase {
       clearTimeout(this.batchTimer);
     }
     
-    this.db.close();
+    // NOTE: We don't close the database because we're using the shared scoped database
+    // The main application will handle closing it
   }
 }
 
