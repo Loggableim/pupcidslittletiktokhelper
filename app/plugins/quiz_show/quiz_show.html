@@ -1089,32 +1089,36 @@
                         <h2>📍 Element Positionen</h2>
                     </div>
                     <div class="panel-body">
+                        <div class="help-text" style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
+                            <strong>💡 Bedienung:</strong><br>
+                            • <strong>Verschieben:</strong> Element anklicken und ziehen<br>
+                            • <strong>Größe ändern:</strong> Rechte untere Ecke ziehen (blau)<br>
+                            • <strong>Ausblenden/Einblenden:</strong> Doppelklick auf Element<br>
+                            • Ausgeblendete Elemente werden rot gestrichelt dargestellt
+                        </div>
                         <div class="layout-preview" id="layoutPreview">
                             <div class="preview-canvas" id="previewCanvas">
-                                <div class="layout-element draggable" id="elem-question" data-element="question">
+                                <div class="layout-element draggable" id="elem-question" data-element="question" style="left: 50px; top: 50px; width: 800px; height: 150px;">
                                     <div class="element-label">❓ Frage</div>
                                     <div class="element-resize-handle"></div>
                                 </div>
-                                <div class="layout-element draggable" id="elem-answers" data-element="answers">
+                                <div class="layout-element draggable" id="elem-answers" data-element="answers" style="left: 50px; top: 220px; width: 800px; height: 400px;">
                                     <div class="element-label">🅰️ Antworten</div>
                                     <div class="element-resize-handle"></div>
                                 </div>
-                                <div class="layout-element draggable" id="elem-timer" data-element="timer">
+                                <div class="layout-element draggable" id="elem-timer" data-element="timer" style="left: 900px; top: 50px; width: 200px; height: 200px;">
                                     <div class="element-label">⏱️ Timer</div>
                                     <div class="element-resize-handle"></div>
                                 </div>
-                                <div class="layout-element draggable" id="elem-leaderboard" data-element="leaderboard">
+                                <div class="layout-element draggable" id="elem-leaderboard" data-element="leaderboard" style="left: 900px; top: 300px; width: 300px; height: 400px;">
                                     <div class="element-label">🏆 Leaderboard</div>
                                     <div class="element-resize-handle"></div>
                                 </div>
-                                <div class="layout-element draggable" id="elem-jokerInfo" data-element="jokerInfo">
+                                <div class="layout-element draggable" id="elem-jokerInfo" data-element="jokerInfo" style="left: 50px; top: 650px; width: 400px; height: 100px;">
                                     <div class="element-label">🎯 Joker Info</div>
                                     <div class="element-resize-handle"></div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="help-text">
-                            Ziehen Sie die Elemente auf der Vorschau, um ihre Position anzupassen. Ziehen Sie an den Ecken, um die Größe zu ändern.
                         </div>
                     </div>
                 </div>
@@ -1165,6 +1169,15 @@
                         <h2>➕ Zuordnung Hinzufügen/Bearbeiten</h2>
                     </div>
                     <div class="panel-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Geschenk auswählen</label>
+                                <select id="giftSelector" class="form-control">
+                                    <option value="">-- Geschenk wählen --</option>
+                                </select>
+                                <small>Oder manuell eingeben:</small>
+                            </div>
+                        </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Geschenk ID</label>

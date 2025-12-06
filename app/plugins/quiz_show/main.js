@@ -1558,6 +1558,17 @@ class QuizShowPlugin {
             }
         });
 
+        // Get gift catalog from database for gift-joker dropdown
+        this.api.registerRoute('get', '/api/quiz-show/gift-catalog', (req, res) => {
+            try {
+                const db = this.api.getDatabase();
+                const gifts = db.getGiftCatalog();
+                res.json({ success: true, gifts });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // ===== NEW: Overlay Layout Routes =====
         
         // Get all layouts

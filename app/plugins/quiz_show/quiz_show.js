@@ -1946,11 +1946,283 @@
     // Load layouts when tab is opened
     const layoutEditorTab = document.querySelector('[data-tab="layout-editor"]');
     if (layoutEditorTab) {
-        layoutEditorTab.addEventListener('click', loadLayouts);
+        layoutEditorTab.addEventListener('click', () => {
+            loadLayouts();
+            setTimeout(initializeDraggableElements, 100);
+        });
+    }
+
+    // Initialize drag and drop for layout elements
+    function initializeDraggableElements() {
+        const canvas = document.getElementById('previewCanvas');
+        if (!canvas) return;
+
+        const draggables = canvas.querySelectorAll('.draggable');
+        
+        draggables.forEach(element => {
+            let isDragging = false;
+            let isResizing = false;
+            let startX, startY, startLeft, startTop, startWidth, startHeight;
+
+            // Make element draggable
+            element.addEventListener('mousedown', (e) => {
+                // Check if clicking on resize handle
+                if (e.target.classList.contains('element-resize-handle')) {
+                    isResizing = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = parseInt(element.style.width) || element.offsetWidth;
+                    startHeight = parseInt(element.style.height) || element.offsetHeight;
+                    element.classList.add('resizing');
+                    e.preventDefault();
+                } else {
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startLeft = parseInt(element.style.left) || element.offsetLeft;
+                    startTop = parseInt(element.style.top) || element.offsetTop;
+                    element.classList.add('dragging');
+                    e.preventDefault();
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    element.style.left = Math.max(0, startLeft + deltaX) + 'px';
+                    element.style.top = Math.max(0, startTop + deltaY) + 'px';
+                } else if (isResizing) {
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    element.style.width = Math.max(100, startWidth + deltaX) + 'px';
+                    element.style.height = Math.max(50, startHeight + deltaY) + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging || isResizing) {
+                    element.classList.remove('dragging', 'resizing');
+                    isDragging = false;
+                    isResizing = false;
+                }
+            });
+
+            // Add double-click to toggle visibility
+            element.addEventListener('dblclick', () => {
+                element.classList.toggle('hidden');
+                showMessage(`Element ${element.classList.contains('hidden') ? 'ausgeblendet' : 'eingeblendet'}`, 'info', 'layoutSaveMessage');
+            });
+        });
     }
 
     // ============================================
     // END LAYOUT EDITOR
+    // ============================================
+
+    // ============================================
+    // GIFT-JOKER MANAGEMENT
+    // ============================================
+
+    let giftJokers = [];
+    let editingGiftJokerId = null;
+    let giftCatalog = [];
+
+    async function loadGiftCatalog() {
+        try {
+            const response = await fetch('/api/quiz-show/gift-catalog');
+            const data = await response.json();
+            
+            if (data.success) {
+                giftCatalog = data.gifts;
+                populateGiftSelector();
+            }
+        } catch (error) {
+            console.error('Error loading gift catalog:', error);
+        }
+    }
+
+    function populateGiftSelector() {
+        const selector = document.getElementById('giftSelector');
+        if (!selector) return;
+
+        selector.innerHTML = '<option value="">-- Geschenk wählen --</option>' +
+            giftCatalog.map(gift => `
+                <option value="${gift.id}" data-name="${escapeHtml(gift.name)}">
+                    ${escapeHtml(gift.name)} (ID: ${gift.id}, 💎 ${gift.diamond_count})
+                </option>
+            `).join('');
+
+        // When a gift is selected, populate the form fields
+        selector.addEventListener('change', (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            if (selectedOption.value) {
+                document.getElementById('giftJokerId').value = selectedOption.value;
+                document.getElementById('giftJokerName').value = selectedOption.dataset.name;
+            }
+        });
+    }
+
+    async function loadGiftJokers() {
+        try {
+            const response = await fetch('/api/quiz-show/gift-jokers');
+            const data = await response.json();
+            
+            if (data.success) {
+                giftJokers = data.mappings;
+                renderGiftJokersTable();
+            }
+        } catch (error) {
+            console.error('Error loading gift-jokers:', error);
+        }
+    }
+
+    function renderGiftJokersTable() {
+        const tbody = document.getElementById('giftJokerTableBody');
+        if (!tbody) return;
+
+        if (giftJokers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="no-data">Keine Zuordnungen vorhanden</td></tr>';
+            return;
+        }
+
+        const jokerNames = {
+            '25': '25% Joker',
+            '50': '50:50 Joker',
+            'info': 'Info Joker',
+            'time': 'Zeit Joker'
+        };
+
+        tbody.innerHTML = giftJokers.map(mapping => `
+            <tr>
+                <td>${mapping.gift_id}</td>
+                <td>${escapeHtml(mapping.gift_name)}</td>
+                <td>${jokerNames[mapping.joker_type] || mapping.joker_type}</td>
+                <td><span class="status-badge ${mapping.enabled ? 'status-connected' : 'status-error'}">${mapping.enabled ? 'Aktiv' : 'Inaktiv'}</span></td>
+                <td>
+                    <button class="btn-icon" onclick="window.quizShow.editGiftJoker(${mapping.gift_id})" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon" onclick="window.quizShow.deleteGiftJoker(${mapping.gift_id})" title="Löschen">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function showGiftJokerForm() {
+        const panel = document.getElementById('giftJokerFormPanel');
+        if (panel) {
+            panel.style.display = 'block';
+            document.getElementById('giftSelector').value = '';
+            document.getElementById('giftJokerId').value = '';
+            document.getElementById('giftJokerName').value = '';
+            document.getElementById('giftJokerType').value = '50';
+            document.getElementById('giftJokerEnabled').checked = true;
+            editingGiftJokerId = null;
+        }
+    }
+
+    function hideGiftJokerForm() {
+        const panel = document.getElementById('giftJokerFormPanel');
+        if (panel) {
+            panel.style.display = 'none';
+        }
+        editingGiftJokerId = null;
+    }
+
+    async function editGiftJoker(giftId) {
+        const mapping = giftJokers.find(m => m.gift_id === giftId);
+        if (!mapping) return;
+
+        editingGiftJokerId = giftId;
+        
+        document.getElementById('giftJokerId').value = mapping.gift_id;
+        document.getElementById('giftJokerName').value = mapping.gift_name;
+        document.getElementById('giftJokerType').value = mapping.joker_type;
+        document.getElementById('giftJokerEnabled').checked = mapping.enabled;
+        
+        const panel = document.getElementById('giftJokerFormPanel');
+        if (panel) {
+            panel.style.display = 'block';
+        }
+    }
+
+    async function saveGiftJoker() {
+        const giftId = parseInt(document.getElementById('giftJokerId').value);
+        const giftName = document.getElementById('giftJokerName').value.trim();
+        const jokerType = document.getElementById('giftJokerType').value;
+        const enabled = document.getElementById('giftJokerEnabled').checked;
+
+        if (!giftId || !giftName) {
+            showMessage('Bitte alle Felder ausfüllen', 'error', 'giftJokerSaveMessage');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/quiz-show/gift-jokers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ giftId, giftName, jokerType, enabled })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Zuordnung gespeichert', 'success', 'giftJokerSaveMessage');
+                giftJokers = data.mappings;
+                renderGiftJokersTable();
+                hideGiftJokerForm();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'giftJokerSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error saving gift-joker:', error);
+            showMessage('Fehler beim Speichern', 'error', 'giftJokerSaveMessage');
+        }
+    }
+
+    async function deleteGiftJoker(giftId) {
+        if (!confirm('Zuordnung wirklich löschen?')) return;
+
+        try {
+            const response = await fetch(`/api/quiz-show/gift-jokers/${giftId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Zuordnung gelöscht', 'success');
+                await loadGiftJokers();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting gift-joker:', error);
+            showMessage('Fehler beim Löschen', 'error');
+        }
+    }
+
+    // Initialize gift-joker event listeners
+    if (document.getElementById('addGiftJokerBtn')) {
+        document.getElementById('addGiftJokerBtn').addEventListener('click', showGiftJokerForm);
+    }
+    if (document.getElementById('saveGiftJokerBtn')) {
+        document.getElementById('saveGiftJokerBtn').addEventListener('click', saveGiftJoker);
+    }
+    if (document.getElementById('cancelGiftJokerBtn')) {
+        document.getElementById('cancelGiftJokerBtn').addEventListener('click', hideGiftJokerForm);
+    }
+
+    // Load gift-jokers when tab is opened
+    const giftJokersTab = document.querySelector('[data-tab="gift-jokers"]');
+    if (giftJokersTab) {
+        giftJokersTab.addEventListener('click', () => {
+            loadGiftCatalog();
+            loadGiftJokers();
+        });
+    }
+
+    // ============================================
+    // END GIFT-JOKER MANAGEMENT
     // ============================================
 
     // Expose functions to window for onclick handlers
@@ -1961,6 +2233,8 @@
         deletePackage,
         viewPackageQuestions,
         editLayout,
-        deleteLayout
+        deleteLayout,
+        editGiftJoker,
+        deleteGiftJoker
     };
 })();
