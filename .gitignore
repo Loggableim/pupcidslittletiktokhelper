@@ -32,3 +32,6 @@ app/data/
 tmp/
 temp/
 *.tmp
+
+# NPM cache directories (created by incorrect --cache flag)
+app/false/

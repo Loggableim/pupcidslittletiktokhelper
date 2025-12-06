@@ -54,14 +54,18 @@ func installDependencies(appDir string) error {
 	
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
+		cmd = exec.Command("cmd", "/C", "npm", "install")
 	} else {
-		cmd = exec.Command("npm", "install", "--cache", "false")
+		cmd = exec.Command("npm", "install")
 	}
 	
 	cmd.Dir = appDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	
+	// Set environment variables to skip optional dependency downloads
+	// This prevents network errors during installation
+	cmd.Env = append(os.Environ(), "PUPPETEER_SKIP_DOWNLOAD=true")
 	
 	err := cmd.Run()
 	if err != nil {
