@@ -6,6 +6,9 @@
 (function() {
     'use strict';
 
+    // Constants
+    const CORE_CATEGORIES = ['tiktok', 'system', 'timer', 'tts', 'alert', 'overlay', 'audio'];
+
     // State
     const state = {
         triggers: [],
@@ -200,10 +203,9 @@
 
     function renderComponentListByCategory(itemsByCategory, type) {
         // Sort categories, put core categories first
-        const coreCategories = ['tiktok', 'system', 'timer', 'tts', 'alert', 'overlay', 'audio'];
         const categories = Object.keys(itemsByCategory).sort((a, b) => {
-            const aIsCore = coreCategories.includes(a);
-            const bIsCore = coreCategories.includes(b);
+            const aIsCore = CORE_CATEGORIES.includes(a);
+            const bIsCore = CORE_CATEGORIES.includes(b);
             if (aIsCore && !bIsCore) return -1;
             if (!aIsCore && bIsCore) return 1;
             return a.localeCompare(b);

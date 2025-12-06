@@ -189,8 +189,12 @@ class GoalsPlugin extends EventEmitter {
 
         this.api.log('✅ Goals Flow actions registered', 'info');
 
-        // Register IFTTT actions for visual flow editor
-        this.registerIFTTTActions();
+        // Register IFTTT actions for visual flow editor (if IFTTT engine is available)
+        if (this.api.iftttEngine) {
+            this.registerIFTTTActions();
+        } else {
+            this.api.log('IFTTT engine not available, skipping IFTTT action registration', 'debug');
+        }
     }
 
     /**
