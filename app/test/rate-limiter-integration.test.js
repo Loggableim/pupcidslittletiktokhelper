@@ -42,7 +42,7 @@ async function runTests(port) {
   console.log('-------------------------------------------------------');
   
   try {
-    // Make 10 rapid requests (more than the original 30 limit)
+    // Make 10 rapid requests to verify rate limiting is bypassed for localhost
     const promises = [];
     for (let i = 0; i < 10; i++) {
       promises.push(makeRequest(port, 'localhost'));
