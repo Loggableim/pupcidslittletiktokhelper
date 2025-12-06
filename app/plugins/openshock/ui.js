@@ -2566,6 +2566,8 @@ function switchTab(tabId) {
     // Load tab-specific data
     if (tabId === 'safety') {
         loadSafetyConfig();
+    } else if (tabId === 'zappiehell') {
+        initZappieHellTab();
     }
 }
 
@@ -3542,6 +3544,731 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
+// ====================================================================
+// ZAPPIEHELL MANAGEMENT
+// ====================================================================
+
+let goals = [];
+let eventChains = [];
+let currentEditingGoal = null;
+let currentEditingChain = null;
+let currentEditingStep = null;
+let chainSteps = [];
+
+/**
+ * Initialize ZappieHell tab
+ */
+function initZappieHellTab() {
+    // Set overlay URL
+    const overlayUrl = `${window.location.origin}/openshock/overlay/zappiehell-overlay.html`;
+    document.getElementById('zappiehellOverlayUrl').value = overlayUrl;
+
+    // Load goals and chains
+    loadGoals();
+    loadEventChains();
+
+    // Button handlers
+    document.getElementById('addGoalBtn').addEventListener('click', () => openGoalModal());
+    document.getElementById('saveGoalBtn').addEventListener('click', saveGoal);
+    document.getElementById('cancelGoalBtn').addEventListener('click', closeGoalModal);
+    document.getElementById('closeGoalModal').addEventListener('click', closeGoalModal);
+
+    document.getElementById('addChainBtn').addEventListener('click', () => openChainModal());
+    document.getElementById('saveChainBtn').addEventListener('click', saveChain);
+    document.getElementById('cancelChainBtn').addEventListener('click', closeChainModal);
+    document.getElementById('closeChainModal').addEventListener('click', closeChainModal);
+
+    document.getElementById('addChainStepBtn').addEventListener('click', () => openStepModal());
+    document.getElementById('saveStepBtn').addEventListener('click', saveChainStep);
+    document.getElementById('cancelStepBtn').addEventListener('click', closeStepModal);
+    document.getElementById('closeStepModal').addEventListener('click', closeStepModal);
+
+    document.getElementById('copyZappieHellOverlayUrl').addEventListener('click', () => {
+        const input = document.getElementById('zappiehellOverlayUrl');
+        input.select();
+        document.execCommand('copy');
+        showToast('success', 'Overlay URL copied to clipboard!');
+    });
+
+    // Step type selector handler
+    document.getElementById('stepTypeSelect').addEventListener('change', (e) => {
+        updateStepFieldsVisibility(e.target.value);
+    });
+
+    // Socket.io listeners for ZappieHell
+    if (socket) {
+        socket.on('zappiehell:goals:update', (data) => {
+            goals = data.goals || [];
+            renderGoals();
+        });
+    }
+
+    addDebugLog('info', 'ZappieHell tab initialized');
+}
+
+/**
+ * Load goals from server
+ */
+async function loadGoals() {
+    try {
+        const response = await fetch('/api/openshock/zappiehell/goals');
+        const data = await response.json();
+        
+        if (data.success) {
+            goals = data.goals || [];
+            renderGoals();
+        }
+    } catch (error) {
+        console.error('Error loading goals:', error);
+        showToast('error', 'Failed to load goals');
+    }
+}
+
+/**
+ * Load event chains from server
+ */
+async function loadEventChains() {
+    try {
+        const response = await fetch('/api/openshock/zappiehell/chains');
+        const data = await response.json();
+        
+        if (data.success) {
+            eventChains = data.chains || [];
+            renderChains();
+            updateChainSelectors();
+        }
+    } catch (error) {
+        console.error('Error loading event chains:', error);
+        showToast('error', 'Failed to load event chains');
+    }
+}
+
+/**
+ * Render goals list
+ */
+function renderGoals() {
+    const container = document.getElementById('goalsList');
+    
+    if (goals.length === 0) {
+        container.innerHTML = '<p class="text-muted">No goals configured yet.</p>';
+        return;
+    }
+
+    container.innerHTML = goals.map(goal => {
+        const percentage = Math.min(100, Math.round((goal.currentCoins / goal.targetCoins) * 100));
+        const chainName = goal.chainId ? (eventChains.find(c => c.id === goal.chainId)?.name || 'Unknown Chain') : 'No chain';
+        
+        return `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        ${goal.active ? '✅' : '❌'} ${escapeHtml(goal.name)}
+                        <span class="badge badge-${goal.type === 'stream' ? 'primary' : 'secondary'}">${goal.type}</span>
+                    </h3>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-secondary" onclick="window.openShock.editGoal('${goal.id}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-warning" onclick="window.openShock.resetGoal('${goal.id}')">🔄 Reset</button>
+                        <button class="btn btn-sm btn-danger" onclick="window.openShock.deleteGoal('${goal.id}')">🗑️ Delete</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="progress-bar-wrapper" style="height: 30px; margin-bottom: 10px;">
+                        <div class="progress-bar" style="width: ${percentage}%; background: linear-gradient(90deg, #4CAF50, #FFC107);"></div>
+                        <div class="progress-text" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold;">
+                            ${percentage}%
+                        </div>
+                    </div>
+                    <div class="grid-3">
+                        <div>
+                            <strong>Target:</strong> ${goal.targetCoins.toLocaleString()} coins
+                        </div>
+                        <div>
+                            <strong>Current:</strong> ${goal.currentCoins.toLocaleString()} coins
+                        </div>
+                        <div>
+                            <strong>Chain:</strong> ${chainName}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Render event chains list
+ */
+function renderChains() {
+    const container = document.getElementById('chainsList');
+    
+    if (eventChains.length === 0) {
+        container.innerHTML = '<p class="text-muted">No event chains configured yet.</p>';
+        return;
+    }
+
+    container.innerHTML = eventChains.map(chain => {
+        return `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h3 class="card-title">🔗 ${escapeHtml(chain.name)}</h3>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-secondary" onclick="window.openShock.editChain('${chain.id}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-success" onclick="window.openShock.testChain('${chain.id}')">▶️ Test</button>
+                        <button class="btn btn-sm btn-danger" onclick="window.openShock.deleteChain('${chain.id}')">🗑️ Delete</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">${escapeHtml(chain.description || 'No description')}</p>
+                    <p><strong>Steps:</strong> ${chain.steps?.length || 0}</p>
+                    ${renderChainStepsPreview(chain.steps)}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Render chain steps preview
+ */
+function renderChainStepsPreview(steps) {
+    if (!steps || steps.length === 0) return '<p class="text-muted">No steps</p>';
+    
+    return '<ol style="margin-left: 20px;">' + steps.map(step => {
+        let icon = '•';
+        let label = step.type;
+        
+        switch(step.type) {
+            case 'openshock': icon = '⚡'; label = 'OpenShock'; break;
+            case 'delay': icon = '⏱️'; label = `Delay (${step.durationMs}ms)`; break;
+            case 'audio': icon = '🔊'; label = 'Audio/TTS'; break;
+            case 'webhook': icon = '🌐'; label = `Webhook (${step.url})`; break;
+            case 'overlay': icon = '📺'; label = 'Overlay'; break;
+        }
+        
+        return `<li>${icon} ${label}</li>`;
+    }).join('') + '</ol>';
+}
+
+/**
+ * Update chain selectors in goal modal
+ */
+function updateChainSelectors() {
+    const selector = document.getElementById('goalChainId');
+    if (!selector) return;
+
+    selector.innerHTML = '<option value="">-- No chain --</option>' +
+        eventChains.map(chain => `<option value="${chain.id}">${escapeHtml(chain.name)}</option>`).join('');
+}
+
+/**
+ * Open goal modal for creating/editing
+ */
+function openGoalModal(goalId = null) {
+    currentEditingGoal = goalId ? goals.find(g => g.id === goalId) : null;
+    
+    if (currentEditingGoal) {
+        document.getElementById('goalModalTitle').textContent = '✏️ Edit Goal';
+        document.getElementById('goalId').value = currentEditingGoal.id;
+        document.getElementById('goalName').value = currentEditingGoal.name;
+        document.getElementById('goalTargetCoins').value = currentEditingGoal.targetCoins;
+        document.getElementById('goalCurrentCoins').value = currentEditingGoal.currentCoins;
+        document.getElementById('goalType').value = currentEditingGoal.type;
+        document.getElementById('goalChainId').value = currentEditingGoal.chainId || '';
+        document.getElementById('goalActive').checked = currentEditingGoal.active;
+    } else {
+        document.getElementById('goalModalTitle').textContent = '➕ Add Goal';
+        document.getElementById('goalId').value = '';
+        document.getElementById('goalName').value = '';
+        document.getElementById('goalTargetCoins').value = '';
+        document.getElementById('goalCurrentCoins').value = '0';
+        document.getElementById('goalType').value = 'stream';
+        document.getElementById('goalChainId').value = '';
+        document.getElementById('goalActive').checked = true;
+    }
+    
+    document.getElementById('goalModal').classList.add('active');
+}
+
+/**
+ * Close goal modal
+ */
+function closeGoalModal() {
+    document.getElementById('goalModal').classList.remove('active');
+    currentEditingGoal = null;
+}
+
+/**
+ * Save goal
+ */
+async function saveGoal() {
+    const goalData = {
+        name: document.getElementById('goalName').value,
+        targetCoins: parseInt(document.getElementById('goalTargetCoins').value),
+        currentCoins: parseInt(document.getElementById('goalCurrentCoins').value),
+        type: document.getElementById('goalType').value,
+        chainId: document.getElementById('goalChainId').value || null,
+        active: document.getElementById('goalActive').checked
+    };
+
+    if (!goalData.name || !goalData.targetCoins) {
+        showToast('error', 'Please fill in all required fields');
+        return;
+    }
+
+    try {
+        const goalId = document.getElementById('goalId').value;
+        const url = goalId ? `/api/openshock/zappiehell/goals/${goalId}` : '/api/openshock/zappiehell/goals';
+        const method = goalId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(goalData)
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', goalId ? 'Goal updated' : 'Goal created');
+            closeGoalModal();
+            loadGoals();
+        } else {
+            showToast('error', data.error || 'Failed to save goal');
+        }
+    } catch (error) {
+        console.error('Error saving goal:', error);
+        showToast('error', 'Failed to save goal');
+    }
+}
+
+/**
+ * Edit goal
+ */
+function editGoal(goalId) {
+    openGoalModal(goalId);
+}
+
+/**
+ * Delete goal
+ */
+async function deleteGoal(goalId) {
+    if (!confirm('Are you sure you want to delete this goal?')) return;
+
+    try {
+        const response = await fetch(`/api/openshock/zappiehell/goals/${goalId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', 'Goal deleted');
+            loadGoals();
+        } else {
+            showToast('error', data.error || 'Failed to delete goal');
+        }
+    } catch (error) {
+        console.error('Error deleting goal:', error);
+        showToast('error', 'Failed to delete goal');
+    }
+}
+
+/**
+ * Reset goal
+ */
+async function resetGoal(goalId) {
+    if (!confirm('Reset this goal to 0 coins?')) return;
+
+    try {
+        const response = await fetch(`/api/openshock/zappiehell/goals/${goalId}/reset`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', 'Goal reset');
+            loadGoals();
+        } else {
+            showToast('error', data.error || 'Failed to reset goal');
+        }
+    } catch (error) {
+        console.error('Error resetting goal:', error);
+        showToast('error', 'Failed to reset goal');
+    }
+}
+
+/**
+ * Open chain modal
+ */
+function openChainModal(chainId = null) {
+    currentEditingChain = chainId ? eventChains.find(c => c.id === chainId) : null;
+    
+    if (currentEditingChain) {
+        document.getElementById('chainModalTitle').textContent = '✏️ Edit Event Chain';
+        document.getElementById('chainId').value = currentEditingChain.id;
+        document.getElementById('chainName').value = currentEditingChain.name;
+        document.getElementById('chainDescription').value = currentEditingChain.description || '';
+        chainSteps = [...(currentEditingChain.steps || [])];
+    } else {
+        document.getElementById('chainModalTitle').textContent = '➕ Add Event Chain';
+        document.getElementById('chainId').value = '';
+        document.getElementById('chainName').value = '';
+        document.getElementById('chainDescription').value = '';
+        chainSteps = [];
+    }
+    
+    renderChainSteps();
+    document.getElementById('chainModal').classList.add('active');
+}
+
+/**
+ * Close chain modal
+ */
+function closeChainModal() {
+    document.getElementById('chainModal').classList.remove('active');
+    currentEditingChain = null;
+    chainSteps = [];
+}
+
+/**
+ * Save chain
+ */
+async function saveChain() {
+    const chainData = {
+        name: document.getElementById('chainName').value,
+        description: document.getElementById('chainDescription').value,
+        steps: chainSteps
+    };
+
+    if (!chainData.name) {
+        showToast('error', 'Please enter a chain name');
+        return;
+    }
+
+    try {
+        const chainId = document.getElementById('chainId').value;
+        const url = chainId ? `/api/openshock/zappiehell/chains/${chainId}` : '/api/openshock/zappiehell/chains';
+        const method = chainId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(chainData)
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', chainId ? 'Event chain updated' : 'Event chain created');
+            closeChainModal();
+            loadEventChains();
+        } else {
+            showToast('error', data.error || 'Failed to save event chain');
+        }
+    } catch (error) {
+        console.error('Error saving chain:', error);
+        showToast('error', 'Failed to save event chain');
+    }
+}
+
+/**
+ * Edit chain
+ */
+function editChain(chainId) {
+    openChainModal(chainId);
+}
+
+/**
+ * Delete chain
+ */
+async function deleteChain(chainId) {
+    if (!confirm('Are you sure you want to delete this event chain?')) return;
+
+    try {
+        const response = await fetch(`/api/openshock/zappiehell/chains/${chainId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', 'Event chain deleted');
+            loadEventChains();
+        } else {
+            showToast('error', data.error || 'Failed to delete event chain');
+        }
+    } catch (error) {
+        console.error('Error deleting chain:', error);
+        showToast('error', 'Failed to delete event chain');
+    }
+}
+
+/**
+ * Test chain
+ */
+async function testChain(chainId) {
+    if (!confirm('Execute this event chain now as a test?')) return;
+
+    try {
+        const response = await fetch(`/api/openshock/zappiehell/chains/${chainId}/execute`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', 'Event chain execution started');
+        } else {
+            showToast('error', data.error || 'Failed to execute event chain');
+        }
+    } catch (error) {
+        console.error('Error executing chain:', error);
+        showToast('error', 'Failed to execute event chain');
+    }
+}
+
+/**
+ * Render chain steps in modal
+ */
+function renderChainSteps() {
+    const container = document.getElementById('chainStepsList');
+    
+    if (chainSteps.length === 0) {
+        container.innerHTML = '<p class="text-muted" style="padding: 20px;">No steps added yet. Click "Add Step" to begin.</p>';
+        return;
+    }
+
+    container.innerHTML = chainSteps.map((step, index) => {
+        let icon = '•';
+        let label = step.type;
+        let details = '';
+        
+        switch(step.type) {
+            case 'openshock':
+                icon = '⚡';
+                label = 'OpenShock';
+                details = step.patternId ? `Pattern ID: ${step.patternId}` : `${step.commandType || 'vibrate'} - ${step.intensity}% - ${step.durationMs}ms`;
+                break;
+            case 'delay':
+                icon = '⏱️';
+                label = 'Delay';
+                details = `${step.durationMs}ms`;
+                break;
+            case 'audio':
+                icon = '🔊';
+                label = 'Audio/TTS';
+                details = step.text || step.audioId || '';
+                break;
+            case 'webhook':
+                icon = '🌐';
+                label = 'Webhook';
+                details = `${step.method || 'POST'} ${step.url || ''}`;
+                break;
+            case 'overlay':
+                icon = '📺';
+                label = 'Overlay';
+                details = step.animationType || '';
+                break;
+        }
+        
+        return `
+            <div class="card mb-2">
+                <div class="card-body" style="padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${icon} ${label}</strong>
+                            <p class="text-muted" style="margin: 0; font-size: 12px;">${details}</p>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-secondary" onclick="window.openShock.editChainStep(${index})">✏️</button>
+                            <button class="btn btn-sm btn-danger" onclick="window.openShock.removeChainStep(${index})">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Open step modal
+ */
+function openStepModal(stepIndex = null) {
+    currentEditingStep = stepIndex !== null ? stepIndex : null;
+    
+    if (currentEditingStep !== null) {
+        const step = chainSteps[currentEditingStep];
+        document.getElementById('stepModalTitle').textContent = '✏️ Edit Chain Step';
+        document.getElementById('stepIndex').value = currentEditingStep;
+        document.getElementById('stepTypeSelect').value = step.type;
+        
+        // Populate fields based on type
+        updateStepFieldsVisibility(step.type);
+        
+        switch(step.type) {
+            case 'openshock':
+                if (step.patternId) document.getElementById('stepPatternId').value = step.patternId;
+                if (step.commandType) document.getElementById('stepCommandType').value = step.commandType;
+                if (step.deviceId) document.getElementById('stepDeviceId').value = step.deviceId;
+                if (step.intensity) document.getElementById('stepIntensity').value = step.intensity;
+                if (step.durationMs) document.getElementById('stepDurationMs').value = step.durationMs;
+                break;
+            case 'delay':
+                if (step.durationMs) document.getElementById('delayDurationMs').value = step.durationMs;
+                break;
+            case 'audio':
+                if (step.text) document.getElementById('audioText').value = step.text;
+                break;
+            case 'webhook':
+                if (step.url) document.getElementById('webhookUrl').value = step.url;
+                if (step.method) document.getElementById('webhookMethod').value = step.method;
+                if (step.body) document.getElementById('webhookBody').value = JSON.stringify(step.body, null, 2);
+                break;
+            case 'overlay':
+                if (step.animationType) document.getElementById('overlayAnimationType').value = step.animationType;
+                if (step.duration) document.getElementById('overlayDuration').value = step.duration;
+                break;
+        }
+    } else {
+        document.getElementById('stepModalTitle').textContent = '➕ Add Chain Step';
+        document.getElementById('stepIndex').value = '';
+        document.getElementById('stepTypeSelect').value = 'openshock';
+        updateStepFieldsVisibility('openshock');
+    }
+    
+    // Load pattern and device options
+    updateStepPatternList();
+    updateStepDeviceList();
+    
+    document.getElementById('stepModal').classList.add('active');
+}
+
+/**
+ * Close step modal
+ */
+function closeStepModal() {
+    document.getElementById('stepModal').classList.remove('active');
+    currentEditingStep = null;
+}
+
+/**
+ * Update step fields visibility based on type
+ */
+function updateStepFieldsVisibility(type) {
+    const fields = ['openshockStepFields', 'delayStepFields', 'audioStepFields', 'webhookStepFields', 'overlayStepFields'];
+    
+    fields.forEach(fieldId => {
+        document.getElementById(fieldId).style.display = 'none';
+    });
+    
+    switch(type) {
+        case 'openshock':
+            document.getElementById('openshockStepFields').style.display = 'block';
+            break;
+        case 'delay':
+            document.getElementById('delayStepFields').style.display = 'block';
+            break;
+        case 'audio':
+        case 'tts':
+            document.getElementById('audioStepFields').style.display = 'block';
+            break;
+        case 'webhook':
+            document.getElementById('webhookStepFields').style.display = 'block';
+            break;
+        case 'overlay':
+            document.getElementById('overlayStepFields').style.display = 'block';
+            break;
+    }
+}
+
+/**
+ * Update pattern list in step modal
+ */
+function updateStepPatternList() {
+    const selector = document.getElementById('stepPatternId');
+    if (!selector) return;
+
+    selector.innerHTML = '<option value="">-- Direct Command --</option>' +
+        patterns.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+}
+
+/**
+ * Update device list in step modal
+ */
+function updateStepDeviceList() {
+    const selector = document.getElementById('stepDeviceId');
+    if (!selector) return;
+
+    selector.innerHTML = '<option value="">-- First Available --</option>' +
+        devices.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
+}
+
+/**
+ * Save chain step
+ */
+function saveChainStep() {
+    const stepType = document.getElementById('stepTypeSelect').value;
+    const stepData = { type: stepType };
+
+    switch(stepType) {
+        case 'openshock':
+            stepData.patternId = document.getElementById('stepPatternId').value || null;
+            stepData.commandType = document.getElementById('stepCommandType').value;
+            stepData.deviceId = document.getElementById('stepDeviceId').value || null;
+            stepData.intensity = parseInt(document.getElementById('stepIntensity').value);
+            stepData.durationMs = parseInt(document.getElementById('stepDurationMs').value);
+            break;
+        case 'delay':
+            stepData.durationMs = parseInt(document.getElementById('delayDurationMs').value);
+            break;
+        case 'audio':
+        case 'tts':
+            stepData.text = document.getElementById('audioText').value;
+            break;
+        case 'webhook':
+            stepData.url = document.getElementById('webhookUrl').value;
+            stepData.method = document.getElementById('webhookMethod').value;
+            try {
+                stepData.body = JSON.parse(document.getElementById('webhookBody').value);
+            } catch (e) {
+                showToast('error', 'Invalid JSON in webhook body');
+                return;
+            }
+            break;
+        case 'overlay':
+            stepData.animationType = document.getElementById('overlayAnimationType').value;
+            stepData.duration = parseInt(document.getElementById('overlayDuration').value);
+            break;
+    }
+
+    const stepIndex = document.getElementById('stepIndex').value;
+    if (stepIndex !== '') {
+        chainSteps[parseInt(stepIndex)] = stepData;
+    } else {
+        chainSteps.push(stepData);
+    }
+
+    renderChainSteps();
+    closeStepModal();
+}
+
+/**
+ * Edit chain step
+ */
+function editChainStep(index) {
+    openStepModal(index);
+}
+
+/**
+ * Remove chain step
+ */
+function removeChainStep(index) {
+    if (!confirm('Remove this step?')) return;
+    chainSteps.splice(index, 1);
+    renderChainSteps();
+}
+
 // Export functions for global access
 window.openShock = {
     openMappingModal,
@@ -3575,7 +4302,16 @@ window.openShock = {
     closeCurveEditor,
     saveCurvePattern,
     previewCurvePattern,
-    applyCurveTemplate
+    applyCurveTemplate,
+    // ZappieHell functions
+    editGoal,
+    deleteGoal,
+    resetGoal,
+    editChain,
+    deleteChain,
+    testChain,
+    editChainStep,
+    removeChainStep
 };
 
 console.log('[OpenShock] Plugin UI loaded and ready');
