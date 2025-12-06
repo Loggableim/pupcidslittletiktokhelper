@@ -188,8 +188,6 @@ body {
 /* Mini icon for collapsed sidebar - hidden by default */
 .sidebar-mini-icon {
     display: none;
-    min-width: 80px;
-    min-height: 80px;
     width: 80px;
     height: 80px;
     object-fit: contain;
