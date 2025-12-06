@@ -74,12 +74,6 @@ func (l *Launcher) closeLogging() {
 		l.logFile.Close()
 	}
 }
-	return &Launcher{
-		status:   "Initialisiere...",
-		progress: 0,
-		clients:  make(map[chan string]bool),
-	}
-}
 
 func (l *Launcher) updateProgress(value int, status string) {
 	l.progress = value
@@ -149,7 +143,7 @@ func (l *Launcher) installDependencies() error {
 	return nil
 }
 
-func (l *Launcher) startTool() error {
+func (l *Launcher) startTool() (*exec.Cmd, error) {
 	launchJS := filepath.Join(l.appDir, "launch.js")
 	cmd := exec.Command(l.nodePath, launchJS)
 	cmd.Dir = l.appDir
@@ -169,7 +163,12 @@ func (l *Launcher) startTool() error {
 	l.logger.Printf("Command: %s %s\n", l.nodePath, launchJS)
 	l.logger.Printf("Working directory: %s\n", l.appDir)
 	
-	return cmd.Start()
+	err := cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+	
+	return cmd, nil
 }
 
 // checkServerHealth checks if the server is responding
@@ -278,27 +277,56 @@ func (l *Launcher) runLauncher() {
 	time.Sleep(500 * time.Millisecond)
 	
 	// Start the tool
-	err = l.startTool()
+	cmd, err := l.startTool()
 	if err != nil {
 		l.logger.Printf("[ERROR] Failed to start server: %v\n", err)
 		l.updateProgress(90, fmt.Sprintf("FEHLER beim Starten: %v", err))
-		time.Sleep(5 * time.Second)
+		l.updateProgress(90, "Prüfe bitte die Log-Datei in app/logs/ für Details.")
+		time.Sleep(30 * time.Second)
 		l.closeLogging()
 		os.Exit(1)
 	}
 	
+	// Monitor if the process exits prematurely
+	processDied := make(chan error, 1)
+	go func() {
+		processDied <- cmd.Wait()
+	}()
+	
 	// Wait for server to be ready
 	l.updateProgress(95, "Warte auf Server-Start...")
 	l.logger.Println("[INFO] Waiting for server health check (30s timeout)...")
-	err = l.waitForServer(30 * time.Second)
-	if err != nil {
-		l.logger.Printf("[ERROR] Server health check failed: %v\n", err)
-		l.logger.Println("[ERROR] Server did not start successfully. Check the log above for error messages from the Node.js process.")
-		l.updateProgress(95, fmt.Sprintf("FEHLER: %v", err))
-		l.updateProgress(95, "Server konnte nicht gestartet werden. Bitte prüfe die Konsole für Fehlermeldungen.")
-		time.Sleep(10 * time.Second)
-		l.closeLogging()
-		os.Exit(1)
+	
+	// Check server health with process monitoring
+	healthCheckTimeout := time.After(30 * time.Second)
+	healthCheckTicker := time.NewTicker(500 * time.Millisecond)
+	defer healthCheckTicker.Stop()
+	
+	serverReady := false
+	for !serverReady {
+		select {
+		case err := <-processDied:
+			// Process exited before server was ready
+			l.logger.Printf("[ERROR] Node.js process exited prematurely: %v\n", err)
+			l.updateProgress(95, "FEHLER: Node.js Server ist abgestürzt!")
+			l.updateProgress(95, "Prüfe die Log-Datei in app/logs/ für Details.")
+			l.updateProgress(95, "Mögliche Ursachen: fehlende Dependencies, Syntax-Fehler, Port bereits belegt")
+			time.Sleep(30 * time.Second)
+			l.closeLogging()
+			os.Exit(1)
+		case <-healthCheckTicker.C:
+			if l.checkServerHealth() {
+				serverReady = true
+			}
+		case <-healthCheckTimeout:
+			l.logger.Println("[ERROR] Server health check timed out")
+			l.logger.Println("[ERROR] Server did not start successfully. Check the log above for error messages from the Node.js process.")
+			l.updateProgress(95, "FEHLER: Server-Start Timeout")
+			l.updateProgress(95, "Server konnte nicht gestartet werden. Prüfe die Log-Datei in app/logs/")
+			time.Sleep(30 * time.Second)
+			l.closeLogging()
+			os.Exit(1)
+		}
 	}
 	
 	l.updateProgress(100, "Server erfolgreich gestartet!")
