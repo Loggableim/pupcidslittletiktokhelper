@@ -39,21 +39,21 @@ func (l *Launcher) setupLogging(appDir string) error {
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		return fmt.Errorf("failed to create log directory: %v", err)
 	}
-	
+
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	logPath := filepath.Join(logDir, fmt.Sprintf("launcher_%s.log", timestamp))
-	
+
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %v", err)
 	}
-	
+
 	l.logFile = logFile
-	
+
 	// Create multi-writer to write to both file and stdout
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	l.logger = log.New(multiWriter, "", log.LstdFlags)
-	
+
 	l.logger.Println("========================================")
 	l.logger.Println("TikTok Stream Tool - Launcher Log")
 	l.logger.Println("========================================")
@@ -61,7 +61,7 @@ func (l *Launcher) setupLogging(appDir string) error {
 	l.logger.Printf("Platform: %s\n", runtime.GOOS)
 	l.logger.Printf("Architecture: %s\n", runtime.GOARCH)
 	l.logger.Println("========================================")
-	
+
 	return nil
 }
 
@@ -78,7 +78,7 @@ func (l *Launcher) closeLogging() {
 func (l *Launcher) updateProgress(value int, status string) {
 	l.progress = value
 	l.status = status
-	
+
 	msg := fmt.Sprintf(`{"progress": %d, "status": "%s"}`, value, status)
 	for client := range l.clients {
 		select {
@@ -132,14 +132,14 @@ func (l *Launcher) installDependencies() error {
 	} else {
 		cmd = exec.Command("npm", "install", "--cache", "false")
 	}
-	
+
 	cmd.Dir = l.appDir
-	
+
 	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("Installation fehlgeschlagen: %v", err)
 	}
-	
+
 	return nil
 }
 
@@ -147,7 +147,7 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 	launchJS := filepath.Join(l.appDir, "launch.js")
 	cmd := exec.Command(l.nodePath, launchJS)
 	cmd.Dir = l.appDir
-	
+
 	// Redirect both stdout and stderr to log file and console
 	if l.logFile != nil {
 		multiWriter := io.MultiWriter(os.Stdout, l.logFile)
@@ -158,16 +158,16 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 		cmd.Stderr = os.Stderr
 	}
 	cmd.Stdin = os.Stdin
-	
+
 	l.logger.Println("Starting Node.js server...")
 	l.logger.Printf("Command: %s %s\n", l.nodePath, launchJS)
 	l.logger.Printf("Working directory: %s\n", l.appDir)
-	
+
 	err := cmd.Start()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return cmd, nil
 }
 
@@ -176,38 +176,38 @@ func (l *Launcher) checkServerHealth() bool {
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 	}
-	
+
 	resp, err := client.Get("http://localhost:3000/dashboard.html")
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
-	
+
 	return resp.StatusCode == 200
 }
 
 // waitForServer waits for the server to be ready or timeout
 func (l *Launcher) waitForServer(timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
-	
+
 	for time.Now().Before(deadline) {
 		if l.checkServerHealth() {
 			return nil
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	
+
 	return fmt.Errorf("Server did not start within %v", timeout)
 }
 
 func (l *Launcher) runLauncher() {
 	time.Sleep(1 * time.Second) // Give browser time to load
-	
+
 	// Phase 1: Check Node.js (0-20%)
 	l.updateProgress(0, "Prüfe Node.js Installation...")
 	l.logger.Println("[Phase 1] Checking Node.js installation...")
 	time.Sleep(500 * time.Millisecond)
-	
+
 	err := l.checkNodeJS()
 	if err != nil {
 		l.logger.Printf("[ERROR] Node.js check failed: %v\n", err)
@@ -216,21 +216,21 @@ func (l *Launcher) runLauncher() {
 		l.closeLogging()
 		os.Exit(1)
 	}
-	
+
 	l.updateProgress(10, "Node.js gefunden...")
 	l.logger.Printf("[SUCCESS] Node.js found at: %s\n", l.nodePath)
 	time.Sleep(300 * time.Millisecond)
-	
+
 	version := l.getNodeVersion()
 	l.updateProgress(20, fmt.Sprintf("Node.js Version: %s", version))
 	l.logger.Printf("[INFO] Node.js version: %s\n", version)
 	time.Sleep(300 * time.Millisecond)
-	
+
 	// Phase 2: Find directories (20-30%)
 	l.updateProgress(25, "Prüfe App-Verzeichnis...")
 	l.logger.Printf("[Phase 2] Checking app directory: %s\n", l.appDir)
 	time.Sleep(300 * time.Millisecond)
-	
+
 	if _, err := os.Stat(l.appDir); os.IsNotExist(err) {
 		l.logger.Printf("[ERROR] App directory not found: %s\n", l.appDir)
 		l.updateProgress(25, "FEHLER: app Verzeichnis nicht gefunden")
@@ -238,22 +238,22 @@ func (l *Launcher) runLauncher() {
 		l.closeLogging()
 		os.Exit(1)
 	}
-	
+
 	l.updateProgress(30, "App-Verzeichnis gefunden...")
 	l.logger.Printf("[SUCCESS] App directory exists: %s\n", l.appDir)
 	time.Sleep(300 * time.Millisecond)
-	
+
 	// Phase 3: Check and install dependencies (30-80%)
 	l.updateProgress(30, "Prüfe Abhängigkeiten...")
 	l.logger.Println("[Phase 3] Checking dependencies...")
 	time.Sleep(300 * time.Millisecond)
-	
+
 	if !l.checkNodeModules() {
 		l.updateProgress(40, "Installiere Abhängigkeiten...")
 		l.logger.Println("[INFO] node_modules not found, installing dependencies...")
 		time.Sleep(500 * time.Millisecond)
 		l.updateProgress(45, "HINWEIS: npm install kann einige Minuten dauern, bitte das Fenster offen halten und warten")
-		
+
 		err = l.installDependencies()
 		if err != nil {
 			l.logger.Printf("[ERROR] Dependency installation failed: %v\n", err)
@@ -262,7 +262,7 @@ func (l *Launcher) runLauncher() {
 			l.closeLogging()
 			os.Exit(1)
 		}
-		
+
 		l.updateProgress(80, "Installation abgeschlossen!")
 		l.logger.Println("[SUCCESS] Dependencies installed successfully")
 	} else {
@@ -270,12 +270,12 @@ func (l *Launcher) runLauncher() {
 		l.logger.Println("[INFO] Dependencies already installed")
 	}
 	time.Sleep(300 * time.Millisecond)
-	
+
 	// Phase 4: Start tool (80-100%)
 	l.updateProgress(90, "Starte Tool...")
 	l.logger.Println("[Phase 4] Starting Node.js server...")
 	time.Sleep(500 * time.Millisecond)
-	
+
 	// Start the tool
 	cmd, err := l.startTool()
 	if err != nil {
@@ -286,22 +286,22 @@ func (l *Launcher) runLauncher() {
 		l.closeLogging()
 		os.Exit(1)
 	}
-	
+
 	// Monitor if the process exits prematurely
 	processDied := make(chan error, 1)
 	go func() {
 		processDied <- cmd.Wait()
 	}()
-	
+
 	// Wait for server to be ready
 	l.updateProgress(95, "Warte auf Server-Start...")
 	l.logger.Println("[INFO] Waiting for server health check (30s timeout)...")
-	
+
 	// Check server health with process monitoring
 	healthCheckTimeout := time.After(30 * time.Second)
 	healthCheckTicker := time.NewTicker(500 * time.Millisecond)
 	defer healthCheckTicker.Stop()
-	
+
 	serverReady := false
 	for !serverReady {
 		select {
@@ -328,7 +328,7 @@ func (l *Launcher) runLauncher() {
 			os.Exit(1)
 		}
 	}
-	
+
 	l.updateProgress(100, "Server erfolgreich gestartet!")
 	l.logger.Println("[SUCCESS] Server is running and healthy!")
 	time.Sleep(500 * time.Millisecond)
@@ -336,7 +336,7 @@ func (l *Launcher) runLauncher() {
 	l.logger.Println("[INFO] Redirecting to dashboard...")
 	time.Sleep(500 * time.Millisecond)
 	l.sendRedirect()
-	
+
 	// Keep server running to allow redirect to complete
 	time.Sleep(3 * time.Second)
 	l.closeLogging()
@@ -345,28 +345,28 @@ func (l *Launcher) runLauncher() {
 
 func main() {
 	launcher := NewLauncher()
-	
+
 	// Get executable directory
 	exePath, err := os.Executable()
 	if err != nil {
 		log.Fatal("Kann Programmverzeichnis nicht ermitteln:", err)
 	}
-	
+
 	exeDir := filepath.Dir(exePath)
 	launcher.appDir = filepath.Join(exeDir, "app")
 	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.png")
-	
+
 	// Setup logging immediately
 	if err := launcher.setupLogging(launcher.appDir); err != nil {
 		log.Printf("Warning: Could not setup logging: %v\n", err)
 		// Continue anyway with default logger
 		launcher.logger = log.New(os.Stdout, "", log.LstdFlags)
 	}
-	
+
 	launcher.logger.Println("Launcher started successfully")
 	launcher.logger.Printf("Executable directory: %s\n", exeDir)
 	launcher.logger.Printf("App directory: %s\n", launcher.appDir)
-	
+
 	// Setup HTTP server
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		tmpl := template.Must(template.New("index").Parse(`
@@ -484,26 +484,26 @@ func main() {
 `))
 		tmpl.Execute(w, nil)
 	})
-	
+
 	http.HandleFunc("/bg", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, bgImagePath)
 	})
-	
+
 	http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
-		
+
 		client := make(chan string, 10)
 		launcher.clients[client] = true
-		
+
 		// Send initial state
 		msg := fmt.Sprintf(`{"progress": %d, "status": "%s"}`, launcher.progress, launcher.status)
 		fmt.Fprintf(w, "data: %s\n\n", msg)
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()
 		}
-		
+
 		// Listen for updates
 		for {
 			select {
@@ -518,23 +518,23 @@ func main() {
 			}
 		}
 	})
-	
+
 	// Start HTTP server
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:58734", nil); err != nil {
 			log.Fatal(err)
 		}
 	}()
-	
+
 	// Give server time to start
 	time.Sleep(500 * time.Millisecond)
-	
+
 	// Open browser
 	browser.OpenURL("http://127.0.0.1:58734")
-	
+
 	// Run launcher
 	go launcher.runLauncher()
-	
+
 	// Keep running
 	select {}
 }
