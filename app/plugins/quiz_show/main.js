@@ -2522,10 +2522,7 @@ class QuizShowPlugin {
         const command = message.toLowerCase().trim();
 
         // Check joker limits
-        const totalJokers = this.gameState.jokersUsed['25'] +
-                          this.gameState.jokersUsed['50'] +
-                          this.gameState.jokersUsed['info'] +
-                          this.gameState.jokersUsed['time'];
+        const totalJokers = Object.values(this.gameState.jokersUsed).reduce((sum, count) => sum + count, 0);
 
         if (totalJokers >= this.config.jokersPerRound) {
             return;
@@ -2579,10 +2576,7 @@ class QuizShowPlugin {
     }
 
     activate25Joker() {
-        const correctIndex = this.gameState.currentQuestion.correct;
-        const wrongIndices = [0, 1, 2, 3].filter(i => 
-            i !== correctIndex && !this.gameState.hiddenAnswers.includes(i)
-        );
+        const wrongIndices = this.getAvailableWrongAnswers();
 
         // Remove 1 wrong answer
         if (wrongIndices.length > 0) {
@@ -2597,10 +2591,7 @@ class QuizShowPlugin {
     }
 
     activate5050Joker() {
-        const correctIndex = this.gameState.currentQuestion.correct;
-        const wrongIndices = [0, 1, 2, 3].filter(i => 
-            i !== correctIndex && !this.gameState.hiddenAnswers.includes(i)
-        );
+        const wrongIndices = this.getAvailableWrongAnswers();
 
         // Remove 2 wrong answers
         const toHide = [];
@@ -2613,6 +2604,13 @@ class QuizShowPlugin {
         this.gameState.hiddenAnswers.push(...toHide);
 
         return { hiddenAnswers: toHide };
+    }
+
+    getAvailableWrongAnswers() {
+        const correctIndex = this.gameState.currentQuestion.correct;
+        return [0, 1, 2, 3].filter(i => 
+            i !== correctIndex && !this.gameState.hiddenAnswers.includes(i)
+        );
     }
 
     activateInfoJoker() {
