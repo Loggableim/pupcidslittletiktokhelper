@@ -132,14 +132,22 @@ func (l *Launcher) checkNodeModules() bool {
 }
 
 func (l *Launcher) installDependencies() error {
+	// NOTE: Do NOT use "--cache false" flag!
+	// It treats "false" as a directory path, creating unwanted "app/false/" npm cache directory.
+	// This causes npm remnants/leftovers that pollute the workspace.
+	// Use plain "npm install" instead for clean installation.
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
+		cmd = exec.Command("cmd", "/C", "npm", "install")
 	} else {
-		cmd = exec.Command("npm", "install", "--cache", "false")
+		cmd = exec.Command("npm", "install")
 	}
 	
 	cmd.Dir = l.appDir
+	
+	// Set environment variables to skip optional dependency downloads
+	// This prevents network errors during installation
+	cmd.Env = append(os.Environ(), "PUPPETEER_SKIP_DOWNLOAD=true")
 	
 	err := cmd.Run()
 	if err != nil {
