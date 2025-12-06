@@ -656,6 +656,9 @@ class PluginLoader extends EventEmitter {
      * Aktiviert ein Plugin
      */
     async enablePlugin(pluginId) {
+        // Store original state to rollback if needed
+        const originalState = this.state[pluginId] ? { ...this.state[pluginId] } : null;
+        
         try {
             // Set plugin state to enabled BEFORE attempting to load
             // This ensures loadPlugin() sees it as enabled and doesn't skip it
@@ -663,7 +666,18 @@ class PluginLoader extends EventEmitter {
                 this.state[pluginId] = {};
             }
             this.state[pluginId].enabled = true;
-            this.saveState();
+            
+            try {
+                this.saveState();
+            } catch (saveError) {
+                // Rollback in-memory state if save fails
+                if (originalState) {
+                    this.state[pluginId] = originalState;
+                } else {
+                    delete this.state[pluginId];
+                }
+                throw new Error(`Failed to save plugin state: ${saveError.message}`);
+            }
 
             // Wenn Plugin noch nicht geladen, jetzt laden
             if (!this.plugins.has(pluginId)) {
@@ -692,7 +706,11 @@ class PluginLoader extends EventEmitter {
             // Reset state to disabled since enabling failed
             if (this.state[pluginId]) {
                 this.state[pluginId].enabled = false;
-                this.saveState();
+                try {
+                    this.saveState();
+                } catch (saveError) {
+                    this.logger.error(`Failed to save disabled state after error: ${saveError.message}`);
+                }
             }
             throw error;
         }
