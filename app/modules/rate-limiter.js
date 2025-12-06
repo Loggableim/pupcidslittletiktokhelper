@@ -89,8 +89,9 @@ const pluginLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting for localhost/127.0.0.1 to allow unrestricted local admin access
-    const ip = req.ip || req.socket.remoteAddress;
-    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    // Check multiple sources for IP address to handle different Express configurations
+    const ip = req.ip || req.socket.remoteAddress || req.connection?.remoteAddress;
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
   },
   handler: (req, res) => {
     logger.warn('Plugin management rate limit exceeded', {
