@@ -47,16 +47,17 @@ func (l *Launcher) setupLogging(appDir string) error {
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	logPath := filepath.Join(logDir, fmt.Sprintf("launcher_%s.log", timestamp))
 
-	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	// Open with sync flag to ensure writes are flushed immediately
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND|os.O_SYNC, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %v", err)
 	}
 
 	l.logFile = logFile
 
-	// Create multi-writer to write to both file and stdout
-	multiWriter := io.MultiWriter(os.Stdout, logFile)
-	l.logger = log.New(multiWriter, "", log.LstdFlags)
+	// Only write to file (not stdout) because in GUI mode stdout doesn't exist
+	// This prevents silent failures when built with -H windowsgui
+	l.logger = log.New(logFile, "", log.LstdFlags)
 
 	l.logger.Println("========================================")
 	l.logger.Println("TikTok Stream Tool - Launcher Log")
@@ -65,6 +66,11 @@ func (l *Launcher) setupLogging(appDir string) error {
 	l.logger.Printf("Platform: %s\n", runtime.GOOS)
 	l.logger.Printf("Architecture: %s\n", runtime.GOARCH)
 	l.logger.Println("========================================")
+	
+	// Force sync to ensure header is written
+	if err := logFile.Sync(); err != nil {
+		return fmt.Errorf("failed to sync log file: %v", err)
+	}
 
 	return nil
 }
@@ -75,7 +81,23 @@ func (l *Launcher) closeLogging() {
 		l.logger.Println("========================================")
 		l.logger.Println("Launcher finished")
 		l.logger.Println("========================================")
+		l.logFile.Sync() // Ensure all writes are flushed
 		l.logFile.Close()
+	}
+}
+
+// logAndSync logs a message and immediately syncs to disk
+// This ensures logs are written even if the process crashes
+func (l *Launcher) logAndSync(format string, args ...interface{}) {
+	if l.logger != nil {
+		if len(args) > 0 {
+			l.logger.Printf(format, args...)
+		} else {
+			l.logger.Println(format)
+		}
+		if l.logFile != nil {
+			l.logFile.Sync()
+		}
 	}
 }
 
@@ -339,12 +361,12 @@ func (l *Launcher) runLauncher() {
 
 	// Phase 1: Check Node.js (0-20%)
 	l.updateProgress(0, "Prüfe Node.js Installation...")
-	l.logger.Println("[Phase 1] Checking Node.js installation...")
+	l.logAndSync("[Phase 1] Checking Node.js installation...")
 	time.Sleep(500 * time.Millisecond)
 
 	err := l.checkNodeJS()
 	if err != nil {
-		l.logger.Printf("[ERROR] Node.js check failed: %v\n", err)
+		l.logAndSync("[ERROR] Node.js check failed: %v", err)
 		l.updateProgress(0, "FEHLER: Node.js ist nicht installiert!")
 		time.Sleep(5 * time.Second)
 		l.closeLogging()
@@ -352,7 +374,7 @@ func (l *Launcher) runLauncher() {
 	}
 
 	l.updateProgress(10, "Node.js gefunden...")
-	l.logger.Printf("[SUCCESS] Node.js found at: %s\n", l.nodePath)
+	l.logAndSync("[SUCCESS] Node.js found at: %s", l.nodePath)
 	time.Sleep(300 * time.Millisecond)
 
 	version := l.getNodeVersion()
@@ -461,20 +483,21 @@ func (l *Launcher) runLauncher() {
 		select {
 		case err := <-processDied:
 			// Process exited before server was ready
-			l.logger.Printf("[ERROR] Node.js process exited prematurely: %v\n", err)
-			l.logger.Println("[ERROR] Server crashed during startup!")
-			l.logger.Println("[ERROR] ===========================================")
-			l.logger.Println("[ERROR] Bitte prüfe app/logs/launcher_*.log für Details")
-			l.logger.Println("[ERROR] Häufige Ursachen:")
-			l.logger.Println("[ERROR]  - Fehlende .env Datei (kopiere .env.example zu .env)")
-			l.logger.Println("[ERROR]  - Port 3000 bereits belegt")
-			l.logger.Println("[ERROR]  - Fehlende Dependencies (führe 'npm install' aus)")
-			l.logger.Println("[ERROR]  - Syntax-Fehler im Code")
-			l.logger.Println("[ERROR] ===========================================")
+			l.logAndSync("[ERROR] ===========================================")
+			l.logAndSync("[ERROR] Node.js process exited prematurely: %v", err)
+			l.logAndSync("[ERROR] Server crashed during startup!")
+			l.logAndSync("[ERROR] ===========================================")
+			l.logAndSync("[ERROR] Bitte prüfe app/logs/launcher_*.log für Details")
+			l.logAndSync("[ERROR] Häufige Ursachen:")
+			l.logAndSync("[ERROR]  - Fehlende .env Datei (kopiere .env.example zu .env)")
+			l.logAndSync("[ERROR]  - Port 3000 bereits belegt")
+			l.logAndSync("[ERROR]  - Fehlende Dependencies (führe 'npm install' aus)")
+			l.logAndSync("[ERROR]  - Syntax-Fehler im Code")
+			l.logAndSync("[ERROR] ===========================================")
 			
 			// Check if we just fixed the .env file - if so, retry once
 			if l.envFileFixed {
-				l.logger.Println("[AUTO-FIX] .env file was just created - attempting restart...")
+				l.logAndSync("[AUTO-FIX] .env file was just created - attempting restart...")
 				l.updateProgress(95, "🔄 .env erstellt - starte Server neu...")
 				time.Sleep(3 * time.Second)
 				
@@ -484,7 +507,7 @@ func (l *Launcher) runLauncher() {
 				// Start server again
 				cmd, err = l.startTool()
 				if err != nil {
-					l.logger.Printf("[ERROR] Retry failed to start server: %v\n", err)
+					l.logAndSync("[ERROR] Retry failed to start server: %v", err)
 				} else {
 					// Monitor the restarted process
 					go func() {
@@ -492,7 +515,7 @@ func (l *Launcher) runLauncher() {
 					}()
 					
 					l.updateProgress(96, "🔄 Server neugestartet - warte auf Antwort...")
-					l.logger.Println("[INFO] Server restarted after .env fix - waiting for health check...")
+					l.logAndSync("[INFO] Server restarted after .env fix - waiting for health check...")
 					
 					// Reset the ticker for another try
 					continue
@@ -590,14 +613,14 @@ func main() {
 
 	// Setup logging immediately
 	if err := launcher.setupLogging(launcher.appDir); err != nil {
-		log.Printf("Warning: Could not setup logging: %v\n", err)
-		// Continue anyway with default logger
-		launcher.logger = log.New(os.Stdout, "", log.LstdFlags)
+		// If logging fails, create a fallback logger that does nothing
+		// (since stdout doesn't exist in GUI mode)
+		launcher.logger = log.New(io.Discard, "", log.LstdFlags)
 	}
 
-	launcher.logger.Println("Launcher started successfully")
-	launcher.logger.Printf("Executable directory: %s\n", exeDir)
-	launcher.logger.Printf("App directory: %s\n", launcher.appDir)
+	launcher.logAndSync("Launcher started successfully")
+	launcher.logAndSync("Executable directory: %s", exeDir)
+	launcher.logAndSync("App directory: %s", launcher.appDir)
 
 	// Setup HTTP server
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
