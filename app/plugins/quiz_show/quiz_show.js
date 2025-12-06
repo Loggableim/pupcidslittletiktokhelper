@@ -1960,58 +1960,67 @@
         const draggables = canvas.querySelectorAll('.draggable');
         
         draggables.forEach(element => {
+            // Remove any existing event listeners by cloning the element
+            const newElement = element.cloneNode(true);
+            element.parentNode.replaceChild(newElement, element);
+            
             let isDragging = false;
             let isResizing = false;
             let startX, startY, startLeft, startTop, startWidth, startHeight;
 
+            const onMouseMove = (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    newElement.style.left = Math.max(0, startLeft + deltaX) + 'px';
+                    newElement.style.top = Math.max(0, startTop + deltaY) + 'px';
+                } else if (isResizing) {
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    newElement.style.width = Math.max(100, startWidth + deltaX) + 'px';
+                    newElement.style.height = Math.max(50, startHeight + deltaY) + 'px';
+                }
+            };
+
+            const onMouseUp = () => {
+                if (isDragging || isResizing) {
+                    newElement.classList.remove('dragging', 'resizing');
+                    isDragging = false;
+                    isResizing = false;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+            };
+
             // Make element draggable
-            element.addEventListener('mousedown', (e) => {
+            newElement.addEventListener('mousedown', (e) => {
                 // Check if clicking on resize handle
                 if (e.target.classList.contains('element-resize-handle')) {
                     isResizing = true;
                     startX = e.clientX;
                     startY = e.clientY;
-                    startWidth = parseInt(element.style.width) || element.offsetWidth;
-                    startHeight = parseInt(element.style.height) || element.offsetHeight;
-                    element.classList.add('resizing');
+                    startWidth = parseInt(newElement.style.width) || newElement.offsetWidth;
+                    startHeight = parseInt(newElement.style.height) || newElement.offsetHeight;
+                    newElement.classList.add('resizing');
                     e.preventDefault();
                 } else {
                     isDragging = true;
                     startX = e.clientX;
                     startY = e.clientY;
-                    startLeft = parseInt(element.style.left) || element.offsetLeft;
-                    startTop = parseInt(element.style.top) || element.offsetTop;
-                    element.classList.add('dragging');
+                    startLeft = parseInt(newElement.style.left) || newElement.offsetLeft;
+                    startTop = parseInt(newElement.style.top) || newElement.offsetTop;
+                    newElement.classList.add('dragging');
                     e.preventDefault();
                 }
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const deltaX = e.clientX - startX;
-                    const deltaY = e.clientY - startY;
-                    element.style.left = Math.max(0, startLeft + deltaX) + 'px';
-                    element.style.top = Math.max(0, startTop + deltaY) + 'px';
-                } else if (isResizing) {
-                    const deltaX = e.clientX - startX;
-                    const deltaY = e.clientY - startY;
-                    element.style.width = Math.max(100, startWidth + deltaX) + 'px';
-                    element.style.height = Math.max(50, startHeight + deltaY) + 'px';
-                }
-            });
-
-            document.addEventListener('mouseup', () => {
-                if (isDragging || isResizing) {
-                    element.classList.remove('dragging', 'resizing');
-                    isDragging = false;
-                    isResizing = false;
-                }
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
             });
 
             // Add double-click to toggle visibility
-            element.addEventListener('dblclick', () => {
-                element.classList.toggle('hidden');
-                showMessage(`Element ${element.classList.contains('hidden') ? 'ausgeblendet' : 'eingeblendet'}`, 'info', 'layoutSaveMessage');
+            newElement.addEventListener('dblclick', () => {
+                newElement.classList.toggle('hidden');
+                showMessage(`Element ${newElement.classList.contains('hidden') ? 'ausgeblendet' : 'eingeblendet'}`, 'info', 'layoutSaveMessage');
             });
         });
     }
