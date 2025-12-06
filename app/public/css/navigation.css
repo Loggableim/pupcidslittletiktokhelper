@@ -27,7 +27,7 @@
 
     /* Sidebar */
     --sidebar-width-expanded: 240px;
-    --sidebar-width-collapsed: 72px;
+    --sidebar-width-collapsed: 88px;
     --topbar-height: 56px;
 
     /* Transitions */
@@ -159,7 +159,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 0.5rem 0.75rem;
-    height: var(--topbar-height);
+    min-height: var(--topbar-height);
     border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
 }
@@ -171,11 +171,13 @@ body {
     gap: 0.5rem;
     flex: 1;
     min-width: 0;
+    padding: 0.25rem 0;
 }
 
 .sidebar-logo-icon {
-    height: auto;
-    width: 96%;
+    max-height: 40px;
+    width: auto;
+    max-width: 90%;
     color: var(--color-accent-primary);
     flex-shrink: 0;
     transition: all var(--transition-speed) ease;
@@ -186,8 +188,10 @@ body {
 /* Mini icon for collapsed sidebar - hidden by default */
 .sidebar-mini-icon {
     display: none;
-    height: auto;
-    width: 96%;
+    min-width: 80px;
+    min-height: 80px;
+    width: 80px;
+    height: 80px;
     object-fit: contain;
     transition: all var(--transition-speed) ease;
     border-radius: 4px;
@@ -199,6 +203,16 @@ body {
 
 .sidebar-collapsed .sidebar-mini-icon {
     display: block;
+}
+
+/* Collapsed sidebar header adjustments for larger logo */
+.sidebar-collapsed .sidebar-header {
+    min-height: 96px;
+    padding: 0.5rem;
+}
+
+.sidebar-collapsed .sidebar-logo {
+    padding: 0.25rem 0;
 }
 
 .sidebar-logo-text {
