@@ -174,21 +174,25 @@ body {
 }
 
 .sidebar-logo-icon {
-    height: 40px;
-    width: auto;
-    max-width: 180px;
+    height: auto;
+    width: 96%;
+    max-width: 96%;
     color: var(--color-accent-primary);
     flex-shrink: 0;
     transition: all var(--transition-speed) ease;
+    border-radius: 8px;
+    object-fit: contain;
 }
 
 /* Mini icon for collapsed sidebar - hidden by default */
 .sidebar-mini-icon {
     display: none;
-    height: 40px;
-    width: 40px;
+    height: auto;
+    width: 96%;
+    max-width: 96%;
     object-fit: contain;
     transition: all var(--transition-speed) ease;
+    border-radius: 8px;
 }
 
 .sidebar-collapsed .sidebar-logo-icon {

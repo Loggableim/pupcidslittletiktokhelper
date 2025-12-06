@@ -213,20 +213,24 @@ class ThemeManager {
         const miniIcon = document.getElementById('sidebar-mini-icon');
         
         if (logoImg) {
-            // Day mode uses the daymode logo, night and contrast use the night-highcontrast logo
+            // Switch logo based on theme: daymode, nightmode, or highcontrast
             if (theme === 'day') {
-                logoImg.src = '/ltthlogo_daymode.png';
+                logoImg.src = '/ltthlogo_daymode.jpg';
+            } else if (theme === 'contrast') {
+                logoImg.src = '/ltthlogo_highcontrast.jpg';
             } else {
-                logoImg.src = '/ltthlogo_night-highcontrast-mode.png';
+                logoImg.src = '/ltthlogo_nightmode.jpg';
             }
         }
         
         if (miniIcon) {
-            // Day mode uses the daymode mini icon, night and contrast use the night mini icon
+            // Switch mini icon based on theme: daymode, nightmode, or highcontrast
             if (theme === 'day') {
-                miniIcon.src = '/mini-icon-daymode.png';
+                miniIcon.src = '/ltthmini_daymode.jpg';
+            } else if (theme === 'contrast') {
+                miniIcon.src = '/ltthmini_highcontrast.jpg';
             } else {
-                miniIcon.src = '/mini-icon-night.png';
+                miniIcon.src = '/ltthmini_nightmode.jpg';
             }
         }
     }
