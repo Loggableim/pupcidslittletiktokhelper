@@ -400,6 +400,9 @@ logger.info('🔌 Plugin Loader initialized');
 // Set TikTok module reference for dynamic event registration
 pluginLoader.setTikTokModule(tiktok);
 
+// Set IFTTT engine reference for dynamic IFTTT component registration
+pluginLoader.setIFTTTEngine(iftttEngine);
+
 // Add pluginLoader to IFTTT services so actions can access plugins
 iftttServices.pluginLoader = pluginLoader;
 
