@@ -8,7 +8,7 @@ const express = require('express');
  * Ermöglicht sicheren Zugriff auf System-Funktionen
  */
 class PluginAPI {
-    constructor(pluginId, pluginDir, app, io, db, logger, pluginLoader, configPathManager) {
+    constructor(pluginId, pluginDir, app, io, db, logger, pluginLoader, configPathManager, iftttEngine = null) {
         this.pluginId = pluginId;
         this.pluginDir = pluginDir;
         this.app = app;
@@ -17,12 +17,16 @@ class PluginAPI {
         this.logger = logger;
         this.pluginLoader = pluginLoader;
         this.configPathManager = configPathManager;
+        this.iftttEngine = iftttEngine;
 
         // Registrierte Routes und Events für Cleanup
         this.registeredRoutes = [];
         this.registeredSocketEvents = [];
         this.registeredTikTokEvents = [];
         this.registeredFlowActions = [];
+        this.registeredIFTTTTriggers = [];
+        this.registeredIFTTTConditions = [];
+        this.registeredIFTTTActions = [];
     }
 
     /**
@@ -159,6 +163,99 @@ class PluginAPI {
     }
 
     /**
+     * Registriert einen IFTTT-Trigger für die visuelle Flow-Erstellung
+     * @param {string} id - Eindeutige Trigger-ID (empfohlen: 'pluginId:triggername')
+     * @param {Object} config - Trigger-Konfiguration
+     */
+    registerIFTTTTrigger(id, config) {
+        try {
+            if (!this.iftttEngine) {
+                this.log('IFTTT Engine not available, trigger registration skipped', 'warn');
+                return false;
+            }
+
+            // Prefix mit Plugin-ID wenn nicht bereits vorhanden
+            const triggerId = id.includes(':') ? id : `${this.pluginId}:${id}`;
+
+            // Kategorie automatisch setzen falls nicht angegeben
+            if (!config.category) {
+                config.category = this.pluginId;
+            }
+
+            this.iftttEngine.triggers.register(triggerId, config);
+            this.registeredIFTTTTriggers.push(triggerId);
+            this.log(`Registered IFTTT trigger: ${triggerId}`);
+
+            return true;
+        } catch (error) {
+            this.log(`Failed to register IFTTT trigger: ${error.message}`, 'error');
+            return false;
+        }
+    }
+
+    /**
+     * Registriert eine IFTTT-Condition für die visuelle Flow-Erstellung
+     * @param {string} id - Eindeutige Condition-ID (empfohlen: 'pluginId:conditionname')
+     * @param {Object} config - Condition-Konfiguration
+     */
+    registerIFTTTCondition(id, config) {
+        try {
+            if (!this.iftttEngine) {
+                this.log('IFTTT Engine not available, condition registration skipped', 'warn');
+                return false;
+            }
+
+            // Prefix mit Plugin-ID wenn nicht bereits vorhanden
+            const conditionId = id.includes(':') ? id : `${this.pluginId}:${id}`;
+
+            // Kategorie automatisch setzen falls nicht angegeben
+            if (!config.category) {
+                config.category = this.pluginId;
+            }
+
+            this.iftttEngine.conditions.register(conditionId, config);
+            this.registeredIFTTTConditions.push(conditionId);
+            this.log(`Registered IFTTT condition: ${conditionId}`);
+
+            return true;
+        } catch (error) {
+            this.log(`Failed to register IFTTT condition: ${error.message}`, 'error');
+            return false;
+        }
+    }
+
+    /**
+     * Registriert eine IFTTT-Action für die visuelle Flow-Erstellung
+     * @param {string} id - Eindeutige Action-ID (empfohlen: 'pluginId:actionname')
+     * @param {Object} config - Action-Konfiguration
+     */
+    registerIFTTTAction(id, config) {
+        try {
+            if (!this.iftttEngine) {
+                this.log('IFTTT Engine not available, action registration skipped', 'warn');
+                return false;
+            }
+
+            // Prefix mit Plugin-ID wenn nicht bereits vorhanden
+            const actionId = id.includes(':') ? id : `${this.pluginId}:${id}`;
+
+            // Kategorie automatisch setzen falls nicht angegeben
+            if (!config.category) {
+                config.category = this.pluginId;
+            }
+
+            this.iftttEngine.actions.register(actionId, config);
+            this.registeredIFTTTActions.push(actionId);
+            this.log(`Registered IFTTT action: ${actionId}`);
+
+            return true;
+        } catch (error) {
+            this.log(`Failed to register IFTTT action: ${error.message}`, 'error');
+            return false;
+        }
+    }
+
+    /**
      * Sendet ein Socket.io-Event an alle Clients
      * @param {string} event - Event-Name
      * @param {*} data - Event-Daten
@@ -281,6 +378,40 @@ class PluginAPI {
         this.registeredTikTokEvents = [];
         this.registeredFlowActions = [];
 
+        // Unregister IFTTT components
+        if (this.iftttEngine) {
+            this.registeredIFTTTTriggers.forEach(triggerId => {
+                try {
+                    this.iftttEngine.triggers.unregister(triggerId);
+                    this.log(`Unregistered IFTTT trigger: ${triggerId}`);
+                } catch (error) {
+                    this.log(`Failed to unregister IFTTT trigger ${triggerId}: ${error.message}`, 'error');
+                }
+            });
+
+            this.registeredIFTTTConditions.forEach(conditionId => {
+                try {
+                    this.iftttEngine.conditions.unregister(conditionId);
+                    this.log(`Unregistered IFTTT condition: ${conditionId}`);
+                } catch (error) {
+                    this.log(`Failed to unregister IFTTT condition ${conditionId}: ${error.message}`, 'error');
+                }
+            });
+
+            this.registeredIFTTTActions.forEach(actionId => {
+                try {
+                    this.iftttEngine.actions.unregister(actionId);
+                    this.log(`Unregistered IFTTT action: ${actionId}`);
+                } catch (error) {
+                    this.log(`Failed to unregister IFTTT action ${actionId}: ${error.message}`, 'error');
+                }
+            });
+        }
+
+        this.registeredIFTTTTriggers = [];
+        this.registeredIFTTTConditions = [];
+        this.registeredIFTTTActions = [];
+
         this.log('All registrations cleared (except Express routes)');
     }
 
@@ -340,6 +471,10 @@ class PluginLoader extends EventEmitter {
         // This allows dynamic registration of TikTok events when plugins are enabled at runtime
         this.tiktok = null;
 
+        // IFTTT Engine reference (set after IFTTT engine is initialized)
+        // This allows plugins to register triggers, conditions, and actions
+        this.iftttEngine = null;
+
         // Create a dedicated router for plugin routes
         // This router is mounted on the main app and ensures plugin routes
         // are always matched before the 404 handler, even when plugins
@@ -365,6 +500,16 @@ class PluginLoader extends EventEmitter {
     setTikTokModule(tiktok) {
         this.tiktok = tiktok;
         this.logger.info('🎯 TikTok module reference set in PluginLoader - plugins can now register events dynamically');
+    }
+
+    /**
+     * Set the IFTTT engine reference for dynamic IFTTT component registration
+     * This should be called after IFTTT engine is initialized
+     * @param {IFTTTEngine} iftttEngine - IFTTT engine instance
+     */
+    setIFTTTEngine(iftttEngine) {
+        this.iftttEngine = iftttEngine;
+        this.logger.info('🔀 IFTTT engine reference set in PluginLoader - plugins can now register triggers, conditions, and actions');
     }
 
     /**
@@ -555,7 +700,8 @@ class PluginLoader extends EventEmitter {
                 this.db,
                 this.logger,
                 this,
-                this.configPathManager
+                this.configPathManager,
+                this.iftttEngine
             );
 
             // Plugin instanziieren
