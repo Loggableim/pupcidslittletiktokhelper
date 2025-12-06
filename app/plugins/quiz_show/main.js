@@ -584,6 +584,10 @@ class QuizShowPlugin {
             res.sendFile(path.join(__dirname, 'quiz_show_overlay.html'));
         });
 
+        this.api.registerRoute('get', '/quiz-show/leaderboard-overlay', (req, res) => {
+            res.sendFile(path.join(__dirname, 'quiz_show_leaderboard_overlay.html'));
+        });
+
         // Serve static assets
         this.api.registerRoute('get', '/quiz-show/quiz_show.js', (req, res) => {
             res.sendFile(path.join(__dirname, 'quiz_show.js'));

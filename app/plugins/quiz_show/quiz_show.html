@@ -789,12 +789,24 @@
                             <div class="preview-info">
                                 <label>Stream-Auflösung:</label>
                                 <select id="streamResolution" class="form-control">
-                                    <option value="1920x1080">1920x1080 (Full HD)</option>
-                                    <option value="1280x720">1280x720 (HD)</option>
-                                    <option value="2560x1440">2560x1440 (2K)</option>
-                                    <option value="3840x2160">3840x2160 (4K)</option>
+                                    <option value="1920x1080">1920x1080 (Full HD - Landscape)</option>
+                                    <option value="1280x720">1280x720 (HD - Landscape)</option>
+                                    <option value="2560x1440">2560x1440 (2K - Landscape)</option>
+                                    <option value="3840x2160">3840x2160 (4K - Landscape)</option>
+                                    <option value="1080x1920">1080x1920 (Full HD - Portrait)</option>
+                                    <option value="720x1280">720x1280 (HD - Portrait)</option>
+                                    <option value="1440x2560">1440x2560 (2K - Portrait)</option>
                                 </select>
-                                <div class="help-text">Overlay-URL: <code id="overlayUrl">/quiz-show/overlay</code></div>
+                                <div class="help-text">
+                                    <strong>Quiz Overlay URL:</strong> <code id="overlayUrl">/quiz-show/overlay</code>
+                                </div>
+                                <div class="help-text" style="margin-top: 10px;">
+                                    <strong>Leaderboard Overlay URL:</strong> <code>/quiz-show/leaderboard-overlay</code>
+                                    <button id="openLeaderboardOverlayBtn" class="btn btn-sm btn-secondary" style="margin-left: 10px;">🔗 Öffnen</button>
+                                </div>
+                                <div class="help-text" style="margin-top: 10px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6;">
+                                    <strong>💡 Tipp:</strong> Das Leaderboard Overlay ist ein separates Overlay, das Sie in OBS als separate Browser-Quelle hinzufügen können. Es unterstützt sowohl Landscape- als auch Portrait-Formate.
+                                </div>
                             </div>
                             <div class="preview-wrapper" id="previewWrapper">
                                 <iframe id="overlayPreview" src="/quiz-show/overlay" frameborder="0"></iframe>

@@ -1112,6 +1112,7 @@
         document.getElementById('saveHUDConfigBtn').addEventListener('click', saveHUDConfig);
         document.getElementById('resetHUDConfigBtn').addEventListener('click', resetHUDConfig);
         document.getElementById('openOverlayBtn').addEventListener('click', openOverlay);
+        document.getElementById('openLeaderboardOverlayBtn').addEventListener('click', openLeaderboardOverlay);
         document.getElementById('refreshPreviewBtn').addEventListener('click', refreshPreview);
 
         // Range sliders
@@ -1136,6 +1137,10 @@
                 }, 100);
             });
         }
+    }
+
+    function openLeaderboardOverlay() {
+        window.open('/quiz-show/leaderboard-overlay', '_blank', 'width=600,height=800');
     }
 
     // ============================================
@@ -1696,12 +1701,266 @@
         }
     }
 
+    // ============================================
+    // LAYOUT EDITOR
+    // ============================================
+
+    let layouts = [];
+    let currentLayout = null;
+    let isDragging = false;
+    let draggedElement = null;
+
+    // Load layouts on page load
+    async function loadLayouts() {
+        try {
+            const response = await fetch('/api/quiz-show/layouts');
+            const data = await response.json();
+            
+            if (data.success) {
+                layouts = data.layouts;
+                renderLayoutsList();
+            }
+        } catch (error) {
+            console.error('Error loading layouts:', error);
+        }
+    }
+
+    function renderLayoutsList() {
+        const container = document.getElementById('layoutsList');
+        if (!container) return;
+
+        if (layouts.length === 0) {
+            container.innerHTML = '<p class="no-data">Keine Layouts vorhanden</p>';
+            return;
+        }
+
+        container.innerHTML = layouts.map(layout => `
+            <div class="layout-item" data-id="${layout.id}">
+                <div class="layout-info">
+                    <div class="layout-name">${escapeHtml(layout.name)}</div>
+                    <div class="layout-meta">
+                        ${layout.resolution_width}x${layout.resolution_height} | 
+                        ${layout.orientation === 'horizontal' ? '🖼️ Landscape' : '📱 Portrait'}
+                        ${layout.is_default ? '<span class="badge">Standard</span>' : ''}
+                    </div>
+                </div>
+                <div class="layout-actions">
+                    <button class="btn-icon" onclick="window.quizShow.editLayout(${layout.id})" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon" onclick="window.quizShow.deleteLayout(${layout.id})" title="Löschen">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function createNewLayout() {
+        currentLayout = null;
+        document.getElementById('layoutName').value = '';
+        document.getElementById('layoutWidth').value = 1920;
+        document.getElementById('layoutHeight').value = 1080;
+        document.getElementById('layoutOrientation').value = 'horizontal';
+        document.getElementById('layoutIsDefault').checked = false;
+        
+        // Reset preview
+        resetLayoutPreview();
+        
+        showMessage('Neues Layout erstellen', 'info', 'layoutSaveMessage');
+    }
+
+    async function editLayout(layoutId) {
+        try {
+            const response = await fetch(`/api/quiz-show/layouts/${layoutId}`);
+            const data = await response.json();
+            
+            if (data.success && data.layout) {
+                currentLayout = data.layout;
+                
+                document.getElementById('layoutName').value = data.layout.name;
+                document.getElementById('layoutWidth').value = data.layout.resolution_width;
+                document.getElementById('layoutHeight').value = data.layout.resolution_height;
+                document.getElementById('layoutOrientation').value = data.layout.orientation;
+                document.getElementById('layoutIsDefault').checked = data.layout.is_default;
+                
+                // Load layout config
+                if (data.layout.layout_config) {
+                    const config = JSON.parse(data.layout.layout_config);
+                    applyLayoutConfig(config);
+                }
+                
+                showMessage('Layout wird bearbeitet', 'info', 'layoutSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error loading layout:', error);
+            showMessage('Fehler beim Laden des Layouts', 'error', 'layoutSaveMessage');
+        }
+    }
+
+    async function saveLayout() {
+        const name = document.getElementById('layoutName').value.trim();
+        const width = parseInt(document.getElementById('layoutWidth').value);
+        const height = parseInt(document.getElementById('layoutHeight').value);
+        const orientation = document.getElementById('layoutOrientation').value;
+        const isDefault = document.getElementById('layoutIsDefault').checked;
+        
+        if (!name) {
+            showMessage('Bitte geben Sie einen Namen ein', 'error', 'layoutSaveMessage');
+            return;
+        }
+        
+        // Collect element positions
+        const layoutConfig = collectLayoutConfig();
+        
+        const payload = {
+            name,
+            resolutionWidth: width,
+            resolutionHeight: height,
+            orientation,
+            isDefault,
+            layoutConfig: JSON.stringify(layoutConfig)
+        };
+        
+        try {
+            const url = currentLayout 
+                ? `/api/quiz-show/layouts/${currentLayout.id}` 
+                : '/api/quiz-show/layouts';
+            const method = currentLayout ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage('Layout gespeichert', 'success', 'layoutSaveMessage');
+                await loadLayouts();
+                currentLayout = null;
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'layoutSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error saving layout:', error);
+            showMessage('Fehler beim Speichern', 'error', 'layoutSaveMessage');
+        }
+    }
+
+    async function deleteLayout(layoutId) {
+        if (!confirm('Layout wirklich löschen?')) return;
+        
+        try {
+            const response = await fetch(`/api/quiz-show/layouts/${layoutId}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage('Layout gelöscht', 'success', 'layoutSaveMessage');
+                await loadLayouts();
+                if (currentLayout && currentLayout.id === layoutId) {
+                    currentLayout = null;
+                    createNewLayout();
+                }
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'layoutSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error deleting layout:', error);
+            showMessage('Fehler beim Löschen', 'error', 'layoutSaveMessage');
+        }
+    }
+
+    function collectLayoutConfig() {
+        const elements = {};
+        const draggables = document.querySelectorAll('#previewCanvas .draggable');
+        
+        draggables.forEach(el => {
+            const elementType = el.dataset.element;
+            elements[elementType] = {
+                x: parseInt(el.style.left) || 0,
+                y: parseInt(el.style.top) || 0,
+                width: parseInt(el.style.width) || 300,
+                height: parseInt(el.style.height) || 100,
+                visible: !el.classList.contains('hidden')
+            };
+        });
+        
+        return { elements };
+    }
+
+    function applyLayoutConfig(config) {
+        if (!config || !config.elements) return;
+        
+        Object.entries(config.elements).forEach(([elementType, props]) => {
+            const el = document.querySelector(`#previewCanvas [data-element="${elementType}"]`);
+            if (el) {
+                el.style.left = props.x + 'px';
+                el.style.top = props.y + 'px';
+                el.style.width = props.width + 'px';
+                el.style.height = props.height + 'px';
+                if (props.visible === false) {
+                    el.classList.add('hidden');
+                } else {
+                    el.classList.remove('hidden');
+                }
+            }
+        });
+    }
+
+    function resetLayoutPreview() {
+        const defaultPositions = {
+            question: { x: 50, y: 50, width: 800, height: 150 },
+            answers: { x: 50, y: 220, width: 800, height: 400 },
+            timer: { x: 900, y: 50, width: 200, height: 200 },
+            leaderboard: { x: 900, y: 300, width: 300, height: 400 },
+            jokerInfo: { x: 50, y: 650, width: 400, height: 100 }
+        };
+        
+        applyLayoutConfig({ elements: defaultPositions });
+    }
+
+    function cancelLayoutEdit() {
+        currentLayout = null;
+        createNewLayout();
+    }
+
+    // Initialize layout editor event listeners
+    if (document.getElementById('createNewLayoutBtn')) {
+        document.getElementById('createNewLayoutBtn').addEventListener('click', createNewLayout);
+    }
+    if (document.getElementById('saveLayoutBtn')) {
+        document.getElementById('saveLayoutBtn').addEventListener('click', saveLayout);
+    }
+    if (document.getElementById('deleteLayoutBtn')) {
+        document.getElementById('deleteLayoutBtn').addEventListener('click', () => {
+            if (currentLayout) {
+                deleteLayout(currentLayout.id);
+            }
+        });
+    }
+    if (document.getElementById('cancelLayoutBtn')) {
+        document.getElementById('cancelLayoutBtn').addEventListener('click', cancelLayoutEdit);
+    }
+
+    // Load layouts when tab is opened
+    const layoutEditorTab = document.querySelector('[data-tab="layout-editor"]');
+    if (layoutEditorTab) {
+        layoutEditorTab.addEventListener('click', loadLayouts);
+    }
+
+    // ============================================
+    // END LAYOUT EDITOR
+    // ============================================
+
     // Expose functions to window for onclick handlers
     window.quizShow = {
         editQuestion,
         deleteQuestion,
         togglePackage,
         deletePackage,
-        viewPackageQuestions
+        viewPackageQuestions,
+        editLayout,
+        deleteLayout
     };
 })();
