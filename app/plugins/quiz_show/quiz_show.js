@@ -1796,8 +1796,8 @@
 
     async function saveLayout() {
         const name = document.getElementById('layoutName').value.trim();
-        const width = parseInt(document.getElementById('layoutWidth').value);
-        const height = parseInt(document.getElementById('layoutHeight').value);
+        const width = parseInt(document.getElementById('layoutWidth').value, 10);
+        const height = parseInt(document.getElementById('layoutHeight').value, 10);
         const orientation = document.getElementById('layoutOrientation').value;
         const isDefault = document.getElementById('layoutIsDefault').checked;
         
@@ -1878,10 +1878,10 @@
         draggables.forEach(el => {
             const elementType = el.dataset.element;
             elements[elementType] = {
-                x: parseInt(el.style.left) || 0,
-                y: parseInt(el.style.top) || 0,
-                width: parseInt(el.style.width) || 300,
-                height: parseInt(el.style.height) || 100,
+                x: parseInt(el.style.left, 10) || 0,
+                y: parseInt(el.style.top, 10) || 0,
+                width: parseInt(el.style.width, 10) || 300,
+                height: parseInt(el.style.height, 10) || 100,
                 visible: !el.classList.contains('hidden')
             };
         });
@@ -1948,7 +1948,10 @@
     if (layoutEditorTab) {
         layoutEditorTab.addEventListener('click', () => {
             loadLayouts();
-            setTimeout(initializeDraggableElements, 100);
+            // Wait for DOM to be ready before initializing draggables
+            requestAnimationFrame(() => {
+                requestAnimationFrame(initializeDraggableElements);
+            });
         });
     }
 
@@ -1960,9 +1963,9 @@
         const draggables = canvas.querySelectorAll('.draggable');
         
         draggables.forEach(element => {
-            // Remove any existing event listeners by cloning the element
-            const newElement = element.cloneNode(true);
-            element.parentNode.replaceChild(newElement, element);
+            // Skip if already initialized
+            if (element.dataset.draggableInitialized) return;
+            element.dataset.draggableInitialized = 'true';
             
             let isDragging = false;
             let isResizing = false;
@@ -1972,19 +1975,19 @@
                 if (isDragging) {
                     const deltaX = e.clientX - startX;
                     const deltaY = e.clientY - startY;
-                    newElement.style.left = Math.max(0, startLeft + deltaX) + 'px';
-                    newElement.style.top = Math.max(0, startTop + deltaY) + 'px';
+                    element.style.left = Math.max(0, startLeft + deltaX) + 'px';
+                    element.style.top = Math.max(0, startTop + deltaY) + 'px';
                 } else if (isResizing) {
                     const deltaX = e.clientX - startX;
                     const deltaY = e.clientY - startY;
-                    newElement.style.width = Math.max(100, startWidth + deltaX) + 'px';
-                    newElement.style.height = Math.max(50, startHeight + deltaY) + 'px';
+                    element.style.width = Math.max(100, startWidth + deltaX) + 'px';
+                    element.style.height = Math.max(50, startHeight + deltaY) + 'px';
                 }
             };
 
             const onMouseUp = () => {
                 if (isDragging || isResizing) {
-                    newElement.classList.remove('dragging', 'resizing');
+                    element.classList.remove('dragging', 'resizing');
                     isDragging = false;
                     isResizing = false;
                     document.removeEventListener('mousemove', onMouseMove);
@@ -1993,23 +1996,23 @@
             };
 
             // Make element draggable
-            newElement.addEventListener('mousedown', (e) => {
+            element.addEventListener('mousedown', (e) => {
                 // Check if clicking on resize handle
                 if (e.target.classList.contains('element-resize-handle')) {
                     isResizing = true;
                     startX = e.clientX;
                     startY = e.clientY;
-                    startWidth = parseInt(newElement.style.width) || newElement.offsetWidth;
-                    startHeight = parseInt(newElement.style.height) || newElement.offsetHeight;
-                    newElement.classList.add('resizing');
+                    startWidth = parseInt(element.style.width, 10) || element.offsetWidth;
+                    startHeight = parseInt(element.style.height, 10) || element.offsetHeight;
+                    element.classList.add('resizing');
                     e.preventDefault();
                 } else {
                     isDragging = true;
                     startX = e.clientX;
                     startY = e.clientY;
-                    startLeft = parseInt(newElement.style.left) || newElement.offsetLeft;
-                    startTop = parseInt(newElement.style.top) || newElement.offsetTop;
-                    newElement.classList.add('dragging');
+                    startLeft = parseInt(element.style.left, 10) || element.offsetLeft;
+                    startTop = parseInt(element.style.top, 10) || element.offsetTop;
+                    element.classList.add('dragging');
                     e.preventDefault();
                 }
                 
@@ -2018,9 +2021,9 @@
             });
 
             // Add double-click to toggle visibility
-            newElement.addEventListener('dblclick', () => {
-                newElement.classList.toggle('hidden');
-                showMessage(`Element ${newElement.classList.contains('hidden') ? 'ausgeblendet' : 'eingeblendet'}`, 'info', 'layoutSaveMessage');
+            element.addEventListener('dblclick', () => {
+                element.classList.toggle('hidden');
+                showMessage(`Element ${element.classList.contains('hidden') ? 'ausgeblendet' : 'eingeblendet'}`, 'info', 'layoutSaveMessage');
             });
         });
     }
@@ -2155,13 +2158,13 @@
     }
 
     async function saveGiftJoker() {
-        const giftId = parseInt(document.getElementById('giftJokerId').value);
+        const giftId = parseInt(document.getElementById('giftJokerId').value, 10);
         const giftName = document.getElementById('giftJokerName').value.trim();
         const jokerType = document.getElementById('giftJokerType').value;
         const enabled = document.getElementById('giftJokerEnabled').checked;
 
-        if (!giftId || !giftName) {
-            showMessage('Bitte alle Felder ausfüllen', 'error', 'giftJokerSaveMessage');
+        if (!giftId || !giftName || isNaN(giftId)) {
+            showMessage('Bitte alle Felder korrekt ausfüllen', 'error', 'giftJokerSaveMessage');
             return;
         }
 
