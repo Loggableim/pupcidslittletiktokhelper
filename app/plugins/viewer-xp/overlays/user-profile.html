@@ -329,21 +329,38 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    let socket;
+    
+    try {
+      socket = io();
+    } catch (error) {
+      console.error('Failed to initialize socket.io:', error);
+      // Display error message
+      document.body.innerHTML = '<div style="color: red; text-align: center; padding: 50px; font-family: sans-serif;"><h2>⚠️ Connection Error</h2><p>Failed to connect to server. Please refresh the page.</p></div>';
+    }
+    
     const profileCard = document.getElementById('profileCard');
     let hideTimeout;
 
     // Listen for user profile events
-    socket.on('viewer-xp:show-user-profile', (data) => {
-      showUserProfile(data);
-    });
-
-    // Also listen for the profile data from commands
-    socket.on('viewer-xp:profile', (data) => {
-      if (data) {
+    if (socket) {
+      socket.on('viewer-xp:show-user-profile', (data) => {
         showUserProfile(data);
-      }
-    });
+      });
+
+      // Also listen for the profile data from commands
+      socket.on('viewer-xp:profile', (data) => {
+        if (data) {
+          showUserProfile(data);
+        }
+      });
+    }
+
+    function formatWatchTime(minutes) {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return hours > 0 ? `${hours}h ${remainingMinutes}m` : `${remainingMinutes}m`;
+    }
 
     function showUserProfile(data) {
       console.log('Showing user profile:', data);
@@ -390,13 +407,9 @@
       document.getElementById('totalXP').textContent = (data.total_xp_earned || 0).toLocaleString();
       document.getElementById('streak').textContent = `${data.streak_days || 0} days`;
       
-      // Calculate watch time in hours
+      // Calculate watch time in hours using shared function
       const watchMinutes = data.watch_time_minutes || 0;
-      const watchHours = Math.floor(watchMinutes / 60);
-      const remainingMinutes = watchMinutes % 60;
-      document.getElementById('watchTime').textContent = watchHours > 0 
-        ? `${watchHours}h ${remainingMinutes}m`
-        : `${remainingMinutes}m`;
+      document.getElementById('watchTime').textContent = formatWatchTime(watchMinutes);
 
       // Format last seen
       if (data.last_seen) {

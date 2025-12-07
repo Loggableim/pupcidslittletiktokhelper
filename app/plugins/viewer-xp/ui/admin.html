@@ -2463,6 +2463,7 @@
                   .map(([key, value]) => `${key}: ${escapeHtml(String(value))}`)
                   .join(', ');
               } catch (e) {
+                console.warn('Failed to parse transaction details:', e, item.details);
                 detailsHtml = escapeHtml(String(item.details));
               }
             }
@@ -2544,12 +2545,40 @@
     }
     
     function copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        showToast('✅ URL copied to clipboard!');
-      }).catch(err => {
-        console.error('Failed to copy:', err);
-        showToast('❌ Failed to copy URL');
-      });
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('✅ URL copied to clipboard!');
+        }).catch(err => {
+          console.error('Failed to copy:', err);
+          fallbackCopyToClipboard(text);
+        });
+      } else {
+        fallbackCopyToClipboard(text);
+      }
+    }
+    
+    function fallbackCopyToClipboard(text) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          showToast('✅ URL copied to clipboard!');
+        } else {
+          showToast('❌ Failed to copy URL - please copy manually');
+        }
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+        showToast('❌ Failed to copy URL - please copy manually');
+      }
+      
+      document.body.removeChild(textArea);
     }
     
     function testLevelUp() {

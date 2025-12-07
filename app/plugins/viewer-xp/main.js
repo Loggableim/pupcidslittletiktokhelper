@@ -884,39 +884,47 @@ class ViewerXPPlugin extends EventEmitter {
    * Emit XP update event
    */
   emitXPUpdate(username, amount, actionType) {
-    const io = this.api.getSocketIO();
-    const profile = this.db.getViewerProfile(username);
-    
-    io.emit('viewer-xp:update', {
-      username,
-      amount,
-      actionType,
-      profile
-    });
+    try {
+      const io = this.api.getSocketIO();
+      const profile = this.db.getViewerProfile(username);
+      
+      io.emit('viewer-xp:update', {
+        username,
+        amount,
+        actionType,
+        profile
+      });
+    } catch (error) {
+      this.api.log(`Error emitting XP update: ${error.message}`, 'error');
+    }
   }
 
   /**
    * Emit level up event
    */
   emitLevelUp(username, oldLevel, newLevel, rewards) {
-    const io = this.api.getSocketIO();
-    
-    io.emit('viewer-xp:level-up', {
-      username,
-      oldLevel,
-      newLevel,
-      rewards
-    });
-
-    // Announce in chat/overlay if enabled
-    if (this.db.getSetting('announceLevelUps', true) && rewards?.announcement_message) {
-      const message = rewards.announcement_message.replace('{username}', username);
-      this.api.emit('announcement', {
-        type: 'level-up',
+    try {
+      const io = this.api.getSocketIO();
+      
+      io.emit('viewer-xp:level-up', {
         username,
-        level: newLevel,
-        message
+        oldLevel,
+        newLevel,
+        rewards
       });
+
+      // Announce in chat/overlay if enabled
+      if (this.db.getSetting('announceLevelUps', true) && rewards?.announcement_message) {
+        const message = rewards.announcement_message.replace('{username}', username);
+        this.api.emit('announcement', {
+          type: 'level-up',
+          username,
+          level: newLevel,
+          message
+        });
+      }
+    } catch (error) {
+      this.api.log(`Error emitting level up: ${error.message}`, 'error');
     }
   }
 
