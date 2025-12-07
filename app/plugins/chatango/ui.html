@@ -400,18 +400,18 @@
 
             <h4 class="section-title">Dashboard Embed</h4>
             <div class="code-block" id="dashboard-embed-code">Loading...</div>
-            <button class="btn btn-secondary copy-btn" onclick="copyEmbedCode('dashboard')">📋 Copy Code</button>
+            <button class="btn btn-secondary copy-btn" id="copy-dashboard-btn">📋 Copy Code</button>
 
             <h4 class="section-title">Widget Embed</h4>
             <div class="code-block" id="widget-embed-code">Loading...</div>
-            <button class="btn btn-secondary copy-btn" onclick="copyEmbedCode('widget')">📋 Copy Code</button>
+            <button class="btn btn-secondary copy-btn" id="copy-widget-btn">📋 Copy Code</button>
         </div>
 
         <!-- Preview Card -->
         <div class="card" id="preview-card" style="display: none;">
             <div class="card-header">
                 <h2 class="card-title">Live Preview</h2>
-                <button class="btn btn-secondary" onclick="closePreview()">Close Preview</button>
+                <button class="btn btn-secondary" id="close-preview-btn">Close Preview</button>
             </div>
 
             <div class="embed-preview" id="embed-preview">
@@ -491,6 +491,13 @@
 
             // Preview button
             document.getElementById('btn-preview').addEventListener('click', showPreview);
+
+            // Close preview button
+            document.getElementById('close-preview-btn').addEventListener('click', closePreview);
+
+            // Copy embed code buttons
+            document.getElementById('copy-dashboard-btn').addEventListener('click', () => copyEmbedCode('dashboard'));
+            document.getElementById('copy-widget-btn').addEventListener('click', () => copyEmbedCode('widget'));
 
             // Theme change updates embed codes
             document.getElementById('theme').addEventListener('change', updateEmbedCodes);
