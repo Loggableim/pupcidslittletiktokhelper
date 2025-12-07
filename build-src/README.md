@@ -29,6 +29,9 @@ go build -o launcher-console.exe launcher.go
 
 # Build the backup launcher with logging (troubleshooting)
 go build -o launcher-backup.exe launcher-backup.go
+
+# Build the dev launcher (GUI with visible terminal for debugging)
+go build -o dev_launcher.exe dev-launcher.go
 ```
 
 #### Cloud Launcher (ltthgit.exe)
@@ -54,6 +57,7 @@ The cloud launcher includes:
 ### Local Launcher Files
 - `launcher.go` - Console launcher (shows terminal window)
 - `launcher-gui.go` - GUI launcher (no terminal, shows graphical progress)
+- `dev-launcher.go` - Dev launcher (GUI with visible terminal for debugging)
 - `launcher-backup.go` - Backup launcher with detailed logging (troubleshooting)
 - `icon.png` - Application icon (1355x1355 PNG)
 - `icon.ico` - Icon in ICO format (multi-resolution)
@@ -89,6 +93,18 @@ The cloud launcher includes:
   - Auto-redirects to dashboard when ready
   - No terminal window (windowsgui mode)
 - **Use when:** Normal operation with local files
+
+### dev-launcher.go (dev_launcher.exe) - Development Launcher
+- **Purpose:** Debugging version of the GUI launcher
+- **Features:**
+  - Same as launcher-gui.go but with visible terminal window
+  - Shows console output and error messages
+  - Useful for troubleshooting startup issues
+  - Does NOT use -H windowsgui flag
+- **Use when:** 
+  - Debugging launcher or startup problems
+  - Need to see error logs in terminal
+  - Investigating issues before app starts
 
 ### launcher.go (launcher-console.exe)
 - **Purpose:** Simple console launcher
