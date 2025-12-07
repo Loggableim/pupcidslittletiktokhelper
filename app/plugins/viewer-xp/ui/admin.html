@@ -1113,7 +1113,101 @@
           <h1 class="page-title">⚙️ XP Settings</h1>
           <p class="page-description">Configure XP rewards for viewer actions</p>
         </div>
-        <p style="color: var(--color-text-muted);">Settings panel coming soon...</p>
+
+        <!-- XP Actions Configuration -->
+        <div class="card">
+          <div class="card-header">
+            <span><span class="card-header-icon">⚡</span>XP Action Configuration</span>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="modern-table">
+                <thead>
+                  <tr>
+                    <th>Action Type</th>
+                    <th>XP Amount</th>
+                    <th>Cooldown (seconds)</th>
+                    <th>Enabled</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="actionsTable">
+                  <tr>
+                    <td colspan="5">
+                      <div class="empty-state">
+                        <div class="empty-state-icon">⚙️</div>
+                        <div class="empty-state-text">Loading actions...</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- General Settings -->
+        <div class="card">
+          <div class="card-header">
+            <span><span class="card-header-icon">🎛️</span>General Settings</span>
+          </div>
+          <div class="card-body">
+            <form id="generalSettingsForm">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                <div>
+                  <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="enableDailyBonus" checked>
+                    <label class="form-check-label" for="enableDailyBonus">
+                      <strong>Enable Daily Bonus</strong>
+                      <div class="form-text">Award XP to viewers on their first visit each day</div>
+                    </label>
+                  </div>
+                  
+                  <div class="form-check" style="margin-top: 16px;">
+                    <input type="checkbox" class="form-check-input" id="enableStreaks" checked>
+                    <label class="form-check-label" for="enableStreaks">
+                      <strong>Enable Streaks</strong>
+                      <div class="form-text">Reward viewers for consecutive daily visits</div>
+                    </label>
+                  </div>
+                  
+                  <div class="form-check" style="margin-top: 16px;">
+                    <input type="checkbox" class="form-check-input" id="enableWatchTime" checked>
+                    <label class="form-check-label" for="enableWatchTime">
+                      <strong>Enable Watch Time XP</strong>
+                      <div class="form-text">Award XP based on viewing duration</div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="form-group">
+                    <label class="form-label">Watch Time Interval (minutes)</label>
+                    <input type="number" class="form-control" id="watchTimeInterval" min="1" max="60" value="5">
+                    <small class="form-text">Award XP every X minutes of watching</small>
+                  </div>
+                  
+                  <div class="form-check" style="margin-top: 16px;">
+                    <input type="checkbox" class="form-check-input" id="announceLevelUps" checked>
+                    <label class="form-check-label" for="announceLevelUps">
+                      <strong>Announce Level Ups</strong>
+                      <div class="form-text">Show notifications when viewers level up</div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top: 24px;">
+                <button type="submit" class="btn btn-success">
+                  💾 Save Settings
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resetSettings()">
+                  🔄 Reset to Defaults
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
 
       <div id="page-level-config" class="tab-content">
@@ -1127,9 +1221,86 @@
       <div id="page-manual-award" class="tab-content">
         <div class="page-header">
           <h1 class="page-title">🎁 Manual Award</h1>
-          <p class="page-description">Manually award XP to viewers</p>
+          <p class="page-description">Manually award XP to viewers for special events or achievements</p>
         </div>
-        <p style="color: var(--color-text-muted);">Manual award form coming soon...</p>
+
+        <div class="card" style="max-width: 600px;">
+          <div class="card-header">
+            <span><span class="card-header-icon">🎁</span>Award XP</span>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info">
+              <span>💡</span>
+              <div>
+                <strong>Tip:</strong> Use this to reward viewers for special contributions, milestones, or community events.
+                The XP will be added immediately and a level-up animation will trigger if they reach a new level.
+              </div>
+            </div>
+
+            <form id="manualAwardForm">
+              <div class="form-group">
+                <label class="form-label">Username *</label>
+                <input type="text" class="form-control" id="awardUsername" placeholder="Enter viewer username" required>
+                <small class="form-text">The TikTok username of the viewer to award XP</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">XP Amount *</label>
+                <input type="number" class="form-control" id="awardAmount" min="1" placeholder="100" required>
+                <small class="form-text">Amount of XP to award (minimum: 1)</small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Reason (Optional)</label>
+                <textarea class="form-control" id="awardReason" rows="3" placeholder="e.g., Winner of community event, Milestone celebration, etc."></textarea>
+                <small class="form-text">Optional note about why this XP was awarded (for your records)</small>
+              </div>
+
+              <div style="display: flex; gap: 12px;">
+                <button type="submit" class="btn btn-success">
+                  ✅ Award XP
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearAwardForm()">
+                  🔄 Clear Form
+                </button>
+              </div>
+
+              <div id="awardResult" style="margin-top: 16px;"></div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Recent Manual Awards -->
+        <div class="card" style="margin-top: 24px;">
+          <div class="card-header">
+            <span><span class="card-header-icon">📜</span>Recent Manual Awards</span>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="modern-table">
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>Username</th>
+                    <th>XP Amount</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="recentAwardsTable">
+                  <tr>
+                    <td colspan="4">
+                      <div class="empty-state">
+                        <div class="empty-state-icon">📜</div>
+                        <div class="empty-state-text">No manual awards yet</div>
+                        <div class="empty-state-description">Recent manual XP awards will appear here</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="page-import-export" class="tab-content">
@@ -1137,7 +1308,109 @@
           <h1 class="page-title">💾 Import/Export</h1>
           <p class="page-description">Backup and restore viewer data</p>
         </div>
-        <p style="color: var(--color-text-muted);">Import/Export functionality coming soon...</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+          <!-- Export Section -->
+          <div class="card">
+            <div class="card-header">
+              <span><span class="card-header-icon">📤</span>Export Data</span>
+            </div>
+            <div class="card-body">
+              <p style="color: var(--color-text-secondary); margin-bottom: 16px;">
+                Export all viewer XP data including profiles, transactions, and configuration settings.
+                This creates a JSON backup file you can use to restore data later.
+              </p>
+              
+              <div class="alert alert-info">
+                <span>💡</span>
+                <div>
+                  <strong>What's included:</strong>
+                  <ul style="margin: 8px 0 0 20px; line-height: 1.6;">
+                    <li>All viewer profiles and XP data</li>
+                    <li>Transaction history</li>
+                    <li>Level configuration</li>
+                    <li>XP action settings</li>
+                  </ul>
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-success" id="exportDataBtn" onclick="exportData()">
+                📥 Download Export File
+              </button>
+              <div id="exportStatus" style="margin-top: 16px;"></div>
+            </div>
+          </div>
+
+          <!-- Import Section -->
+          <div class="card">
+            <div class="card-header">
+              <span><span class="card-header-icon">📥</span>Import Data</span>
+            </div>
+            <div class="card-body">
+              <p style="color: var(--color-text-secondary); margin-bottom: 16px;">
+                Import viewer XP data from a previously exported file. 
+                Existing data will be merged with imported data.
+              </p>
+
+              <div class="alert alert-warning">
+                <span>⚠️</span>
+                <div>
+                  <strong>Warning:</strong> Importing data will update existing viewer profiles with the same username.
+                  Make sure to back up your current data before importing.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Select Export File</label>
+                <input type="file" class="form-control" id="importFile" accept=".json">
+                <small class="form-text">Choose a JSON file exported from this system</small>
+              </div>
+
+              <button type="button" class="btn btn-warning" id="importDataBtn" onclick="importData()">
+                📤 Import Data
+              </button>
+              <div id="importStatus" style="margin-top: 16px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Viewer History Lookup -->
+        <div class="card" style="margin-top: 24px;">
+          <div class="card-header">
+            <span><span class="card-header-icon">📊</span>Viewer XP History</span>
+          </div>
+          <div class="card-body">
+            <div class="form-group" style="max-width: 500px;">
+              <label class="form-label">Search Viewer</label>
+              <div style="display: flex; gap: 12px;">
+                <input type="text" class="form-control" id="historyUsername" placeholder="Enter username">
+                <button class="btn btn-primary" onclick="loadViewerHistory()" style="white-space: nowrap;">
+                  🔍 Load History
+                </button>
+              </div>
+            </div>
+
+            <div id="historyContainer" style="display:none; margin-top: 24px;">
+              <h3 style="font-size: 1.125rem; margin-bottom: 16px;">
+                Transaction History for <strong id="historyViewerName"></strong>
+              </h3>
+              <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Date/Time</th>
+                      <th>Action Type</th>
+                      <th>XP Amount</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyTable">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1406,6 +1679,249 @@
       console.log('Level Up:', data);
       // Could show notification toast here
     });
+
+    // XP Settings Functions
+    function resetSettings() {
+      if (confirm('Are you sure you want to reset all settings to defaults?')) {
+        document.getElementById('enableDailyBonus').checked = true;
+        document.getElementById('enableStreaks').checked = true;
+        document.getElementById('enableWatchTime').checked = true;
+        document.getElementById('watchTimeInterval').value = 5;
+        document.getElementById('announceLevelUps').checked = true;
+        alert('Settings reset to defaults. Click "Save Settings" to apply.');
+      }
+    }
+
+    // Manual Award Functions
+    function clearAwardForm() {
+      document.getElementById('manualAwardForm').reset();
+      document.getElementById('awardResult').innerHTML = '';
+    }
+
+    document.getElementById('manualAwardForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('awardUsername').value;
+      const amount = parseInt(document.getElementById('awardAmount').value);
+      const reason = document.getElementById('awardReason').value;
+      
+      const resultDiv = document.getElementById('awardResult');
+      resultDiv.innerHTML = '<div class="spinner"></div> Awarding XP...';
+      
+      try {
+        const response = await fetch('/api/viewer-xp/award', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, amount, reason })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          resultDiv.innerHTML = `
+            <div class="alert alert-success">
+              <span>✅</span>
+              <div>
+                <strong>Success!</strong> Awarded ${amount} XP to ${username}.
+                ${result.leveledUp ? ` They leveled up to Level ${result.newLevel}!` : ''}
+              </div>
+            </div>
+          `;
+          clearAwardForm();
+          loadRecentAwards();
+        } else {
+          throw new Error(result.error || 'Failed to award XP');
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="alert alert-danger">
+            <span>❌</span>
+            <div><strong>Error:</strong> ${error.message}</div>
+          </div>
+        `;
+      }
+    });
+
+    async function loadRecentAwards() {
+      try {
+        const response = await fetch('/api/viewer-xp/manual-awards?limit=10');
+        const awards = await response.json();
+        
+        const tbody = document.getElementById('recentAwardsTable');
+        
+        if (!awards || awards.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4">
+                <div class="empty-state">
+                  <div class="empty-state-icon">📜</div>
+                  <div class="empty-state-text">No manual awards yet</div>
+                </div>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        tbody.innerHTML = awards.map(award => `
+          <tr>
+            <td>${new Date(award.timestamp).toLocaleString()}</td>
+            <td><strong>${escapeHtml(award.username)}</strong></td>
+            <td><span class="badge badge-success">+${award.amount} XP</span></td>
+            <td>${escapeHtml(award.reason || '-')}</td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading recent awards:', error);
+      }
+    }
+
+    // Import/Export Functions
+    async function exportData() {
+      const btn = document.getElementById('exportDataBtn');
+      const status = document.getElementById('exportStatus');
+      
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Exporting...';
+      status.innerHTML = '';
+      
+      try {
+        const response = await fetch('/api/viewer-xp/export');
+        const data = await response.json();
+        
+        // Create download
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `viewer-xp-export-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        status.innerHTML = `
+          <div class="alert alert-success">
+            <span>✅</span>
+            <div><strong>Success!</strong> Export file downloaded. Exported ${data.stats.totalViewers} viewers.</div>
+          </div>
+        `;
+      } catch (error) {
+        status.innerHTML = `
+          <div class="alert alert-danger">
+            <span>❌</span>
+            <div><strong>Error:</strong> ${error.message}</div>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '📥 Download Export File';
+      }
+    }
+
+    async function importData() {
+      const fileInput = document.getElementById('importFile');
+      const btn = document.getElementById('importDataBtn');
+      const status = document.getElementById('importStatus');
+      
+      if (!fileInput.files || !fileInput.files[0]) {
+        status.innerHTML = `
+          <div class="alert alert-warning">
+            <span>⚠️</span>
+            <div>Please select a file to import.</div>
+          </div>
+        `;
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Importing...';
+      status.innerHTML = '';
+      
+      try {
+        const file = fileInput.files[0];
+        const text = await file.text();
+        const data = JSON.parse(text);
+        
+        const response = await fetch('/api/viewer-xp/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          status.innerHTML = `
+            <div class="alert alert-success">
+              <span>✅</span>
+              <div>
+                <strong>Success!</strong> Imported ${result.imported} viewers.
+                ${result.updated ? ` Updated ${result.updated} existing profiles.` : ''}
+              </div>
+            </div>
+          `;
+          fileInput.value = '';
+          refreshData();
+        } else {
+          throw new Error(result.error || 'Import failed');
+        }
+      } catch (error) {
+        status.innerHTML = `
+          <div class="alert alert-danger">
+            <span>❌</span>
+            <div><strong>Error:</strong> ${error.message}</div>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '📤 Import Data';
+      }
+    }
+
+    async function loadViewerHistory() {
+      const username = document.getElementById('historyUsername').value.trim();
+      const container = document.getElementById('historyContainer');
+      const tbody = document.getElementById('historyTable');
+      const viewerNameEl = document.getElementById('historyViewerName');
+      
+      if (!username) {
+        alert('Please enter a username');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/viewer-xp/history/${encodeURIComponent(username)}`);
+        const history = await response.json();
+        
+        if (!history || history.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4">
+                <div class="empty-state">
+                  <div class="empty-state-icon">📊</div>
+                  <div class="empty-state-text">No history found</div>
+                  <div class="empty-state-description">No XP transactions for this viewer</div>
+                </div>
+              </td>
+            </tr>
+          `;
+        } else {
+          tbody.innerHTML = history.map(item => `
+            <tr>
+              <td>${new Date(item.timestamp).toLocaleString()}</td>
+              <td><span class="badge badge-primary">${escapeHtml(item.action_type)}</span></td>
+              <td><strong>+${item.amount} XP</strong></td>
+              <td>${escapeHtml(item.details || '-')}</td>
+            </tr>
+          `).join('');
+        }
+        
+        viewerNameEl.textContent = username;
+        container.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading history:', error);
+        alert('Failed to load viewer history: ' + error.message);
+      }
+    }
   </script>
 </body>
 </html>
