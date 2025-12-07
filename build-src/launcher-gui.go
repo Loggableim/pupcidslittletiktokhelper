@@ -182,19 +182,27 @@ func (l *Launcher) installDependencies() error {
 	}
 	
 	// Track progress with live updates
+	progressCounter := 0
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
 			l.logger.Printf("[npm stdout] %s\n", line)
-			// Show progress in UI
+			// Show progress in UI with incremental progress bar
 			if len(line) > 0 {
-				// Truncate long lines for display
-				displayLine := line
-				if len(displayLine) > 60 {
-					displayLine = displayLine[:57] + "..."
+				// Increment progress from 45 to 75 during npm install
+				progressCounter++
+				currentProgress := 45 + (progressCounter % 30)
+				if currentProgress > 75 {
+					currentProgress = 75
 				}
-				l.updateProgress(50, fmt.Sprintf("npm: %s", displayLine))
+				
+				// Don't truncate - show full line for better visibility
+				displayLine := line
+				if len(displayLine) > 120 {
+					displayLine = displayLine[:117] + "..."
+				}
+				l.updateProgress(currentProgress, fmt.Sprintf("npm install: %s", displayLine))
 			}
 		}
 	}()
@@ -653,10 +661,12 @@ func main() {
         }
         
         .launcher-container {
-            width: 90vw;
-            height: 90vh;
+            width: 1536px;
+            height: 1024px;
+            max-width: 95vw;
+            max-height: 95vh;
             background-image: url(/bg);
-            background-size: contain;
+            background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             position: relative;
@@ -667,28 +677,30 @@ func main() {
         }
         
         .progress-container {
-            position: relative;
+            position: absolute;
             right: 5%;
-            width: 40%;
-            max-width: 500px;
-            min-width: 300px;
-            padding: 30px;
+            width: 36%;
+            height: 70%;
+            padding: 3%;
             background-color: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
             border: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
         }
         
         .status-text {
             color: #333;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            line-height: 1.5;
-            min-height: 48px;
-            max-height: 200px;
+            line-height: 1.4;
+            flex: 1;
             overflow-y: auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         
         .progress-bar-bg {
@@ -698,6 +710,7 @@ func main() {
             border-radius: 20px;
             overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
         }
         
         .progress-bar-fill {
