@@ -370,6 +370,10 @@ class TikTokConnector extends EventEmitter {
     async _setupWebSocketHandlers() {
         if (!this.ws || !this.eventEmitter) return;
 
+        // Remove any existing listeners to prevent duplicates
+        this.ws.removeAllListeners();
+        this.eventEmitter.removeAllListeners();
+
         // WebSocket connection events
         this.ws.on('open', () => {
             this.logger.info('🟢 Eulerstream WebSocket connected');
@@ -1386,10 +1390,14 @@ class TikTokConnector extends EventEmitter {
 
     disconnect() {
         if (this.ws) {
-            this.ws.close();
+            this.ws.removeAllListeners();
+            if (typeof this.ws.close === 'function') {
+                this.ws.close();
+            }
             this.ws = null;
         }
         if (this.eventEmitter) {
+            this.eventEmitter.removeAllListeners();
             this.eventEmitter = null;
         }
         this.isConnected = false;
