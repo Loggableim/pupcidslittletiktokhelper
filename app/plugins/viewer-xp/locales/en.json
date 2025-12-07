@@ -33,6 +33,30 @@
       "add": "Add Reward",
       "level": "Level",
       "reward": "Reward Description"
+    },
+    "chat_commands": {
+      "enabled": "Enable Chat Commands",
+      "description": "Allow chat commands via GCCE for XP queries",
+      "xp": {
+        "name": "xp",
+        "description": "Check your current XP, level, and progress",
+        "syntax": "/xp [username]"
+      },
+      "rank": {
+        "name": "rank",
+        "description": "Check your rank on the leaderboard",
+        "syntax": "/rank [username]"
+      },
+      "top": {
+        "name": "top",
+        "description": "Show top viewers on the leaderboard",
+        "syntax": "/top [limit]"
+      },
+      "leaderboard": {
+        "name": "leaderboard",
+        "description": "Display the full leaderboard in HUD overlay",
+        "syntax": "/leaderboard [limit]"
+      }
     }
   }
 }

@@ -51,6 +51,9 @@ class ViewerXPPlugin extends EventEmitter {
       // Register WebSocket handlers
       this.registerWebSocketHandlers();
 
+      // Register GCCE commands
+      this.registerGCCECommands();
+
       // Start watch time tracking
       this.startWatchTimeTracking();
 
@@ -395,6 +398,303 @@ class ViewerXPPlugin extends EventEmitter {
   }
 
   /**
+   * Register GCCE commands for chat integration
+   */
+  registerGCCECommands() {
+    try {
+      const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+      
+      if (!gccePlugin?.instance) {
+        this.api.log('💬 [viewer-xp] GCCE not available, skipping command registration', 'warn');
+        return;
+      }
+
+      const gcce = gccePlugin.instance;
+
+      const commands = [
+        {
+          name: 'xp',
+          description: 'Check your current XP, level, and progress',
+          syntax: '/xp [username]',
+          permission: 'all',
+          enabled: true,
+          minArgs: 0,
+          maxArgs: 1,
+          category: 'XP System',
+          handler: async (args, context) => await this.handleXPCommand(args, context)
+        },
+        {
+          name: 'rank',
+          description: 'Check your rank on the leaderboard',
+          syntax: '/rank [username]',
+          permission: 'all',
+          enabled: true,
+          minArgs: 0,
+          maxArgs: 1,
+          category: 'XP System',
+          handler: async (args, context) => await this.handleRankCommand(args, context)
+        },
+        {
+          name: 'top',
+          description: 'Show top viewers on the leaderboard',
+          syntax: '/top [limit]',
+          permission: 'all',
+          enabled: true,
+          minArgs: 0,
+          maxArgs: 1,
+          category: 'XP System',
+          handler: async (args, context) => await this.handleTopCommand(args, context)
+        },
+        {
+          name: 'leaderboard',
+          description: 'Display the XP leaderboard in HUD overlay',
+          syntax: '/leaderboard [limit]',
+          permission: 'all',
+          enabled: true,
+          minArgs: 0,
+          maxArgs: 1,
+          category: 'XP System',
+          handler: async (args, context) => await this.handleLeaderboardCommand(args, context)
+        }
+      ];
+
+      const result = gcce.registerCommandsForPlugin('viewer-xp', commands);
+      
+      this.api.log(`💬 [viewer-xp] Registered ${result.registered.length} commands with GCCE`, 'info');
+      
+      if (result.failed.length > 0) {
+        this.api.log(`💬 [viewer-xp] Failed to register commands: ${result.failed.join(', ')}`, 'warn');
+      }
+
+    } catch (error) {
+      this.api.log(`❌ [viewer-xp] Error registering GCCE commands: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Handle /xp command
+   */
+  async handleXPCommand(args, context) {
+    try {
+      const targetUsername = args.length > 0 ? args[0] : context.username;
+      const profile = this.db.getViewerProfile(targetUsername);
+
+      if (!profile) {
+        return {
+          success: false,
+          error: `No XP data found for ${targetUsername}`,
+          displayOverlay: false
+        };
+      }
+
+      const nextLevelXP = this.db.getXPForLevel(profile.level + 1);
+      const xpForCurrentLevel = this.db.getXPForLevel(profile.level);
+      const progress = profile.xp - xpForCurrentLevel;
+      const needed = nextLevelXP - xpForCurrentLevel;
+      const percentage = ((progress / needed) * 100).toFixed(1);
+
+      // Send to GCCE-HUD for display
+      const io = this.api.getSocketIO();
+      io.emit('gcce-hud:show', {
+        id: `xp-${Date.now()}`,
+        type: 'text',
+        content: `${targetUsername}: Level ${profile.level} | ${progress}/${needed} XP (${percentage}%)`,
+        username: context.username,
+        timestamp: Date.now(),
+        duration: 8000,
+        expiresAt: Date.now() + 8000,
+        style: {
+          fontSize: 36,
+          fontFamily: 'Arial, sans-serif',
+          textColor: profile.name_color || '#FFFFFF',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          position: 'top-center',
+          maxWidth: 800
+        }
+      });
+
+      return {
+        success: true,
+        message: `Level ${profile.level} | ${progress}/${needed} XP (${percentage}%)`,
+        displayOverlay: true,
+        data: { profile }
+      };
+
+    } catch (error) {
+      this.api.log(`❌ Error in /xp command: ${error.message}`, 'error');
+      return { success: false, error: 'Failed to fetch XP data' };
+    }
+  }
+
+  /**
+   * Handle /rank command
+   */
+  async handleRankCommand(args, context) {
+    try {
+      const targetUsername = args.length > 0 ? args[0] : context.username;
+      const profile = this.db.getViewerProfile(targetUsername);
+
+      if (!profile) {
+        return {
+          success: false,
+          error: `No rank data found for ${targetUsername}`,
+          displayOverlay: false
+        };
+      }
+
+      // Get rank from leaderboard
+      const leaderboard = this.db.getTopViewers(1000); // Get enough to find rank
+      const rank = leaderboard.findIndex(v => v.username === targetUsername) + 1;
+
+      if (rank === 0) {
+        return {
+          success: false,
+          error: `${targetUsername} not found on leaderboard`,
+          displayOverlay: false
+        };
+      }
+
+      // Send to GCCE-HUD for display
+      const io = this.api.getSocketIO();
+      io.emit('gcce-hud:show', {
+        id: `rank-${Date.now()}`,
+        type: 'text',
+        content: `${targetUsername}: Rank #${rank} | Level ${profile.level} | ${profile.total_xp_earned.toLocaleString()} Total XP`,
+        username: context.username,
+        timestamp: Date.now(),
+        duration: 8000,
+        expiresAt: Date.now() + 8000,
+        style: {
+          fontSize: 36,
+          fontFamily: 'Arial, sans-serif',
+          textColor: profile.name_color || '#FFFFFF',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          position: 'top-center',
+          maxWidth: 800
+        }
+      });
+
+      return {
+        success: true,
+        message: `Rank #${rank} | Level ${profile.level}`,
+        displayOverlay: true,
+        data: { rank, profile }
+      };
+
+    } catch (error) {
+      this.api.log(`❌ Error in /rank command: ${error.message}`, 'error');
+      return { success: false, error: 'Failed to fetch rank data' };
+    }
+  }
+
+  /**
+   * Handle /top command
+   */
+  async handleTopCommand(args, context) {
+    try {
+      // Validate and parse limit with proper number checking
+      let limit = 5; // default
+      if (args.length > 0) {
+        const parsedLimit = parseInt(args[0]);
+        if (!isNaN(parsedLimit) && parsedLimit > 0) {
+          limit = Math.min(parsedLimit, 10);
+        }
+      }
+      
+      const leaderboard = this.db.getTopViewers(limit);
+
+      if (!leaderboard || leaderboard.length === 0) {
+        return {
+          success: false,
+          error: 'No leaderboard data available',
+          displayOverlay: false
+        };
+      }
+
+      // Format leaderboard for display
+      const lines = leaderboard.map((viewer, idx) => 
+        `#${idx + 1} ${viewer.username}: Lv${viewer.level} (${viewer.total_xp_earned.toLocaleString()} XP)`
+      ).join(' | ');
+
+      // Send to GCCE-HUD for display
+      const io = this.api.getSocketIO();
+      io.emit('gcce-hud:show', {
+        id: `top-${Date.now()}`,
+        type: 'text',
+        content: `🏆 Top ${limit} Viewers: ${lines}`,
+        username: context.username,
+        timestamp: Date.now(),
+        duration: 12000,
+        expiresAt: Date.now() + 12000,
+        style: {
+          fontSize: 32,
+          fontFamily: 'Arial, sans-serif',
+          textColor: '#FFD700',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          position: 'top-center',
+          maxWidth: 1200
+        }
+      });
+
+      return {
+        success: true,
+        message: `Top ${limit} viewers displayed`,
+        displayOverlay: true,
+        data: { leaderboard }
+      };
+
+    } catch (error) {
+      this.api.log(`❌ Error in /top command: ${error.message}`, 'error');
+      return { success: false, error: 'Failed to fetch top viewers' };
+    }
+  }
+
+  /**
+   * Handle /leaderboard command - triggers full leaderboard overlay
+   */
+  async handleLeaderboardCommand(args, context) {
+    try {
+      // Validate and parse limit with proper number checking
+      let limit = 10; // default
+      if (args.length > 0) {
+        const parsedLimit = parseInt(args[0]);
+        if (!isNaN(parsedLimit) && parsedLimit > 0) {
+          limit = Math.min(parsedLimit, 20);
+        }
+      }
+      
+      const leaderboard = this.db.getTopViewers(limit);
+
+      if (!leaderboard || leaderboard.length === 0) {
+        return {
+          success: false,
+          error: 'No leaderboard data available',
+          displayOverlay: false
+        };
+      }
+
+      // Emit event to trigger leaderboard overlay update
+      const io = this.api.getSocketIO();
+      io.emit('viewer-xp:show-leaderboard', {
+        limit,
+        leaderboard,
+        requestedBy: context.username
+      });
+
+      return {
+        success: true,
+        message: `Leaderboard displayed (Top ${limit})`,
+        displayOverlay: true,
+        data: { leaderboard }
+      };
+
+    } catch (error) {
+      this.api.log(`❌ Error in /leaderboard command: ${error.message}`, 'error');
+      return { success: false, error: 'Failed to display leaderboard' };
+    }
+  }
+
+  /**
    * Check cooldown for action
    */
   checkCooldown(username, actionType, cooldownSeconds) {
@@ -660,6 +960,17 @@ class ViewerXPPlugin extends EventEmitter {
    */
   async destroy() {
     this.api.log('Shutting down Viewer XP System...', 'info');
+
+    // Unregister GCCE commands
+    try {
+      const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+      if (gccePlugin?.instance) {
+        gccePlugin.instance.unregisterCommandsForPlugin('viewer-xp');
+        this.api.log('💬 [viewer-xp] Unregistered GCCE commands', 'debug');
+      }
+    } catch (error) {
+      this.api.log(`❌ [viewer-xp] Error unregistering GCCE commands: ${error.message}`, 'error');
+    }
 
     // Stop watch time tracking
     if (this.watchTimeInterval) {
