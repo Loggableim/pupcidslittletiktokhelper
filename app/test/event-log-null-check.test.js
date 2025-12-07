@@ -60,4 +60,3 @@ describe('Event Log Null Check Logic', () => {
         expect(logTable.insertBefore).toHaveBeenCalledTimes(1);
     });
 });
-
