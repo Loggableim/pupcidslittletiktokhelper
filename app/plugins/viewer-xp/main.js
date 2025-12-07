@@ -592,7 +592,15 @@ class ViewerXPPlugin extends EventEmitter {
    */
   async handleTopCommand(args, context) {
     try {
-      const limit = args.length > 0 ? Math.min(parseInt(args[0]) || 5, 10) : 5;
+      // Validate and parse limit with proper number checking
+      let limit = 5; // default
+      if (args.length > 0) {
+        const parsedLimit = parseInt(args[0]);
+        if (!isNaN(parsedLimit) && parsedLimit > 0) {
+          limit = Math.min(parsedLimit, 10);
+        }
+      }
+      
       const leaderboard = this.db.getTopViewers(limit);
 
       if (!leaderboard || leaderboard.length === 0) {
@@ -646,7 +654,15 @@ class ViewerXPPlugin extends EventEmitter {
    */
   async handleLeaderboardCommand(args, context) {
     try {
-      const limit = args.length > 0 ? Math.min(parseInt(args[0]) || 10, 20) : 10;
+      // Validate and parse limit with proper number checking
+      let limit = 10; // default
+      if (args.length > 0) {
+        const parsedLimit = parseInt(args[0]);
+        if (!isNaN(parsedLimit) && parsedLimit > 0) {
+          limit = Math.min(parsedLimit, 20);
+        }
+      }
+      
       const leaderboard = this.db.getTopViewers(limit);
 
       if (!leaderboard || leaderboard.length === 0) {

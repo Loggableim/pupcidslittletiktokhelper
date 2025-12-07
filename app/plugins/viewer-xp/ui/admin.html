@@ -1781,6 +1781,17 @@
         const cooldown = parseInt(document.getElementById(`cooldown_${actionType}`).value);
         const enabled = document.getElementById(`enabled_${actionType}`).checked;
 
+        // Validate parsed numbers
+        if (isNaN(xpAmount) || xpAmount < 0) {
+          showToast('Invalid XP amount - must be a positive number', 'danger');
+          return;
+        }
+        
+        if (isNaN(cooldown) || cooldown < 0) {
+          showToast('Invalid cooldown - must be a positive number', 'danger');
+          return;
+        }
+
         const response = await fetch(`/api/viewer-xp/actions/${actionType}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1977,11 +1988,19 @@
     document.getElementById('generalSettingsForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       
+      const watchTimeInterval = parseInt(document.getElementById('watchTimeInterval').value);
+      
+      // Validate watch time interval
+      if (isNaN(watchTimeInterval) || watchTimeInterval < 1 || watchTimeInterval > 60) {
+        showToast('Watch time interval must be between 1 and 60 minutes', 'danger');
+        return;
+      }
+      
       const settings = {
         enableDailyBonus: document.getElementById('enableDailyBonus').checked,
         enableStreaks: document.getElementById('enableStreaks').checked,
         enableWatchTime: document.getElementById('enableWatchTime').checked,
-        watchTimeInterval: parseInt(document.getElementById('watchTimeInterval').value),
+        watchTimeInterval: watchTimeInterval,
         announceLevel: document.getElementById('announceLevelUps').checked
       };
       

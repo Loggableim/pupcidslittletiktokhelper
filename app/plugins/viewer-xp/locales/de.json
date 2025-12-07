@@ -33,6 +33,30 @@
       "add": "Belohnung hinzufügen",
       "level": "Level",
       "reward": "Belohnungsbeschreibung"
+    },
+    "chat_commands": {
+      "enabled": "Chat-Befehle aktivieren",
+      "description": "Erlaube Chat-Befehle über GCCE für XP-Abfragen",
+      "xp": {
+        "name": "xp",
+        "description": "Zeige deinen aktuellen XP-Stand, Level und Fortschritt an",
+        "syntax": "/xp [benutzername]"
+      },
+      "rank": {
+        "name": "rank",
+        "description": "Zeige deinen Rang in der Bestenliste",
+        "syntax": "/rank [benutzername]"
+      },
+      "top": {
+        "name": "top",
+        "description": "Zeige die Top-Zuschauer der Bestenliste",
+        "syntax": "/top [anzahl]"
+      },
+      "leaderboard": {
+        "name": "leaderboard",
+        "description": "Zeige die vollständige Bestenliste im HUD-Overlay",
+        "syntax": "/leaderboard [anzahl]"
+      }
     }
   }
 }
