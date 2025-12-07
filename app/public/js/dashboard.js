@@ -3745,7 +3745,7 @@ document.getElementById('run-diagnostics-btn')?.addEventListener('click', async 
         
         // Euler API Key Status
         html += '<div style="margin-bottom: 1rem;"><strong>🔑 Euler API Key:</strong><br>';
-        const keyInfo = diagnostics.eulerApiKey;
+        const keyInfo = diagnostics.eulerApiKey || {};
         if (keyInfo.activeKey) {
             html += `✅ Aktiv (${keyInfo.activeSource}): ${keyInfo.activeKey}<br>`;
         } else {
@@ -3755,27 +3755,30 @@ document.getElementById('run-diagnostics-btn')?.addEventListener('click', async 
         
         // TikTok API Test
         html += '<div style="margin-bottom: 1rem;"><strong>🌐 TikTok API:</strong><br>';
-        if (diagnostics.tiktokApi.success) {
-            html += `✅ Erreichbar (${diagnostics.tiktokApi.responseTime}ms)<br>`;
+        const tiktokApi = diagnostics.tiktokApi || {};
+        if (tiktokApi.success) {
+            html += `✅ Erreichbar (${tiktokApi.responseTime}ms)<br>`;
         } else {
-            html += `❌ Fehler: ${diagnostics.tiktokApi.error || 'Nicht erreichbar'}<br>`;
+            html += `❌ Fehler: ${tiktokApi.error || 'Nicht erreichbar'}<br>`;
         }
         html += '</div>';
         
         // Euler WebSocket Test
         html += '<div style="margin-bottom: 1rem;"><strong>🔌 Euler WebSocket:</strong><br>';
-        if (diagnostics.eulerWebSocket.success) {
-            html += `✅ Verbindung OK (${diagnostics.eulerWebSocket.responseTime}ms)<br>`;
+        const eulerWebSocket = diagnostics.eulerWebSocket || {};
+        if (eulerWebSocket.success) {
+            html += `✅ Verbindung OK (${eulerWebSocket.responseTime}ms)<br>`;
         } else {
-            html += `⚠️ ${diagnostics.eulerWebSocket.error || 'Nicht verbunden'}<br>`;
+            html += `⚠️ ${eulerWebSocket.error || 'Nicht verbunden'}<br>`;
         }
         html += '</div>';
         
         // Configuration
         html += '<div style="margin-bottom: 1rem;"><strong>⚙️ Konfiguration:</strong><br>';
-        html += `Euler Fallbacks: ${diagnostics.connectionConfig.enableEulerFallbacks ? '✅ Aktiviert' : '❌ Deaktiviert'}<br>`;
-        html += `Connect with Unique ID: ${diagnostics.connectionConfig.connectWithUniqueId ? '✅ Aktiviert' : '❌ Deaktiviert'}<br>`;
-        html += `Timeout: ${diagnostics.connectionConfig.connectionTimeout / 1000}s<br>`;
+        const connectionConfig = diagnostics.connectionConfig || {};
+        html += `Euler Fallbacks: ${connectionConfig.enableEulerFallbacks ? '✅ Aktiviert' : '❌ Deaktiviert'}<br>`;
+        html += `Connect with Unique ID: ${connectionConfig.connectWithUniqueId ? '✅ Aktiviert' : '❌ Deaktiviert'}<br>`;
+        html += `Timeout: ${connectionConfig.connectionTimeout ? connectionConfig.connectionTimeout / 1000 : 30}s<br>`;
         html += '</div>';
         
         // Recent Attempts

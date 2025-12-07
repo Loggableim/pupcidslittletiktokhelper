@@ -1787,11 +1787,87 @@ class TikTokConnector extends EventEmitter {
         return this.db.getGiftCatalog();
     }
     
+    /**
+     * Get Euler API key configuration information
+     * @returns {Object} Object with activeKey, activeSource, and configured flag
+     */
+    getEulerApiKeyInfo() {
+        let activeKey = null;
+        let activeSource = null;
+        
+        // Check database setting first
+        const dbKey = this.db.getSetting('tiktok_euler_api_key');
+        if (dbKey) {
+            activeKey = dbKey;
+            activeSource = 'Database Setting';
+        } else if (process.env.EULER_API_KEY) {
+            activeKey = process.env.EULER_API_KEY;
+            activeSource = 'Environment Variable (EULER_API_KEY)';
+        } else if (process.env.SIGN_API_KEY) {
+            activeKey = process.env.SIGN_API_KEY;
+            activeSource = 'Environment Variable (SIGN_API_KEY)';
+        } else if (FALLBACK_API_KEY) {
+            activeKey = FALLBACK_API_KEY;
+            activeSource = 'Fallback Key';
+        }
+        
+        return {
+            activeKey: activeKey ? `${activeKey.substring(0, 8)}...${activeKey.substring(activeKey.length - 4)}` : null,
+            activeSource: activeSource,
+            configured: !!activeKey
+        };
+    }
+    
     async runDiagnostics(username) {
         const testUsername = username || this.currentUsername || 'tiktok';
+        const keyInfo = this.getEulerApiKeyInfo();
+        
+        // Test TikTok API reachability
+        let tiktokApiTest = { success: false, error: null, responseTime: null };
+        try {
+            const startTime = Date.now();
+            const response = await axios.get('https://www.tiktok.com', { 
+                timeout: 5000,
+                validateStatus: () => true // Accept any status code
+            });
+            tiktokApiTest.success = response.status < 500;
+            tiktokApiTest.responseTime = Date.now() - startTime;
+        } catch (error) {
+            tiktokApiTest.error = error.message;
+        }
+        
+        // Test Euler WebSocket connectivity
+        let eulerWebSocketTest = { success: false, error: null, responseTime: null };
+        if (keyInfo.configured) {
+            try {
+                const startTime = Date.now();
+                // Just test if we can reach the Euler API endpoint
+                const response = await axios.get('https://eulerstream.com', { 
+                    timeout: 5000,
+                    validateStatus: () => true
+                });
+                eulerWebSocketTest.success = response.status < 500;
+                eulerWebSocketTest.responseTime = Date.now() - startTime;
+            } catch (error) {
+                eulerWebSocketTest.error = error.message;
+            }
+        } else {
+            eulerWebSocketTest.error = 'No API key configured';
+        }
+        
+        // Get connection configuration
+        const connectionConfig = {
+            enableEulerFallbacks: !!FALLBACK_API_KEY,
+            connectWithUniqueId: this.db.getSetting('tiktok_connect_with_unique_id') !== false,
+            connectionTimeout: 30000
+        };
         
         return {
             timestamp: new Date().toISOString(),
+            eulerApiKey: keyInfo,
+            tiktokApi: tiktokApiTest,
+            eulerWebSocket: eulerWebSocketTest,
+            connectionConfig: connectionConfig,
             connection: {
                 isConnected: this.isConnected,
                 currentUsername: this.currentUsername,
@@ -1800,7 +1876,7 @@ class TikTokConnector extends EventEmitter {
                 method: 'Eulerstream WebSocket API'
             },
             configuration: {
-                apiKeyConfigured: !!(this.db.getSetting('tiktok_euler_api_key') || process.env.EULER_API_KEY || process.env.SIGN_API_KEY)
+                apiKeyConfigured: keyInfo.configured
             },
             recentAttempts: this.connectionAttempts.slice(0, 5),
             stats: this.stats
@@ -1809,6 +1885,7 @@ class TikTokConnector extends EventEmitter {
     
     async getConnectionHealth() {
         const recentFailures = this.connectionAttempts.filter(a => !a.success).length;
+        const keyInfo = this.getEulerApiKeyInfo();
         
         let status = 'healthy';
         let message = 'Connection ready';
@@ -1830,7 +1907,9 @@ class TikTokConnector extends EventEmitter {
             isConnected: this.isConnected,
             currentUsername: this.currentUsername,
             recentAttempts: this.connectionAttempts.slice(0, 5),
-            autoReconnectCount: this.autoReconnectCount
+            autoReconnectCount: this.autoReconnectCount,
+            eulerKeyConfigured: keyInfo.configured,
+            eulerKeySource: keyInfo.activeSource || 'Not configured'
         };
     }
 }
