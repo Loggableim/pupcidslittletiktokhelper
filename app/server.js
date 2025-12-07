@@ -201,7 +201,6 @@ app.use((req, res, next) => {
                        req.path.includes('/openshock/');
 
     if (isDashboard || isPluginUI) {
-        res.header('X-Frame-Options', 'SAMEORIGIN');
         // Dashboard & Plugin UI CSP: Strict policy - no inline scripts allowed
         // NOTE: All HTML files (dashboard.html, plugin UIs, etc.) use EXTERNAL scripts
         // via <script src="..."> tags, NOT inline scripts. This ensures CSP compliance.
@@ -228,7 +227,6 @@ app.use((req, res, next) => {
             `frame-ancestors 'self' null;`  // Allow OBS BrowserSource (null origin)
         );
     } else {
-        res.header('X-Frame-Options', 'SAMEORIGIN');
         // Strict CSP for other routes (including overlays for OBS)
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
