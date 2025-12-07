@@ -1842,7 +1842,9 @@ class TikTokConnector extends EventEmitter {
                 timeout: 5000,
                 validateStatus: () => true // Accept any status code
             });
-            // Consider successful if we get a response (even 404/403 shows the site is up)
+            // Success means the site is reachable and responding
+            // 200-399: Normal responses, 400-499: Client errors (site is up, we just don't have valid credentials/path)
+            // Only 500+ indicates potential server issues
             tiktokApiTest.success = response.status >= 200 && response.status < 500;
             tiktokApiTest.responseTime = Date.now() - startTime;
         } catch (error) {
@@ -1860,6 +1862,9 @@ class TikTokConnector extends EventEmitter {
                     timeout: 5000,
                     validateStatus: () => true
                 });
+                // Success means the service is reachable and responding
+                // 200-399: Normal responses, 400-499: Client errors (service is up)
+                // Only 500+ indicates potential server issues
                 eulerWebSocketTest.success = response.status >= 200 && response.status < 500;
                 eulerWebSocketTest.responseTime = Date.now() - startTime;
             } catch (error) {
