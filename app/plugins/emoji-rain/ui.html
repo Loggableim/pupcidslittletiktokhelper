@@ -14,8 +14,8 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--gradient-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--color-bg-primary);
             min-height: 100vh;
             padding: 20px;
             color: var(--color-text-primary);
@@ -30,13 +30,13 @@
             text-align: center;
             margin-bottom: 10px;
             font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            color: var(--color-text-primary);
         }
 
         .subtitle {
             text-align: center;
             margin-bottom: 30px;
-            opacity: 0.9;
+            color: var(--color-text-secondary);
             font-size: 1.1em;
         }
 
@@ -66,11 +66,11 @@
 
         .toggle-section {
             background: var(--color-bg-card);
-            backdrop-filter: blur(10px);
             border-radius: 12px;
             padding: 25px;
             margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-md);
             text-align: center;
         }
 
@@ -100,7 +100,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #ccc;
+            background-color: var(--color-bg-tertiary);
             transition: .4s;
             border-radius: 34px;
         }
@@ -112,13 +112,13 @@
             width: 26px;
             left: 4px;
             bottom: 4px;
-            background-color: var(--color-text-primary);
+            background-color: var(--color-bg-primary);
             transition: .4s;
             border-radius: 50%;
         }
 
         input:checked + .slider {
-            background-color: #4CAF50;
+            background-color: var(--brand-primary);
         }
 
         input:checked + .slider:before {
@@ -127,18 +127,19 @@
 
         .config-section {
             background: var(--color-bg-card);
-            backdrop-filter: blur(10px);
             border-radius: 12px;
             padding: 25px;
             margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-md);
         }
 
         .config-section h2 {
             margin-bottom: 20px;
             font-size: 1.8em;
-            border-bottom: 2px solid rgba(255,255,255,0.3);
+            border-bottom: 2px solid var(--color-border);
             padding-bottom: 10px;
+            color: var(--color-text-primary);
         }
 
         .form-grid {
@@ -163,34 +164,41 @@
         .form-group textarea {
             width: 100%;
             padding: 12px;
-            border: 2px solid var(--color-border);
+            border: 1px solid var(--color-input-border);
             border-radius: 8px;
-            background: rgba(255,255,255,0.15);
-            color: var(--color-text-primary);
+            background: var(--color-input-bg);
+            color: var(--color-input-text);
             font-size: 1em;
             font-family: inherit;
         }
 
-        .form-group input::placeholder,
-        .form-group textarea::placeholder {
-            color: rgba(255,255,255,0.6);
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--color-input-focus);
         }
 
-        /* Fix white on white text in select dropdowns */
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: var(--color-input-placeholder);
+        }
+
+        /* Fix select dropdown colors for all themes */
         .form-group select option {
-            background: #2d2d2d;
-            color: #ffffff;
+            background: var(--color-bg-secondary);
+            color: var(--color-text-primary);
         }
 
         .form-group select option:checked,
         .form-group select option:hover {
-            background: #4CAF50;
-            color: #ffffff;
+            background: var(--brand-primary);
+            color: white;
         }
 
         .form-group select optgroup {
-            background: #1a1a1a;
-            color: #4CAF50;
+            background: var(--color-bg-primary);
+            color: var(--brand-primary);
             font-weight: bold;
         }
 
@@ -223,7 +231,8 @@
             gap: 10px;
             margin-top: 10px;
             padding: 15px;
-            background: rgba(0,0,0,0.2);
+            background: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
             min-height: 60px;
         }
@@ -240,7 +249,7 @@
 
         .help-text {
             font-size: 0.9em;
-            opacity: 0.8;
+            color: var(--color-text-muted);
             margin-top: 5px;
         }
 
@@ -252,41 +261,43 @@
         }
 
         button {
-            background: rgba(76,175,80,0.8);
-            border: 2px solid rgba(76,175,80,1);
-            color: var(--color-text-primary);
+            background: var(--brand-primary);
+            border: 1px solid var(--brand-primary);
+            color: white;
             padding: 15px 30px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 1.1em;
-            font-weight: bold;
-            transition: all 0.3s ease;
+            font-weight: 600;
+            transition: all 0.2s ease;
         }
 
         button:hover {
-            background: rgba(76,175,80,1);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(76,175,80,0.5);
+            background: var(--brand-primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--glow-brand);
         }
 
         button.secondary {
-            background: rgba(33,150,243,0.8);
-            border-color: rgba(33,150,243,1);
+            background: var(--color-accent-primary);
+            border-color: var(--color-accent-primary);
         }
 
         button.secondary:hover {
-            background: rgba(33,150,243,1);
-            box-shadow: 0 4px 12px rgba(33,150,243,0.5);
+            background: var(--color-accent-primary);
+            filter: brightness(1.1);
+            box-shadow: var(--glow-primary);
         }
 
         button.danger {
-            background: rgba(244,67,54,0.8);
-            border-color: rgba(244,67,54,1);
+            background: var(--color-accent-danger);
+            border-color: var(--color-accent-danger);
         }
 
         button.danger:hover {
-            background: rgba(244,67,54,1);
-            box-shadow: 0 4px 12px rgba(244,67,54,0.5);
+            background: var(--color-accent-danger);
+            filter: brightness(1.1);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
         }
 
         .notification {
@@ -295,10 +306,11 @@
             right: 20px;
             padding: 15px 25px;
             border-radius: 8px;
-            background: rgba(76,175,80,0.95);
-            color: var(--color-text-primary);
-            font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            background: var(--color-accent-success);
+            color: white;
+            font-weight: 600;
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-lg);
             transform: translateX(400px);
             transition: transform 0.3s ease;
             z-index: 1000;
@@ -309,7 +321,7 @@
         }
 
         .notification.error {
-            background: rgba(244,67,54,0.95);
+            background: var(--color-accent-danger);
         }
 
         /* Uploaded Images Grid */
@@ -341,8 +353,8 @@
             position: absolute;
             top: 4px;
             right: 4px;
-            background: rgba(244,67,54,0.9);
-            color: var(--color-text-primary);
+            background: var(--color-accent-danger);
+            color: white;
             border: none;
             border-radius: 50%;
             width: 24px;
@@ -362,7 +374,72 @@
         }
 
         .image-item .delete-btn:hover {
-            background: rgba(244,67,54,1);
+            filter: brightness(1.1);
+        }
+
+        .section-warning {
+            border: 2px solid var(--color-accent-warning);
+            background: var(--color-bg-card);
+        }
+
+        .section-success {
+            border: 2px solid var(--color-accent-success);
+            background: var(--color-bg-card);
+        }
+
+        .info-box {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+        }
+
+        .info-box strong {
+            color: var(--color-text-primary);
+        }
+
+        .info-box-item {
+            margin-top: 10px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .info-box-item span {
+            color: var(--brand-primary);
+        }
+
+        .tip-box {
+            margin-top: 15px;
+            padding: 10px;
+            background: var(--brand-primary-light);
+            border-radius: 8px;
+            border: 1px solid var(--brand-primary);
+        }
+
+        .tip-box strong {
+            color: var(--color-text-primary);
+        }
+
+        .code-block {
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: var(--color-text-secondary);
+        }
+
+        .highlight {
+            color: var(--brand-primary);
+        }
+
+        .nav-button-primary {
+            background: var(--brand-primary-light);
+            border-color: var(--brand-primary);
+        }
+
+        .nav-button-primary:hover {
+            background: var(--brand-primary-light);
+            filter: brightness(1.2);
         }
     </style>
 </head>
@@ -373,7 +450,7 @@
 
         <div class="nav-buttons">
             <a href="/dashboard.html" class="nav-button">← Zurück zum Dashboard</a>
-            <a href="/emoji-rain/obs-hud" class="nav-button" target="_blank" style="background: rgba(76,175,80,0.3); border-color: rgba(76,175,80,0.5);">🎮 OBS HUD öffnen</a>
+            <a href="/emoji-rain/obs-hud" class="nav-button nav-button-primary" target="_blank">🎮 OBS HUD öffnen</a>
         </div>
 
         <!-- Enable/Disable Toggle -->
@@ -389,9 +466,9 @@
         </div>
 
         <!-- Toaster Mode (Low-End PC Mode) -->
-        <div class="config-section" style="border: 2px solid rgba(255,165,0,0.5); background: rgba(255,165,0,0.1);">
+        <div class="config-section section-warning">
             <h2>🍞 Toaster Modus (Schwache PCs)</h2>
-            <div class="help-text" style="margin-bottom: 20px; font-size: 1em; opacity: 1;">
+            <div class="help-text" style="margin-bottom: 20px; font-size: 1em;">
                 Reduziert CPU-Auslastung und Ressourcenverbrauch für schwache PCs. Aktiviere diesen Modus, wenn du Performance-Probleme hast.
             </div>
 
@@ -403,27 +480,27 @@
                 <div class="help-text">Optimiert für maximale Performance auf schwachen Systemen</div>
             </div>
 
-            <div style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+            <div class="info-box">
                 <strong>🔧 Was wird geändert:</strong><br>
-                <div style="margin-top: 10px; font-size: 0.9em; line-height: 1.6;">
-                    <div>• <span style="color: #4CAF50;">Max. Emojis:</span> 200 → 50</div>
-                    <div>• <span style="color: #4CAF50;">Ziel-FPS:</span> 60 → 30</div>
-                    <div>• <span style="color: #4CAF50;">Rotation:</span> Deaktiviert</div>
-                    <div>• <span style="color: #4CAF50;">Wind:</span> Deaktiviert</div>
-                    <div>• <span style="color: #4CAF50;">Rainbow/Pixel/Glow:</span> Deaktiviert</div>
-                    <div>• <span style="color: #4CAF50;">Burst Intensität:</span> Reduziert</div>
+                <div class="info-box-item">
+                    <div>• <span>Max. Emojis:</span> 200 → 50</div>
+                    <div>• <span>Ziel-FPS:</span> 60 → 30</div>
+                    <div>• <span>Rotation:</span> Deaktiviert</div>
+                    <div>• <span>Wind:</span> Deaktiviert</div>
+                    <div>• <span>Rainbow/Pixel/Glow:</span> Deaktiviert</div>
+                    <div>• <span>Burst Intensität:</span> Reduziert</div>
                 </div>
             </div>
 
-            <div style="margin-top: 15px; padding: 10px; background: rgba(255,165,0,0.2); border-radius: 8px; border: 1px solid rgba(255,165,0,0.4);">
+            <div class="tip-box">
                 <strong>💡 Tipp:</strong> Nutze den Toaster Modus, wenn dein PC beim Streamen langsamer wird oder die CPU-Auslastung zu hoch ist.
             </div>
         </div>
 
         <!-- OBS HUD Settings -->
-        <div class="config-section" style="border: 2px solid rgba(76,175,80,0.5); background: rgba(76,175,80,0.1);">
+        <div class="config-section section-success">
             <h2>🎮 OBS HUD Einstellungen</h2>
-            <div class="help-text" style="margin-bottom: 20px; font-size: 1em; opacity: 1;">
+            <div class="help-text" style="margin-bottom: 20px; font-size: 1em;">
                 Separate hochwertige Overlay-Seite für OBS mit fester Auflösung und Game-Quality Grafik
             </div>
 
@@ -496,11 +573,11 @@
                 </div>
             </div>
 
-            <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+            <div class="info-box">
                 <strong>🔗 OBS Setup:</strong><br>
-                <div style="margin-top: 10px; font-family: monospace; font-size: 0.9em;">
+                <div class="code-block">
                     1. In OBS: Neue Browser Source hinzufügen<br>
-                    2. URL eingeben: <span style="color: #4CAF50;">http://localhost:3000/emoji-rain/obs-hud</span><br>
+                    2. URL eingeben: <span class="highlight">http://localhost:3000/emoji-rain/obs-hud</span><br>
                     3. Breite & Höhe auf gewählte Auflösung setzen<br>
                     4. "Shutdown source when not visible" aktivieren (für bessere Performance)<br>
                     5. "Refresh browser when scene becomes active" aktivieren
@@ -558,14 +635,14 @@
                     <button type="button" id="upload-images-btn" class="secondary">📤 Upload</button>
                 </div>
                 <div class="help-text">PNG, JPG, GIF, WebP, SVG (max. 5MB pro Datei)</div>
-                <div id="upload-progress" style="display: none; margin-top: 10px; color: #4CAF50; font-weight: bold;"></div>
+                <div id="upload-progress" style="display: none; margin-top: 10px; color: var(--brand-primary); font-weight: 600;"></div>
             </div>
 
             <!-- Uploaded Images Grid -->
             <div class="form-group">
                 <label>Hochgeladene Bilder</label>
-                <div id="uploaded-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; min-height: 100px;">
-                    <div style="text-align: center; color: #9ca3af; grid-column: 1 / -1;">Keine Bilder hochgeladen</div>
+                <div id="uploaded-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 10px; padding: 15px; background: var(--color-bg-tertiary); border: 1px solid var(--color-border); border-radius: 8px; min-height: 100px;">
+                    <div style="text-align: center; color: var(--color-text-muted); grid-column: 1 / -1;">Keine Bilder hochgeladen</div>
                 </div>
             </div>
 
@@ -591,8 +668,8 @@
 
             <div class="form-group">
                 <label>Benutzer-Emoji-Zuordnungen</label>
-                <div id="user-emoji-mappings" style="max-height: 300px; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                    <div style="text-align: center; color: #9ca3af;">Keine Zuordnungen</div>
+                <div id="user-emoji-mappings" style="max-height: 300px; overflow-y: auto; padding: 15px; background: var(--color-bg-tertiary); border: 1px solid var(--color-border); border-radius: 8px;">
+                    <div style="text-align: center; color: var(--color-text-muted);">Keine Zuordnungen</div>
                 </div>
             </div>
 
@@ -781,12 +858,12 @@
                 </div>
             </div>
 
-            <div style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+            <div class="info-box">
                 <strong>📊 Performance Status:</strong><br>
-                <div style="margin-top: 10px; font-family: monospace;">
-                    <div>Aktuelle FPS: <span id="current-fps-display" style="color: #4CAF50; font-weight: bold;">--</span></div>
-                    <div>Aktive Emojis: <span id="active-emojis-display" style="color: #4CAF50; font-weight: bold;">--</span></div>
-                    <div>Performance-Modus: <span id="performance-mode-display" style="color: #4CAF50; font-weight: bold;">Normal</span></div>
+                <div class="code-block">
+                    <div>Aktuelle FPS: <span id="current-fps-display" class="highlight">--</span></div>
+                    <div>Aktive Emojis: <span id="active-emojis-display" class="highlight">--</span></div>
+                    <div>Performance-Modus: <span id="performance-mode-display" class="highlight">Normal</span></div>
                 </div>
             </div>
         </div>
