@@ -110,18 +110,18 @@
     // ============================================
 
     function syncApplicationTheme() {
+        // Map application themes to overlay themes
+        const themeMapping = {
+            'night': 'dark',
+            'day': 'day',
+            'contrast': 'contrast'
+        };
+        
         // Read the application theme from localStorage (set by ThemeManager)
         const appTheme = localStorage.getItem('dashboard-theme') || 'night';
         const overlay = document.getElementById('overlay-container');
         
         if (overlay) {
-            // Map application themes to overlay themes
-            const themeMapping = {
-                'night': 'dark',
-                'day': 'day',
-                'contrast': 'contrast'
-            };
-            
             const mappedTheme = themeMapping[appTheme] || 'dark';
             
             // Apply the application theme to the overlay
