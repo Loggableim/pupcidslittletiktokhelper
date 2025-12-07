@@ -252,7 +252,7 @@ async function loadExistingRooms() {
 
         const select = document.getElementById('vdo-existing-rooms');
         if (!select) {
-            console.log('VDO.Ninja UI elements not found (not on VDO.Ninja page)');
+            console.log('[VDO.Ninja] loadExistingRooms: UI elements not found (not on VDO.Ninja page)');
             return;
         }
         
@@ -577,7 +577,7 @@ function updateRoomUI(roomData) {
 
     // Check if UI elements exist (only present on VDO.Ninja dedicated page)
     if (!roomNameEl || !guestCountEl) {
-        console.log('VDO.Ninja UI elements not found (not on VDO.Ninja page)');
+        console.log('[VDO.Ninja] updateRoomUI: UI elements not found (not on VDO.Ninja page)');
         return;
     }
 
@@ -622,7 +622,7 @@ function updateGuestListUI() {
     
     // Check if UI element exists (only present on VDO.Ninja dedicated page)
     if (!guestListEl) {
-        console.log('VDO.Ninja UI elements not found (not on VDO.Ninja page)');
+        console.log('[VDO.Ninja] updateGuestListUI: UI elements not found (not on VDO.Ninja page)');
         return;
     }
 
