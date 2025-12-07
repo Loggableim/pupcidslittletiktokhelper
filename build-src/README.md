@@ -104,13 +104,16 @@ The cloud launcher includes:
   - Output is logged to file AND displayed in console
   - **Launcher stays active to monitor server - catches crashes**
   - **Terminal stays open on crash - waits for Enter before closing**
+  - **Enhanced crash detection with output flushing (500ms delay)**
+  - **Prominent crash messages to ensure visibility**
   - Shows crash details and error logs when server crashes
-  - Useful for troubleshooting startup issues
+  - Useful for troubleshooting startup issues and runtime crashes
   - Does NOT use -H windowsgui flag
 - **Use when:** 
   - Debugging launcher or startup problems
   - Need to see error logs in terminal
   - Need to see Node.js server errors and output
+  - **Server crashes during TikTok Live connection**
   - **Server crashes and you need to see the error logs**
   - Investigating issues before or during app startup
 

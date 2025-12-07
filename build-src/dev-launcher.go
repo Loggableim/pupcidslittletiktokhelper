@@ -281,7 +281,17 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 
 	// Set environment variable to disable automatic browser opening
 	// The GUI launcher handles the redirect to dashboard after server is ready
-	cmd.Env = append(os.Environ(), "OPEN_BROWSER=false")
+	env := os.Environ()
+	env = append(env, "OPEN_BROWSER=false")
+	
+	// DEV MODE: Force unbuffered output from Node.js
+	env = append(env, "NODE_NO_WARNINGS=1")  // Reduce noise
+	// Force output to be unbuffered - critical for catching crash logs
+	if runtime.GOOS == "windows" {
+		// On Windows, ensure console output is not buffered
+		env = append(env, "PYTHONUNBUFFERED=1")
+	}
+	cmd.Env = env
 
 	// DEV MODE: Redirect output to BOTH log file AND console for detailed error logging
 	if l.logFile != nil {
@@ -304,6 +314,7 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 	// Print to console as well
 	fmt.Println("\n================================================")
 	fmt.Println("  DEV MODE: Server output will be visible below")
+	fmt.Println("  Output wird in Echtzeit angezeigt (unbuffered)")
 	fmt.Println("================================================\n")
 
 	err := cmd.Start()
@@ -550,11 +561,20 @@ func (l *Launcher) runLauncher() {
 		select {
 		case err := <-processDied:
 			// Process exited before server was ready
+			// CRITICAL: Give time for buffered output to flush
+			time.Sleep(500 * time.Millisecond)
+			
+			// Force flush all output streams
+			os.Stdout.Sync()
+			os.Stderr.Sync()
+			
 			// Ensure log file is flushed to capture all server output
 			if l.logFile != nil {
 				l.logFile.Sync()
-				time.Sleep(100 * time.Millisecond) // Give a moment for any buffered writes
+				time.Sleep(200 * time.Millisecond)
 			}
+			
+			fmt.Println("\n\n❌❌❌ SERVER CRASHED BEIM START! ❌❌❌\n")
 			
 			l.logAndSync("--- Node.js Server Output End ---")
 			l.logAndSync("[ERROR] ===========================================")
@@ -696,15 +716,29 @@ func (l *Launcher) runLauncher() {
 	// The processDied channel is still being monitored by the goroutine from line 530
 	err = <-processDied
 	
-	// Server has crashed or exited
+	// CRITICAL: Give time for buffered output to flush before showing crash message
+	// This ensures we can see the actual error that caused the crash
+	time.Sleep(500 * time.Millisecond)
+	
+	// Force flush stdout/stderr
+	os.Stdout.Sync()
+	os.Stderr.Sync()
+	
+	// Server has crashed or exited - flush log file
 	if l.logFile != nil {
 		l.logFile.Sync()
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 	}
 	
-	fmt.Println("\n================================================")
-	fmt.Println("  ❌ SERVER CRASH DETECTED!")
-	fmt.Println("================================================")
+	// Print prominent crash message to console
+	fmt.Println("\n\n")
+	fmt.Println("████████████████████████████████████████████████")
+	fmt.Println("██                                            ██")
+	fmt.Println("██        ❌ SERVER CRASH DETECTED! ❌         ██")
+	fmt.Println("██                                            ██")
+	fmt.Println("████████████████████████████████████████████████")
+	fmt.Println()
+	
 	l.logAndSync("--- Node.js Server Output End ---")
 	l.logAndSync("[ERROR] ===========================================")
 	l.logAndSync("[ERROR] Server crashed after successful startup!")
@@ -712,13 +746,24 @@ func (l *Launcher) runLauncher() {
 	l.logAndSync("[ERROR] Check the server output above for error details")
 	l.logAndSync("[ERROR] ===========================================")
 	
-	fmt.Println("\n❌ Der Server ist abgestürzt!")
+	fmt.Println("❌ Der Server ist abgestürzt!")
 	if err != nil {
-		fmt.Printf("Exit-Status: %v\n", err)
+		fmt.Printf("   Exit-Status: %v\n", err)
 	}
-	fmt.Println("\nPrüfe die Ausgabe oben für Fehlerdetails.")
-	fmt.Println("Log-Datei: app/logs/launcher_*.log")
-	fmt.Println("\nDrücke Enter zum Beenden...")
+	fmt.Println()
+	fmt.Println("📋 LETZTE AUSGABE VOR DEM CRASH:")
+	fmt.Println("   Sieh dir die Zeilen DIREKT ÜBER dieser Meldung an!")
+	fmt.Println()
+	fmt.Println("💾 Vollständige Logs in: app/logs/launcher_*.log")
+	fmt.Println()
+	fmt.Println("⚠️  HÄUFIGE CRASH-URSACHEN:")
+	fmt.Println("   - Ungültige TikTok Username")
+	fmt.Println("   - Netzwerkprobleme")
+	fmt.Println("   - TikTok API Änderungen")
+	fmt.Println("   - Fehlende Permissions")
+	fmt.Println()
+	fmt.Println("👉 Drücke Enter zum Beenden...")
+	fmt.Println()
 	
 	// Wait for user to press Enter before closing
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
