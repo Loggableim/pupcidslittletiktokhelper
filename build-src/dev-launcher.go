@@ -606,8 +606,16 @@ func (l *Launcher) runLauncher() {
 			time.Sleep(2 * time.Second)
 			l.updateProgress(99, "💡 Oder prüfe ob Port 3000 frei ist")
 			time.Sleep(2 * time.Second)
-			l.updateProgress(100, "❌ Launcher wird in 15 Sekunden geschlossen...")
-			time.Sleep(15 * time.Second)
+			
+			// DEV MODE: Wait for user input instead of auto-closing
+			fmt.Println("\n================================================")
+			fmt.Println("  ❌ SERVER START FEHLGESCHLAGEN")
+			fmt.Println("================================================")
+			fmt.Println("\nFehlerdetails siehe oben.")
+			fmt.Println("Log-Datei: app/logs/launcher_*.log")
+			fmt.Println("\nDrücke Enter zum Beenden...")
+			bufio.NewReader(os.Stdin).ReadBytes('\n')
+			
 			l.closeLogging()
 			os.Exit(1)
 		case <-healthCheckTicker.C:
@@ -651,8 +659,16 @@ func (l *Launcher) runLauncher() {
 			time.Sleep(2 * time.Second)
 			l.updateProgress(98, "💡 Warte 2-3 Minuten und öffne localhost:3000")
 			time.Sleep(2 * time.Second)
-			l.updateProgress(100, "❌ Launcher wird in 15 Sekunden geschlossen...")
-			time.Sleep(15 * time.Second)
+			
+			// DEV MODE: Wait for user input instead of auto-closing
+			fmt.Println("\n================================================")
+			fmt.Println("  ⏱️ SERVER TIMEOUT")
+			fmt.Println("================================================")
+			fmt.Println("\nServer antwortet nicht nach 60 Sekunden.")
+			fmt.Println("Prüfe app/logs/ für Details oder warte noch etwas.")
+			fmt.Println("\nDrücke Enter zum Beenden...")
+			bufio.NewReader(os.Stdin).ReadBytes('\n')
+			
 			l.closeLogging()
 			os.Exit(1)
 		}
@@ -666,10 +682,49 @@ func (l *Launcher) runLauncher() {
 	time.Sleep(500 * time.Millisecond)
 	l.sendRedirect()
 
-	// Keep server running to allow redirect to complete
+	// DEV MODE: Keep launcher running to monitor server and catch crashes
 	time.Sleep(3 * time.Second)
+	
+	fmt.Println("\n================================================")
+	fmt.Println("  DEV MODE: Launcher bleibt aktiv")
+	fmt.Println("  Server-Prozess wird überwacht")
+	fmt.Println("  Bei Crash bleibt Terminal offen für Logs")
+	fmt.Println("================================================\n")
+	l.logger.Println("[DEV MODE] Launcher staying active to monitor server process")
+	
+	// Wait for server process to exit (crash or shutdown)
+	// The processDied channel is still being monitored by the goroutine from line 530
+	err = <-processDied
+	
+	// Server has crashed or exited
+	if l.logFile != nil {
+		l.logFile.Sync()
+		time.Sleep(100 * time.Millisecond)
+	}
+	
+	fmt.Println("\n================================================")
+	fmt.Println("  ❌ SERVER CRASH DETECTED!")
+	fmt.Println("================================================")
+	l.logAndSync("--- Node.js Server Output End ---")
+	l.logAndSync("[ERROR] ===========================================")
+	l.logAndSync("[ERROR] Server crashed after successful startup!")
+	l.logAndSync("[ERROR] Exit status: %v", err)
+	l.logAndSync("[ERROR] Check the server output above for error details")
+	l.logAndSync("[ERROR] ===========================================")
+	
+	fmt.Println("\n❌ Der Server ist abgestürzt!")
+	if err != nil {
+		fmt.Printf("Exit-Status: %v\n", err)
+	}
+	fmt.Println("\nPrüfe die Ausgabe oben für Fehlerdetails.")
+	fmt.Println("Log-Datei: app/logs/launcher_*.log")
+	fmt.Println("\nDrücke Enter zum Beenden...")
+	
+	// Wait for user to press Enter before closing
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	
 	l.closeLogging()
-	os.Exit(0)
+	os.Exit(1)
 }
 
 func main() {

@@ -102,12 +102,16 @@ The cloud launcher includes:
   - **Server terminal output is visible with detailed error logging**
   - Both launcher and Node.js server output shown in terminal
   - Output is logged to file AND displayed in console
+  - **Launcher stays active to monitor server - catches crashes**
+  - **Terminal stays open on crash - waits for Enter before closing**
+  - Shows crash details and error logs when server crashes
   - Useful for troubleshooting startup issues
   - Does NOT use -H windowsgui flag
 - **Use when:** 
   - Debugging launcher or startup problems
   - Need to see error logs in terminal
   - Need to see Node.js server errors and output
+  - **Server crashes and you need to see the error logs**
   - Investigating issues before or during app startup
 
 ### launcher.go (launcher-console.exe)
