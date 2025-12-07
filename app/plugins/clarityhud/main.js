@@ -134,6 +134,10 @@ class ClarityHUDPlugin {
       await this.backend.handleShareEvent(data);
     });
 
+    this.api.registerTikTokEvent('like', async (data) => {
+      await this.backend.handleLikeEvent(data);
+    });
+
     this.api.registerTikTokEvent('gift', async (data) => {
       await this.backend.handleGiftEvent(data);
     });

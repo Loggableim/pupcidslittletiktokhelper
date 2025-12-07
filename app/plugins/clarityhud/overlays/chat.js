@@ -601,17 +601,23 @@ function renderMessage(messageData) {
         ).then(() => {
           messageEl.classList.add('visible');
           console.log('[CHAT HUD] ✅ Message animated and visible');
+          // Auto-scroll after animation completes
+          autoScrollToBottom();
         }).catch(error => {
           console.warn('[CHAT HUD] Animation error:', error);
           // Fallback: make it visible anyway
           messageEl.classList.add('visible');
           messageEl.style.opacity = '1';
+          // Auto-scroll even on error
+          autoScrollToBottom();
         });
       } else {
         // No animation renderer, just make it visible
         messageEl.classList.add('visible');
         messageEl.style.opacity = '1';
         console.log('[CHAT HUD] ✅ Message visible (no animation)');
+        // Auto-scroll
+        autoScrollToBottom();
       }
     });
 
@@ -620,6 +626,26 @@ function renderMessage(messageData) {
   } catch (error) {
     console.error('[CHAT HUD] ❌ Error in renderMessage:', error);
   }
+}
+
+/**
+ * Auto-scroll messages container to bottom to show newest messages
+ */
+function autoScrollToBottom() {
+  const container = document.getElementById('chat-container');
+  if (!container) return;
+
+  requestAnimationFrame(() => {
+    try {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    } catch (error) {
+      // Fallback for browsers that don't support smooth scrolling
+      container.scrollTop = container.scrollHeight;
+    }
+  });
 }
 
 /**

@@ -9,11 +9,13 @@ const STATE = {
     chat: [],
     follow: [],
     share: [],
+    like: [],
     gift: [],
     sub: [],
     treasure: [],
     join: []
   },
+  eventIds: new Set(), // Track event IDs to prevent duplicates
   layoutEngine: null,
   animationRegistry: null,
   animationRenderer: null,
@@ -31,6 +33,7 @@ const EVENT_TYPES = {
   chat: { icon: '💬', label: 'Chat', colorClass: 'event-chat' },
   follow: { icon: '❤️', label: 'Followed', colorClass: 'event-follow' },
   share: { icon: '🔄', label: 'Shared', colorClass: 'event-share' },
+  like: { icon: '👍', label: 'Liked', colorClass: 'event-follow' },
   gift: { icon: '🎁', label: 'Gift', colorClass: 'event-gift' },
   sub: { icon: '⭐', label: 'Subscribed', colorClass: 'event-sub' },
   treasure: { icon: '💎', label: 'Treasure', colorClass: 'event-treasure' },
@@ -134,6 +137,7 @@ function getDefaultSettings() {
     showChat: true,
     showFollows: true,
     showShares: true,
+    showLikes: true,
     showGifts: true,
     showSubs: true,
     showTreasureChests: true,
@@ -302,6 +306,12 @@ function connectSocket() {
     }
   });
 
+  STATE.socket.on('clarityhud.update.like', (data) => {
+    if (STATE.settings.showLikes !== false) {
+      addEvent('like', data);
+    }
+  });
+
   STATE.socket.on('clarityhud.update.gift', (data) => {
     if (STATE.settings.showGifts !== false) {
       addEvent('gift', data);
@@ -329,12 +339,28 @@ function connectSocket() {
 
 // ==================== EVENT MANAGEMENT ====================
 function addEvent(type, data) {
+  const timestamp = Date.now();
   const event = {
     type,
     data,
-    timestamp: Date.now(),
-    id: `${type}_${Date.now()}_${Math.random()}`
+    timestamp: timestamp,
+    id: `${type}_${timestamp}_${Math.random()}`
   };
+
+  // Check for duplicate events using a composite key
+  // Round timestamp to nearest 500ms to catch rapid duplicates
+  const roundedTime = Math.floor(timestamp / 500) * 500;
+  const duplicateKey = `${type}_${data.user?.uniqueId || data.uniqueId}_${data.message || data.giftName || ''}_${roundedTime}`;
+  
+  // Prevent duplicates within a 2 second window
+  if (STATE.eventIds.has(duplicateKey)) {
+    console.log(`[CLARITY FULL] Duplicate event detected, skipping: ${duplicateKey}`);
+    return;
+  }
+  
+  // Add to event ID set with automatic cleanup after 2 seconds
+  STATE.eventIds.add(duplicateKey);
+  setTimeout(() => STATE.eventIds.delete(duplicateKey), 2000);
 
   STATE.events[type].unshift(event);
 
@@ -377,7 +403,7 @@ function renderSingleStream() {
   // Combine all events into single feed
   const allEvents = [];
   for (const type in STATE.events) {
-    if (STATE.settings[`show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type + 's')}`]) {
+    if (STATE.settings[`show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type === 'like' ? 'likes' : type + 's')}`]) {
       allEvents.push(...STATE.events[type]);
     }
   }
@@ -398,10 +424,10 @@ function renderSingleStream() {
 }
 
 function renderStructured() {
-  const eventTypes = ['chat', 'follow', 'share', 'gift', 'sub', 'treasure', 'join'];
+  const eventTypes = ['chat', 'follow', 'share', 'like', 'gift', 'sub', 'treasure', 'join'];
 
   eventTypes.forEach(type => {
-    const settingKey = `show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type + 's')}`;
+    const settingKey = `show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type === 'like' ? 'likes' : type + 's')}`;
     if (!STATE.settings[settingKey]) return;
 
     const block = document.createElement('div');
@@ -429,9 +455,9 @@ function renderStructured() {
 }
 
 function renderAdaptive() {
-  const eventTypes = ['chat', 'follow', 'share', 'gift', 'sub', 'treasure', 'join'];
+  const eventTypes = ['chat', 'follow', 'share', 'like', 'gift', 'sub', 'treasure', 'join'];
   const activeTypes = eventTypes.filter(type => {
-    const settingKey = `show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type + 's')}`;
+    const settingKey = `show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type === 'like' ? 'likes' : type + 's')}`;
     return STATE.settings[settingKey] && STATE.events[type].length > 0;
   });
 
@@ -640,6 +666,27 @@ function createEventElement(event, layoutMode) {
       `${event.data.gift?.name || event.data.giftName}${event.data.gift?.coins || event.data.coins ? ` (${event.data.gift?.coins || event.data.coins} coins)` : ''}` :
       (event.data.gift?.coins || event.data.coins ? `${event.data.gift?.coins || event.data.coins} coins` : 'sent a gift');
     element.appendChild(giftInfo);
+  } else if (event.type === 'like') {
+    // Like events (similar to follow/share)
+    const username = document.createElement('span');
+    username.className = 'event-username';
+    username.textContent = event.data.user?.nickname || event.data.username || 'Anonymous';
+    element.appendChild(username);
+
+    if (layoutMode === 'singleStream') {
+      const type = document.createElement('span');
+      type.className = 'event-type';
+      type.textContent = `(${EVENT_TYPES[event.type].label})`;
+      element.appendChild(type);
+    }
+
+    // Show like count if available
+    if (event.data.likeCount && event.data.likeCount > 1) {
+      const likeInfo = document.createElement('span');
+      likeInfo.className = 'event-gift-info';
+      likeInfo.textContent = `x${event.data.likeCount}`;
+      element.appendChild(likeInfo);
+    }
   } else {
     // Standard event (follow, share, sub, treasure, join)
     const username = document.createElement('span');
@@ -687,9 +734,9 @@ function capitalize(str) {
 }
 
 function getActiveTypeCount() {
-  const eventTypes = ['chat', 'follow', 'share', 'gift', 'sub', 'treasure', 'join'];
+  const eventTypes = ['chat', 'follow', 'share', 'like', 'gift', 'sub', 'treasure', 'join'];
   return eventTypes.filter(type => {
-    const settingKey = `show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type + 's')}`;
+    const settingKey = `show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type === 'like' ? 'likes' : type + 's')}`;
     return STATE.settings[settingKey] && STATE.events[type].length > 0;
   }).length;
 }
