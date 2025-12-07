@@ -158,8 +158,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    min-height: var(--topbar-height);
+    padding: 1rem 0.75rem;
+    min-height: 90px;
     border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
 }
@@ -168,60 +168,70 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 1rem;
     flex: 1;
     min-width: 0;
-    padding: 0.25rem 0;
+    padding: 0.5rem 0;
 }
 
-.sidebar-logo-icon {
-    max-height: 40px;
-    width: 100%;
-    max-width: 100%;
-    color: var(--color-accent-primary);
+/* Mini logo - responsive sizing based on screen size */
+.sidebar-logo-mini {
+    min-height: 64px;
+    min-width: 64px;
+    height: 64px;
+    width: 64px;
     flex-shrink: 0;
     transition: all var(--transition-speed) ease;
     object-fit: contain;
-    padding: 0 0.5rem;
 }
 
-/* Mini icon for collapsed sidebar - hidden by default */
-.sidebar-mini-icon {
-    display: none;
-    width: 100%;
-    max-width: 100%;
-    height: auto;
-    object-fit: contain;
-    transition: all var(--transition-speed) ease;
-    padding: 0 0.25rem;
-}
-
-.sidebar-collapsed .sidebar-logo-icon {
-    display: none;
-}
-
-.sidebar-collapsed .sidebar-mini-icon {
-    display: block;
-}
-
-/* Collapsed sidebar header adjustments for larger logo */
-.sidebar-collapsed .sidebar-header {
+/* Collapsed sidebar adjustments for mini logo - larger at 96x96 */
+.sidebar-collapsed .sidebar-logo-mini {
     min-height: 96px;
-    padding: 0.5rem;
+    min-width: 96px;
+    height: 96px;
+    width: 96px;
+}
+
+.sidebar-collapsed .sidebar-header {
+    min-height: 120px;
+    padding: 0.75rem;
 }
 
 .sidebar-collapsed .sidebar-logo {
-    padding: 0.25rem 0;
+    padding: 0.5rem 0;
+}
+
+/* Responsive: smaller logo on small screens */
+@media (max-width: 1024px) {
+    .sidebar-logo-mini {
+        min-height: 32px;
+        min-width: 32px;
+        height: 32px;
+        width: 32px;
+    }
+    
+    .sidebar-header {
+        min-height: 70px;
+    }
 }
 
 .sidebar-logo-text {
-    font-size: 1.125rem;
+    font-size: 1.5rem;
     font-weight: 700;
+    color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     opacity: 1;
-    transition: opacity var(--transition-speed) ease;
+    transition: opacity var(--transition-speed) ease, color var(--transition-speed) ease;
+}
+
+/* Responsive: smaller text on small screens */
+@media (max-width: 1024px) {
+    .sidebar-logo-text {
+        font-size: 1rem;
+    }
 }
 
 .sidebar-collapsed .sidebar-logo-text {

@@ -209,15 +209,8 @@ class ThemeManager {
     }
 
     updateSidebarLogo(theme) {
-        const logoImg = document.getElementById('sidebar-logo-img');
         const miniIcon = document.getElementById('sidebar-mini-icon');
-        
-        // Logo map for different themes
-        const logoMap = {
-            day: '/ltthlogo_daymode.png',
-            contrast: '/ltthlogo_highcontrast.png',
-            night: '/ltthlogo_nightmode.png'
-        };
+        const logoText = document.querySelector('.sidebar-logo-text');
         
         const miniLogoMap = {
             day: '/ltthmini_daymode.png',
@@ -225,12 +218,15 @@ class ThemeManager {
             night: '/ltthmini_nightmode.png'
         };
         
-        if (logoImg) {
-            logoImg.src = logoMap[theme] || logoMap.night;
-        }
-        
+        // Update mini logo icon
         if (miniIcon) {
             miniIcon.src = miniLogoMap[theme] || miniLogoMap.night;
+        }
+        
+        // Update logo text color based on theme
+        if (logoText) {
+            // Colors are already defined in CSS variables based on theme
+            // The text will automatically adapt to theme via CSS
         }
     }
 
