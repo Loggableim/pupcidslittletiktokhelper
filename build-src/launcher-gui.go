@@ -156,6 +156,10 @@ func (l *Launcher) installDependencies() error {
 	l.updateProgress(45, "npm install wird gestartet...")
 	time.Sleep(500 * time.Millisecond)
 	
+	// Show initial warning about potential delay
+	l.updateProgress(45, "HINWEIS: npm install kann mehrere Minuten dauern, besonders bei langsamer Internetverbindung. Bitte warten...")
+	time.Sleep(2 * time.Second)
+	
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
@@ -182,21 +186,42 @@ func (l *Launcher) installDependencies() error {
 	}
 	
 	// Track progress with live updates
+	progressCounter := 0
+	maxProgress := 75
+	lastUpdate := time.Now()
+	installComplete := false
+	
+	// Heartbeat ticker to show activity even when npm produces no output
+	heartbeatTicker := time.NewTicker(3 * time.Second)
+	defer heartbeatTicker.Stop()
+	
+	// Channel to signal when stdout reading is done
+	stdoutDone := make(chan bool)
+	
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
 			l.logger.Printf("[npm stdout] %s\n", line)
-			// Show progress in UI
+			// Show progress in UI with incremental progress bar
 			if len(line) > 0 {
-				// Truncate long lines for display
-				displayLine := line
-				if len(displayLine) > 60 {
-					displayLine = displayLine[:57] + "..."
+				// Increment progress from 45 to 75 during npm install
+				progressCounter++
+				currentProgress := 45 + (progressCounter / 2)
+				if currentProgress > maxProgress {
+					currentProgress = maxProgress
 				}
-				l.updateProgress(50, fmt.Sprintf("npm: %s", displayLine))
+				
+				// Don't truncate - show full line for better visibility
+				displayLine := line
+				if len(displayLine) > 120 {
+					displayLine = displayLine[:117] + "..."
+				}
+				l.updateProgress(currentProgress, fmt.Sprintf("npm install: %s", displayLine))
+				lastUpdate = time.Now()
 			}
 		}
+		stdoutDone <- true
 	}()
 	
 	// Log errors
@@ -208,8 +233,34 @@ func (l *Launcher) installDependencies() error {
 		}
 	}()
 	
+	// Heartbeat goroutine to show activity
+	go func() {
+		for !installComplete {
+			select {
+			case <-heartbeatTicker.C:
+				// If no output for more than 3 seconds, show activity indicator
+				if time.Since(lastUpdate) >= 3*time.Second {
+					elapsed := int(time.Since(lastUpdate).Seconds())
+					currentProgress := 45 + (progressCounter / 2)
+					if currentProgress > maxProgress {
+						currentProgress = maxProgress
+					}
+					if currentProgress < 50 {
+						currentProgress = 50 // Show at least 50% during install
+					}
+					l.updateProgress(currentProgress, fmt.Sprintf("npm install läuft... (%ds) - Bitte warten, Downloads können mehrere Minuten dauern", elapsed))
+				}
+			}
+		}
+	}()
+	
 	// Wait for command to complete
 	err = cmd.Wait()
+	installComplete = true
+	
+	// Wait for stdout processing to complete
+	<-stdoutDone
+	
 	if err != nil {
 		l.logger.Printf("[ERROR] npm install failed: %v\n", err)
 		return fmt.Errorf("Installation fehlgeschlagen: %v", err)
@@ -613,7 +664,7 @@ func main() {
 
 	exeDir := filepath.Dir(exePath)
 	launcher.appDir = filepath.Join(exeDir, "app")
-	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.png")
+	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.jpg")
 
 	// Setup logging immediately
 	if err := launcher.setupLogging(launcher.appDir); err != nil {
@@ -644,7 +695,7 @@ func main() {
         body {
             width: 100vw;
             height: 100vh;
-            background-color: #1a1a2e;
+            background-color: #f5f5f5;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -653,39 +704,56 @@ func main() {
         }
         
         .launcher-container {
-            width: 80vw;
-            height: 80vh;
+            width: 1536px;
+            height: 1024px;
+            max-width: 95vw;
+            max-height: 95vh;
             background-image: url(/bg);
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             position: relative;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
         }
         
         .progress-container {
             position: absolute;
-            left: 50px;
-            bottom: 150px;
-            width: 650px;
+            right: 5%;
+            width: 36%;
+            height: 70%;
+            padding: 3%;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
         }
         
         .status-text {
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
             margin-bottom: 15px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.4;
+            flex: 1;
+            overflow-y: auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         
         .progress-bar-bg {
             width: 100%;
-            height: 40px;
-            background-color: rgba(0, 0, 0, 0.5);
+            height: 35px;
+            background-color: #e0e0e0;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
         }
         
         .progress-bar-fill {
@@ -699,7 +767,8 @@ func main() {
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0, 153, 255, 0.3);
         }
     </style>
 </head>
