@@ -214,15 +214,15 @@ class ThemeManager {
         
         // Logo map for different themes
         const logoMap = {
-            day: '/ltthlogo_daymode.jpg',
-            contrast: '/ltthlogo_highcontrast.jpg',
-            night: '/ltthlogo_nightmode.jpg'
+            day: '/ltthlogo_daymode.png',
+            contrast: '/ltthlogo_highcontrast.png',
+            night: '/ltthlogo_nightmode.png'
         };
         
         const miniLogoMap = {
-            day: '/ltthmini_daymode.jpg',
-            contrast: '/ltthmini_highcontrast.jpg',
-            night: '/ltthmini_nightmode.jpg'
+            day: '/ltthmini_daymode.png',
+            contrast: '/ltthmini_highcontrast.png',
+            night: '/ltthmini_nightmode.png'
         };
         
         if (logoImg) {

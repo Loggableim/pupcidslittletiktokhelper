@@ -176,23 +176,24 @@ body {
 
 .sidebar-logo-icon {
     max-height: 40px;
-    width: auto;
-    max-width: 90%;
+    width: 100%;
+    max-width: 100%;
     color: var(--color-accent-primary);
     flex-shrink: 0;
     transition: all var(--transition-speed) ease;
-    border-radius: 4px;
     object-fit: contain;
+    padding: 0 0.5rem;
 }
 
 /* Mini icon for collapsed sidebar - hidden by default */
 .sidebar-mini-icon {
     display: none;
-    width: 80px;
-    height: 80px;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
     object-fit: contain;
     transition: all var(--transition-speed) ease;
-    border-radius: 4px;
+    padding: 0 0.25rem;
 }
 
 .sidebar-collapsed .sidebar-logo-icon {

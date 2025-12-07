@@ -21,7 +21,7 @@
 
 ## 🏗️ Systemübersicht
 
-**Pup Cids Little TikTok Helper** ist eine **Event-Driven Microservice-Architektur** basierend auf Node.js, Express und Socket.io.
+**PupCid's Little TikTool Helper** ist eine **Event-Driven Microservice-Architektur** basierend auf Node.js, Express und Socket.io.
 
 ### Kern-Komponenten
 
