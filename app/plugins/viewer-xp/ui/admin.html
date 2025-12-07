@@ -1629,7 +1629,29 @@
 
     // View user details
     function viewUserDetails(username) {
-      alert(`User details for ${username} - Coming soon!`);
+      // TODO: Implement user details modal
+      // For now, show a friendly message
+      const message = document.createElement('div');
+      message.className = 'alert alert-info';
+      message.style.position = 'fixed';
+      message.style.top = '20px';
+      message.style.right = '20px';
+      message.style.zIndex = '9999';
+      message.style.maxWidth = '400px';
+      message.innerHTML = `
+        <span>💡</span>
+        <div>
+          <strong>Coming Soon!</strong><br>
+          Detailed viewer profile for ${escapeHtml(username)} will be available in the next update.
+        </div>
+      `;
+      document.body.appendChild(message);
+      
+      setTimeout(() => {
+        message.style.transition = 'opacity 0.3s';
+        message.style.opacity = '0';
+        setTimeout(() => message.remove(), 300);
+      }, 3000);
     }
 
     // Utility functions
@@ -1671,13 +1693,17 @@
     const socket = io();
     
     socket.on('viewer-xp:update', (data) => {
-      console.log('XP Update:', data);
-      refreshData();
+      // Refresh dashboard when XP is updated
+      if (document.getElementById('page-dashboard').classList.contains('active')) {
+        refreshData();
+      }
     });
 
     socket.on('viewer-xp:level-up', (data) => {
-      console.log('Level Up:', data);
-      // Could show notification toast here
+      // Show toast notification for level ups
+      if (data && data.username && data.newLevel) {
+        showToast(`🎉 ${data.username} leveled up to Level ${data.newLevel}!`, 'success');
+      }
     });
 
     // XP Settings Functions
@@ -1696,6 +1722,32 @@
     function clearAwardForm() {
       document.getElementById('manualAwardForm').reset();
       document.getElementById('awardResult').innerHTML = '';
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type}`;
+      toast.style.position = 'fixed';
+      toast.style.top = '20px';
+      toast.style.right = '20px';
+      toast.style.zIndex = '9999';
+      toast.style.maxWidth = '400px';
+      toast.style.boxShadow = 'var(--shadow-lg)';
+      
+      const icon = type === 'success' ? '✅' : type === 'danger' ? '❌' : '💡';
+      toast.innerHTML = `
+        <span>${icon}</span>
+        <div>${message}</div>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.transition = 'opacity 0.3s, transform 0.3s';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
     }
 
     document.getElementById('manualAwardForm')?.addEventListener('submit', async (e) => {
@@ -1729,6 +1781,7 @@
           `;
           clearAwardForm();
           loadRecentAwards();
+          showToast(`Successfully awarded ${amount} XP to ${username}!`);
         } else {
           throw new Error(result.error || 'Failed to award XP');
         }
@@ -1884,7 +1937,18 @@
       const viewerNameEl = document.getElementById('historyViewerName');
       
       if (!username) {
-        alert('Please enter a username');
+        // Show inline error message instead of alert
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4">
+              <div class="alert alert-warning">
+                <span>⚠️</span>
+                <div>Please enter a username to search</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        container.style.display = 'block';
         return;
       }
       
@@ -1919,7 +1983,17 @@
         container.style.display = 'block';
       } catch (error) {
         console.error('Error loading history:', error);
-        alert('Failed to load viewer history: ' + error.message);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4">
+              <div class="alert alert-danger">
+                <span>❌</span>
+                <div><strong>Error:</strong> Failed to load viewer history. ${error.message}</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        container.style.display = 'block';
       }
     }
   </script>
