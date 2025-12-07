@@ -18,34 +18,75 @@ let debugFilter = 'all';
 let debugEnabled = true;
 let autoScrollLogs = true;
 
+// Connection state management
+let isPageUnloading = false;
+let socketReady = false;
+let abortControllers = new Set();
+
 // ============================================================================
 // SOCKET.IO INITIALIZATION
 // ============================================================================
 function initializeSocket() {
-    try {
-        if (typeof io !== 'undefined') {
-            socket = io();
-            console.log('✓ Socket.io connected');
+    return new Promise((resolve, reject) => {
+        try {
+            if (typeof io !== 'undefined') {
+                socket = io({
+                    // Prevent connection attempts during page unload
+                    autoConnect: true,
+                    // Reduce reconnection attempts to prevent errors during page transitions
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                    // Timeout faster to fail gracefully
+                    timeout: 10000
+                });
 
-            // Setup socket event listeners
-            socket.on('tts:queue_update', () => {
-                loadQueue().catch(err => console.error('Queue update failed:', err));
-            });
+                socket.on('connect', () => {
+                    socketReady = true;
+                    console.log('✓ Socket.io connected');
+                    resolve();
+                });
 
-            socket.on('tts:config_update', () => {
-                loadConfig().catch(err => console.error('Config update failed:', err));
-            });
+                socket.on('connect_error', (error) => {
+                    console.error('Socket.io connection error:', error);
+                    // Still resolve to allow page to function with polling fallback
+                    if (!socketReady) {
+                        resolve();
+                    }
+                });
 
-            // Debug log listener
-            socket.on('tts:debug', (logEntry) => {
-                addDebugLog(logEntry);
-            });
-        } else {
-            console.warn('⚠ Socket.io not available - using polling only');
+                // Setup socket event listeners
+                socket.on('tts:queue_update', () => {
+                    if (!isPageUnloading) {
+                        loadQueue().catch(err => console.error('Queue update failed:', err));
+                    }
+                });
+
+                socket.on('tts:config_update', () => {
+                    if (!isPageUnloading) {
+                        loadConfig().catch(err => console.error('Config update failed:', err));
+                    }
+                });
+
+                // Debug log listener
+                socket.on('tts:debug', (logEntry) => {
+                    if (!isPageUnloading) {
+                        addDebugLog(logEntry);
+                    }
+                });
+
+                socket.on('disconnect', () => {
+                    socketReady = false;
+                    console.log('Socket.io disconnected');
+                });
+            } else {
+                console.warn('⚠ Socket.io not available - using polling only');
+                resolve();
+            }
+        } catch (error) {
+            console.error('Socket.io initialization error:', error);
+            resolve(); // Resolve anyway to allow polling fallback
         }
-    } catch (error) {
-        console.error('Socket.io initialization error:', error);
-    }
+    });
 }
 
 // ============================================================================
@@ -56,8 +97,20 @@ function initializeSocket() {
  * Validates and parses JSON response with comprehensive error handling
  */
 async function fetchJSON(url, options = {}) {
+    // Don't make requests if page is unloading
+    if (isPageUnloading) {
+        throw new Error('Page is unloading, request cancelled');
+    }
+
+    // Create abort controller for this request
+    const controller = new AbortController();
+    abortControllers.add(controller);
+    
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
 
         // Check HTTP status
         if (!response.ok) {
@@ -83,8 +136,14 @@ async function fetchJSON(url, options = {}) {
         return data;
 
     } catch (error) {
-        console.error(`Fetch failed for ${url}:`, error);
+        // Don't log errors if page is unloading or request was aborted
+        if (!isPageUnloading && error.name !== 'AbortError') {
+            console.error(`Fetch failed for ${url}:`, error);
+        }
         throw error;
+    } finally {
+        // Clean up abort controller
+        abortControllers.delete(controller);
     }
 }
 
@@ -110,8 +169,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const debugInfo = document.getElementById('debug-info');
 
     try {
-        // Initialize Socket.io
-        initializeSocket();
+        // Initialize Socket.io and wait for connection or timeout
+        if (statusEl) statusEl.textContent = 'Connecting to server...';
+        await initializeSocket();
+        console.log('✓ Socket.io initialization complete');
 
         // Load configuration
         if (statusEl) statusEl.textContent = 'Loading configuration...';
@@ -129,8 +190,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadUsers();
             console.log('✓ Users loaded');
         } catch (error) {
-            console.error('✗ Users load failed:', error);
-            showNotification('Failed to load users (non-critical)', 'warning');
+            if (!isPageUnloading && error.name !== 'AbortError') {
+                console.error('✗ Users load failed:', error);
+                showNotification('Failed to load users (non-critical)', 'warning');
+            }
         }
 
         // Load statistics (non-critical)
@@ -139,8 +202,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadStats();
             console.log('✓ Stats loaded');
         } catch (error) {
-            console.error('✗ Stats load failed:', error);
-            showNotification('Failed to load statistics (non-critical)', 'warning');
+            if (!isPageUnloading && error.name !== 'AbortError') {
+                console.error('✗ Stats load failed:', error);
+                showNotification('Failed to load statistics (non-critical)', 'warning');
+            }
         }
 
         // Load plugin status (including debug mode)
@@ -149,7 +214,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadPluginStatus();
             console.log('✓ Plugin status loaded');
         } catch (error) {
-            console.error('✗ Plugin status load failed:', error);
+            if (!isPageUnloading && error.name !== 'AbortError') {
+                console.error('✗ Plugin status load failed:', error);
+            }
         }
 
         // Load debug logs (non-critical)
@@ -159,7 +226,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateDebugModeUI();
             console.log('✓ Debug logs loaded');
         } catch (error) {
-            console.error('✗ Debug logs load failed:', error);
+            if (!isPageUnloading && error.name !== 'AbortError') {
+                console.error('✗ Debug logs load failed:', error);
+            }
         }
 
         // Load recent chat users for autocomplete (non-critical)
@@ -167,13 +236,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadRecentUsers();
             console.log('✓ Recent users loaded for autocomplete');
         } catch (error) {
-            console.error('✗ Recent users load failed:', error);
+            if (!isPageUnloading && error.name !== 'AbortError') {
+                console.error('✗ Recent users load failed:', error);
+            }
         }
 
         // Setup event listeners
         setupEventListeners();
 
-        // Start polling
+        // Start polling only after all initial loading is complete
         startQueuePolling();
         startStatsPolling();
 
@@ -183,13 +254,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (debugInfo) debugInfo.style.display = 'none';
 
     } catch (error) {
-        console.error('✗ Initialization failed:', error);
-        if (statusEl) {
-            statusEl.innerHTML = `<span class="text-red-500">✗ Init failed: ${error.message}</span>`;
+        if (!isPageUnloading) {
+            console.error('✗ Initialization failed:', error);
+            if (statusEl) {
+                statusEl.innerHTML = `<span class="text-red-500">✗ Init failed: ${error.message}</span>`;
+            }
+            showNotification(`Initialization failed: ${error.message}`, 'error');
         }
-        showNotification(`Initialization failed: ${error.message}`, 'error');
         // Hide the loading banner even on error - the status element shows the error state
         if (debugInfo) debugInfo.style.display = 'none';
+    }
+});
+
+// ============================================================================
+// PAGE UNLOAD CLEANUP
+// ============================================================================
+
+// Handle page unload - clean up connections and cancel pending requests
+window.addEventListener('beforeunload', () => {
+    console.log('🔌 Page unloading - cleaning up connections...');
+    isPageUnloading = true;
+    
+    // Stop polling
+    if (queuePollInterval) {
+        clearInterval(queuePollInterval);
+        queuePollInterval = null;
+    }
+    
+    if (statsPollInterval) {
+        clearInterval(statsPollInterval);
+        statsPollInterval = null;
+    }
+    
+    // Abort all pending fetch requests
+    abortControllers.forEach(controller => {
+        try {
+            controller.abort();
+        } catch (e) {
+            // Ignore abort errors
+        }
+    });
+    abortControllers.clear();
+    
+    // Disconnect Socket.IO cleanly
+    if (socket) {
+        try {
+            socket.disconnect();
+        } catch (e) {
+            // Ignore disconnect errors
+        }
+    }
+});
+
+// Also handle visibilitychange for when page becomes hidden
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Page is hidden - pause polling to save resources
+        if (queuePollInterval) {
+            clearInterval(queuePollInterval);
+            queuePollInterval = null;
+        }
+        if (statsPollInterval) {
+            clearInterval(statsPollInterval);
+            statsPollInterval = null;
+        }
+    } else {
+        // Page is visible again - restart polling if not unloading
+        if (!isPageUnloading) {
+            startQueuePolling();
+            startStatsPolling();
+        }
     }
 });
 
@@ -1042,13 +1176,30 @@ async function assignVoice(userId, username, voiceId, engine) {
 // ============================================================================
 
 function startQueuePolling() {
-    loadQueue().catch(err => console.error('Initial queue load failed:', err));
+    // Don't start polling if page is unloading
+    if (isPageUnloading) return;
+    
+    loadQueue().catch(err => {
+        if (!isPageUnloading) {
+            console.error('Initial queue load failed:', err);
+        }
+    });
+    
     queuePollInterval = setInterval(() => {
-        loadQueue().catch(err => console.error('Queue poll failed:', err));
+        if (!isPageUnloading) {
+            loadQueue().catch(err => {
+                if (!isPageUnloading) {
+                    console.error('Queue poll failed:', err);
+                }
+            });
+        }
     }, 2000);
 }
 
 async function loadQueue() {
+    // Skip if page is unloading
+    if (isPageUnloading) return;
+    
     try {
         const data = await fetchJSON('/api/tts/queue');
 
@@ -1059,7 +1210,10 @@ async function loadQueue() {
         renderQueue(data.queue);
 
     } catch (error) {
-        console.error('Failed to load queue:', error);
+        // Don't log errors if page is unloading or request was aborted
+        if (!isPageUnloading && error.name !== 'AbortError') {
+            console.error('Failed to load queue:', error);
+        }
         // Don't show notification for polling errors
     }
 }
@@ -1182,13 +1336,30 @@ async function testTTS() {
 // ============================================================================
 
 function startStatsPolling() {
-    loadStats().catch(err => console.error('Initial stats load failed:', err));
+    // Don't start polling if page is unloading
+    if (isPageUnloading) return;
+    
+    loadStats().catch(err => {
+        if (!isPageUnloading) {
+            console.error('Initial stats load failed:', err);
+        }
+    });
+    
     statsPollInterval = setInterval(() => {
-        loadStats().catch(err => console.error('Stats poll failed:', err));
+        if (!isPageUnloading) {
+            loadStats().catch(err => {
+                if (!isPageUnloading) {
+                    console.error('Stats poll failed:', err);
+                }
+            });
+        }
     }, 5000);
 }
 
 async function loadStats() {
+    // Skip if page is unloading
+    if (isPageUnloading) return;
+    
     try {
         const [queueRes, permRes] = await Promise.all([
             fetchJSON('/api/tts/queue'),
@@ -1204,7 +1375,10 @@ async function loadStats() {
         }
 
     } catch (error) {
-        console.error('Failed to load stats:', error);
+        // Don't log errors if page is unloading or request was aborted
+        if (!isPageUnloading && error.name !== 'AbortError') {
+            console.error('Failed to load stats:', error);
+        }
         // Don't show notification for polling errors
     }
 }
