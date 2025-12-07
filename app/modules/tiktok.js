@@ -1811,8 +1811,20 @@ class TikTokConnector extends EventEmitter {
             activeSource = 'Fallback Key';
         }
         
+        // Mask the key for security - only show first 8 and last 4 chars
+        let maskedKey = null;
+        if (activeKey) {
+            if (activeKey.length >= 12) {
+                maskedKey = `${activeKey.substring(0, 8)}...${activeKey.substring(activeKey.length - 4)}`;
+            } else if (activeKey.length >= 8) {
+                maskedKey = `${activeKey.substring(0, 4)}...${activeKey.substring(activeKey.length - 2)}`;
+            } else {
+                maskedKey = '***'; // Key too short, just show asterisks
+            }
+        }
+        
         return {
-            activeKey: activeKey ? `${activeKey.substring(0, 8)}...${activeKey.substring(activeKey.length - 4)}` : null,
+            activeKey: maskedKey,
             activeSource: activeSource,
             configured: !!activeKey
         };
@@ -1830,23 +1842,25 @@ class TikTokConnector extends EventEmitter {
                 timeout: 5000,
                 validateStatus: () => true // Accept any status code
             });
-            tiktokApiTest.success = response.status < 500;
+            // Consider successful if we get a response (even 404/403 shows the site is up)
+            tiktokApiTest.success = response.status >= 200 && response.status < 500;
             tiktokApiTest.responseTime = Date.now() - startTime;
         } catch (error) {
             tiktokApiTest.error = error.message;
         }
         
-        // Test Euler WebSocket connectivity
+        // Test Euler API connectivity (basic health check)
         let eulerWebSocketTest = { success: false, error: null, responseTime: null };
         if (keyInfo.configured) {
             try {
                 const startTime = Date.now();
-                // Just test if we can reach the Euler API endpoint
+                // Test the main Eulerstream website to verify basic connectivity
+                // Note: This doesn't test WebSocket functionality, just if the service is reachable
                 const response = await axios.get('https://eulerstream.com', { 
                     timeout: 5000,
                     validateStatus: () => true
                 });
-                eulerWebSocketTest.success = response.status < 500;
+                eulerWebSocketTest.success = response.status >= 200 && response.status < 500;
                 eulerWebSocketTest.responseTime = Date.now() - startTime;
             } catch (error) {
                 eulerWebSocketTest.error = error.message;
