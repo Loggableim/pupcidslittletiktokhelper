@@ -443,7 +443,7 @@
                             <td><span class="permission-badge permission-${cmd.permission || 'viewer'}">${cmd.permission || 'viewer'}</span></td>
                             <td>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" ${cmd.enabled ? 'checked' : ''} onchange="toggleCommand('${cmd.name}', this.checked)">
+                                    <input type="checkbox" ${cmd.enabled ? 'checked' : ''} data-command-name="${cmd.name}">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </td>
@@ -454,6 +454,13 @@
             
             container.innerHTML = '';
             container.appendChild(table);
+            
+            // Add event delegation for toggle switches
+            table.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox' && e.target.dataset.commandName) {
+                    toggleCommand(e.target.dataset.commandName, e.target.checked);
+                }
+            });
         }
 
         // Toggle command
@@ -522,9 +529,6 @@
             
             setTimeout(() => message.remove(), 5000);
         }
-
-        // Make toggleCommand available globally
-        window.toggleCommand = toggleCommand;
 
         // Initialize
         loadConfig();
