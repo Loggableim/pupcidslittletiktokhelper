@@ -307,10 +307,4 @@ describe('Stream Session Isolation', () => {
     });
 });
 
-// Run tests if executed directly
-if (require.main === module) {
-    const { run } = require('jest');
-    run(['--testPathPattern=stream-session-isolation']);
-}
-
 module.exports = {};
