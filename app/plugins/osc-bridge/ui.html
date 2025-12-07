@@ -454,34 +454,149 @@
                     <input type="number" class="form-control" id="rateLimitPerMinute" name="rateLimitPerMinute" value="10" min="1" max="100">
                 </div>
 
-                <div class="info-box" style="margin-top: 20px;">
-                    <h4>Available Commands</h4>
-                    <div style="font-family: monospace; font-size: 0.9em; margin-top: 10px;">
-                        <div style="margin: 8px 0;">
-                            <strong>/wave</strong> - <span data-i18n="osc_bridge.commands.wave.description">Trigger wave animation in VRChat</span> (All viewers)
-                        </div>
-                        <div style="margin: 8px 0;">
-                            <strong>/celebrate</strong> - <span data-i18n="osc_bridge.commands.celebrate.description">Trigger celebrate animation in VRChat</span> (All viewers)
-                        </div>
-                        <div style="margin: 8px 0;">
-                            <strong>/dance</strong> - <span data-i18n="osc_bridge.commands.dance.description">Trigger dance animation in VRChat</span> (Subscribers only)
-                        </div>
-                        <div style="margin: 8px 0;">
-                            <strong>/hearts</strong> - <span data-i18n="osc_bridge.commands.hearts.description">Trigger hearts effect in VRChat</span> (All viewers)
-                        </div>
-                        <div style="margin: 8px 0;">
-                            <strong>/confetti</strong> - <span data-i18n="osc_bridge.commands.confetti.description">Trigger confetti effect in VRChat</span> (All viewers)
-                        </div>
-                        <div style="margin: 8px 0;">
-                            <strong>/emote &lt;0-7&gt;</strong> - <span data-i18n="osc_bridge.commands.emote.description">Trigger VRChat emote slot</span> (Subscribers only)
-                        </div>
-                    </div>
-                </div>
-
                 <div class="btn-group" style="margin-top: 20px;">
                     <button type="submit" class="btn btn-primary">Save Chat Command Settings</button>
                 </div>
             </form>
+
+            <!-- Avatar Switch via Chat Commands -->
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--color-border);">
+                <h3 style="margin-bottom: 16px;">👤 Avatar Switching via Chat Commands</h3>
+                
+                <div class="info-box">
+                    <h4>Avatar Chat Command</h4>
+                    <p>Allow viewers to switch your VRChat avatar via the <code>/avatar &lt;name&gt;</code> command. Configure cooldowns to prevent spam.</p>
+                </div>
+
+                <form id="avatar-switch-form">
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="avatarSwitchEnabled" name="avatarSwitchEnabled">
+                            <label for="avatarSwitchEnabled">Enable /avatar command</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="avatarSwitchPermission">Permission Level</label>
+                        <select class="form-control" id="avatarSwitchPermission" name="avatarSwitchPermission">
+                            <option value="all">All Viewers</option>
+                            <option value="subscriber">Subscribers Only</option>
+                            <option value="moderator">Moderators Only</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="avatarSwitchCooldownType">Cooldown Type</label>
+                        <select class="form-control" id="avatarSwitchCooldownType" name="avatarSwitchCooldownType">
+                            <option value="global">Global (applies to all users)</option>
+                            <option value="perUser">Per User (each user has own cooldown)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="avatarSwitchCooldown">Cooldown Duration (seconds)</label>
+                        <input type="number" class="form-control" id="avatarSwitchCooldown" name="avatarSwitchCooldown" value="60" min="0" max="3600">
+                        <small style="color: var(--color-text-muted); font-size: 0.85em;">
+                            Minimum time between avatar switches (0 = no cooldown)
+                        </small>
+                    </div>
+
+                    <div class="btn-group" style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary">Save Avatar Switch Settings</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Available Commands Management -->
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--color-border);">
+                <h3 style="margin-bottom: 16px;">⚙️ Command Management</h3>
+                
+                <div class="info-box">
+                    <h4>Configure Available Commands</h4>
+                    <p>Enable or disable individual commands, change permissions, and add custom commands. Changes will be registered with GCCE automatically.</p>
+                </div>
+
+                <div class="table-container">
+                    <table class="mapping-table" id="commands-table">
+                        <thead>
+                            <tr>
+                                <th>Enabled</th>
+                                <th>Command</th>
+                                <th>Description</th>
+                                <th>Permission</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commands-tbody">
+                            <tr>
+                                <td colspan="6" class="empty-state">Loading commands...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="btn-group" style="margin-top: 16px;">
+                    <button type="button" class="btn btn-success" id="btn-save-commands">Save Commands</button>
+                    <button type="button" class="btn btn-secondary" id="btn-add-custom-command">Add Custom Command</button>
+                </div>
+            </div>
+
+            <!-- Add Custom Command Form (Initially hidden) -->
+            <div class="add-item-form" id="custom-command-form" style="display: none; margin-top: 20px;">
+                <h4 style="margin-top: 0;">Add Custom Command</h4>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Command Name</label>
+                        <input type="text" class="form-control" id="new-cmd-name" placeholder="mycommand">
+                        <small style="color: var(--color-text-muted); font-size: 0.85em;">
+                            Users will type /<span id="cmd-preview">mycommand</span>
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" class="form-control" id="new-cmd-description" placeholder="Triggers custom action">
+                    </div>
+                    <div class="form-group">
+                        <label>Permission</label>
+                        <select class="form-control" id="new-cmd-permission">
+                            <option value="all">All Viewers</option>
+                            <option value="subscriber">Subscribers Only</option>
+                            <option value="moderator">Moderators Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>OSC Address</label>
+                        <input type="text" class="form-control" id="new-cmd-osc-address" placeholder="/avatar/parameters/CustomParam">
+                        <small style="color: var(--color-text-muted); font-size: 0.85em;">
+                            VRChat OSC parameter path
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label>OSC Value</label>
+                        <input type="text" class="form-control" id="new-cmd-osc-value" placeholder="1" value="1">
+                        <small style="color: var(--color-text-muted); font-size: 0.85em;">
+                            Value to send (number, true, false, or text)
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label>Duration (ms)</label>
+                        <input type="number" class="form-control" id="new-cmd-duration" placeholder="2000" value="0">
+                        <small style="color: var(--color-text-muted); font-size: 0.85em;">
+                            Auto-reset to 0 after duration (0 = no reset)
+                        </small>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" id="btn-confirm-custom-command">Add Command</button>
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-custom-command">Cancel</button>
+                </div>
+            </div>
         </div>
 
         <!-- VRChat Parameter Tester -->
