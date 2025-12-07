@@ -419,7 +419,7 @@ class ClarityHUDBackend {
   async handleFollowEvent(data) {
     try {
       // Check if full HUD has follows enabled
-      if (!this.settings.full.showFollows) {
+      if (this.settings.full.showFollows === false) {
         return;
       }
 
@@ -459,7 +459,7 @@ class ClarityHUDBackend {
   async handleShareEvent(data) {
     try {
       // Check if full HUD has shares enabled
-      if (!this.settings.full.showShares) {
+      if (this.settings.full.showShares === false) {
         return;
       }
 
@@ -499,7 +499,7 @@ class ClarityHUDBackend {
   async handleLikeEvent(data) {
     try {
       // Check if full HUD has likes enabled
-      if (!this.settings.full.showLikes) {
+      if (this.settings.full.showLikes === false) {
         return;
       }
 
@@ -541,7 +541,7 @@ class ClarityHUDBackend {
   async handleGiftEvent(data) {
     try {
       // Check if full HUD has gifts enabled
-      if (!this.settings.full.showGifts) {
+      if (this.settings.full.showGifts === false) {
         return;
       }
 
@@ -569,7 +569,7 @@ class ClarityHUDBackend {
       const isTreasureChest = data.giftType === 1 || giftName.toLowerCase().includes('treasure');
 
       // Skip treasure chests if disabled
-      if (isTreasureChest && !this.settings.full.showTreasureChests) {
+      if (isTreasureChest && this.settings.full.showTreasureChests === false) {
         return;
       }
 
@@ -624,7 +624,7 @@ class ClarityHUDBackend {
   async handleSubscribeEvent(data) {
     try {
       // Check if full HUD has subs enabled
-      if (!this.settings.full.showSubs) {
+      if (this.settings.full.showSubs === false) {
         return;
       }
 
@@ -665,7 +665,7 @@ class ClarityHUDBackend {
   async handleJoinEvent(data) {
     try {
       // Check if full HUD has joins enabled
-      if (!this.settings.full.showJoins) {
+      if (this.settings.full.showJoins === false) {
         return;
       }
 
