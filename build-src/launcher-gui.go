@@ -668,9 +668,10 @@ func main() {
         
         .progress-container {
             position: relative;
-            right: 8%;
+            right: 5%;
             width: 40%;
             max-width: 500px;
+            min-width: 300px;
             padding: 30px;
             background-color: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
