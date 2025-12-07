@@ -183,6 +183,7 @@ func (l *Launcher) installDependencies() error {
 	
 	// Track progress with live updates
 	progressCounter := 0
+	maxProgress := 75
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
@@ -192,9 +193,9 @@ func (l *Launcher) installDependencies() error {
 			if len(line) > 0 {
 				// Increment progress from 45 to 75 during npm install
 				progressCounter++
-				currentProgress := 45 + (progressCounter % 30)
-				if currentProgress > 75 {
-					currentProgress = 75
+				currentProgress := 45 + (progressCounter / 2)
+				if currentProgress > maxProgress {
+					currentProgress = maxProgress
 				}
 				
 				// Don't truncate - show full line for better visibility
