@@ -128,7 +128,9 @@ class TikTokConnector extends EventEmitter {
             this.streamStartTime = null;
             this._persistedStreamStart = null;
             this._earliestEventTime = null;
-            this.logger.info(`🔄 Switching from @${previousUsername} to @${username} - clearing old stream start time`);
+            this.resetStats();
+            this.sessionGifts.clear();
+            this.logger.info(`🔄 Switching from @${previousUsername} to @${username} - clearing old stream start time and stats`);
         }
 
         try {
