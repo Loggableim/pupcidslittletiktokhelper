@@ -116,8 +116,19 @@ class TikTokConnector extends EventEmitter {
      * @param {object} options - Connection options
      */
     async connect(username, options = {}) {
+        // Store previous username before disconnect to detect streamer changes
+        const previousUsername = this.currentUsername;
+        
         if (this.isConnected) {
             await this.disconnect();
+        }
+
+        // Clear persisted stream start time if connecting to a different streamer
+        if (previousUsername && previousUsername !== username) {
+            this.streamStartTime = null;
+            this._persistedStreamStart = null;
+            this._earliestEventTime = null;
+            this.logger.info(`🔄 Switching from @${previousUsername} to @${username} - clearing old stream start time`);
         }
 
         try {
