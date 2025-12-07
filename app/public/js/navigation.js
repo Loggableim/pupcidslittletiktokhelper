@@ -364,9 +364,10 @@
                 if (typeof loadAutoStartSettings === 'function') {
                     loadAutoStartSettings();
                 }
-                if (typeof loadResourceMonitorSettings === 'function') {
-                    loadResourceMonitorSettings();
-                }
+                // Resource Monitor Settings removed (plugin no longer exists)
+                // if (typeof loadResourceMonitorSettings === 'function') {
+                //     loadResourceMonitorSettings();
+                // }
                 if (typeof loadOSCBridgeSettings === 'function') {
                     loadOSCBridgeSettings();
                 }
