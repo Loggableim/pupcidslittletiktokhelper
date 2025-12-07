@@ -1,3 +1,7 @@
+// dev-launcher.go
+// Development version of launcher-gui.go
+// Build WITHOUT -H windowsgui flag to show terminal window for debugging
+// Build command: go build -o dev_launcher.exe dev-launcher.go
 package main
 
 import (
