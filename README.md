@@ -3,6 +3,7 @@
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Node.js](https://img.shields.io/badge/Node.js-18.0.0+-green.svg)](https://nodejs.org/)
 [![Electron](https://img.shields.io/badge/Electron-33.0.0+-blue.svg)](https://www.electronjs.org/)
+[![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg)](CHANGELOG.md)
 
 Professional TikTok-compatible LIVE streaming tool with overlays, alerts, Text-to-Speech, automation, and an extensive plugin ecosystem. Built with Node.js, Express.js, Socket.IO, and Electron.
 
@@ -155,12 +156,18 @@ pupcidslittletiktokhelper/
 
 ## 📚 Dokumentation
 
+### Aktuelle Dokumentation (v1.2)
 - **[App-Dokumentation](app/README.md)** - Vollständige Features, API, Troubleshooting
 - **[Build-Anleitung](build-src/README.md)** - Windows Launcher kompilieren
-- **[Desktop App Migration](DESKTOP_APP_MIGRATION_OPTIONEN.md)** - Alternativen zu Electron
-- **[Migration Guides](migration-guides/)** - Step-by-Step Anleitungen (NSIS, NW.js, Tauri)
+- **[Changelog](CHANGELOG.md)** - Version history und Release Notes
 - **[Copilot Guidelines](.github/copilot-instructions.md)** - Development standards
-- **[Changelog](app/CHANGELOG.md)** - Version history
+
+### Archivierte Dokumentation (v1.1)
+Ältere Dokumentationen und detaillierte Implementierungs-Summaries wurden archiviert:
+- **[Archived Docs](docs_archive/)** - Desktop App Migration Optionen, GCCE Integration, Fix Summaries
+- **[Migration Guides](migration-guides/)** - Step-by-Step Anleitungen (NSIS, NW.js, Tauri)
+
+> **Hinweis:** Die archivierten Dateien enthalten wertvolle technische Details zu früheren Implementierungen und sind weiterhin als Referenz verfügbar.
 
 ---
 
@@ -247,7 +254,7 @@ Pull Requests sind willkommen! Bitte beachte:
 - **Express.js** - Web framework
 - **Socket.IO** - Real-time communication
 - **Better-SQLite3** - Database (WAL mode)
-- **Winston** - Logging
+- **Winston** - Logging mit täglicher Rotation
 
 ### Frontend
 - **Tailwind CSS** - Styling
@@ -265,6 +272,14 @@ Pull Requests sind willkommen! Bitte beachte:
 - **MyInstants** - Sound library
 - **OBS WebSocket v5** - OBS integration (optional)
 
+### Performance Optimierungen (v1.2)
+- Zentrale Event-Verarbeitung über GCCE (Global Chat Command Engine)
+- 60% weniger Event Processing durch Plugin-Konsolidierung
+- 50-75% weniger Datenbank-Queries durch zentrale User-Daten-Pipeline
+- Optimierte Launcher-Größe (28% Reduktion)
+
+> **Mehr Details:** Siehe archivierte [GCCE Integration Dokumentation](docs_archive/GCCE_PROJECT_SUMMARY.md)
+
 ---
 
 ## 📄 Lizenz
@@ -276,7 +291,7 @@ Pull Requests sind willkommen! Bitte beachte:
 - ✅ Mit Attribution
 - ❌ Keine kommerzielle Nutzung
 
-Siehe [LICENSE](app/LICENSE) für Details.
+Siehe [LICENSE](LICENSE) für Details.
 
 ---
 
@@ -308,9 +323,13 @@ Dieses Tool nutzt öffentliche APIs und ist nicht offiziell von TikTok unterstü
 ## 💬 Support
 
 - 📖 [Vollständige Dokumentation](app/README.md)
+- 📋 [Changelog](CHANGELOG.md) - Was ist neu?
+- 🗂️ [Archivierte Dokumentation](docs_archive/) - Ältere technische Details
 - 🐛 [GitHub Issues](https://github.com/Loggableim/ltth_dev/issues)
 - 📧 [loggableim@gmail.com](mailto:loggableim@gmail.com)
 
 ---
 
 **Made with ❤️ by PupCid & Claude AI**
+
+**Version 1.2.0** - Repository Cleanup & Documentation Consolidation
