@@ -114,7 +114,8 @@ class ThemeManager {
         // Find the topbar-right container
         const topbarRight = document.querySelector('.topbar-right');
         if (!topbarRight) {
-            console.warn('Topbar-right container not found');
+            // This is expected on pages without a topbar (e.g., plugin UIs)
+            console.debug('Topbar-right container not found - theme toggle UI will not be created');
             return;
         }
 
