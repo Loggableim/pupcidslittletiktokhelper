@@ -283,23 +283,23 @@ function initializeButtons() {
         importBtn.addEventListener('click', importPreset);
     }
 
-    // Resource Monitor - Save button
-    const saveResourceMonitorBtn = document.getElementById('save-resource-monitor-settings');
-    if (saveResourceMonitorBtn) {
-        saveResourceMonitorBtn.addEventListener('click', saveResourceMonitorSettings);
-    }
+    // Resource Monitor - removed (plugin no longer exists)
+    // const saveResourceMonitorBtn = document.getElementById('save-resource-monitor-settings');
+    // if (saveResourceMonitorBtn) {
+    //     saveResourceMonitorBtn.addEventListener('click', saveResourceMonitorSettings);
+    // }
 
-    // Resource Monitor - Interval slider live update
-    const resourceMonitorInterval = document.getElementById('resource-monitor-interval');
-    if (resourceMonitorInterval) {
-        resourceMonitorInterval.addEventListener('input', (e) => {
-            const value = parseInt(e.target.value);
-            const label = document.getElementById('resource-monitor-interval-label');
-            if (label) {
-                label.textContent = (value / 1000).toFixed(1) + 's';
-            }
-        });
-    }
+    // Resource Monitor - Interval slider live update (removed - plugin no longer exists)
+    // const resourceMonitorInterval = document.getElementById('resource-monitor-interval');
+    // if (resourceMonitorInterval) {
+    //     resourceMonitorInterval.addEventListener('input', (e) => {
+    //         const value = parseInt(e.target.value);
+    //         const label = document.getElementById('resource-monitor-interval-label');
+    //         if (label) {
+    //             label.textContent = (value / 1000).toFixed(1) + 's';
+    //         }
+    //     });
+    // }
 
     // OSC-Bridge settings checkbox handler
     const oscBridgeCheckbox = document.getElementById('osc-bridge-enabled');
@@ -3287,11 +3287,12 @@ function showNotification(title, message, type) {
     }
 }
 
-// ========== RESOURCE MONITOR SETTINGS ==========
+// ========== RESOURCE MONITOR SETTINGS (REMOVED - Plugin no longer exists) ==========
 
 /**
- * Load resource monitor settings
+ * Load resource monitor settings - DISABLED (plugin removed)
  */
+/*
 async function loadResourceMonitorSettings() {
     try {
         const response = await fetch('/api/settings');
@@ -3334,10 +3335,12 @@ async function loadResourceMonitorSettings() {
         console.error('Error loading resource monitor settings:', error);
     }
 }
+*/
 
 /**
- * Save resource monitor settings
+ * Save resource monitor settings - DISABLED (plugin removed)
  */
+/*
 async function saveResourceMonitorSettings() {
     // Get all elements with null checks
     const elements = {
@@ -3390,6 +3393,7 @@ async function saveResourceMonitorSettings() {
         alert('❌ Error saving Resource Monitor settings!');
     }
 }
+*/
 
 // ========== OSC-BRIDGE SETTINGS ==========
 async function loadOSCBridgeSettings() {
