@@ -44,6 +44,7 @@
     // ========== INITIALIZATION ==========
     document.addEventListener('DOMContentLoaded', () => {
         initializeQuickActionButtons();
+        initializeSidebarQuickIcons();
         initializeChangelog();
         initializeCompactResources();
         initializeRuntimeTracking();
@@ -212,6 +213,103 @@
         });
     }
 
+    /**
+     * Initialize Sidebar Quick Action Mini Icons
+     * These icons sync with the main quick action buttons
+     */
+    async function initializeSidebarQuickIcons() {
+        console.log('[Dashboard Enhancements] Initializing Sidebar Quick Icons');
+
+        // Load active plugins first
+        const activePlugins = await fetchActivePlugins();
+
+        // Get all sidebar quick icons
+        const sidebarIcons = document.querySelectorAll('.sidebar-quick-icon');
+        console.log(`[Dashboard Enhancements] Found ${sidebarIcons.length} sidebar quick icons`);
+
+        // Check and update sidebar icons for disabled plugins
+        sidebarIcons.forEach(icon => {
+            const pluginId = icon.getAttribute('data-plugin');
+            if (pluginId && !activePlugins.has(pluginId)) {
+                // Plugin is disabled
+                icon.setAttribute('data-state', 'disabled');
+                icon.disabled = true;
+                icon.style.opacity = '0.5';
+                icon.style.cursor = 'not-allowed';
+                console.log(`[Dashboard Enhancements] Sidebar icon disabled for inactive plugin: ${pluginId}`);
+            }
+        });
+
+        // Sync states with main quick action buttons
+        syncSidebarIconStates();
+
+        // Attach click handlers
+        sidebarIcons.forEach(icon => {
+            icon.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Check if icon is disabled
+                if (icon.disabled || icon.getAttribute('data-state') === 'disabled') {
+                    console.log('[Sidebar Quick Icon] Icon is disabled (plugin not active)');
+                    return;
+                }
+
+                const action = icon.getAttribute('data-action');
+                const currentState = icon.getAttribute('data-state');
+
+                console.log(`[Sidebar Quick Icon] Clicked: ${action}, current state: ${currentState}`);
+
+                // Toggle state
+                const newState = currentState === 'on' ? 'off' : 'on';
+
+                // Update UI immediately
+                icon.setAttribute('data-state', newState);
+
+                // Also update the corresponding main button
+                const mainButton = document.querySelector(`.quick-action-btn[data-action="${action}"]`);
+                if (mainButton) {
+                    mainButton.setAttribute('data-state', newState);
+                }
+
+                // Send to server
+                const success = await toggleQuickAction(action, newState === 'on');
+
+                // Revert if failed
+                if (!success) {
+                    console.error(`[Sidebar Quick Icon] Failed to toggle ${action}, reverting`);
+                    icon.setAttribute('data-state', currentState);
+                    if (mainButton) {
+                        mainButton.setAttribute('data-state', currentState);
+                    }
+                } else {
+                    console.log(`[Sidebar Quick Icon] Successfully toggled ${action} to ${newState}`);
+                }
+
+                // Re-initialize Lucide icons
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            });
+        });
+    }
+
+    /**
+     * Sync sidebar icon states with main quick action buttons
+     */
+    function syncSidebarIconStates() {
+        const mainButtons = document.querySelectorAll('.quick-action-btn');
+        mainButtons.forEach(button => {
+            const action = button.getAttribute('data-action');
+            const state = button.getAttribute('data-state');
+            const sidebarIcon = document.querySelector(`.sidebar-quick-icon[data-action="${action}"]`);
+            
+            if (sidebarIcon && state !== 'disabled') {
+                sidebarIcon.setAttribute('data-state', state);
+            }
+        });
+    }
+
     async function loadQuickActionButtonStates() {
         try {
             console.log('[Load Quick Action States] Fetching settings from /api/settings');
@@ -286,6 +384,9 @@
         } catch (error) {
             console.error('Error loading Quick Action states:', error);
         }
+
+        // Sync sidebar icons after loading states
+        syncSidebarIconStates();
     }
 
     async function toggleQuickAction(action, enabled) {
