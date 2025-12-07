@@ -275,6 +275,10 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 	cmd := exec.Command(l.nodePath, launchJS)
 	cmd.Dir = l.appDir
 
+	// Set environment variable to disable automatic browser opening
+	// The GUI launcher handles the redirect to dashboard after server is ready
+	cmd.Env = append(os.Environ(), "OPEN_BROWSER=false")
+
 	// Redirect both stdout and stderr to log file only (not os.Stdout because GUI mode has no console)
 	if l.logFile != nil {
 		cmd.Stdout = l.logFile
@@ -285,6 +289,7 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 	l.logAndSync("Starting Node.js server...")
 	l.logAndSync("Command: %s %s", l.nodePath, launchJS)
 	l.logAndSync("Working directory: %s", l.appDir)
+	l.logAndSync("OPEN_BROWSER environment variable set to: false")
 	l.logAndSync("--- Node.js Server Output Start ---")
 
 	err := cmd.Start()
