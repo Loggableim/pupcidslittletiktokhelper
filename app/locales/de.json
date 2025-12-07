@@ -31,6 +31,8 @@
     "vdoninja": "VDO.Ninja",
     "streamalchemy": "Stream-Alchemie",
     "gcce": "Globale Chat-Befehls-Engine",
+    "gcce_hud": "GCCE HUD Overlay",
+    "chatango": "Chatango",
     "thermal_printer": "Thermaldrucker",
     "config_import": "Konfiguration Importieren",
     "plugins": "Plugin-Manager",

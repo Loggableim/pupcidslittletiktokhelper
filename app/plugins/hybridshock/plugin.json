@@ -6,6 +6,7 @@
   "author": "pupcidslittletiktokhelper Team",
   "entry": "main.js",
   "enabled": false,
+  "disabled": true,
   "type": "integration",
   "permissions": [
     "routes",
