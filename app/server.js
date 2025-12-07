@@ -959,9 +959,45 @@ app.post('/api/connect', authLimiter, async (req, res) => {
             fieldName: 'username'
         });
 
+        // Auto-create and switch profile for streamer if needed
+        const currentProfile = profileManager.getActiveProfile();
+        let profileSwitched = false;
+        
+        // Check if profile exists for this streamer
+        if (!profileManager.profileExists(username)) {
+            logger.info(`📝 Creating new profile for streamer: ${username}`);
+            profileManager.createProfile(username);
+        }
+        
+        // Switch to the streamer's profile if different from current
+        if (currentProfile !== username) {
+            logger.info(`🔄 Switching from profile "${currentProfile}" to "${username}"`);
+            profileManager.setActiveProfile(username);
+            profileSwitched = true;
+            
+            // Emit socket event to notify frontend
+            io.emit('profile:switched', {
+                from: currentProfile,
+                to: username,
+                requiresRestart: true
+            });
+            
+            logger.info(`✅ Profile switched to: ${username} (restart required to activate)`);
+            
+            // Return early with profile switch notification
+            return res.json({
+                success: true,
+                profileSwitched: true,
+                message: `Profile switched to "${username}". Restarting application to activate new profile...`,
+                requiresRestart: true,
+                newProfile: username
+            });
+        }
+
+        // Profile already active, proceed with connection
         await tiktok.connect(username);
         logger.info(`✅ Connected to TikTok user: ${username}`);
-        res.json({ success: true });
+        res.json({ success: true, profileSwitched: false });
     } catch (error) {
         if (error instanceof ValidationError) {
             logger.warn(`Invalid connection attempt: ${error.message}`);

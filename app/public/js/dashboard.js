@@ -435,6 +435,22 @@ function initializeSocketListeners() {
         showEulerBackupKeyWarning(data);
     });
 
+    // Profile Switched Event - Auto-reload to activate new profile
+    socket.on('profile:switched', (data) => {
+        console.log(`🔄 Profile switched from "${data.from}" to "${data.to}"`);
+        
+        if (data.requiresRestart) {
+            const message = `Profil wurde zu "${data.to}" gewechselt.\n\nDie Anwendung wird neu geladen, um das neue Profil zu aktivieren...`;
+            alert(message);
+            
+            // Auto-reload after 2 seconds
+            setTimeout(() => {
+                console.log('♻️ Reloading application to activate new profile...');
+                window.location.reload();
+            }, 2000);
+        }
+    });
+
     // ========== AUDIO PLAYBACK (Dashboard) ==========
     // TTS Playback im Dashboard
     socket.on('tts:play', (data) => {
@@ -481,8 +497,25 @@ async function connect() {
 
         const result = await response.json();
         if (result.success) {
-            console.log('✅ Connected to TikTok:', username);
-            // Button state will be updated by updateConnectionStatus via socket event
+            // Check if profile was switched automatically
+            if (result.profileSwitched && result.requiresRestart) {
+                console.log(`🔄 Profile automatically switched to: ${result.newProfile}`);
+                
+                // Show notification about profile switch and restart
+                const message = result.message || 
+                    `Profile wurde automatisch zu "${result.newProfile}" gewechselt. Die Anwendung wird neu gestartet...`;
+                
+                alert(message);
+                
+                // Trigger automatic page reload after short delay
+                setTimeout(() => {
+                    console.log('♻️ Reloading application to activate new profile...');
+                    window.location.reload();
+                }, 2000);
+            } else {
+                console.log('✅ Connected to TikTok:', username);
+                // Button state will be updated by updateConnectionStatus via socket event
+            }
         } else {
             const errorMsg = window.i18n 
                 ? window.i18n.t('errors.connection_failed') + ': ' + result.error
