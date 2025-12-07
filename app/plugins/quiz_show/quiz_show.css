@@ -848,8 +848,7 @@ code {
     border-radius: 5px;
 }
 
-/* Note: :hover on pseudo-elements like ::-webkit-scrollbar-thumb is not universally supported
- * and may cause console warnings in some browsers. It's been removed for compatibility. */
+/* Webkit scrollbar thumb - :hover removed for browser compatibility */
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -1005,8 +1004,7 @@ code {
     transition: all 0.3s ease;
 }
 
-/* Note: :hover on pseudo-elements is not universally supported across all browsers.
- * Consider using JavaScript for interactive effects on range sliders if needed. */
+/* Webkit slider thumb (18px variant) - :hover removed for browser compatibility */
 
 .form-range::-moz-range-thumb {
     width: 18px;
@@ -1451,8 +1449,7 @@ code {
     transition: all 0.2s ease;
 }
 
-/* Note: :hover on pseudo-elements is not universally supported across all browsers.
- * Consider using JavaScript for interactive effects on range sliders if needed. */
+/* Webkit slider thumb (20px variant) - :hover removed for browser compatibility */
 
 .form-range::-moz-range-thumb {
     width: 20px;
