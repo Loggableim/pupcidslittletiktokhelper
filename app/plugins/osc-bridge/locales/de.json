@@ -25,13 +25,13 @@
       "test": "Test-Signal senden"
     },
     "chat_commands": {
-      "title": "Chat-Befehle (GCCE Integration)",
+      "title": "Chat-Befehle",
       "enabled": "Chat-Befehle aktivieren",
       "require_osc_connection": "OSC-Verbindung erforderlich",
       "cooldown": "Cooldown (Sekunden)",
       "rate_limit": "Rate Limit (pro Minute)",
       "description": "Erlaube Zuschauern, VRChat-Aktionen über Chat-Befehle auszulösen",
-      "info_text": "Wenn aktiviert, können Zuschauer VRChat-Aktionen direkt über Chat-Befehle steuern. Alle Befehle werden über die Global Chat Command Engine (GCCE) verarbeitet."
+      "info_text": "Wenn aktiviert, können Zuschauer VRChat-Aktionen direkt über Chat-Befehle steuern. Alle Befehle werden über die chat commands verarbeitet."
     },
     "commands": {
       "wave": {

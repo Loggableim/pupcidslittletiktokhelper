@@ -1196,11 +1196,6 @@ class StreamAlchemyPlugin {
     async destroy() {
         this.api.log('[STREAMALCHEMY] Shutting down StreamAlchemy Plugin...', 'info');
 
-        // Unregister commands from GCCE
-        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
-        if (gccePlugin?.instance) {
-            gccePlugin.instance.unregisterCommandsForPlugin('streamalchemy');
-        }
         
         // Remove socket listeners to prevent memory leaks
         for (const listener of this.socketListeners) {

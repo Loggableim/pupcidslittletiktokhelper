@@ -25,13 +25,13 @@
       "test": "Send Test Signal"
     },
     "chat_commands": {
-      "title": "Chat Commands (GCCE Integration)",
+      "title": "Chat Commands",
       "enabled": "Enable chat commands",
       "require_osc_connection": "Require OSC connection",
       "cooldown": "Cooldown (seconds)",
       "rate_limit": "Rate limit (per minute)",
       "description": "Allow viewers to trigger VRChat actions via chat commands",
-      "info_text": "When enabled, viewers can control VRChat actions directly through chat commands. All commands are processed through the Global Chat Command Engine (GCCE)."
+      "info_text": "When enabled, viewers can control VRChat actions directly through chat commands. All commands are processed through the chat commands."
     },
     "commands": {
       "wave": {
