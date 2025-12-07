@@ -76,6 +76,9 @@ class OSCBridgePlugin {
             // TikTok Gift Event registrieren für Gift-Mappings
             this.registerTikTokGiftHandler();
 
+            // GCCE Commands registrieren
+            this.registerGCCECommands();
+
             // Automatisch starten wenn enabled
             if (this.config.enabled) {
                 await this.start();
