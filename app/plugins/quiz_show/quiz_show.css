@@ -848,9 +848,7 @@ code {
     border-radius: 5px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: var(--color-btn-secondary-hover);
-}
+/* Webkit scrollbar thumb - :hover removed for browser compatibility */
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -1006,11 +1004,7 @@ code {
     transition: all 0.3s ease;
 }
 
-.form-range::-webkit-slider-thumb:hover {
-    background: var(--color-accent-primary);
-    transform: scale(1.2);
-    opacity: 0.8;
-}
+/* Webkit slider thumb (18px variant) - :hover removed for browser compatibility */
 
 .form-range::-moz-range-thumb {
     width: 18px;
@@ -1455,9 +1449,7 @@ code {
     transition: all 0.2s ease;
 }
 
-.form-range::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-}
+/* Webkit slider thumb (20px variant) - :hover removed for browser compatibility */
 
 .form-range::-moz-range-thumb {
     width: 20px;
