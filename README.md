@@ -254,7 +254,7 @@ Pull Requests sind willkommen! Bitte beachte:
 - **Express.js** - Web framework
 - **Socket.IO** - Real-time communication
 - **Better-SQLite3** - Database (WAL mode)
-- **Winston** - Logging mit täglicher Rotation
+- **Winston** - Logging with daily rotation
 
 ### Frontend
 - **Tailwind CSS** - Styling

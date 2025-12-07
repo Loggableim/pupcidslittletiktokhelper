@@ -50,6 +50,12 @@ echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-npm run dev
+REM Check if dev script exists, otherwise use regular start
+npm run dev 2>nul
+if %errorlevel% neq 0 (
+    echo.
+    echo Note: Using fallback start method...
+    node server.js
+)
 
 pause
