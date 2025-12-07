@@ -339,17 +339,20 @@ function connectSocket() {
 
 // ==================== EVENT MANAGEMENT ====================
 function addEvent(type, data) {
+  const timestamp = Date.now();
   const event = {
     type,
     data,
-    timestamp: Date.now(),
-    id: `${type}_${Date.now()}_${Math.random()}`
+    timestamp: timestamp,
+    id: `${type}_${timestamp}_${Math.random()}`
   };
 
   // Check for duplicate events using a composite key
-  const duplicateKey = `${type}_${data.user?.uniqueId || data.uniqueId}_${data.message || data.giftName || ''}_${event.timestamp}`;
+  // Round timestamp to nearest 500ms to catch rapid duplicates
+  const roundedTime = Math.floor(timestamp / 500) * 500;
+  const duplicateKey = `${type}_${data.user?.uniqueId || data.uniqueId}_${data.message || data.giftName || ''}_${roundedTime}`;
   
-  // Prevent duplicates within a 1 second window
+  // Prevent duplicates within a 2 second window
   if (STATE.eventIds.has(duplicateKey)) {
     console.log(`[CLARITY FULL] Duplicate event detected, skipping: ${duplicateKey}`);
     return;
