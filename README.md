@@ -1,10 +1,10 @@
-# 🎮 Pup Cid's Little TikTok Helper (LTTH)
+# 🎮 PupCid's Little TikTool Helper (LTTH)
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Node.js](https://img.shields.io/badge/Node.js-18.0.0+-green.svg)](https://nodejs.org/)
 [![Electron](https://img.shields.io/badge/Electron-33.0.0+-blue.svg)](https://www.electronjs.org/)
 
-Professional TikTok LIVE streaming tool with overlays, alerts, Text-to-Speech, automation, and an extensive plugin ecosystem. Built with Node.js, Express.js, Socket.IO, and Electron.
+Professional TikTok-compatible LIVE streaming tool with overlays, alerts, Text-to-Speech, automation, and an extensive plugin ecosystem. Built with Node.js, Express.js, Socket.IO, and Electron.
 
 ---
 
@@ -292,7 +292,9 @@ Siehe [LICENSE](app/LICENSE) für Details.
 
 ## ⚠️ Disclaimer
 
-Dieses Tool ist nicht offiziell von TikTok unterstützt. Nutzung auf eigene Verantwortung.
+**PupCid's Little TikTool Helper ist ein unabhängiges Analyse- und Creator-Tool. Es besteht keine geschäftliche, partnerschaftliche oder technische Verbindung zu TikTok oder ByteDance.**
+
+Dieses Tool nutzt öffentliche APIs und ist nicht offiziell von TikTok unterstützt. Nutzung auf eigene Verantwortung.
 
 - ✅ Keine Login-Daten erforderlich
 - ✅ Keine Daten-Sammlung (100% lokal)
