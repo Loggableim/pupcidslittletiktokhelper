@@ -364,9 +364,10 @@
                 if (typeof loadAutoStartSettings === 'function') {
                     loadAutoStartSettings();
                 }
-                if (typeof loadResourceMonitorSettings === 'function') {
-                    loadResourceMonitorSettings();
-                }
+                // Resource Monitor Settings removed (plugin no longer exists)
+                // if (typeof loadResourceMonitorSettings === 'function') {
+                //     loadResourceMonitorSettings();
+                // }
                 if (typeof loadOSCBridgeSettings === 'function') {
                     loadOSCBridgeSettings();
                 }
@@ -437,9 +438,9 @@
     // ========== DASHBOARD RESOURCES MONITOR ==========
     function initializeDashboardResources() {
         // This is a simplified resource monitor for the dashboard
-        // The full resource monitor is in the resource-monitor plugin
+        // Uses mock data for resource display
 
-        // Mock data for now (will be replaced by actual resource monitoring)
+        // Mock data for resource display
         setInterval(() => {
             const cpuUsage = Math.random() * 10; // 0-10%
             const ramUsage = 30 + Math.random() * 20; // 30-50%

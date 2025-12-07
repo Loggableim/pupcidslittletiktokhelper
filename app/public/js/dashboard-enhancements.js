@@ -756,72 +756,18 @@
 
     // ========== COMPACT RESOURCES ==========
     function initializeCompactResources() {
-        // This is a lightweight version that mirrors the main resource monitor
+        // Use fallback data for compact resource display
+        // This is a lightweight version for dashboard stats
         setInterval(() => {
             updateCompactResources();
         }, 2000);
     }
 
     async function updateCompactResources() {
-        try {
-            // Try to get real resource data from resource monitor plugin
-            const response = await fetch('/api/resource-monitor/metrics');
-            
-            // Check if the API endpoint exists (resource-monitor plugin may not be available)
-            if (!response.ok) {
-                throw new Error('Resource monitor plugin not available');
-            }
-            
-            const data = await response.json();
-
-            if (data.success && data.metrics) {
-                const { cpu, memory, ram, gpu, network } = data.metrics;
-
-                // Update CPU
-                updateCompactResource('cpu', cpu.usage || 0);
-
-                // Update RAM (try both 'ram' and 'memory' for compatibility)
-                const ramData = ram || memory;
-                updateCompactResource('ram', ramData?.usedPercent || ramData?.percent || 0);
-
-                // Update GPU (if available)
-                if (gpu && Array.isArray(gpu) && gpu.length > 0 && gpu[0].utilizationGpu !== null) {
-                    const gpuUsage = gpu[0].utilizationGpu || 0;
-                    const gpuElement = document.getElementById('resource-gpu-compact');
-                    if (gpuElement) {
-                        gpuElement.textContent = gpuUsage.toFixed(1) + '%';
-                    }
-
-                    // Update GPU sparkline
-                    updateGPUSparkline(gpuUsage);
-                } else {
-                    const gpuElement = document.getElementById('resource-gpu-compact');
-                    if (gpuElement) {
-                        gpuElement.textContent = 'N/A';
-                    }
-                }
-
-                // Update Network (if available)
-                if (network) {
-                    const rxSec = network.rx_sec || 0;
-                    const txSec = network.tx_sec || 0;
-                    const totalSec = rxSec + txSec;
-
-                    const networkElement = document.getElementById('resource-network-compact');
-                    if (networkElement) {
-                        networkElement.textContent = formatBytesShort(totalSec) + '/s';
-                    }
-
-                    // Update network sparkline
-                    updateNetworkSparkline(totalSec);
-                }
-            }
-
-        } catch (error) {
-            // Fallback to mock data if plugin not available
-            updateCompactResource('cpu', Math.random() * 10);
-            updateCompactResource('ram', 30 + Math.random() * 20);
-        }
+        // Use simple mock data for resource display
+        // Resource monitor plugin has been removed
+        updateCompactResource('cpu', Math.random() * 10);
+        updateCompactResource('ram', 30 + Math.random() * 20);
     }
 
     function updateCompactResource(type, value) {
