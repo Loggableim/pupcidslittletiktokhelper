@@ -13,6 +13,7 @@
     const MAX_SPARKLINE_POINTS = 60;
     const SOCKET_CHECK_TIMEOUT_MS = 10000;
     const SOCKET_CHECK_INTERVAL_MS = 100;
+    let resourceMonitorAvailable = false; // Track if resource-monitor plugin is available
 
     // ========== UTILITY FUNCTIONS ==========
     /**
@@ -67,6 +68,15 @@
                     console.log('🔌 [Dashboard Enhancements] Plugin state changed, refreshing quick action buttons:', data);
                     // Refresh quick action button states when plugins change
                     await refreshQuickActionButtons();
+                    
+                    // Re-check if resource-monitor plugin became available or unavailable
+                    const activePlugins = await fetchActivePlugins();
+                    const wasAvailable = resourceMonitorAvailable;
+                    resourceMonitorAvailable = activePlugins.has('resource-monitor');
+                    
+                    if (wasAvailable !== resourceMonitorAvailable) {
+                        console.log(`[Dashboard Enhancements] Resource monitor plugin ${resourceMonitorAvailable ? 'enabled' : 'disabled'}`);
+                    }
                 });
                 
                 console.log('✅ [Dashboard Enhancements] Quick action plugin change listener registered');
@@ -755,7 +765,17 @@
     }
 
     // ========== COMPACT RESOURCES ==========
-    function initializeCompactResources() {
+    async function initializeCompactResources() {
+        // Check if resource-monitor plugin is available
+        const activePlugins = await fetchActivePlugins();
+        resourceMonitorAvailable = activePlugins.has('resource-monitor');
+        
+        if (resourceMonitorAvailable) {
+            console.log('[Dashboard Enhancements] Resource monitor plugin detected, enabling live metrics');
+        } else {
+            console.log('[Dashboard Enhancements] Resource monitor plugin not available, using fallback data');
+        }
+        
         // This is a lightweight version that mirrors the main resource monitor
         setInterval(() => {
             updateCompactResources();
@@ -763,65 +783,74 @@
     }
 
     async function updateCompactResources() {
-        try {
-            // Try to get real resource data from resource monitor plugin
-            const response = await fetch('/api/resource-monitor/metrics');
-            
-            // Check if the API endpoint exists (resource-monitor plugin may not be available)
-            if (!response.ok) {
-                throw new Error('Resource monitor plugin not available');
-            }
-            
-            const data = await response.json();
-
-            if (data.success && data.metrics) {
-                const { cpu, memory, ram, gpu, network } = data.metrics;
-
-                // Update CPU
-                updateCompactResource('cpu', cpu.usage || 0);
-
-                // Update RAM (try both 'ram' and 'memory' for compatibility)
-                const ramData = ram || memory;
-                updateCompactResource('ram', ramData?.usedPercent || ramData?.percent || 0);
-
-                // Update GPU (if available)
-                if (gpu && Array.isArray(gpu) && gpu.length > 0 && gpu[0].utilizationGpu !== null) {
-                    const gpuUsage = gpu[0].utilizationGpu || 0;
-                    const gpuElement = document.getElementById('resource-gpu-compact');
-                    if (gpuElement) {
-                        gpuElement.textContent = gpuUsage.toFixed(1) + '%';
-                    }
-
-                    // Update GPU sparkline
-                    updateGPUSparkline(gpuUsage);
-                } else {
-                    const gpuElement = document.getElementById('resource-gpu-compact');
-                    if (gpuElement) {
-                        gpuElement.textContent = 'N/A';
-                    }
+        // Only attempt to fetch from resource-monitor API if plugin is available
+        if (resourceMonitorAvailable) {
+            try {
+                // Try to get real resource data from resource monitor plugin
+                const response = await fetch('/api/resource-monitor/metrics');
+                
+                // Check if the API endpoint exists (resource-monitor plugin may not be available)
+                if (!response.ok) {
+                    // Plugin was disabled or removed
+                    resourceMonitorAvailable = false;
+                    console.log('[Dashboard Enhancements] Resource monitor plugin no longer available');
+                    throw new Error('Resource monitor plugin not available');
                 }
+                
+                const data = await response.json();
 
-                // Update Network (if available)
-                if (network) {
-                    const rxSec = network.rx_sec || 0;
-                    const txSec = network.tx_sec || 0;
-                    const totalSec = rxSec + txSec;
+                if (data.success && data.metrics) {
+                    const { cpu, memory, ram, gpu, network } = data.metrics;
 
-                    const networkElement = document.getElementById('resource-network-compact');
-                    if (networkElement) {
-                        networkElement.textContent = formatBytesShort(totalSec) + '/s';
+                    // Update CPU
+                    updateCompactResource('cpu', cpu.usage || 0);
+
+                    // Update RAM (try both 'ram' and 'memory' for compatibility)
+                    const ramData = ram || memory;
+                    updateCompactResource('ram', ramData?.usedPercent || ramData?.percent || 0);
+
+                    // Update GPU (if available)
+                    if (gpu && Array.isArray(gpu) && gpu.length > 0 && gpu[0].utilizationGpu !== null) {
+                        const gpuUsage = gpu[0].utilizationGpu || 0;
+                        const gpuElement = document.getElementById('resource-gpu-compact');
+                        if (gpuElement) {
+                            gpuElement.textContent = gpuUsage.toFixed(1) + '%';
+                        }
+
+                        // Update GPU sparkline
+                        updateGPUSparkline(gpuUsage);
+                    } else {
+                        const gpuElement = document.getElementById('resource-gpu-compact');
+                        if (gpuElement) {
+                            gpuElement.textContent = 'N/A';
+                        }
                     }
 
-                    // Update network sparkline
-                    updateNetworkSparkline(totalSec);
-                }
-            }
+                    // Update Network (if available)
+                    if (network) {
+                        const rxSec = network.rx_sec || 0;
+                        const txSec = network.tx_sec || 0;
+                        const totalSec = rxSec + txSec;
 
-        } catch (error) {
-            // Fallback to mock data if plugin not available
-            updateCompactResource('cpu', Math.random() * 10);
-            updateCompactResource('ram', 30 + Math.random() * 20);
+                        const networkElement = document.getElementById('resource-network-compact');
+                        if (networkElement) {
+                            networkElement.textContent = formatBytesShort(totalSec) + '/s';
+                        }
+
+                        // Update network sparkline
+                        updateNetworkSparkline(totalSec);
+                    }
+                    return; // Successfully updated, exit early
+                }
+            } catch (error) {
+                // Error fetching from resource monitor, fall through to mock data
+                console.debug('[Dashboard Enhancements] Resource monitor fetch failed, using fallback:', error.message);
+            }
         }
+        
+        // Fallback to mock data if plugin not available or fetch failed
+        updateCompactResource('cpu', Math.random() * 10);
+        updateCompactResource('ram', 30 + Math.random() * 20);
     }
 
     function updateCompactResource(type, value) {
