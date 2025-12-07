@@ -418,6 +418,72 @@
             </form>
         </div>
 
+        <!-- Chat Commands (GCCE Integration) -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title" data-i18n="osc_bridge.chat_commands.title">Chat Commands (GCCE Integration)</h2>
+            </div>
+
+            <div class="info-box">
+                <h4 data-i18n="osc_bridge.chat_commands.description">Allow viewers to trigger VRChat actions via chat commands</h4>
+                <p data-i18n="osc_bridge.chat_commands.info_text">When enabled, viewers can control VRChat actions directly through chat commands. All commands are processed through the Global Chat Command Engine (GCCE).</p>
+            </div>
+
+            <form id="chat-commands-form">
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="chatCommandsEnabled" name="chatCommandsEnabled">
+                        <label for="chatCommandsEnabled" data-i18n="osc_bridge.chat_commands.enabled">Enable chat commands</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="requireOSCConnection" name="requireOSCConnection">
+                        <label for="requireOSCConnection" data-i18n="osc_bridge.chat_commands.require_osc_connection">Require OSC connection</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cooldownSeconds" data-i18n="osc_bridge.chat_commands.cooldown">Cooldown (seconds)</label>
+                    <input type="number" class="form-control" id="cooldownSeconds" name="cooldownSeconds" value="3" min="0" max="60">
+                </div>
+
+                <div class="form-group">
+                    <label for="rateLimitPerMinute" data-i18n="osc_bridge.chat_commands.rate_limit">Rate limit (per minute)</label>
+                    <input type="number" class="form-control" id="rateLimitPerMinute" name="rateLimitPerMinute" value="10" min="1" max="100">
+                </div>
+
+                <div class="info-box" style="margin-top: 20px;">
+                    <h4>Available Commands</h4>
+                    <div style="font-family: monospace; font-size: 0.9em; margin-top: 10px;">
+                        <div style="margin: 8px 0;">
+                            <strong>/wave</strong> - <span data-i18n="osc_bridge.commands.wave.description">Trigger wave animation in VRChat</span> (All viewers)
+                        </div>
+                        <div style="margin: 8px 0;">
+                            <strong>/celebrate</strong> - <span data-i18n="osc_bridge.commands.celebrate.description">Trigger celebrate animation in VRChat</span> (All viewers)
+                        </div>
+                        <div style="margin: 8px 0;">
+                            <strong>/dance</strong> - <span data-i18n="osc_bridge.commands.dance.description">Trigger dance animation in VRChat</span> (Subscribers only)
+                        </div>
+                        <div style="margin: 8px 0;">
+                            <strong>/hearts</strong> - <span data-i18n="osc_bridge.commands.hearts.description">Trigger hearts effect in VRChat</span> (All viewers)
+                        </div>
+                        <div style="margin: 8px 0;">
+                            <strong>/confetti</strong> - <span data-i18n="osc_bridge.commands.confetti.description">Trigger confetti effect in VRChat</span> (All viewers)
+                        </div>
+                        <div style="margin: 8px 0;">
+                            <strong>/emote &lt;0-7&gt;</strong> - <span data-i18n="osc_bridge.commands.emote.description">Trigger VRChat emote slot</span> (Subscribers only)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-group" style="margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">Save Chat Command Settings</button>
+                </div>
+            </form>
+        </div>
+
         <!-- VRChat Parameter Tester -->
         <div class="card">
             <div class="card-header">
