@@ -231,11 +231,9 @@
         sidebarIcons.forEach(icon => {
             const pluginId = icon.getAttribute('data-plugin');
             if (pluginId && !activePlugins.has(pluginId)) {
-                // Plugin is disabled
+                // Plugin is disabled - set disabled state
                 icon.setAttribute('data-state', 'disabled');
                 icon.disabled = true;
-                icon.style.opacity = '0.5';
-                icon.style.cursor = 'not-allowed';
                 console.log(`[Dashboard Enhancements] Sidebar icon disabled for inactive plugin: ${pluginId}`);
             }
         });
@@ -296,6 +294,7 @@
 
     /**
      * Sync sidebar icon states with main quick action buttons
+     * Only syncs if the icon is not disabled due to inactive plugin
      */
     function syncSidebarIconStates() {
         const mainButtons = document.querySelectorAll('.quick-action-btn');
@@ -304,7 +303,8 @@
             const state = button.getAttribute('data-state');
             const sidebarIcon = document.querySelector(`.sidebar-quick-icon[data-action="${action}"]`);
             
-            if (sidebarIcon && state !== 'disabled') {
+            // Only sync if sidebar icon exists and is not disabled
+            if (sidebarIcon && !sidebarIcon.disabled) {
                 sidebarIcon.setAttribute('data-state', state);
             }
         });

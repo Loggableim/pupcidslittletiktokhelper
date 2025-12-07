@@ -282,6 +282,22 @@ body {
     box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
 }
 
+.sidebar-quick-icon[data-state="disabled"] {
+    background: rgba(71, 85, 105, 0.2);
+    border-color: rgba(71, 85, 105, 0.4);
+    color: #64748b;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sidebar-quick-icon[data-state="disabled"]:hover {
+    background: rgba(71, 85, 105, 0.2);
+    border-color: rgba(71, 85, 105, 0.4);
+    color: #64748b;
+    transform: none;
+    box-shadow: none;
+}
+
 /* Emergency stop button - always red */
 .sidebar-quick-icon.sidebar-quick-emergency {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%);
