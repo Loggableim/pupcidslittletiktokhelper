@@ -669,19 +669,19 @@ function createGuestCard(guest) {
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-            <button onclick="muteVDOGuest(${guest.slot}, true, false)"
+            <button data-action="mute-vdo-audio" data-slot="${guest.slot}"
                     class="bg-orange-600 px-3 py-2 rounded hover:bg-orange-700 text-sm">
                 🔇 Mute Audio
             </button>
-            <button onclick="unmuteVDOGuest(${guest.slot}, true, false)"
+            <button data-action="unmute-vdo-audio" data-slot="${guest.slot}"
                     class="bg-green-600 px-3 py-2 rounded hover:bg-green-700 text-sm">
                 🔊 Unmute Audio
             </button>
-            <button onclick="soloVDOGuest(${guest.slot}, 10000)"
+            <button data-action="solo-vdo-guest" data-slot="${guest.slot}"
                     class="bg-purple-600 px-3 py-2 rounded hover:bg-purple-700 text-sm">
                 ⭐ Solo 10s
             </button>
-            <button onclick="kickVDOGuest(${guest.slot})"
+            <button data-action="kick-vdo-guest" data-slot="${guest.slot}"
                     class="bg-red-600 px-3 py-2 rounded hover:bg-red-700 text-sm">
                 ❌ Kick
             </button>
@@ -690,11 +690,40 @@ function createGuestCard(guest) {
         <div class="flex items-center gap-2">
             <label class="text-sm text-gray-400">Volume:</label>
             <input type="range" min="0" max="1" step="0.1" value="${guest.volume}"
-                   oninput="setVDOGuestVolume(${guest.slot}, this.value); document.getElementById('volume-label-${guest.slot}').textContent = Math.round(this.value * 100)"
+                   data-action="set-vdo-volume" data-slot="${guest.slot}"
                    class="flex-1">
             <span id="volume-label-${guest.slot}" class="text-sm font-semibold w-12 text-right">${Math.round(guest.volume * 100)}%</span>
         </div>
     `;
+
+    // Add event listeners to buttons
+    const muteBtn = card.querySelector('[data-action="mute-vdo-audio"]');
+    const unmuteBtn = card.querySelector('[data-action="unmute-vdo-audio"]');
+    const soloBtn = card.querySelector('[data-action="solo-vdo-guest"]');
+    const kickBtn = card.querySelector('[data-action="kick-vdo-guest"]');
+    const volumeSlider = card.querySelector('[data-action="set-vdo-volume"]');
+
+    if (muteBtn) {
+        muteBtn.addEventListener('click', () => muteVDOGuest(guest.slot, true, false));
+    }
+    if (unmuteBtn) {
+        unmuteBtn.addEventListener('click', () => unmuteVDOGuest(guest.slot, true, false));
+    }
+    if (soloBtn) {
+        soloBtn.addEventListener('click', () => soloVDOGuest(guest.slot, 10000));
+    }
+    if (kickBtn) {
+        kickBtn.addEventListener('click', () => kickVDOGuest(guest.slot));
+    }
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            setVDOGuestVolume(guest.slot, e.target.value);
+            const label = document.getElementById(`volume-label-${guest.slot}`);
+            if (label) {
+                label.textContent = Math.round(e.target.value * 100) + '%';
+            }
+        });
+    }
 
     return card;
 }

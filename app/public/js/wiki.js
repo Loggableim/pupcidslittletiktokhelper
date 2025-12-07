@@ -556,12 +556,18 @@
                 <i data-lucide="alert-circle"></i>
                 <h2>Error</h2>
                 <p>${message}</p>
-                <button class="btn btn-primary" onclick="location.reload()">
+                <button class="btn btn-primary" data-action="reload-page">
                     <i data-lucide="refresh-cw"></i>
                     Reload Page
                 </button>
             </div>
         `;
+
+        // Add event listener for reload button
+        const reloadBtn = articleContainer.querySelector('[data-action="reload-page"]');
+        if (reloadBtn) {
+            reloadBtn.addEventListener('click', () => location.reload());
+        }
 
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
