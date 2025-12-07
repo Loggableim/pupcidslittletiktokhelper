@@ -1103,14 +1103,14 @@
                 btnEdit.className = 'btn btn-secondary';
                 btnEdit.style.cssText = 'padding: 4px 8px; font-size: 0.75rem;';
                 btnEdit.textContent = '✏️';
-                btnEdit.onclick = () => editItem(item.itemId);
+                btnEdit.addEventListener('click', () => editItem(item.itemId));
                 tdActions.appendChild(btnEdit);
                 
                 const btnDelete = document.createElement('button');
                 btnDelete.className = 'btn btn-danger';
                 btnDelete.style.cssText = 'padding: 4px 8px; font-size: 0.75rem; margin-left: 4px;';
                 btnDelete.textContent = '🗑️';
-                btnDelete.onclick = () => deleteItem(item.itemId);
+                btnDelete.addEventListener('click', () => deleteItem(item.itemId));
                 tdActions.appendChild(btnDelete);
                 
                 tr.appendChild(tdActions);
