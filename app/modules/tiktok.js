@@ -293,6 +293,16 @@ class TikTokConnector extends EventEmitter {
                 method: 'Eulerstream WebSocket'
             });
             
+            // Emit streamChanged event if connecting to a different streamer
+            if (previousUsername && previousUsername !== username) {
+                this.emit('streamChanged', {
+                    previousUsername,
+                    newUsername: username,
+                    timestamp: new Date().toISOString()
+                });
+                this.logger.info(`🔄 Stream changed from @${previousUsername} to @${username}`);
+            }
+            
             // Emit connected event for IFTTT engine
             this.emit('connected', {
                 username,
