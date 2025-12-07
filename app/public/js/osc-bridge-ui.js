@@ -49,6 +49,19 @@ function populateForm(config) {
         if (requireOSCConnection) requireOSCConnection.checked = config.chatCommands.requireOSCConnection ?? true; // default true
         if (cooldownSeconds) cooldownSeconds.value = config.chatCommands.cooldownSeconds || 3;
         if (rateLimitPerMinute) rateLimitPerMinute.value = config.chatCommands.rateLimitPerMinute || 10;
+        
+        // Populate avatar switch settings
+        if (config.chatCommands.avatarSwitch) {
+            const avatarSwitchEnabled = document.getElementById('avatarSwitchEnabled');
+            const avatarSwitchPermission = document.getElementById('avatarSwitchPermission');
+            const avatarSwitchCooldownType = document.getElementById('avatarSwitchCooldownType');
+            const avatarSwitchCooldown = document.getElementById('avatarSwitchCooldown');
+            
+            if (avatarSwitchEnabled) avatarSwitchEnabled.checked = config.chatCommands.avatarSwitch.enabled || false;
+            if (avatarSwitchPermission) avatarSwitchPermission.value = config.chatCommands.avatarSwitch.permission || 'subscriber';
+            if (avatarSwitchCooldownType) avatarSwitchCooldownType.value = config.chatCommands.avatarSwitch.cooldownType || 'global';
+            if (avatarSwitchCooldown) avatarSwitchCooldown.value = config.chatCommands.avatarSwitch.cooldownSeconds || 60;
+        }
     }
 }
 
@@ -156,6 +169,7 @@ if (chatCommandsForm) {
         const updatedConfig = {
             ...getCurrentConfigData.config,
             chatCommands: {
+                ...getCurrentConfigData.config.chatCommands,
                 enabled: chatCommandsEnabled.checked,
                 requireOSCConnection: requireOSCConnection.checked,
                 cooldownSeconds: parseInt(cooldownSeconds.value),
@@ -176,6 +190,61 @@ if (chatCommandsForm) {
             currentConfig = data.config;
         } else {
             alert('Error saving chat command settings: ' + data.error);
+        }
+    });
+}
+
+// Avatar Switch form handler
+const avatarSwitchForm = document.getElementById('avatar-switch-form');
+if (avatarSwitchForm) {
+    avatarSwitchForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const avatarSwitchEnabled = document.getElementById('avatarSwitchEnabled');
+        const avatarSwitchPermission = document.getElementById('avatarSwitchPermission');
+        const avatarSwitchCooldownType = document.getElementById('avatarSwitchCooldownType');
+        const avatarSwitchCooldown = document.getElementById('avatarSwitchCooldown');
+
+        if (!avatarSwitchEnabled || !avatarSwitchPermission || !avatarSwitchCooldownType || !avatarSwitchCooldown) {
+            console.warn('Avatar switch form elements not found');
+            return;
+        }
+
+        // Get current config first to preserve other settings
+        const getCurrentConfigResponse = await fetch('/api/osc/config');
+        const getCurrentConfigData = await getCurrentConfigResponse.json();
+        
+        if (!getCurrentConfigData.success) {
+            alert('Error loading current configuration');
+            return;
+        }
+
+        const updatedConfig = {
+            ...getCurrentConfigData.config,
+            chatCommands: {
+                ...getCurrentConfigData.config.chatCommands,
+                avatarSwitch: {
+                    enabled: avatarSwitchEnabled.checked,
+                    permission: avatarSwitchPermission.value,
+                    cooldownType: avatarSwitchCooldownType.value,
+                    cooldownSeconds: parseInt(avatarSwitchCooldown.value)
+                }
+            }
+        };
+
+        const response = await fetch('/api/osc/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedConfig)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Avatar switch settings saved!');
+            currentConfig = data.config;
+        } else {
+            alert('Error saving avatar switch settings: ' + data.error);
         }
     });
 }
@@ -757,16 +826,226 @@ async function switchToAvatar(avatarId, avatarName) {
     }
 }
 
-// Initialize gift mappings and avatars on page load
+// ========== COMMAND MANAGEMENT ==========
+let commands = [];
+
+async function loadCommands() {
+    try {
+        const response = await fetch('/api/osc/commands');
+        const data = await response.json();
+        
+        if (data.success) {
+            commands = data.commands || [];
+            renderCommands();
+        }
+    } catch (error) {
+        console.error('Error loading commands:', error);
+    }
+}
+
+function renderCommands() {
+    const tbody = document.getElementById('commands-tbody');
+    
+    if (!tbody) return;
+    
+    if (commands.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No commands configured yet.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = commands.map((cmd, index) => {
+        const escapedName = (cmd.name || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const escapedDesc = (cmd.description || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const typeLabel = cmd.actionType === 'predefined' ? 'Predefined' : 'Custom';
+        const typeColor = cmd.actionType === 'predefined' ? 'var(--color-accent-primary)' : 'var(--color-accent-success)';
+        
+        return `
+            <tr>
+                <td>
+                    <input type="checkbox" class="cmd-enabled-checkbox" data-index="${index}" ${cmd.enabled ? 'checked' : ''}>
+                </td>
+                <td><code>/${escapedName}</code></td>
+                <td>${escapedDesc}</td>
+                <td>
+                    <select class="form-control cmd-permission-select" data-index="${index}" style="font-size: 12px; padding: 4px 8px;">
+                        <option value="all" ${cmd.permission === 'all' ? 'selected' : ''}>All</option>
+                        <option value="subscriber" ${cmd.permission === 'subscriber' ? 'selected' : ''}>Subscriber</option>
+                        <option value="moderator" ${cmd.permission === 'moderator' ? 'selected' : ''}>Moderator</option>
+                    </select>
+                </td>
+                <td><span style="color: ${typeColor}; font-size: 0.85em;">${typeLabel}</span></td>
+                <td>
+                    ${cmd.actionType === 'custom' ? `<button class="btn btn-danger btn-small btn-remove-command" data-index="${index}">Remove</button>` : '-'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function setupCommandsEventDelegation() {
+    const tbody = document.getElementById('commands-tbody');
+    if (!tbody) return;
+    
+    tbody.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.classList.contains('btn-remove-command')) {
+            const index = parseInt(target.dataset.index, 10);
+            removeCommand(index);
+        }
+    });
+    
+    tbody.addEventListener('change', (e) => {
+        const target = e.target;
+        const index = parseInt(target.dataset.index, 10);
+        
+        if (target.classList.contains('cmd-enabled-checkbox')) {
+            commands[index].enabled = target.checked;
+        } else if (target.classList.contains('cmd-permission-select')) {
+            commands[index].permission = target.value;
+        }
+    });
+}
+
+function removeCommand(index) {
+    if (commands[index].actionType === 'predefined') {
+        alert('Cannot remove predefined commands. You can disable them instead.');
+        return;
+    }
+    
+    if (confirm(`Remove command '/${commands[index].name}'?`)) {
+        commands.splice(index, 1);
+        renderCommands();
+    }
+}
+
+async function saveCommands() {
+    try {
+        const response = await fetch('/api/osc/commands', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ commands })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Commands saved successfully! Commands have been re-registered with GCCE.');
+            await loadCommands(); // Reload to get any updates
+        } else {
+            alert('Error saving commands: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving commands:', error);
+        alert('Error saving commands: ' + error.message);
+    }
+}
+
+function showCustomCommandForm() {
+    const form = document.getElementById('custom-command-form');
+    if (form) {
+        form.style.display = 'block';
+        
+        // Clear form
+        document.getElementById('new-cmd-name').value = '';
+        document.getElementById('new-cmd-description').value = '';
+        document.getElementById('new-cmd-permission').value = 'all';
+        document.getElementById('new-cmd-osc-address').value = '';
+        document.getElementById('new-cmd-osc-value').value = '1';
+        document.getElementById('new-cmd-duration').value = '0';
+    }
+}
+
+function hideCustomCommandForm() {
+    const form = document.getElementById('custom-command-form');
+    if (form) {
+        form.style.display = 'none';
+    }
+}
+
+function addCustomCommand() {
+    const name = document.getElementById('new-cmd-name').value.trim();
+    const description = document.getElementById('new-cmd-description').value.trim();
+    const permission = document.getElementById('new-cmd-permission').value;
+    const oscAddress = document.getElementById('new-cmd-osc-address').value.trim();
+    const oscValue = document.getElementById('new-cmd-osc-value').value.trim();
+    const duration = parseInt(document.getElementById('new-cmd-duration').value) || 0;
+    
+    // Validation
+    if (!name) {
+        alert('Please enter a command name');
+        return;
+    }
+    
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+        alert('Command name can only contain letters, numbers, underscores, and hyphens');
+        return;
+    }
+    
+    if (commands.some(cmd => cmd.name.toLowerCase() === name.toLowerCase())) {
+        alert(`Command '/${name}' already exists`);
+        return;
+    }
+    
+    if (!oscAddress) {
+        alert('Please enter an OSC address');
+        return;
+    }
+    
+    if (!oscAddress.startsWith('/')) {
+        alert('OSC address must start with /');
+        return;
+    }
+    
+    // Parse OSC value
+    let parsedValue = oscValue;
+    if (oscValue === 'true') parsedValue = true;
+    else if (oscValue === 'false') parsedValue = false;
+    else if (!isNaN(oscValue) && oscValue !== '') parsedValue = parseFloat(oscValue);
+    
+    const newCommand = {
+        id: `custom_${Date.now()}`,
+        name: name,
+        enabled: true,
+        description: description || `Custom command: ${name}`,
+        syntax: `/${name}`,
+        permission: permission,
+        category: 'VRChat',
+        actionType: 'custom',
+        params: {
+            oscAddress: oscAddress,
+            oscValue: parsedValue,
+            duration: duration
+        }
+    };
+    
+    commands.push(newCommand);
+    renderCommands();
+    hideCustomCommandForm();
+}
+
+// Initialize command management on page load
 if (typeof window !== 'undefined') {
     window.addEventListener('DOMContentLoaded', () => {
         loadGiftCatalog();
         loadGiftMappings();
         loadAvatars();
+        loadCommands(); // Load commands
         
         // Setup event delegation for table buttons
         setupGiftMappingsEventDelegation();
         setupAvatarsEventDelegation();
+        setupCommandsEventDelegation(); // Setup commands event delegation
+        
+        // Command name preview
+        const newCmdName = document.getElementById('new-cmd-name');
+        if (newCmdName) {
+            newCmdName.addEventListener('input', (e) => {
+                const preview = document.getElementById('cmd-preview');
+                if (preview) {
+                    preview.textContent = e.target.value || 'mycommand';
+                }
+            });
+        }
         
         // Add event listener for gift catalog selector
         const catalogSelector = document.getElementById('gift-catalog-selector');
@@ -819,6 +1098,27 @@ if (typeof window !== 'undefined') {
         const btnAddAvatar = document.getElementById('btn-add-avatar');
         if (btnAddAvatar) {
             btnAddAvatar.addEventListener('click', addAvatar);
+        }
+        
+        // Add event listeners for command buttons
+        const btnSaveCommands = document.getElementById('btn-save-commands');
+        if (btnSaveCommands) {
+            btnSaveCommands.addEventListener('click', saveCommands);
+        }
+        
+        const btnAddCustomCommand = document.getElementById('btn-add-custom-command');
+        if (btnAddCustomCommand) {
+            btnAddCustomCommand.addEventListener('click', showCustomCommandForm);
+        }
+        
+        const btnConfirmCustomCommand = document.getElementById('btn-confirm-custom-command');
+        if (btnConfirmCustomCommand) {
+            btnConfirmCustomCommand.addEventListener('click', addCustomCommand);
+        }
+        
+        const btnCancelCustomCommand = document.getElementById('btn-cancel-custom-command');
+        if (btnCancelCustomCommand) {
+            btnCancelCustomCommand.addEventListener('click', hideCustomCommandForm);
         }
     });
 }

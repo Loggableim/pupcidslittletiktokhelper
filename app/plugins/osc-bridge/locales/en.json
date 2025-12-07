@@ -125,6 +125,55 @@
       "switch": "Switch",
       "remove": "Remove",
       "no_avatars": "No avatars configured yet. Add one below."
+    },
+    "avatar_switch": {
+      "title": "Avatar Switching via Chat Commands",
+      "info_title": "Avatar Chat Command",
+      "info_text": "Allow viewers to switch your VRChat avatar via the /avatar <name> command. Configure cooldowns to prevent spam.",
+      "enabled": "Enable /avatar command",
+      "permission_level": "Permission Level",
+      "permission_all": "All Viewers",
+      "permission_subscriber": "Subscribers Only",
+      "permission_moderator": "Moderators Only",
+      "cooldown_type": "Cooldown Type",
+      "cooldown_global": "Global (applies to all users)",
+      "cooldown_per_user": "Per User (each user has own cooldown)",
+      "cooldown_duration": "Cooldown Duration (seconds)",
+      "cooldown_help": "Minimum time between avatar switches (0 = no cooldown)",
+      "save": "Save Avatar Switch Settings"
+    },
+    "command_management": {
+      "title": "⚙️ Command Management",
+      "info_title": "Configure Available Commands",
+      "info_text": "Enable or disable individual commands, change permissions, and add custom commands. Changes will be registered with GCCE automatically.",
+      "enabled": "Enabled",
+      "command": "Command",
+      "description": "Description",
+      "permission": "Permission",
+      "type": "Type",
+      "actions": "Actions",
+      "type_predefined": "Predefined",
+      "type_custom": "Custom",
+      "save": "Save Commands",
+      "add_custom": "Add Custom Command",
+      "remove": "Remove",
+      "loading": "Loading commands...",
+      "no_commands": "No commands configured yet."
+    },
+    "custom_command": {
+      "title": "Add Custom Command",
+      "command_name": "Command Name",
+      "command_preview": "Users will type: /",
+      "description": "Description",
+      "permission": "Permission",
+      "osc_address": "OSC Address",
+      "osc_address_help": "VRChat OSC parameter path",
+      "osc_value": "OSC Value",
+      "osc_value_help": "Value to send (number, true, false, or text)",
+      "duration": "Duration (ms)",
+      "duration_help": "Auto-reset to 0 after duration (0 = no reset)",
+      "add": "Add Command",
+      "cancel": "Cancel"
     }
   }
 }

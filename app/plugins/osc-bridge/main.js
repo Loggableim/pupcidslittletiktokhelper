@@ -43,6 +43,12 @@ class OSCBridgePlugin {
         // Sicherheit: Erlaubte IP-Adressen
         this.ALLOWED_IPS = ['127.0.0.1', 'localhost', '::1', '0.0.0.0'];
 
+        // Cooldown tracking for avatar switching
+        this.avatarSwitchCooldowns = {
+            perUser: new Map(), // Map<username, timestamp>
+            global: null        // Global last switch timestamp
+        };
+
         // Standard VRChat Parameter-Pfade
         this.VRCHAT_PARAMS = {
             WAVE: '/avatar/parameters/Wave',
@@ -118,9 +124,95 @@ class OSCBridgePlugin {
                 enabled: true,           // Chat-Befehle aktivieren
                 requireOSCConnection: true, // Nur wenn OSC verbunden
                 cooldownSeconds: 3,      // Cooldown zwischen Commands
-                rateLimitPerMinute: 10   // Max Commands pro Minute pro User
+                rateLimitPerMinute: 10,  // Max Commands pro Minute pro User
+                commands: this.getDefaultCommands(), // Configurable command list
+                avatarSwitch: {
+                    enabled: false,           // Avatar switching via chat commands
+                    cooldownType: 'global',   // 'global' or 'perUser'
+                    cooldownSeconds: 60,      // Cooldown in seconds
+                    permission: 'subscriber'  // 'all', 'subscriber', 'moderator'
+                }
             }
         };
+    }
+
+    getDefaultCommands() {
+        return [
+            {
+                id: 'wave',
+                name: 'wave',
+                enabled: true,
+                description: 'Trigger wave animation in VRChat',
+                syntax: '/wave',
+                permission: 'all',
+                category: 'VRChat',
+                actionType: 'predefined',
+                action: 'wave',
+                params: { duration: 2000 }
+            },
+            {
+                id: 'celebrate',
+                name: 'celebrate',
+                enabled: true,
+                description: 'Trigger celebrate animation in VRChat',
+                syntax: '/celebrate',
+                permission: 'all',
+                category: 'VRChat',
+                actionType: 'predefined',
+                action: 'celebrate',
+                params: { duration: 3000 }
+            },
+            {
+                id: 'dance',
+                name: 'dance',
+                enabled: true,
+                description: 'Trigger dance animation in VRChat',
+                syntax: '/dance',
+                permission: 'subscriber',
+                category: 'VRChat',
+                actionType: 'predefined',
+                action: 'dance',
+                params: { duration: 5000 }
+            },
+            {
+                id: 'hearts',
+                name: 'hearts',
+                enabled: true,
+                description: 'Trigger hearts effect in VRChat',
+                syntax: '/hearts',
+                permission: 'all',
+                category: 'VRChat',
+                actionType: 'predefined',
+                action: 'hearts',
+                params: { duration: 2000 }
+            },
+            {
+                id: 'confetti',
+                name: 'confetti',
+                enabled: true,
+                description: 'Trigger confetti effect in VRChat',
+                syntax: '/confetti',
+                permission: 'all',
+                category: 'VRChat',
+                actionType: 'predefined',
+                action: 'confetti',
+                params: { duration: 3000 }
+            },
+            {
+                id: 'emote',
+                name: 'emote',
+                enabled: true,
+                description: 'Trigger VRChat emote slot',
+                syntax: '/emote <0-7>',
+                permission: 'subscriber',
+                category: 'VRChat',
+                actionType: 'predefined',
+                action: 'emote',
+                minArgs: 1,
+                maxArgs: 1,
+                params: { duration: 2000 }
+            }
+        ];
     }
 
     registerRoutes() {
@@ -285,6 +377,37 @@ class OSCBridgePlugin {
             
             this.logger.info(`✅ Updated ${avatars.length} avatars`);
             res.json({ success: true, avatars });
+        });
+
+        // Chat Command Management
+        this.api.registerRoute('get', '/api/osc/commands', async (req, res) => {
+            const config = await this.api.getConfig('config') || this.getDefaultConfig();
+            res.json({
+                success: true,
+                commands: config.chatCommands?.commands || this.getDefaultCommands()
+            });
+        });
+
+        this.api.registerRoute('post', '/api/osc/commands', async (req, res) => {
+            const { commands } = req.body;
+            
+            if (!Array.isArray(commands)) {
+                return res.status(400).json({ success: false, error: 'Commands must be an array' });
+            }
+
+            if (!this.config.chatCommands) {
+                this.config.chatCommands = this.getDefaultConfig().chatCommands;
+            }
+
+            this.config.chatCommands.commands = commands;
+            await this.api.setConfig('config', this.config);
+            
+            // Re-register GCCE commands with updated config
+            this.unregisterGCCECommands();
+            this.registerGCCECommands();
+            
+            this.logger.info(`✅ Updated ${commands.length} chat commands`);
+            res.json({ success: true, commands });
         });
     }
 
@@ -787,64 +910,60 @@ class OSCBridgePlugin {
             return;
         }
 
-        const commands = [
-            {
-                name: 'wave',
-                description: 'Trigger wave animation in VRChat',
-                syntax: '/wave',
-                permission: 'all',
+        // Get commands from config, falling back to defaults
+        const configCommands = this.config.chatCommands?.commands || this.getDefaultCommands();
+        
+        // Filter only enabled commands and build GCCE command objects
+        const commands = configCommands
+            .filter(cmd => cmd.enabled)
+            .map(cmd => {
+                const gcceCommand = {
+                    name: cmd.name,
+                    description: cmd.description || `Trigger ${cmd.name}`,
+                    syntax: cmd.syntax || `/${cmd.name}`,
+                    permission: cmd.permission || 'all',
+                    enabled: true,
+                    category: cmd.category || 'VRChat'
+                };
+
+                // Add min/max args if specified
+                if (cmd.minArgs !== undefined) gcceCommand.minArgs = cmd.minArgs;
+                if (cmd.maxArgs !== undefined) gcceCommand.maxArgs = cmd.maxArgs;
+
+                // Add handler based on action type
+                if (cmd.actionType === 'predefined') {
+                    gcceCommand.handler = async (args, context) => await this.handlePredefinedCommand(cmd, args, context);
+                } else if (cmd.actionType === 'custom') {
+                    gcceCommand.handler = async (args, context) => await this.handleCustomCommand(cmd, args, context);
+                }
+
+                return gcceCommand;
+            });
+
+        // Add dynamic avatar switch command if enabled
+        const avatarSwitchConfig = this.config.chatCommands?.avatarSwitch;
+        if (avatarSwitchConfig?.enabled && this.config.avatars?.length > 0) {
+            const avatarNames = this.config.avatars.map(a => a.name).join(', ');
+            commands.push({
+                name: 'avatar',
+                description: `Switch VRChat avatar. Available: ${avatarNames}`,
+                syntax: '/avatar <name>',
+                permission: avatarSwitchConfig.permission || 'subscriber',
                 enabled: true,
                 category: 'VRChat',
-                handler: async (args, context) => await this.handleWaveCommand(context)
-            },
-            {
-                name: 'celebrate',
-                description: 'Trigger celebrate animation in VRChat',
-                syntax: '/celebrate',
-                permission: 'all',
-                enabled: true,
-                category: 'VRChat',
-                handler: async (args, context) => await this.handleCelebrateCommand(context)
-            },
-            {
-                name: 'dance',
-                description: 'Trigger dance animation in VRChat',
-                syntax: '/dance',
-                permission: 'subscriber',
-                enabled: true,
-                category: 'VRChat',
-                handler: async (args, context) => await this.handleDanceCommand(context)
-            },
-            {
-                name: 'hearts',
-                description: 'Trigger hearts effect in VRChat',
-                syntax: '/hearts',
-                permission: 'all',
-                enabled: true,
-                category: 'VRChat',
-                handler: async (args, context) => await this.handleHeartsCommand(context)
-            },
-            {
-                name: 'confetti',
-                description: 'Trigger confetti effect in VRChat',
-                syntax: '/confetti',
-                permission: 'all',
-                enabled: true,
-                category: 'VRChat',
-                handler: async (args, context) => await this.handleConfettiCommand(context)
-            },
-            {
-                name: 'emote',
-                description: 'Trigger VRChat emote slot',
-                syntax: '/emote <0-7>',
-                permission: 'subscriber',
-                enabled: true,
                 minArgs: 1,
-                maxArgs: 1,
-                category: 'VRChat',
-                handler: async (args, context) => await this.handleEmoteCommand(args, context)
-            }
-        ];
+                handler: async (args, context) => await this.handlePredefinedCommand(
+                    { action: 'avatar', actionType: 'predefined' }, 
+                    args, 
+                    context
+                )
+            });
+        }
+
+        if (commands.length === 0) {
+            this.logger.debug('No enabled OSC-Bridge commands to register');
+            return;
+        }
 
         const result = gcce.registerCommandsForPlugin('osc-bridge', commands);
         
@@ -855,6 +974,155 @@ class OSCBridgePlugin {
         if (result.failed.length > 0) {
             this.logger.warn(`⚠️ Failed to register ${result.failed.length} commands: ${result.failed.join(', ')}`);
         }
+    }
+
+    /**
+     * Unregister GCCE commands
+     */
+    unregisterGCCECommands() {
+        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+        if (gccePlugin?.instance) {
+            try {
+                gccePlugin.instance.unregisterCommandsForPlugin('osc-bridge');
+                this.logger.debug('OSC-Bridge commands unregistered from GCCE');
+            } catch (error) {
+                this.logger.error('Error unregistering GCCE commands:', error);
+            }
+        }
+    }
+
+    /**
+     * Handle predefined command (wave, celebrate, dance, etc.)
+     */
+    async handlePredefinedCommand(cmd, args, context) {
+        const connectionError = this.checkOSCConnectionRequired();
+        if (connectionError) return connectionError;
+
+        const action = cmd.action;
+        const params = cmd.params || {};
+
+        switch (action) {
+            case 'wave':
+                this.wave(params.duration || 2000);
+                this.logger.info(`👋 Wave triggered by ${context.username} via GCCE`);
+                return { success: true, message: '👋 Wave animation triggered!' };
+            
+            case 'celebrate':
+                this.celebrate(params.duration || 3000);
+                this.logger.info(`🎉 Celebrate triggered by ${context.username} via GCCE`);
+                return { success: true, message: '🎉 Celebrate animation triggered!' };
+            
+            case 'dance':
+                this.dance(params.duration || 5000);
+                this.logger.info(`💃 Dance triggered by ${context.username} via GCCE`);
+                return { success: true, message: '💃 Dance animation triggered!' };
+            
+            case 'hearts':
+                this.hearts(params.duration || 2000);
+                this.logger.info(`❤️ Hearts triggered by ${context.username} via GCCE`);
+                return { success: true, message: '❤️ Hearts effect triggered!' };
+            
+            case 'confetti':
+                this.confetti(params.duration || 3000);
+                this.logger.info(`🎊 Confetti triggered by ${context.username} via GCCE`);
+                return { success: true, message: '🎊 Confetti effect triggered!' };
+            
+            case 'emote':
+                const slotNumber = parseInt(args[0]);
+                if (isNaN(slotNumber) || slotNumber < 0 || slotNumber > 7) {
+                    return { 
+                        success: false, 
+                        error: 'Invalid emote slot',
+                        message: 'Please specify an emote slot between 0 and 7. Usage: /emote <0-7>' 
+                    };
+                }
+                this.triggerEmote(slotNumber, params.duration || 2000);
+                this.logger.info(`😀 Emote ${slotNumber} triggered by ${context.username} via GCCE`);
+                return { success: true, message: `😀 Emote slot ${slotNumber} triggered!` };
+            
+            case 'avatar':
+                // Avatar switching via chat command
+                const avatarName = args.join(' '); // Support multi-word avatar names
+                if (!avatarName) {
+                    return {
+                        success: false,
+                        error: 'Avatar name required',
+                        message: 'Please specify an avatar name. Usage: /avatar <name>'
+                    };
+                }
+
+                // Find avatar by name
+                const avatars = this.config.avatars || [];
+                const avatar = avatars.find(a => 
+                    a.name.toLowerCase() === avatarName.toLowerCase()
+                );
+
+                if (!avatar) {
+                    const availableNames = avatars.map(a => a.name).join(', ');
+                    return {
+                        success: false,
+                        error: 'Avatar not found',
+                        message: availableNames 
+                            ? `Avatar '${avatarName}' not found. Available avatars: ${availableNames}`
+                            : `Avatar '${avatarName}' not found. No avatars configured.`
+                    };
+                }
+
+                // Check cooldown
+                const cooldownCheck = this.checkAvatarSwitchCooldown(context.username);
+                if (!cooldownCheck.allowed) {
+                    return {
+                        success: false,
+                        error: 'Cooldown active',
+                        message: `Please wait ${cooldownCheck.remainingSeconds} seconds before switching avatars again.`
+                    };
+                }
+
+                // Switch avatar
+                this.switchAvatar(avatar.avatarId, avatar.name);
+                this.updateAvatarSwitchCooldown(context.username);
+                this.logger.info(`👤 Avatar switched to '${avatar.name}' by ${context.username} via GCCE`);
+                return { 
+                    success: true, 
+                    message: `👤 Switched to avatar: ${avatar.name}` 
+                };
+            
+            default:
+                return { success: false, error: `Unknown action: ${action}` };
+        }
+    }
+
+    /**
+     * Handle custom command (user-defined OSC action)
+     */
+    async handleCustomCommand(cmd, args, context) {
+        const connectionError = this.checkOSCConnectionRequired();
+        if (connectionError) return connectionError;
+
+        const params = cmd.params || {};
+        const oscAddress = params.oscAddress;
+        const oscValue = params.oscValue !== undefined ? params.oscValue : 1;
+        const duration = params.duration || 0;
+
+        if (!oscAddress) {
+            return { success: false, error: 'No OSC address defined for this command' };
+        }
+
+        // Send the OSC message
+        this.send(oscAddress, oscValue);
+        this.logger.info(`🎯 Custom command '${cmd.name}' triggered by ${context.username} via GCCE - sent ${oscAddress} = ${oscValue}`);
+
+        // Auto-reset if duration is set
+        if (duration > 0) {
+            setTimeout(() => {
+                this.send(oscAddress, 0);
+            }, duration);
+        }
+
+        return { 
+            success: true, 
+            message: `✅ Custom command '${cmd.name}' triggered!` 
+        };
     }
 
     /**
@@ -873,107 +1141,70 @@ class OSCBridgePlugin {
     }
 
     /**
-     * Command Handlers for GCCE
+     * Check if avatar switch is allowed (cooldown check)
+     * @param {string} username - Username attempting the switch
+     * @returns {Object} { allowed: boolean, remainingSeconds: number }
      */
-    async handleWaveCommand(context) {
-        const connectionError = this.checkOSCConnectionRequired();
-        if (connectionError) return connectionError;
+    checkAvatarSwitchCooldown(username) {
+        const avatarSwitchConfig = this.config.chatCommands?.avatarSwitch || {};
+        const cooldownType = avatarSwitchConfig.cooldownType || 'global';
+        const cooldownSeconds = avatarSwitchConfig.cooldownSeconds || 60;
+        const now = Date.now();
 
-        this.wave();
-        this.logger.info(`👋 Wave triggered by ${context.username} via GCCE`);
-        
-        return { 
-            success: true, 
-            message: '👋 Wave animation triggered!' 
-        };
-    }
-
-    async handleCelebrateCommand(context) {
-        const connectionError = this.checkOSCConnectionRequired();
-        if (connectionError) return connectionError;
-
-        this.celebrate();
-        this.logger.info(`🎉 Celebrate triggered by ${context.username} via GCCE`);
-        
-        return { 
-            success: true, 
-            message: '🎉 Celebrate animation triggered!' 
-        };
-    }
-
-    async handleDanceCommand(context) {
-        const connectionError = this.checkOSCConnectionRequired();
-        if (connectionError) return connectionError;
-
-        this.dance();
-        this.logger.info(`💃 Dance triggered by ${context.username} via GCCE`);
-        
-        return { 
-            success: true, 
-            message: '💃 Dance animation triggered!' 
-        };
-    }
-
-    async handleHeartsCommand(context) {
-        const connectionError = this.checkOSCConnectionRequired();
-        if (connectionError) return connectionError;
-
-        this.hearts();
-        this.logger.info(`❤️ Hearts triggered by ${context.username} via GCCE`);
-        
-        return { 
-            success: true, 
-            message: '❤️ Hearts effect triggered!' 
-        };
-    }
-
-    async handleConfettiCommand(context) {
-        const connectionError = this.checkOSCConnectionRequired();
-        if (connectionError) return connectionError;
-
-        this.confetti();
-        this.logger.info(`🎊 Confetti triggered by ${context.username} via GCCE`);
-        
-        return { 
-            success: true, 
-            message: '🎊 Confetti effect triggered!' 
-        };
-    }
-
-    async handleEmoteCommand(args, context) {
-        const connectionError = this.checkOSCConnectionRequired();
-        if (connectionError) return connectionError;
-
-        const slotNumber = parseInt(args[0]);
-        
-        if (isNaN(slotNumber) || slotNumber < 0 || slotNumber > 7) {
-            return { 
-                success: false, 
-                error: 'Invalid emote slot',
-                message: 'Please specify an emote slot between 0 and 7. Usage: /emote <0-7>' 
-            };
+        if (cooldownType === 'global') {
+            // Global cooldown - applies to all users
+            if (this.avatarSwitchCooldowns.global) {
+                const elapsed = (now - this.avatarSwitchCooldowns.global) / 1000;
+                if (elapsed < cooldownSeconds) {
+                    return {
+                        allowed: false,
+                        remainingSeconds: Math.ceil(cooldownSeconds - elapsed)
+                    };
+                }
+            }
+        } else if (cooldownType === 'perUser') {
+            // Per-user cooldown
+            if (this.avatarSwitchCooldowns.perUser.has(username)) {
+                const lastSwitch = this.avatarSwitchCooldowns.perUser.get(username);
+                const elapsed = (now - lastSwitch) / 1000;
+                if (elapsed < cooldownSeconds) {
+                    return {
+                        allowed: false,
+                        remainingSeconds: Math.ceil(cooldownSeconds - elapsed)
+                    };
+                }
+            }
         }
 
-        this.triggerEmote(slotNumber);
-        this.logger.info(`😀 Emote ${slotNumber} triggered by ${context.username} via GCCE`);
-        
-        return { 
-            success: true, 
-            message: `😀 Emote slot ${slotNumber} triggered!` 
-        };
+        return { allowed: true, remainingSeconds: 0 };
+    }
+
+    /**
+     * Update cooldown timestamp after avatar switch
+     * @param {string} username - Username who switched avatar
+     */
+    updateAvatarSwitchCooldown(username) {
+        const cooldownType = this.config.chatCommands?.avatarSwitch?.cooldownType || 'global';
+        const now = Date.now();
+
+        if (cooldownType === 'global') {
+            this.avatarSwitchCooldowns.global = now;
+        } else if (cooldownType === 'perUser') {
+            this.avatarSwitchCooldowns.perUser.set(username, now);
+            
+            // Cleanup old entries (older than 1 hour)
+            const oneHourAgo = now - (60 * 60 * 1000);
+            for (const [user, timestamp] of this.avatarSwitchCooldowns.perUser.entries()) {
+                if (timestamp < oneHourAgo) {
+                    this.avatarSwitchCooldowns.perUser.delete(user);
+                }
+            }
+        }
     }
 
     async destroy() {
         // Unregister GCCE commands
-        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
-        if (gccePlugin?.instance) {
-            try {
-                gccePlugin.instance.unregisterCommandsForPlugin('osc-bridge');
-                this.logger.debug('OSC-Bridge commands unregistered from GCCE');
-            } catch (error) {
-                this.logger.error('Error unregistering GCCE commands:', error);
-            }
-        }
+        this.unregisterGCCECommands();
 
         if (this.isRunning) {
             await this.stop();
