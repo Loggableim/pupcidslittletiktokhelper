@@ -14,6 +14,7 @@ class ClarityHUDBackend {
       chat: [],
       follow: [],
       share: [],
+      like: [],
       gift: [],
       subscribe: [],
       treasure: [],
@@ -62,6 +63,7 @@ class ClarityHUDBackend {
       showChat: true,
       showFollows: true,
       showShares: true,
+      showLikes: true,
       showGifts: true,
       showSubs: true,
       showTreasureChests: true,
@@ -487,6 +489,48 @@ class ClarityHUDBackend {
       this.api.log(`Share event from ${shareEvent.user.nickname}`, 'debug');
     } catch (error) {
       this.api.log(`Error handling share event: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Handle like event
+   * Broadcasts to full HUD only
+   */
+  async handleLikeEvent(data) {
+    try {
+      // Check if full HUD has likes enabled
+      if (!this.settings.full.showLikes) {
+        return;
+      }
+
+      const likeEvent = {
+        user: {
+          uniqueId: data.username || data.uniqueId || 'unknown',
+          nickname: data.nickname || data.username || 'Anonymous',
+          profilePictureUrl: data.profilePictureUrl || null,
+          badge: data.badge || null
+        },
+        likeCount: data.likeCount || data.count || 1,
+        totalLikeCount: data.totalLikeCount || 0,
+        // Include old format fields for backward compatibility
+        uniqueId: data.username || data.uniqueId || 'unknown',
+        username: data.nickname || data.username || 'Anonymous',
+        raw: data
+      };
+
+      // Add to like queue (with type and timestamp for internal storage)
+      this.addToQueue('like', {
+        type: 'like',
+        timestamp: Date.now(),
+        ...likeEvent
+      });
+
+      // Broadcast to full HUD (without type/timestamp - overlay will add them)
+      this.api.emit('clarityhud.update.like', likeEvent);
+
+      this.api.log(`Like event from ${likeEvent.user.nickname} (count: ${likeEvent.likeCount})`, 'debug');
+    } catch (error) {
+      this.api.log(`Error handling like event: ${error.message}`, 'error');
     }
   }
 
