@@ -350,8 +350,14 @@ function renderGiftMappings(mappings) {
                 <span class="scene-target">${mapping.target}</span>
                 <span class="coins-info">(min: ${minCoins} coins)</span>
             </div>
-            <button class="remove-mapping-btn" onclick="removeGiftMapping('${giftName}')">Remove</button>
+            <button class="remove-mapping-btn" data-gift-name="${giftName}">Remove</button>
         `;
+        
+        // Add event listener to the remove button
+        const removeBtn = item.querySelector('.remove-mapping-btn');
+        removeBtn.addEventListener('click', () => {
+            removeGiftMapping(giftName);
+        });
         
         container.appendChild(item);
     }
