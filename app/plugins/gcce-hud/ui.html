@@ -286,15 +286,26 @@
         async function loadConfig() {
             try {
                 const response = await fetch('/api/gcce-hud/config');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 
                 if (data.success) {
                     config = data.config;
                     updateUI();
+                } else {
+                    throw new Error('Configuration load failed');
                 }
             } catch (error) {
                 console.error('Error loading config:', error);
-                showError();
+                const alert = document.getElementById('errorAlert');
+                if (alert) {
+                    alert.textContent = 'Failed to load configuration. Please refresh the page.';
+                    alert.classList.remove('hidden');
+                }
             }
         }
 
@@ -342,12 +353,16 @@
                     body: JSON.stringify(updatedConfig)
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const data = await response.json();
                 
                 if (data.success) {
                     showSuccess();
                 } else {
-                    showError();
+                    throw new Error('Configuration save failed');
                 }
             } catch (error) {
                 console.error('Error saving config:', error);

@@ -125,28 +125,38 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-        const container = document.getElementById('hud-container');
-        const activeElements = new Map();
+        // Socket.io connection with error handling
+        let socket;
+        try {
+            socket = io();
+        } catch (error) {
+            console.error('Failed to connect to socket.io server:', error);
+        }
+        
+        if (!socket) {
+            console.error('GCCE HUD Overlay: Socket.io is not available');
+        } else {
+            const container = document.getElementById('hud-container');
+            const activeElements = new Map();
 
-        // Listen for show event
-        socket.on('gcce-hud:show', (data) => {
-            console.log('HUD Show:', data);
-            showElement(data);
-        });
+            // Listen for show event
+            socket.on('gcce-hud:show', (data) => {
+                console.log('HUD Show:', data);
+                showElement(data);
+            });
 
-        // Listen for clear event
-        socket.on('gcce-hud:clear', () => {
-            console.log('HUD Clear all');
-            clearAll();
-        });
+            // Listen for clear event
+            socket.on('gcce-hud:clear', () => {
+                console.log('HUD Clear all');
+                clearAll();
+            });
 
-        // Listen for cleanup event
-        socket.on('gcce-hud:cleanup', (data) => {
-            console.log('HUD Cleanup:', data);
-        });
+            // Listen for cleanup event
+            socket.on('gcce-hud:cleanup', (data) => {
+                console.log('HUD Cleanup:', data);
+            });
 
-        function showElement(element) {
+            function showElement(element) {
             const { id, type, content, duration, style } = element;
 
             // Remove old element if it exists
@@ -202,16 +212,17 @@
             activeElements.forEach((el, id) => {
                 removeElement(id);
             });
+            }
+
+            // Connection status
+            socket.on('connect', () => {
+                console.log('GCCE HUD Overlay connected');
+            });
+
+            socket.on('disconnect', () => {
+                console.log('GCCE HUD Overlay disconnected');
+            });
         }
-
-        // Connection status
-        socket.on('connect', () => {
-            console.log('GCCE HUD Overlay connected');
-        });
-
-        socket.on('disconnect', () => {
-            console.log('GCCE HUD Overlay disconnected');
-        });
     </script>
 </body>
 </html>

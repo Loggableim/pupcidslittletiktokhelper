@@ -641,5 +641,8 @@
       "title": "Aktivitätsprotokoll",
       "waiting": "Warte auf Ereignisse..."
     }
+  },
+  "gcce_hud": {
+    "description": "GCCE HUD Overlay ermöglicht die Anzeige von benutzerdefiniertem Text und Bildern über Chat-Befehle. Verwenden Sie /hudtext und /hudimage Befehle im Chat, um Inhalte anzuzeigen."
   }
 }
