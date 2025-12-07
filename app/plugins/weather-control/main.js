@@ -32,6 +32,14 @@ class WeatherControlPlugin {
         this.rateLimitWindow = 60000; // 1 minute
         this.rateLimitMax = 10; // Max 10 requests per minute per user
         
+        // Duration limits (milliseconds)
+        this.minDuration = 1000; // 1 second
+        this.maxDuration = 60000; // 60 seconds
+        
+        // Intensity limits
+        this.minIntensity = 0.0;
+        this.maxIntensity = 1.0;
+        
         // API Key for external access (stored in config)
         this.apiKey = null;
     }
@@ -254,11 +262,11 @@ class WeatherControlPlugin {
                     }
                 }
 
-                // Sanitize and validate intensity (0-1)
-                const validIntensity = Math.max(0, Math.min(1, parseFloat(intensity) || this.config.effects[action].defaultIntensity));
+                // Sanitize and validate intensity
+                const validIntensity = Math.max(this.minIntensity, Math.min(this.maxIntensity, parseFloat(intensity) || this.config.effects[action].defaultIntensity));
                 
-                // Sanitize and validate duration (1000-60000ms)
-                const validDuration = Math.max(1000, Math.min(60000, parseInt(duration) || this.config.effects[action].defaultDuration));
+                // Sanitize and validate duration
+                const validDuration = Math.max(this.minDuration, Math.min(this.maxDuration, parseInt(duration) || this.config.effects[action].defaultDuration));
 
                 // Create weather event
                 const weatherEvent = {
@@ -384,8 +392,8 @@ class WeatherControlPlugin {
                     return { success: false, error: `Effect "${action}" is disabled` };
                 }
 
-                const validIntensity = Math.max(0, Math.min(1, parseFloat(intensity) || this.config.effects[action].defaultIntensity));
-                const validDuration = Math.max(1000, Math.min(60000, parseInt(duration) || this.config.effects[action].defaultDuration));
+                const validIntensity = Math.max(this.minIntensity, Math.min(this.maxIntensity, parseFloat(intensity) || this.config.effects[action].defaultIntensity));
+                const validDuration = Math.max(this.minDuration, Math.min(this.maxDuration, parseInt(duration) || this.config.effects[action].defaultDuration));
 
                 const weatherEvent = {
                     type: 'weather',
@@ -548,7 +556,7 @@ class WeatherControlPlugin {
             if (this.config.chatCommands.allowIntensityControl && args.length >= 2) {
                 const parsedIntensity = parseFloat(args[1]);
                 if (!isNaN(parsedIntensity)) {
-                    intensity = Math.max(0, Math.min(1, parsedIntensity));
+                    intensity = Math.max(this.minIntensity, Math.min(this.maxIntensity, parsedIntensity));
                 }
             }
 
@@ -557,7 +565,7 @@ class WeatherControlPlugin {
             if (this.config.chatCommands.allowDurationControl && args.length >= 3) {
                 const parsedDuration = parseInt(args[2]);
                 if (!isNaN(parsedDuration)) {
-                    duration = Math.max(1000, Math.min(60000, parsedDuration));
+                    duration = Math.max(this.minDuration, Math.min(this.maxDuration, parsedDuration));
                 }
             }
 
