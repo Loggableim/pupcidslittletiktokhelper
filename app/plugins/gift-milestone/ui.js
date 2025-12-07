@@ -4,26 +4,50 @@ let stats = null;
 let tiers = [];
 let users = [];
 let currentEditingTier = null;
+let pluginDisabled = false;
 
 // Load configuration on page load
 async function loadConfig() {
     try {
         const response = await fetch('/api/gift-milestone/config');
+        
+        // Check if plugin is disabled (404 response)
+        if (response.status === 404) {
+            handlePluginDisabled();
+            return;
+        }
+        
         const data = await response.json();
         if (data.success) {
             config = data.config;
             populateForm(config);
+            pluginDisabled = false;
         }
     } catch (error) {
         console.error('Error loading config:', error);
-        showNotification('Fehler beim Laden der Konfiguration', 'error');
+        
+        // Check if this is a network error due to plugin being disabled
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            handlePluginDisabled();
+        } else {
+            showNotification('Fehler beim Laden der Konfiguration', 'error');
+        }
     }
 }
 
 // Load tiers
 async function loadTiers() {
+    if (pluginDisabled) return;
+    
     try {
         const response = await fetch('/api/gift-milestone/tiers');
+        
+        // Check if plugin is disabled (404 response)
+        if (response.status === 404) {
+            handlePluginDisabled();
+            return;
+        }
+        
         const data = await response.json();
         if (data.success) {
             tiers = data.tiers;
@@ -31,13 +55,27 @@ async function loadTiers() {
         }
     } catch (error) {
         console.error('Error loading tiers:', error);
+        
+        // Check if this is a network error due to plugin being disabled
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            handlePluginDisabled();
+        }
     }
 }
 
 // Load user statistics
 async function loadUsers() {
+    if (pluginDisabled) return;
+    
     try {
         const response = await fetch('/api/gift-milestone/users');
+        
+        // Check if plugin is disabled (404 response)
+        if (response.status === 404) {
+            handlePluginDisabled();
+            return;
+        }
+        
         const data = await response.json();
         if (data.success) {
             users = data.users;
@@ -45,6 +83,11 @@ async function loadUsers() {
         }
     } catch (error) {
         console.error('Error loading users:', error);
+        
+        // Check if this is a network error due to plugin being disabled
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            handlePluginDisabled();
+        }
     }
 }
 
@@ -353,8 +396,17 @@ async function deleteAllUsers() {
 
 // Load statistics
 async function loadStats() {
+    if (pluginDisabled) return;
+    
     try {
         const response = await fetch('/api/gift-milestone/stats');
+        
+        // Check if plugin is disabled (404 response)
+        if (response.status === 404) {
+            handlePluginDisabled();
+            return;
+        }
+        
         const data = await response.json();
         if (data.success) {
             stats = data.stats;
@@ -363,6 +415,11 @@ async function loadStats() {
         }
     } catch (error) {
         console.error('Error loading stats:', error);
+        
+        // Check if this is a network error due to plugin being disabled
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            handlePluginDisabled();
+        }
     }
 }
 
@@ -543,6 +600,30 @@ socket.on('milestone:config-update', (data) => {
     loadConfig();
 });
 
+// Handle plugin disabled state
+function handlePluginDisabled() {
+    if (pluginDisabled) return; // Already handled
+    
+    pluginDisabled = true;
+    
+    // Show error message
+    showNotification('⚠️ Plugin ist deaktiviert! Bitte aktiviere das Plugin in den Einstellungen.', 'error');
+    
+    // Display disabled message in all sections
+    const tiersList = document.getElementById('tiersList');
+    const userStatsList = document.getElementById('userStatsList');
+    
+    if (tiersList) {
+        tiersList.innerHTML = '<div class="empty-state">⚠️ Plugin ist deaktiviert. Bitte aktiviere es in den Plugin-Einstellungen.</div>';
+    }
+    
+    if (userStatsList) {
+        userStatsList.innerHTML = '<div class="empty-state">⚠️ Plugin ist deaktiviert. Bitte aktiviere es in den Plugin-Einstellungen.</div>';
+    }
+    
+    console.warn('Gift Milestone Plugin is disabled. Please enable it in the plugin settings.');
+}
+
 // Show notification
 function showNotification(message, type = 'success') {
     const notification = document.getElementById('notification');
@@ -683,6 +764,8 @@ loadStats();
 loadTiers();
 loadUsers();
 setInterval(() => {
-    loadStats();
-    loadUsers();
+    if (!pluginDisabled) {
+        loadStats();
+        loadUsers();
+    }
 }, 5000); // Update stats every 5 seconds
