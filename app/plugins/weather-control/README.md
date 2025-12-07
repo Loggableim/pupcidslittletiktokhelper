@@ -11,6 +11,7 @@ Professional weather effects system for TikTok Live overlays with modern GPU-acc
 - **WebSocket Integration**: Real-time event streaming to overlays
 - **Flow Actions**: IFTTT automation support
 - **Gift Triggers**: Automatic weather effects based on gift value
+- **Chat Commands**: Integration with Global Chat Command Engine (GCCE)
 - **Configurable**: Intensity, duration, and visual parameters for each effect
 - **Security**: Input validation, sanitization, and API key authentication
 
@@ -23,6 +24,7 @@ The plugin is automatically loaded by the plugin loader. Enable it in the dashbo
 1. Navigate to the Dashboard
 2. Go to Plugins section
 3. Enable "Weather Control"
+4. (Optional) Enable "Global Chat Command Engine" for chat commands
 
 ### 2. Configuration
 
@@ -46,6 +48,64 @@ Add `?debug=true` to the URL to see real-time debug information:
 ```
 http://localhost:3000/weather-control/overlay?debug=true
 ```
+
+## 💬 Chat Commands (GCCE Integration)
+
+When both Weather Control and Global Chat Command Engine (GCCE) plugins are enabled, viewers can trigger weather effects via chat commands.
+
+### Commands
+
+#### `/weather <effect> [intensity] [duration]`
+Trigger a weather effect on the stream.
+
+**Parameters:**
+- `effect` (required): Weather effect name (rain, snow, storm, fog, thunder, sunbeam, glitchclouds)
+- `intensity` (optional): Effect intensity 0.0-1.0 (only if enabled in config)
+- `duration` (optional): Duration in milliseconds (only if enabled in config)
+
+**Examples:**
+```
+/weather rain
+/weather storm 0.8
+/weather snow 0.5 15000
+```
+
+#### `/weatherlist`
+List all available weather effects.
+
+**Example:**
+```
+/weatherlist
+→ "Available weather effects: 🌧️ rain, ❄️ snow, ⛈️ storm, 🌫️ fog, ⚡ thunder, ☀️ sunbeam, ☁️ glitchclouds"
+```
+
+#### `/weatherstop`
+Stop all active weather effects (requires subscriber permission or higher).
+
+**Example:**
+```
+/weatherstop
+→ "All weather effects stopped"
+```
+
+### Chat Command Configuration
+
+Configure chat commands in the Weather Control settings:
+
+```javascript
+chatCommands: {
+  enabled: true,                    // Enable/disable chat commands
+  requirePermission: true,          // Use permission system for commands
+  allowIntensityControl: false,     // Allow users to specify intensity
+  allowDurationControl: false       // Allow users to specify duration
+}
+```
+
+**Security:**
+- Permission checks are applied based on plugin settings
+- Rate limiting applies to chat commands (same as API)
+- Commands are logged for moderation
+- Permission denied events are emitted
 
 ## 🎨 Weather Effects
 

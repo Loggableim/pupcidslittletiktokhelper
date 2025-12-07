@@ -9,13 +9,39 @@
       "transition_duration": "Übergangsdauer (Sekunden)",
       "save": "Einstellungen speichern"
     },
+    "chat_commands": {
+      "title": "Chat-Befehle",
+      "enabled": "Chat-Befehle aktivieren",
+      "require_permission": "Berechtigungen erfordern",
+      "allow_intensity": "Intensitätskontrolle erlauben",
+      "allow_duration": "Dauerkontrolle erlauben",
+      "description": "Erlaube Zuschauern, Wettereffekte über Chat-Befehle auszulösen"
+    },
     "weather_types": {
       "clear": "☀️ Klar",
       "rain": "🌧️ Regen",
       "snow": "❄️ Schnee",
       "storm": "⛈️ Sturm",
       "fog": "🌫️ Nebel",
-      "wind": "💨 Wind"
+      "wind": "💨 Wind",
+      "thunder": "⚡ Donner",
+      "sunbeam": "☀️ Sonnenstrahl",
+      "glitchclouds": "☁️ Glitch-Wolken"
+    },
+    "commands": {
+      "weather": {
+        "description": "Wettereffekte im Stream auslösen",
+        "syntax": "/weather <effekt> [intensität] [dauer]",
+        "examples": "/weather rain, /weather storm 0.8"
+      },
+      "weatherlist": {
+        "description": "Alle verfügbaren Wettereffekte auflisten",
+        "syntax": "/weatherlist"
+      },
+      "weatherstop": {
+        "description": "Alle aktiven Wettereffekte stoppen",
+        "syntax": "/weatherstop"
+      }
     },
     "triggers": {
       "title": "Event-Trigger",

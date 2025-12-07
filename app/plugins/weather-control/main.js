@@ -54,6 +54,10 @@ class WeatherControlPlugin {
         this.api.log('⚡ [WEATHER CONTROL] Registering flow actions...', 'debug');
         this.registerFlowActions();
 
+        // Register GCCE commands
+        this.api.log('💬 [WEATHER CONTROL] Registering GCCE commands...', 'debug');
+        this.registerGCCECommands();
+
         this.api.log('✅ [WEATHER CONTROL] Weather Control Plugin initialized successfully', 'info');
     }
 
@@ -67,6 +71,12 @@ class WeatherControlPlugin {
                 apiKey: this.generateApiKey(),
                 useGlobalAuth: true, // Use global auth system instead of separate API key
                 rateLimitPerMinute: 10,
+                chatCommands: {
+                    enabled: true,
+                    requirePermission: true, // Use permission system for chat commands
+                    allowIntensityControl: false, // Allow users to specify intensity in command
+                    allowDurationControl: false // Allow users to specify duration in command
+                },
                 permissions: {
                     enabled: true,
                     allowAll: false,
@@ -96,6 +106,7 @@ class WeatherControlPlugin {
             
             // Ensure all default fields exist
             this.config = { ...defaultConfig, ...this.config };
+            this.config.chatCommands = { ...defaultConfig.chatCommands, ...this.config.chatCommands };
             this.config.permissions = { ...defaultConfig.permissions, ...this.config.permissions };
             this.config.effects = { ...defaultConfig.effects, ...this.config.effects };
 
@@ -398,6 +409,273 @@ class WeatherControlPlugin {
     }
 
     /**
+     * Register GCCE chat commands for weather control
+     */
+    registerGCCECommands() {
+        try {
+            // Try to get GCCE plugin instance
+            const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+            
+            if (!gccePlugin || !gccePlugin.instance) {
+                this.api.log('💬 [WEATHER CONTROL] GCCE not available, skipping command registration', 'debug');
+                return;
+            }
+
+            if (!this.config.chatCommands.enabled) {
+                this.api.log('💬 [WEATHER CONTROL] Chat commands disabled in config', 'debug');
+                return;
+            }
+
+            const gcce = gccePlugin.instance;
+            
+            // Define weather commands
+            const commands = [
+                {
+                    name: 'weather',
+                    description: 'Trigger weather effects on the stream',
+                    syntax: '/weather <effect> [intensity] [duration]',
+                    permission: 'all', // Permission check handled by weather plugin
+                    enabled: true,
+                    minArgs: 1,
+                    maxArgs: 3,
+                    category: 'Weather',
+                    handler: async (args, context) => await this.handleWeatherCommand(args, context)
+                },
+                {
+                    name: 'weatherlist',
+                    description: 'List all available weather effects',
+                    syntax: '/weatherlist',
+                    permission: 'all',
+                    enabled: true,
+                    minArgs: 0,
+                    maxArgs: 0,
+                    category: 'Weather',
+                    handler: async (args, context) => await this.handleWeatherListCommand(args, context)
+                },
+                {
+                    name: 'weatherstop',
+                    description: 'Stop all active weather effects',
+                    syntax: '/weatherstop',
+                    permission: 'subscriber', // Only subscribers and above can stop
+                    enabled: true,
+                    minArgs: 0,
+                    maxArgs: 0,
+                    category: 'Weather',
+                    handler: async (args, context) => await this.handleWeatherStopCommand(args, context)
+                }
+            ];
+
+            // Register commands with GCCE
+            const result = gcce.registerCommandsForPlugin('weather-control', commands);
+            
+            this.api.log(`💬 [WEATHER CONTROL] Registered ${result.registered.length} commands with GCCE`, 'info');
+            
+            if (result.failed.length > 0) {
+                this.api.log(`💬 [WEATHER CONTROL] Failed to register commands: ${result.failed.join(', ')}`, 'warn');
+            }
+
+        } catch (error) {
+            this.api.log(`❌ [WEATHER CONTROL] Error registering GCCE commands: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Handle /weather command
+     */
+    async handleWeatherCommand(args, context) {
+        try {
+            if (!this.config.enabled) {
+                return {
+                    success: false,
+                    error: 'Weather effects are currently disabled',
+                    displayOverlay: true
+                };
+            }
+
+            const effectName = args[0].toLowerCase();
+            
+            // Check if effect exists and is enabled
+            if (!this.supportedEffects.includes(effectName)) {
+                return {
+                    success: false,
+                    error: `Unknown weather effect: ${effectName}. Use /weatherlist to see available effects.`,
+                    displayOverlay: true
+                };
+            }
+
+            if (!this.config.effects[effectName]?.enabled) {
+                return {
+                    success: false,
+                    error: `Weather effect "${effectName}" is disabled`,
+                    displayOverlay: true
+                };
+            }
+
+            // Permission check
+            if (this.config.chatCommands.requirePermission && this.config.permissions.enabled) {
+                const hasPermission = await this.checkUserPermission(context.username);
+                if (!hasPermission) {
+                    this.api.log(`🚫 [WEATHER CONTROL] Permission denied for user ${context.username}`, 'debug');
+                    
+                    // Emit permission denied event
+                    this.api.emit('weather:permission-denied', {
+                        username: context.username,
+                        action: effectName,
+                        timestamp: Date.now()
+                    });
+                    
+                    return {
+                        success: false,
+                        error: 'You do not have permission to trigger weather effects',
+                        displayOverlay: true
+                    };
+                }
+            }
+
+            // Rate limiting check
+            const rateLimitResult = this.checkRateLimit(context.username);
+            if (!rateLimitResult.allowed) {
+                this.api.log(`⏱️ [WEATHER CONTROL] Rate limit exceeded for ${context.username}`, 'debug');
+                return {
+                    success: false,
+                    error: `You are sending commands too quickly. Please wait ${rateLimitResult.retryAfter} seconds.`,
+                    displayOverlay: true
+                };
+            }
+
+            // Parse intensity (if allowed and provided)
+            let intensity = this.config.effects[effectName].defaultIntensity;
+            if (this.config.chatCommands.allowIntensityControl && args.length >= 2) {
+                const parsedIntensity = parseFloat(args[1]);
+                if (!isNaN(parsedIntensity)) {
+                    intensity = Math.max(0, Math.min(1, parsedIntensity));
+                }
+            }
+
+            // Parse duration (if allowed and provided)
+            let duration = this.config.effects[effectName].defaultDuration;
+            if (this.config.chatCommands.allowDurationControl && args.length >= 3) {
+                const parsedDuration = parseInt(args[2]);
+                if (!isNaN(parsedDuration)) {
+                    duration = Math.max(1000, Math.min(60000, parsedDuration));
+                }
+            }
+
+            // Create weather event
+            const weatherEvent = {
+                type: 'weather',
+                action: effectName,
+                intensity,
+                duration,
+                username: context.username,
+                meta: { triggeredBy: 'chat-command' },
+                timestamp: Date.now()
+            };
+
+            // Log and emit
+            this.api.log(`🌦️ [WEATHER CONTROL] Chat command triggered: ${effectName} by ${context.username}`, 'info');
+            this.api.emit('weather:trigger', weatherEvent);
+
+            return {
+                success: true,
+                message: `Triggered ${effectName} weather effect!`,
+                displayOverlay: true,
+                data: weatherEvent
+            };
+
+        } catch (error) {
+            this.api.log(`❌ [WEATHER CONTROL] Error in weather command: ${error.message}`, 'error');
+            return {
+                success: false,
+                error: 'Failed to trigger weather effect',
+                displayOverlay: true
+            };
+        }
+    }
+
+    /**
+     * Handle /weatherlist command
+     */
+    async handleWeatherListCommand(args, context) {
+        try {
+            // Get enabled effects
+            const enabledEffects = this.supportedEffects.filter(effect => 
+                this.config.effects[effect]?.enabled
+            );
+
+            if (enabledEffects.length === 0) {
+                return {
+                    success: true,
+                    message: 'No weather effects are currently available.',
+                    displayOverlay: true
+                };
+            }
+
+            // Create formatted list with emojis
+            const effectEmojis = {
+                rain: '🌧️',
+                snow: '❄️',
+                storm: '⛈️',
+                fog: '🌫️',
+                thunder: '⚡',
+                sunbeam: '☀️',
+                glitchclouds: '☁️'
+            };
+
+            const effectList = enabledEffects.map(effect => 
+                `${effectEmojis[effect] || '🌦️'} ${effect}`
+            ).join(', ');
+
+            return {
+                success: true,
+                message: `Available weather effects: ${effectList}`,
+                displayOverlay: true,
+                data: {
+                    effects: enabledEffects,
+                    total: enabledEffects.length
+                }
+            };
+
+        } catch (error) {
+            this.api.log(`❌ [WEATHER CONTROL] Error in weatherlist command: ${error.message}`, 'error');
+            return {
+                success: false,
+                error: 'Failed to list weather effects',
+                displayOverlay: true
+            };
+        }
+    }
+
+    /**
+     * Handle /weatherstop command
+     */
+    async handleWeatherStopCommand(args, context) {
+        try {
+            // Emit stop event to overlay
+            this.api.emit('weather:stop', {
+                username: context.username,
+                timestamp: Date.now()
+            });
+
+            this.api.log(`🛑 [WEATHER CONTROL] Weather effects stopped by ${context.username}`, 'info');
+
+            return {
+                success: true,
+                message: 'All weather effects stopped',
+                displayOverlay: true
+            };
+
+        } catch (error) {
+            this.api.log(`❌ [WEATHER CONTROL] Error in weatherstop command: ${error.message}`, 'error');
+            return {
+                success: false,
+                error: 'Failed to stop weather effects',
+                displayOverlay: true
+            };
+        }
+    }
+
+    /**
      * Check if user has permission to trigger weather effects
      */
     async checkUserPermission(username) {
@@ -536,6 +814,17 @@ class WeatherControlPlugin {
      */
     async destroy() {
         this.api.log('🌦️ [WEATHER CONTROL] Destroying Weather Control Plugin...', 'info');
+        
+        // Unregister GCCE commands
+        try {
+            const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+            if (gccePlugin?.instance) {
+                gccePlugin.instance.unregisterCommandsForPlugin('weather-control');
+                this.api.log('💬 [WEATHER CONTROL] Unregistered GCCE commands', 'debug');
+            }
+        } catch (error) {
+            this.api.log(`❌ [WEATHER CONTROL] Error unregistering GCCE commands: ${error.message}`, 'error');
+        }
         
         // Clear rate limit cache
         this.userRateLimit.clear();
