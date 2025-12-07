@@ -549,7 +549,7 @@ class WeatherControlPlugin {
 
             // Permission check
             if (this.config.chatCommands.requirePermission && this.config.permissions.enabled) {
-                const hasPermission = await this.checkUserPermission(context.username);
+                const hasPermission = await this.checkUserPermission(context.username, context.userData);
                 if (!hasPermission) {
                     this.api.log(`🚫 [WEATHER CONTROL] Permission denied for user ${context.username}`, 'debug');
                     
@@ -713,8 +713,9 @@ class WeatherControlPlugin {
 
     /**
      * Check if user has permission to trigger weather effects
+     * Uses userData from GCCE context to avoid redundant DB queries
      */
-    async checkUserPermission(username) {
+    async checkUserPermission(username, contextUserData = null) {
         try {
             const permissions = this.config.permissions;
 
@@ -728,9 +729,17 @@ class WeatherControlPlugin {
                 return true;
             }
 
-            // Get user data from database
-            const db = this.api.getDatabase();
-            const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+            // Use context userData if provided (from GCCE)
+            let user = null;
+            if (contextUserData?.dbUser) {
+                user = contextUserData.dbUser;
+                this.api.log('🔍 [WEATHER CONTROL] Using cached user data from GCCE', 'debug');
+            } else {
+                // Fallback: Get user data from database
+                const db = this.api.getDatabase();
+                user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+                this.api.log('🔍 [WEATHER CONTROL] Fetching user data from database (fallback)', 'debug');
+            }
 
             if (!user) {
                 // User not in database, deny by default
