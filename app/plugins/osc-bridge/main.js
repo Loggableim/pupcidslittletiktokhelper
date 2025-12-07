@@ -858,16 +858,26 @@ class OSCBridgePlugin {
     }
 
     /**
-     * Command Handlers for GCCE
+     * Helper method to check if OSC connection is required and available
+     * @returns {Object|null} Error object if connection check fails, null if ok
      */
-    async handleWaveCommand(context) {
-        if (this.config.chatCommands.requireOSCConnection && !this.isRunning) {
+    checkOSCConnectionRequired() {
+        if (this.config.chatCommands?.requireOSCConnection && !this.isRunning) {
             return { 
                 success: false, 
                 error: 'OSC-Bridge is not connected',
                 message: 'VRChat OSC is not connected. Please start the bridge first.' 
             };
         }
+        return null;
+    }
+
+    /**
+     * Command Handlers for GCCE
+     */
+    async handleWaveCommand(context) {
+        const connectionError = this.checkOSCConnectionRequired();
+        if (connectionError) return connectionError;
 
         this.wave();
         this.logger.info(`👋 Wave triggered by ${context.username} via GCCE`);
@@ -879,13 +889,8 @@ class OSCBridgePlugin {
     }
 
     async handleCelebrateCommand(context) {
-        if (this.config.chatCommands.requireOSCConnection && !this.isRunning) {
-            return { 
-                success: false, 
-                error: 'OSC-Bridge is not connected',
-                message: 'VRChat OSC is not connected. Please start the bridge first.' 
-            };
-        }
+        const connectionError = this.checkOSCConnectionRequired();
+        if (connectionError) return connectionError;
 
         this.celebrate();
         this.logger.info(`🎉 Celebrate triggered by ${context.username} via GCCE`);
@@ -897,13 +902,8 @@ class OSCBridgePlugin {
     }
 
     async handleDanceCommand(context) {
-        if (this.config.chatCommands.requireOSCConnection && !this.isRunning) {
-            return { 
-                success: false, 
-                error: 'OSC-Bridge is not connected',
-                message: 'VRChat OSC is not connected. Please start the bridge first.' 
-            };
-        }
+        const connectionError = this.checkOSCConnectionRequired();
+        if (connectionError) return connectionError;
 
         this.dance();
         this.logger.info(`💃 Dance triggered by ${context.username} via GCCE`);
@@ -915,13 +915,8 @@ class OSCBridgePlugin {
     }
 
     async handleHeartsCommand(context) {
-        if (this.config.chatCommands.requireOSCConnection && !this.isRunning) {
-            return { 
-                success: false, 
-                error: 'OSC-Bridge is not connected',
-                message: 'VRChat OSC is not connected. Please start the bridge first.' 
-            };
-        }
+        const connectionError = this.checkOSCConnectionRequired();
+        if (connectionError) return connectionError;
 
         this.hearts();
         this.logger.info(`❤️ Hearts triggered by ${context.username} via GCCE`);
@@ -933,13 +928,8 @@ class OSCBridgePlugin {
     }
 
     async handleConfettiCommand(context) {
-        if (this.config.chatCommands.requireOSCConnection && !this.isRunning) {
-            return { 
-                success: false, 
-                error: 'OSC-Bridge is not connected',
-                message: 'VRChat OSC is not connected. Please start the bridge first.' 
-            };
-        }
+        const connectionError = this.checkOSCConnectionRequired();
+        if (connectionError) return connectionError;
 
         this.confetti();
         this.logger.info(`🎊 Confetti triggered by ${context.username} via GCCE`);
@@ -951,13 +941,8 @@ class OSCBridgePlugin {
     }
 
     async handleEmoteCommand(args, context) {
-        if (this.config.chatCommands.requireOSCConnection && !this.isRunning) {
-            return { 
-                success: false, 
-                error: 'OSC-Bridge is not connected',
-                message: 'VRChat OSC is not connected. Please start the bridge first.' 
-            };
-        }
+        const connectionError = this.checkOSCConnectionRequired();
+        if (connectionError) return connectionError;
 
         const slotNumber = parseInt(args[0]);
         

@@ -4,6 +4,8 @@
  * Tests the integration between OSC-Bridge plugin and GCCE
  */
 
+const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
 describe('OSC-Bridge GCCE Integration', () => {
     let oscBridgePlugin;
     let mockApi;
@@ -59,7 +61,7 @@ describe('OSC-Bridge GCCE Integration', () => {
             });
 
             // Load plugin
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             // Mock config with chat commands enabled
@@ -98,7 +100,7 @@ describe('OSC-Bridge GCCE Integration', () => {
             });
 
             // Load plugin
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             // Mock config with chat commands disabled
@@ -117,7 +119,7 @@ describe('OSC-Bridge GCCE Integration', () => {
             // Don't set up GCCE plugin (not available)
             
             // Load plugin
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
 
             // Mock config with chat commands enabled
@@ -143,7 +145,7 @@ describe('OSC-Bridge GCCE Integration', () => {
             });
 
             // Load plugin
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             // Mock config with chat commands enabled
@@ -275,7 +277,7 @@ describe('OSC-Bridge GCCE Integration', () => {
                 instance: mockGcceInstance
             });
 
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             mockApi.getConfig.mockResolvedValueOnce({
@@ -297,7 +299,7 @@ describe('OSC-Bridge GCCE Integration', () => {
                 instance: mockGcceInstance
             });
 
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             mockApi.getConfig.mockResolvedValueOnce({
@@ -319,7 +321,7 @@ describe('OSC-Bridge GCCE Integration', () => {
                 instance: mockGcceInstance
             });
 
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             mockApi.getConfig.mockResolvedValueOnce({
@@ -345,7 +347,7 @@ describe('OSC-Bridge GCCE Integration', () => {
             });
 
             // Load plugin
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             mockApi.getConfig.mockResolvedValueOnce({
@@ -369,7 +371,7 @@ describe('OSC-Bridge GCCE Integration', () => {
         test('should handle destroy gracefully when GCCE not available', async () => {
             // Don't set up GCCE plugin
             
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             mockApi.getConfig.mockResolvedValueOnce({
@@ -390,7 +392,7 @@ describe('OSC-Bridge GCCE Integration', () => {
 
     describe('Configuration', () => {
         test('should use default chat commands config', async () => {
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             const defaultConfig = oscBridgePlugin.getDefaultConfig();
@@ -407,7 +409,7 @@ describe('OSC-Bridge GCCE Integration', () => {
                 instance: mockGcceInstance
             });
 
-            const OSCBridgePlugin = require('../plugins/osc-bridge/main.js');
+
             oscBridgePlugin = new OSCBridgePlugin(mockApi);
             
             mockApi.getConfig.mockResolvedValueOnce({

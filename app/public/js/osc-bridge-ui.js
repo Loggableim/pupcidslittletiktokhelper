@@ -46,7 +46,7 @@ function populateForm(config) {
         const rateLimitPerMinute = document.getElementById('rateLimitPerMinute');
         
         if (chatCommandsEnabled) chatCommandsEnabled.checked = config.chatCommands.enabled || false;
-        if (requireOSCConnection) requireOSCConnection.checked = config.chatCommands.requireOSCConnection !== false; // default true
+        if (requireOSCConnection) requireOSCConnection.checked = config.chatCommands.requireOSCConnection ?? true; // default true
         if (cooldownSeconds) cooldownSeconds.value = config.chatCommands.cooldownSeconds || 3;
         if (rateLimitPerMinute) rateLimitPerMinute.value = config.chatCommands.rateLimitPerMinute || 10;
     }
