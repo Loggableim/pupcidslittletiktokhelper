@@ -24,6 +24,42 @@
       "stop": "Stop Bridge",
       "test": "Send Test Signal"
     },
+    "chat_commands": {
+      "title": "Chat Commands (GCCE Integration)",
+      "enabled": "Enable chat commands",
+      "require_osc_connection": "Require OSC connection",
+      "cooldown": "Cooldown (seconds)",
+      "rate_limit": "Rate limit (per minute)",
+      "description": "Allow viewers to trigger VRChat actions via chat commands",
+      "info_text": "When enabled, viewers can control VRChat actions directly through chat commands. All commands are processed through the Global Chat Command Engine (GCCE)."
+    },
+    "commands": {
+      "wave": {
+        "description": "Trigger wave animation in VRChat",
+        "syntax": "/wave"
+      },
+      "celebrate": {
+        "description": "Trigger celebrate animation in VRChat",
+        "syntax": "/celebrate"
+      },
+      "dance": {
+        "description": "Trigger dance animation in VRChat (Subscriber)",
+        "syntax": "/dance"
+      },
+      "hearts": {
+        "description": "Trigger hearts effect in VRChat",
+        "syntax": "/hearts"
+      },
+      "confetti": {
+        "description": "Trigger confetti effect in VRChat",
+        "syntax": "/confetti"
+      },
+      "emote": {
+        "description": "Trigger VRChat emote slot (Subscriber)",
+        "syntax": "/emote <0-7>",
+        "examples": "/emote 0, /emote 3"
+      }
+    },
     "parameter_tester": {
       "title": "VRChat Parameter Tester",
       "description": "Click a button to trigger the corresponding VRChat parameter:",

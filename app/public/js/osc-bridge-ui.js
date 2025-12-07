@@ -37,6 +37,19 @@ function populateForm(config) {
     document.getElementById('sendPort').value = config.sendPort || 9000;
     document.getElementById('receivePort').value = config.receivePort || 9001;
     document.getElementById('verboseMode').checked = config.verboseMode || false;
+    
+    // Populate chat commands settings
+    if (config.chatCommands) {
+        const chatCommandsEnabled = document.getElementById('chatCommandsEnabled');
+        const requireOSCConnection = document.getElementById('requireOSCConnection');
+        const cooldownSeconds = document.getElementById('cooldownSeconds');
+        const rateLimitPerMinute = document.getElementById('rateLimitPerMinute');
+        
+        if (chatCommandsEnabled) chatCommandsEnabled.checked = config.chatCommands.enabled || false;
+        if (requireOSCConnection) requireOSCConnection.checked = config.chatCommands.requireOSCConnection !== false; // default true
+        if (cooldownSeconds) cooldownSeconds.value = config.chatCommands.cooldownSeconds || 3;
+        if (rateLimitPerMinute) rateLimitPerMinute.value = config.chatCommands.rateLimitPerMinute || 10;
+    }
 }
 
 function toggleLogViewer(show) {
@@ -111,6 +124,58 @@ if (configForm) {
             toggleLogViewer(currentConfig.verboseMode);
         } else {
             alert('Fehler beim Speichern: ' + data.error);
+        }
+    });
+}
+
+// Chat Commands form handler
+const chatCommandsForm = document.getElementById('chat-commands-form');
+if (chatCommandsForm) {
+    chatCommandsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const chatCommandsEnabled = document.getElementById('chatCommandsEnabled');
+        const requireOSCConnection = document.getElementById('requireOSCConnection');
+        const cooldownSeconds = document.getElementById('cooldownSeconds');
+        const rateLimitPerMinute = document.getElementById('rateLimitPerMinute');
+
+        if (!chatCommandsEnabled || !requireOSCConnection || !cooldownSeconds || !rateLimitPerMinute) {
+            console.warn('Chat commands form elements not found');
+            return;
+        }
+
+        // Get current config first to preserve other settings
+        const getCurrentConfigResponse = await fetch('/api/osc/config');
+        const getCurrentConfigData = await getCurrentConfigResponse.json();
+        
+        if (!getCurrentConfigData.success) {
+            alert('Error loading current configuration');
+            return;
+        }
+
+        const updatedConfig = {
+            ...getCurrentConfigData.config,
+            chatCommands: {
+                enabled: chatCommandsEnabled.checked,
+                requireOSCConnection: requireOSCConnection.checked,
+                cooldownSeconds: parseInt(cooldownSeconds.value),
+                rateLimitPerMinute: parseInt(rateLimitPerMinute.value)
+            }
+        };
+
+        const response = await fetch('/api/osc/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedConfig)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Chat command settings saved!');
+            currentConfig = data.config;
+        } else {
+            alert('Error saving chat command settings: ' + data.error);
         }
     });
 }
