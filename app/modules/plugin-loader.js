@@ -664,6 +664,12 @@ class PluginLoader extends EventEmitter {
                 return null;
             }
 
+            // Check for permanently disabled plugins
+            if (manifest.disabled === true) {
+                this.logger.info(`Plugin ${manifest.id} is permanently disabled, skipping`);
+                return null;
+            }
+
             // State prüfen
             const pluginState = this.state[manifest.id] || {};
             const isEnabled = pluginState.enabled !== undefined ? pluginState.enabled : manifest.enabled !== false;
