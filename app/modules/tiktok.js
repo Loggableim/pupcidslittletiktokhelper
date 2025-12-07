@@ -949,6 +949,39 @@ class TikTokConnector extends EventEmitter {
     }
 
     /**
+     * Extract profile picture URL from TikTok user object
+     * TikTok can provide profile pictures in different formats:
+     * - As a string URL (legacy)
+     * - As an object with url array field (current format from Eulerstream)
+     * @private
+     */
+    extractProfilePictureUrl(user) {
+        if (!user) return '';
+
+        // Try various fields that might contain the profile picture
+        const pictureData = user.profilePictureUrl || user.profilePicture || user.avatarThumb || user.avatarLarger || user.avatarUrl;
+        
+        if (!pictureData) return '';
+
+        // If it's already a string URL, return it
+        if (typeof pictureData === 'string') {
+            return pictureData;
+        }
+
+        // If it's an object with url array (Eulerstream format), extract the first URL
+        if (pictureData.url && Array.isArray(pictureData.url) && pictureData.url.length > 0) {
+            return pictureData.url[0];
+        }
+
+        // If it's an object with urlList array (alternative format)
+        if (pictureData.urlList && Array.isArray(pictureData.urlList) && pictureData.urlList.length > 0) {
+            return pictureData.urlList[0];
+        }
+
+        return '';
+    }
+
+    /**
      * Extract user data from event
      * @private
      */
@@ -992,7 +1025,7 @@ class TikTokConnector extends EventEmitter {
             username: user.uniqueId || user.username || null,
             nickname: user.nickname || user.displayName || null,
             userId: user.userId || user.id || null,
-            profilePictureUrl: user.profilePictureUrl || user.profilePicture || null,
+            profilePictureUrl: this.extractProfilePictureUrl(user),
             teamMemberLevel: teamMemberLevel,
             isModerator: data.userIdentity?.isModeratorOfAnchor || false,
             isSubscriber: data.userIdentity?.isSubscriberOfAnchor || false
