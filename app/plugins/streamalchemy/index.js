@@ -842,11 +842,6 @@ class StreamAlchemyPlugin {
      */
     async handleChatCommand(userId, command, args) {
         this.api.log(`[STREAMALCHEMY] Chat command received: ${command} from ${userId}`, 'debug');
-        
-    }
-
-            this.api.log(`[STREAMALCHEMY] Failed to register commands: ${result.failed.join(', ')}`, 'warn');
-        }
     }
 
     /**
