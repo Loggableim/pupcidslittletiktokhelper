@@ -440,7 +440,10 @@ function initializeSocketListeners() {
         console.log(`🔄 Profile switched from "${data.from}" to "${data.to}"`);
         
         if (data.requiresRestart) {
-            const message = `Profil wurde zu "${data.to}" gewechselt.\n\nDie Anwendung wird neu geladen, um das neue Profil zu aktivieren...`;
+            const message = window.i18n 
+                ? window.i18n.t('profile.switched_notification', { profile: data.to }) || 
+                  `Profil wurde zu "${data.to}" gewechselt.\n\nDie Anwendung wird neu geladen, um das neue Profil zu aktivieren...`
+                : `Profile switched to "${data.to}".\n\nThe application will reload to activate the new profile...`;
             alert(message);
             
             // Auto-reload after 2 seconds
@@ -502,8 +505,10 @@ async function connect() {
                 console.log(`🔄 Profile automatically switched to: ${result.newProfile}`);
                 
                 // Show notification about profile switch and restart
-                const message = result.message || 
-                    `Profile wurde automatisch zu "${result.newProfile}" gewechselt. Die Anwendung wird neu gestartet...`;
+                const message = result.message || (window.i18n 
+                    ? window.i18n.t('profile.auto_switched', { profile: result.newProfile }) || 
+                      `Profile wurde automatisch zu "${result.newProfile}" gewechselt. Die Anwendung wird neu gestartet...`
+                    : `Profile automatically switched to "${result.newProfile}". Application will restart...`);
                 
                 alert(message);
                 

@@ -9,11 +9,12 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const UserProfileManager = require('../modules/user-profiles');
 const ConfigPathManager = require('../modules/config-path-manager');
 
-// Use temp directory for tests
-const TEST_CONFIG_DIR = '/tmp/test-auto-profile-creation';
+// Use temp directory for tests (cross-platform compatible)
+const TEST_CONFIG_DIR = path.join(os.tmpdir(), 'test-auto-profile-creation');
 
 describe('Automatic Profile Creation and Switching', () => {
     let profileManager;
