@@ -224,7 +224,7 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     opacity: 1;
-    transition: opacity var(--transition-speed) ease, color var(--transition-speed) ease;
+    transition: opacity var(--transition-speed) ease;
 }
 
 /* Responsive: smaller text on small screens */

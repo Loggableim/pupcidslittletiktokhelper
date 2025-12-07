@@ -210,7 +210,6 @@ class ThemeManager {
 
     updateSidebarLogo(theme) {
         const miniIcon = document.getElementById('sidebar-mini-icon');
-        const logoText = document.querySelector('.sidebar-logo-text');
         
         const miniLogoMap = {
             day: '/ltthmini_daymode.png',
@@ -221,12 +220,6 @@ class ThemeManager {
         // Update mini logo icon
         if (miniIcon) {
             miniIcon.src = miniLogoMap[theme] || miniLogoMap.night;
-        }
-        
-        // Update logo text color based on theme
-        if (logoText) {
-            // Colors are already defined in CSS variables based on theme
-            // The text will automatically adapt to theme via CSS
         }
     }
 
