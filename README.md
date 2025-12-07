@@ -157,6 +157,8 @@ pupcidslittletiktokhelper/
 
 - **[App-Dokumentation](app/README.md)** - Vollständige Features, API, Troubleshooting
 - **[Build-Anleitung](build-src/README.md)** - Windows Launcher kompilieren
+- **[Desktop App Migration](DESKTOP_APP_MIGRATION_OPTIONEN.md)** - Alternativen zu Electron
+- **[Migration Guides](migration-guides/)** - Step-by-Step Anleitungen (NSIS, NW.js, Tauri)
 - **[Copilot Guidelines](.github/copilot-instructions.md)** - Development standards
 - **[Changelog](app/CHANGELOG.md)** - Version history
 
