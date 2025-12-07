@@ -10,11 +10,14 @@
 
 const logger = require('./logger');
 
+// Default streamer ID for backwards compatibility
+const DEFAULT_STREAMER_ID = 'default';
+
 class LeaderboardManager {
   constructor(db, io = null, streamerId = null) {
     this.db = db;
     this.io = io;
-    this.streamerId = streamerId || 'default';
+    this.streamerId = streamerId || DEFAULT_STREAMER_ID;
     this.initDatabase();
     this.sessionStart = Date.now();
   }
@@ -94,7 +97,7 @@ class LeaderboardManager {
             INSERT INTO leaderboard_stats_new
             SELECT 
               username,
-              'default' as streamer_id,
+              ? as streamer_id,
               total_coins,
               message_count,
               like_count,
@@ -106,7 +109,7 @@ class LeaderboardManager {
               session_coins,
               session_messages
             FROM leaderboard_stats
-          `).run();
+          `).run(DEFAULT_STREAMER_ID);
 
           // Drop old table and rename new one
           this.db.prepare('DROP TABLE leaderboard_stats').run();
@@ -148,7 +151,7 @@ class LeaderboardManager {
    */
   updateStats(username, eventType, data = {}) {
     const now = Date.now();
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
 
     // Get existing stats
     let stats = this.db.prepare(
@@ -267,7 +270,7 @@ class LeaderboardManager {
       period = 'all_time';
     }
 
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
     const column = period === 'session' ? 'session_coins' : 'total_coins';
 
     return this.db.prepare(`
@@ -294,7 +297,7 @@ class LeaderboardManager {
       period = 'all_time';
     }
 
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
     const column = period === 'session' ? 'session_messages' : 'message_count';
 
     return this.db.prepare(`
@@ -320,7 +323,7 @@ class LeaderboardManager {
       period = 'all_time';
     }
 
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
     const column = period === 'session' ? 'session_coins' : 'total_coins';
 
     const rank = this.db.prepare(`
@@ -340,7 +343,7 @@ class LeaderboardManager {
    * Get user stats
    */
   getUserStats(username) {
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
     return this.db.prepare(
       'SELECT * FROM leaderboard_stats WHERE username = ? AND streamer_id = ?'
     ).get(username, sid);
@@ -350,7 +353,7 @@ class LeaderboardManager {
    * Reset session stats
    */
   resetSessionStats() {
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
     this.db.prepare(`
       UPDATE leaderboard_stats
       SET session_coins = 0, session_messages = 0
@@ -365,7 +368,7 @@ class LeaderboardManager {
    * Reset all stats
    */
   resetAllStats() {
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
     this.db.prepare('DELETE FROM leaderboard_stats WHERE streamer_id = ?').run(sid);
     this.sessionStart = Date.now();
     logger.info('All leaderboard stats reset for streamer:', sid);
@@ -375,7 +378,7 @@ class LeaderboardManager {
    * Get leaderboard summary
    */
   getSummary() {
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
     const stats = this.db.prepare(`
       SELECT
         COUNT(*) as total_users,
@@ -397,7 +400,7 @@ class LeaderboardManager {
    * Export leaderboard data
    */
   exportData() {
-    const sid = this.streamerId || 'default';
+    const sid = this.streamerId || DEFAULT_STREAMER_ID;
     return this.db.prepare('SELECT * FROM leaderboard_stats WHERE streamer_id = ? ORDER BY total_coins DESC').all(sid);
   }
 

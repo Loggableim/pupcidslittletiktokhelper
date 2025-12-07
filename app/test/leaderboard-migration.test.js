@@ -162,7 +162,7 @@ describe('Leaderboard Migration: streamer_id column', () => {
     db = new Database(tempDbPath);
     
     // Initialize LeaderboardManager first time
-    let leaderboard1 = new LeaderboardManager(db, null, 'test_streamer');
+    const leaderboard1 = new LeaderboardManager(db, null, 'test_streamer');
 
     // Add some data
     const now = Date.now();
@@ -173,7 +173,7 @@ describe('Leaderboard Migration: streamer_id column', () => {
     `).run('testuser1', 'streamer1', 100, 50, now, now, 10, 5);
 
     // Initialize LeaderboardManager second time (should not cause issues)
-    let leaderboard2 = new LeaderboardManager(db, null, 'test_streamer');
+    const leaderboard2 = new LeaderboardManager(db, null, 'test_streamer');
 
     // Verify data is still intact
     const users = db.prepare('SELECT * FROM leaderboard_stats').all();
@@ -181,6 +181,9 @@ describe('Leaderboard Migration: streamer_id column', () => {
     expect(users[0].username).toBe('testuser1');
     expect(users[0].streamer_id).toBe('streamer1');
     expect(users[0].total_coins).toBe(100);
+
+    // leaderboard1 and leaderboard2 share the same db connection
+    // which gets cleaned up in afterEach
   });
 
   test('should work with updateStats after migration', () => {
