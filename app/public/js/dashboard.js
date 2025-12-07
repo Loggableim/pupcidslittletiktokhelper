@@ -744,6 +744,11 @@ function updateStreamTimeDebug(info) {
 // ========== EVENT LOG ==========
 function addEventToLog(type, data) {
     const logTable = document.getElementById('event-log');
+    if (!logTable) {
+        console.warn('Event log element not found, skipping event display');
+        return;
+    }
+    
     const row = document.createElement('tr');
     row.className = 'event-row border-b border-gray-700';
 
