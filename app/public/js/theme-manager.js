@@ -114,7 +114,7 @@ class ThemeManager {
         // Find the topbar-right container
         const topbarRight = document.querySelector('.topbar-right');
         if (!topbarRight) {
-            console.warn('Topbar-right container not found');
+            console.debug('Theme toggle not created: topbar-right container not found (this is normal for overlay pages)');
             return;
         }
 
