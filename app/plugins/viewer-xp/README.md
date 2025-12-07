@@ -15,20 +15,38 @@ Ein umfassendes Gamification-System für TikTok-Streamer, das Zuschauer durch XP
 
 ### Overlays
 - **XP Bar**: Live-Anzeige mit XP-Fortschritt, Level und animierten Updates
-- **Leaderboard**: Top-Viewer-Rangliste (All-Time, 7 Tage, 30 Tage)
+- **Leaderboard**: Top-Viewer-Rangliste (All-Time, 7 Tage, 30 Tage) mit modernen Animationen
 - **Level-Up-Animationen**: Einblendungen bei Level-Aufstiegen mit Konfetti und Sound
+- **User Profile Card** 🆕: Detaillierte Profil-Karte mit Stats, Badges, Rang und animiertem XP-Balken
+
+### Chat Commands (GCCE Integration)
+- **/xp [username]**: Zeige XP, Level und Fortschritt
+- **/rank [username]**: Zeige Rang im Leaderboard
+- **/profile [username]** 🆕: Zeige detailliertes Profil im Overlay
+- **/stats [username]** 🆕: Zeige umfassende Statistiken im HUD
+- **/top [limit]**: Zeige Top-Viewer im HUD
+- **/leaderboard [limit]**: Zeige Leaderboard-Overlay
 
 ### Admin Panel
 - **Viewer-Management**: Detaillierte Ansicht aller Zuschauer-Profile
 - **Statistik-Dashboard**: Übersicht über Gesamtstatistiken
+- **Live Preview** 🆕: Vorschau aller Overlays vor Integration in OBS
+  - Overlay-Auswahl mit Echtzeit-Preview
+  - Skalierungs-Optionen (50%, 75%, 100%)
+  - Test-Controls zum Triggern von Events
+  - OBS URL Copy-Funktion
 - **XP-Konfiguration**: Anpassbare XP-Werte für alle Aktionen
-- **Level-System-Konfiguration**: Wählbare Level-Progression (Exponentiell, Linear, Logarithmisch, Custom)
-  - Definiere eigene XP-Anforderungen für jedes Level
-  - Custom-Titel und Farben pro Level
-  - Live-Preview der Level-Kurve
+- **Level-System-Konfiguration** 🆕: Erweiterte Level-Progression
+  - Wählbare Modi: Exponentiell, Linear, Custom
+  - Level-Generator mit anpassbaren Wachstumsraten
+  - Progression-Preview mit XP-Berechnungen
+  - Level-Rewards Konfiguration
+  - Level-Distribution Chart
 - **Manuelle XP-Vergabe**: Admin-Funktion für spezielle Belohnungen
 - **Import/Export**: Backup und Migration von Viewer-Daten
-- **Viewer-Historie**: Detaillierter XP-Verlauf pro Zuschauer
+- **Viewer-Historie** 🔧: Detaillierter XP-Verlauf mit verbesserter Darstellung
+  - Funktionierende Suche
+  - JSON-Details werden formatiert angezeigt
 - **Einstellungen**: Aktivierung/Deaktivierung von Features
 
 ### Performance & Skalierbarkeit
@@ -70,7 +88,7 @@ http://localhost:3000/overlay/viewer-xp/leaderboard
 - `days`: (Optional) Zeitraum in Tagen (leer = All-Time, 7 = letzte 7 Tage)
 - `refresh`: (Optional) Auto-Refresh-Intervall in ms (Standard: 30000)
 
-#### Level-Up Animation (NEU!)
+#### Level-Up Animation
 ```
 http://localhost:3000/overlay/viewer-xp/level-up
 ```
@@ -85,6 +103,55 @@ http://localhost:3000/overlay/viewer-xp/level-up
 - Partikel-Animationen
 - Soundeffekte (melodische Tonfolge)
 - Zeigt neue Belohnungen (Titel, Farben)
+- Automatisches Ausblenden nach Dauer
+- Reagiert auf WebSocket-Event `viewer-xp:level-up`
+
+#### User Profile Card 🆕
+```
+http://localhost:3000/overlay/viewer-xp/user-profile
+```
+
+**Parameter:**
+- `test`: (Optional) `1` - Zeigt Test-Profil beim Laden
+
+**Features:**
+- Modernes Profil-Card Design mit Gradient-Styling
+- Animierter Avatar mit Level-basiertem Emoji
+- Rang-Badge für Top-Platzierungen
+- XP-Fortschrittsbalken mit Shimmer-Animation
+- Stats-Grid: Total XP, Streak, Watch Time, Last Seen
+- Dynamische Badge-Anzeige
+- Username mit Custom-Farbe
+- Auto-Hide nach 10 Sekunden
+- Reagiert auf WebSocket-Events:
+  - `viewer-xp:show-user-profile`
+  - `viewer-xp:profile`
+
+**Triggern via Chat-Commands:**
+```
+/profile [username]  - Zeigt Profil-Overlay für Nutzer
+/stats [username]    - Zeigt Stats im GCCE-HUD
+```
+
+**WebSocket Event-Format:**
+```javascript
+{
+  username: 'ViewerName',
+  name_color: '#FF6B6B',
+  title: 'Rising Star',
+  level: 15,
+  rank: 42,
+  xp: 1250,
+  xp_progress: 250,
+  xp_for_next_level: 1000,
+  xp_progress_percent: 25,
+  total_xp_earned: 12500,
+  streak_days: 7,
+  watch_time_minutes: 245,
+  last_seen: '2024-01-15T10:30:00Z',
+  badges: ['🔥 Week Streak', '💬 Chatterbox']
+}
+```
 - Automatisches Ausblenden nach Dauer
 - Reagiert auf WebSocket-Event `viewer-xp:level-up`
 

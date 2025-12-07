@@ -1105,7 +1105,95 @@
           <h1 class="page-title">👁️ Live Preview</h1>
           <p class="page-description">Preview how overlays look before adding them to OBS</p>
         </div>
-        <p style="color: var(--color-text-muted);">Preview functionality coming soon...</p>
+
+        <!-- Overlay Selection -->
+        <div class="card">
+          <div class="card-header">
+            <span><span class="card-header-icon">🎨</span>Select Overlay</span>
+          </div>
+          <div class="card-body">
+            <div class="form-group" style="max-width: 500px;">
+              <label class="form-label">Choose Overlay to Preview</label>
+              <select class="form-control" id="overlaySelect" onchange="loadOverlayPreview()">
+                <option value="">-- Select an Overlay --</option>
+                <option value="xp-bar">XP Bar - Shows current viewer's XP progress</option>
+                <option value="leaderboard">Leaderboard - Top viewers ranking</option>
+                <option value="level-up">Level Up - Level up celebration animation</option>
+                <option value="user-profile">User Profile - Detailed viewer stats card</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="max-width: 300px; margin-top: 16px;">
+              <label class="form-label">Preview Scale</label>
+              <select class="form-control" id="previewScale" onchange="updatePreviewScale()">
+                <option value="0.5">50% (Small)</option>
+                <option value="0.75">75% (Medium)</option>
+                <option value="1" selected>100% (Full Size)</option>
+              </select>
+            </div>
+
+            <div style="margin-top: 16px;">
+              <button class="btn btn-success" onclick="refreshPreview()">
+                🔄 Refresh Preview
+              </button>
+              <button class="btn btn-secondary" onclick="copyOverlayURL()">
+                📋 Copy OBS URL
+              </button>
+            </div>
+
+            <div id="overlayURL" style="margin-top: 12px; display: none;">
+              <label class="form-label">OBS Browser Source URL:</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" class="form-control" id="overlayURLInput" readonly 
+                  style="font-family: monospace; font-size: 0.9rem;">
+                <button class="btn btn-sm btn-secondary" onclick="copyToClipboard(document.getElementById('overlayURLInput').value)">
+                  📋 Copy
+                </button>
+              </div>
+              <small class="form-text">Add this URL as a Browser Source in OBS</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Container -->
+        <div class="card" id="previewCard" style="display: none;">
+          <div class="card-header">
+            <span><span class="card-header-icon">👁️</span>Live Preview</span>
+          </div>
+          <div class="card-body" style="background: #1a1a1a; min-height: 400px; display: flex; align-items: center; justify-content: center;">
+            <div id="previewContainer" style="width: 100%; height: 100%; position: relative; transform-origin: top left;">
+              <iframe id="previewFrame" style="width: 100%; height: 600px; border: none; background: transparent;"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test Controls -->
+        <div class="card" id="testControls" style="display: none;">
+          <div class="card-header">
+            <span><span class="card-header-icon">🎮</span>Test Controls</span>
+          </div>
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+              <button class="btn btn-primary" onclick="testLevelUp()">
+                ⬆️ Test Level Up
+              </button>
+              <button class="btn btn-primary" onclick="testXPGain()">
+                ⭐ Test XP Gain
+              </button>
+              <button class="btn btn-primary" onclick="refreshLeaderboardPreview()">
+                📊 Refresh Leaderboard
+              </button>
+              <button class="btn btn-primary" onclick="testUserProfile()">
+                👤 Test User Profile
+              </button>
+            </div>
+            <div style="margin-top: 16px;">
+              <label class="form-label">Test Username</label>
+              <input type="text" class="form-control" id="testUsername" placeholder="Enter username for testing" 
+                style="max-width: 300px;">
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="page-xp-settings" class="tab-content">
@@ -1215,7 +1303,175 @@
           <h1 class="page-title">📈 Level Configuration</h1>
           <p class="page-description">Customize level progression and rewards</p>
         </div>
-        <p style="color: var(--color-text-muted);">Level configuration coming soon...</p>
+
+        <!-- Progression Type Selection -->
+        <div class="card">
+          <div class="card-header">
+            <span><span class="card-header-icon">⚙️</span>Progression Type</span>
+          </div>
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+              <div class="form-check">
+                <input type="radio" class="form-check-input" name="levelType" id="levelTypeExponential" 
+                  value="exponential" checked onchange="updateLevelTypeSettings()">
+                <label class="form-check-label" for="levelTypeExponential">
+                  <strong>Exponential</strong>
+                  <div class="form-text">XP required increases exponentially (Level 1: 0 XP, Level 2: 100 XP, Level 3: 400 XP, Level 4: 900 XP)</div>
+                </label>
+              </div>
+              
+              <div class="form-check">
+                <input type="radio" class="form-check-input" name="levelType" id="levelTypeLinear" 
+                  value="linear" onchange="updateLevelTypeSettings()">
+                <label class="form-check-label" for="levelTypeLinear">
+                  <strong>Linear</strong>
+                  <div class="form-text">Fixed XP per level (e.g., 1000 XP per level)</div>
+                </label>
+              </div>
+              
+              <div class="form-check">
+                <input type="radio" class="form-check-input" name="levelType" id="levelTypeCustom" 
+                  value="custom" onchange="updateLevelTypeSettings()">
+                <label class="form-check-label" for="levelTypeCustom">
+                  <strong>Custom</strong>
+                  <div class="form-text">Define custom XP requirements for each level</div>
+                </label>
+              </div>
+            </div>
+
+            <div id="linearSettings" style="display: none; margin-top: 16px; max-width: 400px;">
+              <div class="form-group">
+                <label class="form-label">XP Per Level</label>
+                <input type="number" class="form-control" id="xpPerLevel" value="1000" min="100">
+                <small class="form-text">XP required to advance one level</small>
+              </div>
+            </div>
+
+            <div style="margin-top: 16px;">
+              <button class="btn btn-success" onclick="saveLevelTypeSettings()">
+                💾 Save Progression Settings
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Level Generator -->
+        <div class="card" id="levelGeneratorCard">
+          <div class="card-header">
+            <span><span class="card-header-icon">🔧</span>Level Generator</span>
+          </div>
+          <div class="card-body">
+            <p style="margin-bottom: 16px;">Generate custom level configurations with automatic rewards</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+              <div class="form-group">
+                <label class="form-label">Number of Levels</label>
+                <input type="number" class="form-control" id="genLevelCount" value="100" min="10" max="999">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Starting XP</label>
+                <input type="number" class="form-control" id="genStartXP" value="100" min="0">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Growth Rate</label>
+                <select class="form-control" id="genGrowthRate">
+                  <option value="slow">Slow (1.1x per level)</option>
+                  <option value="medium" selected>Medium (1.2x per level)</option>
+                  <option value="fast">Fast (1.5x per level)</option>
+                  <option value="extreme">Extreme (2.0x per level)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-top: 16px;">
+              <button class="btn btn-primary" onclick="generateLevelConfigs()">
+                🎲 Generate Levels
+              </button>
+              <button class="btn btn-secondary" onclick="previewLevelProgression()">
+                📊 Preview Progression
+              </button>
+            </div>
+
+            <div id="levelProgressionPreview" style="display: none; margin-top: 16px; max-height: 300px; overflow-y: auto;">
+              <h4 style="font-size: 1rem; margin-bottom: 12px;">Progression Preview</h4>
+              <div class="table-responsive">
+                <table class="modern-table" style="font-size: 0.85rem;">
+                  <thead>
+                    <tr>
+                      <th>Level</th>
+                      <th>Total XP Required</th>
+                      <th>XP for Next Level</th>
+                      <th>Growth</th>
+                    </tr>
+                  </thead>
+                  <tbody id="progressionPreviewTable">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Level Rewards Configuration -->
+        <div class="card">
+          <div class="card-header">
+            <span><span class="card-header-icon">🎁</span>Level Rewards</span>
+          </div>
+          <div class="card-body">
+            <div style="margin-bottom: 16px;">
+              <button class="btn btn-primary" onclick="addLevelReward()">
+                ➕ Add Reward Tier
+              </button>
+              <button class="btn btn-secondary" onclick="loadLevelRewards()">
+                🔄 Refresh
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="modern-table">
+                <thead>
+                  <tr>
+                    <th>Level</th>
+                    <th>Title/Badge</th>
+                    <th>Name Color</th>
+                    <th>Custom Emote</th>
+                    <th>Announcement</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="levelRewardsTable">
+                  <tr>
+                    <td colspan="6">
+                      <div class="empty-state">
+                        <div class="empty-state-icon">🎁</div>
+                        <div class="empty-state-text">No rewards configured yet</div>
+                        <div class="empty-state-description">Add milestone rewards for reaching specific levels</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Level Distribution -->
+        <div class="card">
+          <div class="card-header">
+            <span><span class="card-header-icon">📊</span>Level Distribution</span>
+          </div>
+          <div class="card-body">
+            <div id="levelDistributionChart" style="min-height: 200px;">
+              <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div class="empty-state-text">Level distribution chart</div>
+                <div class="empty-state-description">Shows how many viewers are at each level range</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="page-manual-award" class="tab-content">
@@ -2197,14 +2453,30 @@
             </tr>
           `;
         } else {
-          tbody.innerHTML = history.map(item => `
-            <tr>
-              <td>${new Date(item.timestamp).toLocaleString()}</td>
-              <td><span class="badge badge-primary">${escapeHtml(item.action_type)}</span></td>
-              <td><strong>+${item.amount} XP</strong></td>
-              <td>${escapeHtml(item.details || '-')}</td>
-            </tr>
-          `).join('');
+          tbody.innerHTML = history.map(item => {
+            // Parse details if JSON string
+            let detailsHtml = '-';
+            if (item.details) {
+              try {
+                const details = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
+                detailsHtml = Object.entries(details)
+                  .map(([key, value]) => `${key}: ${escapeHtml(String(value))}`)
+                  .join(', ');
+              } catch (e) {
+                console.warn('Failed to parse transaction details:', e, item.details);
+                detailsHtml = escapeHtml(String(item.details));
+              }
+            }
+            
+            return `
+              <tr>
+                <td>${new Date(item.timestamp).toLocaleString()}</td>
+                <td><span class="badge badge-primary">${escapeHtml(item.action_type)}</span></td>
+                <td><strong>+${item.amount} XP</strong></td>
+                <td style="font-size: 0.85rem; color: var(--color-text-muted);">${detailsHtml}</td>
+              </tr>
+            `;
+          }).join('');
         }
         
         viewerNameEl.textContent = username;
@@ -2223,6 +2495,339 @@
         `;
         container.style.display = 'block';
       }
+    }
+
+    // ========== OVERLAY PREVIEW FUNCTIONS ==========
+    
+    function loadOverlayPreview() {
+      const select = document.getElementById('overlaySelect');
+      const overlayType = select.value;
+      const previewCard = document.getElementById('previewCard');
+      const testControls = document.getElementById('testControls');
+      const overlayURL = document.getElementById('overlayURL');
+      const overlayURLInput = document.getElementById('overlayURLInput');
+      
+      if (!overlayType) {
+        previewCard.style.display = 'none';
+        testControls.style.display = 'none';
+        overlayURL.style.display = 'none';
+        return;
+      }
+      
+      const baseURL = window.location.origin;
+      const url = `${baseURL}/overlay/viewer-xp/${overlayType}`;
+      
+      overlayURLInput.value = url;
+      overlayURL.style.display = 'block';
+      previewCard.style.display = 'block';
+      testControls.style.display = 'block';
+      
+      document.getElementById('previewFrame').src = url;
+      updatePreviewScale();
+    }
+    
+    function updatePreviewScale() {
+      const scale = document.getElementById('previewScale').value;
+      const container = document.getElementById('previewContainer');
+      container.style.transform = `scale(${scale})`;
+    }
+    
+    function refreshPreview() {
+      const frame = document.getElementById('previewFrame');
+      if (frame.src) {
+        frame.src = frame.src; // Reload iframe
+      }
+    }
+    
+    function copyOverlayURL() {
+      const input = document.getElementById('overlayURLInput');
+      copyToClipboard(input.value);
+    }
+    
+    function copyToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('✅ URL copied to clipboard!');
+        }).catch(err => {
+          console.error('Failed to copy:', err);
+          fallbackCopyToClipboard(text);
+        });
+      } else {
+        fallbackCopyToClipboard(text);
+      }
+    }
+    
+    function fallbackCopyToClipboard(text) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          showToast('✅ URL copied to clipboard!');
+        } else {
+          showToast('❌ Failed to copy URL - please copy manually');
+        }
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+        showToast('❌ Failed to copy URL - please copy manually');
+      }
+      
+      document.body.removeChild(textArea);
+    }
+    
+    function testLevelUp() {
+      const username = document.getElementById('testUsername').value || 'TestUser';
+      socket.emit('viewer-xp:level-up', {
+        username,
+        oldLevel: 5,
+        newLevel: 6,
+        rewards: {
+          title: 'Rising Star',
+          badge: '⭐',
+          announcement_message: `Congratulations ${username}! You've reached Level 6!`
+        }
+      });
+    }
+    
+    function testXPGain() {
+      const username = document.getElementById('testUsername').value || 'TestUser';
+      socket.emit('viewer-xp:update', {
+        username,
+        amount: 50,
+        actionType: 'chat_message',
+        profile: {
+          username,
+          level: 5,
+          xp: 1250,
+          total_xp_earned: 2500
+        }
+      });
+    }
+    
+    function refreshLeaderboardPreview() {
+      socket.emit('viewer-xp:show-leaderboard', {
+        limit: 10,
+        leaderboard: [],
+        requestedBy: 'Preview'
+      });
+    }
+    
+    function testUserProfile() {
+      const username = document.getElementById('testUsername').value || 'TestUser';
+      socket.emit('viewer-xp:show-user-profile', {
+        username,
+        level: 5,
+        xp: 1250,
+        total_xp_earned: 2500,
+        rank: 42,
+        title: 'Rising Star'
+      });
+    }
+
+    // ========== LEVEL CONFIGURATION FUNCTIONS ==========
+    
+    function updateLevelTypeSettings() {
+      const type = document.querySelector('input[name="levelType"]:checked').value;
+      const linearSettings = document.getElementById('linearSettings');
+      const levelGeneratorCard = document.getElementById('levelGeneratorCard');
+      
+      linearSettings.style.display = type === 'linear' ? 'block' : 'none';
+      levelGeneratorCard.style.display = type === 'custom' ? 'block' : 'none';
+    }
+    
+    async function saveLevelTypeSettings() {
+      try {
+        const type = document.querySelector('input[name="levelType"]:checked').value;
+        const settings = { levelType: type };
+        
+        if (type === 'linear') {
+          settings.xpPerLevel = document.getElementById('xpPerLevel').value;
+        }
+        
+        const response = await fetch('/api/viewer-xp/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        });
+        
+        if (response.ok) {
+          showToast('✅ Progression settings saved!');
+        } else {
+          throw new Error('Failed to save settings');
+        }
+      } catch (error) {
+        console.error('Error saving level type:', error);
+        showToast('❌ Failed to save settings');
+      }
+    }
+    
+    function previewLevelProgression() {
+      const count = parseInt(document.getElementById('genLevelCount').value);
+      const startXP = parseInt(document.getElementById('genStartXP').value);
+      const growthRate = document.getElementById('genGrowthRate').value;
+      
+      const rates = {
+        slow: 1.1,
+        medium: 1.2,
+        fast: 1.5,
+        extreme: 2.0
+      };
+      const rate = rates[growthRate];
+      
+      const tbody = document.getElementById('progressionPreviewTable');
+      tbody.innerHTML = '';
+      
+      let totalXP = 0;
+      let xpForNext = startXP;
+      
+      // Show first 10, middle 10, and last 10 levels
+      const levelsToShow = [];
+      for (let i = 1; i <= Math.min(10, count); i++) levelsToShow.push(i);
+      if (count > 30) {
+        for (let i = Math.floor(count / 2) - 4; i <= Math.floor(count / 2) + 5; i++) {
+          if (i > 10 && i < count - 9) levelsToShow.push(i);
+        }
+      }
+      for (let i = Math.max(count - 9, 11); i <= count; i++) {
+        if (!levelsToShow.includes(i)) levelsToShow.push(i);
+      }
+      
+      let prevXPForNext = startXP;
+      for (let i = 1; i <= count; i++) {
+        if (i > 1) {
+          totalXP += xpForNext;
+          xpForNext = Math.floor(xpForNext * rate);
+        }
+        
+        if (levelsToShow.includes(i)) {
+          const growth = i === 1 ? '-' : `${((xpForNext / prevXPForNext - 1) * 100).toFixed(1)}%`;
+          tbody.innerHTML += `
+            <tr>
+              <td><strong>Level ${i}</strong></td>
+              <td>${totalXP.toLocaleString()} XP</td>
+              <td>+${xpForNext.toLocaleString()} XP</td>
+              <td>${growth}</td>
+            </tr>
+          `;
+        } else if (levelsToShow.includes(i - 1) && !levelsToShow.includes(i + 1)) {
+          tbody.innerHTML += `
+            <tr>
+              <td colspan="4" style="text-align: center; color: var(--color-text-muted); font-style: italic;">
+                ... ${count - 20} more levels ...
+              </td>
+            </tr>
+          `;
+        }
+        
+        prevXPForNext = xpForNext;
+      }
+      
+      document.getElementById('levelProgressionPreview').style.display = 'block';
+    }
+    
+    async function generateLevelConfigs() {
+      const count = parseInt(document.getElementById('genLevelCount').value);
+      const startXP = parseInt(document.getElementById('genStartXP').value);
+      const growthRate = document.getElementById('genGrowthRate').value;
+      
+      try {
+        const response = await fetch('/api/viewer-xp/level-config/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: growthRate,
+            settings: {
+              count,
+              startXP
+            }
+          })
+        });
+        
+        if (response.ok) {
+          const configs = await response.json();
+          showToast(`✅ Generated ${configs.length} level configurations!`);
+          previewLevelProgression();
+        } else {
+          throw new Error('Failed to generate configs');
+        }
+      } catch (error) {
+        console.error('Error generating levels:', error);
+        showToast('❌ Failed to generate level configurations');
+      }
+    }
+    
+    function addLevelReward() {
+      showToast('ℹ️ Level reward editor coming in next update');
+    }
+    
+    async function loadLevelRewards() {
+      // Placeholder for loading rewards
+      showToast('ℹ️ Loading level rewards...');
+    }
+
+    // ========== UTILITY FUNCTIONS ==========
+    
+    function showToast(message) {
+      // Simple toast notification
+      const toast = document.createElement('div');
+      toast.className = 'toast-notification';
+      toast.textContent = message;
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: var(--color-bg-secondary);
+        color: var(--color-text-primary);
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--color-border);
+        z-index: 10000;
+        font-weight: 500;
+        animation: slideIn 0.3s ease;
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+    
+    // Add CSS animations for toast
+    if (!document.getElementById('toastAnimations')) {
+      const style = document.createElement('style');
+      style.id = 'toastAnimations';
+      style.textContent = `
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
     }
   </script>
 </body>

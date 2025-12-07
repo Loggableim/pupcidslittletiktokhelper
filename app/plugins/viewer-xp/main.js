@@ -85,6 +85,10 @@ class ViewerXPPlugin extends EventEmitter {
       res.sendFile(path.join(__dirname, 'overlays', 'level-up.html'));
     });
 
+    this.api.registerRoute('GET', '/overlay/viewer-xp/user-profile', (req, res) => {
+      res.sendFile(path.join(__dirname, 'overlays', 'user-profile.html'));
+    });
+
     // Serve main UI (redirects to admin)
     this.api.registerRoute('GET', '/viewer-xp/ui', (req, res) => {
       res.sendFile(path.join(__dirname, 'ui.html'));
@@ -435,6 +439,28 @@ class ViewerXPPlugin extends EventEmitter {
           handler: async (args, context) => await this.handleRankCommand(args, context)
         },
         {
+          name: 'profile',
+          description: 'Show detailed profile with stats in overlay',
+          syntax: '/profile [username]',
+          permission: 'all',
+          enabled: true,
+          minArgs: 0,
+          maxArgs: 1,
+          category: 'XP System',
+          handler: async (args, context) => await this.handleProfileCommand(args, context)
+        },
+        {
+          name: 'stats',
+          description: 'Show your viewer statistics',
+          syntax: '/stats [username]',
+          permission: 'all',
+          enabled: true,
+          minArgs: 0,
+          maxArgs: 1,
+          category: 'XP System',
+          handler: async (args, context) => await this.handleStatsCommand(args, context)
+        },
+        {
           name: 'top',
           description: 'Show top viewers on the leaderboard',
           syntax: '/top [limit]',
@@ -695,6 +721,119 @@ class ViewerXPPlugin extends EventEmitter {
   }
 
   /**
+   * Handle /profile command - shows detailed profile overlay
+   */
+  async handleProfileCommand(args, context) {
+    try {
+      const targetUsername = args.length > 0 ? args[0] : context.username;
+      const profile = this.db.getViewerProfile(targetUsername);
+
+      if (!profile) {
+        return {
+          success: false,
+          error: `No profile data found for ${targetUsername}`,
+          displayOverlay: false
+        };
+      }
+
+      // Get rank from leaderboard
+      const leaderboard = this.db.getTopViewers(1000);
+      const rank = leaderboard.findIndex(v => v.username === targetUsername) + 1;
+
+      // Add rank to profile
+      profile.rank = rank > 0 ? rank : null;
+
+      // Emit event to show user profile overlay
+      const io = this.api.getSocketIO();
+      io.emit('viewer-xp:show-user-profile', profile);
+
+      return {
+        success: true,
+        message: `Profile displayed for ${targetUsername}`,
+        displayOverlay: true,
+        data: { profile }
+      };
+
+    } catch (error) {
+      this.api.log(`❌ Error in /profile command: ${error.message}`, 'error');
+      return { success: false, error: 'Failed to display profile' };
+    }
+  }
+
+  /**
+   * Handle /stats command - shows detailed stats in HUD
+   */
+  async handleStatsCommand(args, context) {
+    try {
+      const targetUsername = args.length > 0 ? args[0] : context.username;
+      const profile = this.db.getViewerProfile(targetUsername);
+
+      if (!profile) {
+        return {
+          success: false,
+          error: `No stats found for ${targetUsername}`,
+          displayOverlay: false
+        };
+      }
+
+      // Get rank
+      const leaderboard = this.db.getTopViewers(1000);
+      const rank = leaderboard.findIndex(v => v.username === targetUsername) + 1;
+
+      // Format watch time
+      const watchHours = Math.floor(profile.watch_time_minutes / 60);
+      const watchMins = profile.watch_time_minutes % 60;
+      const watchTimeStr = watchHours > 0 
+        ? `${watchHours}h ${watchMins}m` 
+        : `${watchMins}m`;
+
+      // Build stats message
+      const statsLines = [
+        `📊 ${targetUsername}'s Stats`,
+        `Level ${profile.level} | Rank ${rank > 0 ? '#' + rank : 'Unranked'}`,
+        `⭐ ${profile.total_xp_earned.toLocaleString()} Total XP`,
+        `🔥 ${profile.streak_days} day streak`,
+        `⏱️ ${watchTimeStr} watch time`
+      ];
+
+      if (profile.badges && profile.badges.length > 0) {
+        statsLines.push(`🏆 Badges: ${profile.badges.join(', ')}`);
+      }
+
+      // Send to GCCE-HUD for display
+      const io = this.api.getSocketIO();
+      io.emit('gcce-hud:show', {
+        id: `stats-${Date.now()}`,
+        type: 'text',
+        content: statsLines.join(' | '),
+        username: context.username,
+        timestamp: Date.now(),
+        duration: 10000,
+        expiresAt: Date.now() + 10000,
+        style: {
+          fontSize: 32,
+          fontFamily: 'Arial, sans-serif',
+          textColor: profile.name_color || '#FFFFFF',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          position: 'top-center',
+          maxWidth: 1200
+        }
+      });
+
+      return {
+        success: true,
+        message: `Stats for ${targetUsername}`,
+        displayOverlay: true,
+        data: { profile, rank }
+      };
+
+    } catch (error) {
+      this.api.log(`❌ Error in /stats command: ${error.message}`, 'error');
+      return { success: false, error: 'Failed to fetch stats' };
+    }
+  }
+
+  /**
    * Check cooldown for action
    */
   checkCooldown(username, actionType, cooldownSeconds) {
@@ -745,39 +884,47 @@ class ViewerXPPlugin extends EventEmitter {
    * Emit XP update event
    */
   emitXPUpdate(username, amount, actionType) {
-    const io = this.api.getSocketIO();
-    const profile = this.db.getViewerProfile(username);
-    
-    io.emit('viewer-xp:update', {
-      username,
-      amount,
-      actionType,
-      profile
-    });
+    try {
+      const io = this.api.getSocketIO();
+      const profile = this.db.getViewerProfile(username);
+      
+      io.emit('viewer-xp:update', {
+        username,
+        amount,
+        actionType,
+        profile
+      });
+    } catch (error) {
+      this.api.log(`Error emitting XP update: ${error.message}`, 'error');
+    }
   }
 
   /**
    * Emit level up event
    */
   emitLevelUp(username, oldLevel, newLevel, rewards) {
-    const io = this.api.getSocketIO();
-    
-    io.emit('viewer-xp:level-up', {
-      username,
-      oldLevel,
-      newLevel,
-      rewards
-    });
-
-    // Announce in chat/overlay if enabled
-    if (this.db.getSetting('announceLevelUps', true) && rewards?.announcement_message) {
-      const message = rewards.announcement_message.replace('{username}', username);
-      this.api.emit('announcement', {
-        type: 'level-up',
+    try {
+      const io = this.api.getSocketIO();
+      
+      io.emit('viewer-xp:level-up', {
         username,
-        level: newLevel,
-        message
+        oldLevel,
+        newLevel,
+        rewards
       });
+
+      // Announce in chat/overlay if enabled
+      if (this.db.getSetting('announceLevelUps', true) && rewards?.announcement_message) {
+        const message = rewards.announcement_message.replace('{username}', username);
+        this.api.emit('announcement', {
+          type: 'level-up',
+          username,
+          level: newLevel,
+          message
+        });
+      }
+    } catch (error) {
+      this.api.log(`Error emitting level up: ${error.message}`, 'error');
     }
   }
 
