@@ -86,7 +86,7 @@ const getSessionExtractor = () => {
 // Import New Modules
 const logger = require('./modules/logger');
 const debugLogger = require('./modules/debug-logger');
-const { apiLimiter, authLimiter, uploadLimiter, pluginLimiter } = require('./modules/rate-limiter');
+const { apiLimiter, authLimiter, uploadLimiter, pluginLimiter, iftttLimiter } = require('./modules/rate-limiter');
 const OBSWebSocket = require('./modules/obs-websocket');
 const i18n = require('./modules/i18n');
 const SubscriptionTiers = require('./modules/subscription-tiers');
@@ -1757,7 +1757,7 @@ app.post('/api/flows/:id/test', apiLimiter, async (req, res) => {
 /**
  * GET /api/ifttt/triggers - Get all available triggers
  */
-app.get('/api/ifttt/triggers', apiLimiter, (req, res) => {
+app.get('/api/ifttt/triggers', iftttLimiter, (req, res) => {
     try {
         const triggers = iftttEngine.triggers.getAllForFrontend();
         res.json(triggers);
@@ -1770,7 +1770,7 @@ app.get('/api/ifttt/triggers', apiLimiter, (req, res) => {
 /**
  * GET /api/ifttt/conditions - Get all available conditions
  */
-app.get('/api/ifttt/conditions', apiLimiter, (req, res) => {
+app.get('/api/ifttt/conditions', iftttLimiter, (req, res) => {
     try {
         const conditions = iftttEngine.conditions.getAllForFrontend();
         const operators = iftttEngine.conditions.getAllOperatorsForFrontend();
@@ -1784,7 +1784,7 @@ app.get('/api/ifttt/conditions', apiLimiter, (req, res) => {
 /**
  * GET /api/ifttt/actions - Get all available actions
  */
-app.get('/api/ifttt/actions', apiLimiter, (req, res) => {
+app.get('/api/ifttt/actions', iftttLimiter, (req, res) => {
     try {
         const actions = iftttEngine.actions.getAllForFrontend();
         res.json(actions);
@@ -1797,7 +1797,7 @@ app.get('/api/ifttt/actions', apiLimiter, (req, res) => {
 /**
  * GET /api/ifttt/stats - Get IFTTT engine statistics
  */
-app.get('/api/ifttt/stats', apiLimiter, (req, res) => {
+app.get('/api/ifttt/stats', iftttLimiter, (req, res) => {
     try {
         const stats = iftttEngine.getStats();
         res.json(stats);
@@ -1810,7 +1810,7 @@ app.get('/api/ifttt/stats', apiLimiter, (req, res) => {
 /**
  * GET /api/ifttt/execution-history - Get execution history
  */
-app.get('/api/ifttt/execution-history', apiLimiter, (req, res) => {
+app.get('/api/ifttt/execution-history', iftttLimiter, (req, res) => {
     try {
         const count = parseInt(req.query.count) || 20;
         const history = iftttEngine.getExecutionHistory(count);
@@ -1824,7 +1824,7 @@ app.get('/api/ifttt/execution-history', apiLimiter, (req, res) => {
 /**
  * GET /api/ifttt/variables - Get all variables
  */
-app.get('/api/ifttt/variables', apiLimiter, (req, res) => {
+app.get('/api/ifttt/variables', iftttLimiter, (req, res) => {
     try {
         const variables = iftttEngine.variables.getAll();
         const stats = iftttEngine.variables.getStats();
@@ -1838,7 +1838,7 @@ app.get('/api/ifttt/variables', apiLimiter, (req, res) => {
 /**
  * POST /api/ifttt/variables/:name - Set a variable
  */
-app.post('/api/ifttt/variables/:name', apiLimiter, (req, res) => {
+app.post('/api/ifttt/variables/:name', iftttLimiter, (req, res) => {
     try {
         const { name } = req.params;
         const { value } = req.body;
@@ -1854,7 +1854,7 @@ app.post('/api/ifttt/variables/:name', apiLimiter, (req, res) => {
 /**
  * DELETE /api/ifttt/variables/:name - Delete a variable
  */
-app.delete('/api/ifttt/variables/:name', apiLimiter, (req, res) => {
+app.delete('/api/ifttt/variables/:name', iftttLimiter, (req, res) => {
     try {
         const { name } = req.params;
         iftttEngine.variables.delete(name);
@@ -1869,7 +1869,7 @@ app.delete('/api/ifttt/variables/:name', apiLimiter, (req, res) => {
 /**
  * POST /api/ifttt/trigger/:flowId - Manually trigger a flow
  */
-app.post('/api/ifttt/trigger/:flowId', apiLimiter, async (req, res) => {
+app.post('/api/ifttt/trigger/:flowId', iftttLimiter, async (req, res) => {
     try {
         const { flowId } = req.params;
         const eventData = req.body || {};
@@ -1885,7 +1885,7 @@ app.post('/api/ifttt/trigger/:flowId', apiLimiter, async (req, res) => {
 /**
  * POST /api/ifttt/event/:eventType - Manually trigger an event
  */
-app.post('/api/ifttt/event/:eventType', apiLimiter, async (req, res) => {
+app.post('/api/ifttt/event/:eventType', iftttLimiter, async (req, res) => {
     try {
         const { eventType } = req.params;
         const eventData = req.body || {};
