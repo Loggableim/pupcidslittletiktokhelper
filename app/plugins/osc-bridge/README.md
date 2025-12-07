@@ -83,6 +83,49 @@ Manage and switch between VRChat avatars via OSC.
 }
 ```
 
+#### 💬 Chat Commands (GCCE Integration)
+Allow your viewers to trigger VRChat actions directly via TikTok chat commands! Integrated with the Global Chat Command Engine (GCCE) for unified command processing.
+
+**Available Commands:**
+- `/wave` - Trigger wave animation (All viewers)
+- `/celebrate` - Trigger celebration animation (All viewers)
+- `/dance` - Trigger dance animation (Subscribers only)
+- `/hearts` - Trigger hearts effect (All viewers)
+- `/confetti` - Trigger confetti effect (All viewers)
+- `/emote <0-7>` - Trigger specific emote slot (Subscribers only)
+
+**Features:**
+- Permission-based access (all viewers, subscribers, moderators)
+- Rate limiting to prevent spam
+- Configurable cooldown between commands
+- Optional OSC connection requirement
+- Centralized command processing via GCCE
+- Full logging and debugging support
+
+**Configuration:**
+```json
+{
+  "chatCommands": {
+    "enabled": true,
+    "requireOSCConnection": true,
+    "cooldownSeconds": 3,
+    "rateLimitPerMinute": 10
+  }
+}
+```
+
+**Usage Examples:**
+```
+Viewer: /wave
+Bot: 👋 Wave animation triggered!
+
+Subscriber: /emote 3
+Bot: 😀 Emote slot 3 triggered!
+
+Subscriber: /dance
+Bot: 💃 Dance animation triggered!
+```
+
 ## VRChat Parameters
 
 ### Standard Parameters
