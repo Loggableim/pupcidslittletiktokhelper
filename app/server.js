@@ -2817,6 +2817,37 @@ tiktok.on('viewerChange', async (data) => {
     await iftttEngine.processEvent('tiktok:viewerChange', data);
 });
 
+// Stream Changed Event - Reset goals and leaderboard session stats when connecting to different stream
+tiktok.on('streamChanged', async (data) => {
+    logger.info(`🔄 Stream changed from @${data.previousUsername} to @${data.newUsername} - resetting session data`);
+    
+    // Reset all goals to 0 (new stream session)
+    try {
+        await goals.resetAllGoals();
+        logger.info('✅ Goals reset for new stream session');
+    } catch (error) {
+        logger.error('Error resetting goals:', error);
+    }
+    
+    // Reset leaderboard session stats (keep all-time stats)
+    try {
+        leaderboard.resetSessionStats();
+        logger.info('✅ Leaderboard session stats reset for new stream session');
+    } catch (error) {
+        logger.error('Error resetting leaderboard session stats:', error);
+    }
+    
+    // Broadcast to clients that stream has changed
+    io.emit('stream:changed', {
+        previousUsername: data.previousUsername,
+        newUsername: data.newUsername,
+        timestamp: data.timestamp
+    });
+    
+    debugLogger.log('system', 'Stream changed - session data reset', data);
+    await iftttEngine.processEvent('system:streamChanged', data);
+});
+
 // ========== SERVER STARTEN ==========
 
 const PORT = process.env.PORT || 3000;
