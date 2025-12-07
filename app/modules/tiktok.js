@@ -1391,7 +1391,9 @@ class TikTokConnector extends EventEmitter {
     disconnect() {
         if (this.ws) {
             this.ws.removeAllListeners();
-            this.ws.close();
+            if (typeof this.ws.close === 'function') {
+                this.ws.close();
+            }
             this.ws = null;
         }
         if (this.eventEmitter) {
