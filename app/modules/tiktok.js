@@ -956,12 +956,12 @@ class TikTokConnector extends EventEmitter {
      * @private
      */
     extractProfilePictureUrl(user) {
-        if (!user) return null;
+        if (!user) return '';
 
         // Try various fields that might contain the profile picture
         const pictureData = user.profilePictureUrl || user.profilePicture || user.avatarThumb || user.avatarLarger || user.avatarUrl;
         
-        if (!pictureData) return null;
+        if (!pictureData) return '';
 
         // If it's already a string URL, return it
         if (typeof pictureData === 'string') {
@@ -978,7 +978,7 @@ class TikTokConnector extends EventEmitter {
             return pictureData.urlList[0];
         }
 
-        return null;
+        return '';
     }
 
     /**

@@ -529,7 +529,8 @@ class LastEventSpotlightPlugin {
     if (!user) return '';
 
     // Try various fields that might contain the profile picture
-    const pictureData = user.profilePictureUrl || user.profilePicture || user.avatarThumb || user.avatarLarger || user.avatarUrl || user.profilePicUrl;
+    // Order matches tiktok.js module for consistency
+    const pictureData = user.profilePictureUrl || user.profilePicture || user.avatarThumb || user.avatarLarger || user.avatarUrl;
     
     if (!pictureData) return '';
 

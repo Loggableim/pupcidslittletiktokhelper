@@ -92,22 +92,22 @@ describe('Profile Picture URL Extraction', () => {
     expect(result).toBe('https://example.com/thumb.jpg');
   });
 
-  test('should return null if no profile picture data found', () => {
+  test('should return empty string if no profile picture data found', () => {
     const user = {
       uniqueId: 'testuser',
       nickname: 'Test User'
     };
 
     const result = connector.extractProfilePictureUrl(user);
-    expect(result).toBeNull();
+    expect(result).toBe('');
   });
 
-  test('should return null if user is null', () => {
+  test('should return empty string if user is null', () => {
     const result = connector.extractProfilePictureUrl(null);
-    expect(result).toBeNull();
+    expect(result).toBe('');
   });
 
-  test('should return null if url array is empty', () => {
+  test('should return empty string if url array is empty', () => {
     const user = {
       uniqueId: 'testuser',
       profilePictureUrl: {
@@ -117,7 +117,7 @@ describe('Profile Picture URL Extraction', () => {
     };
 
     const result = connector.extractProfilePictureUrl(user);
-    expect(result).toBeNull();
+    expect(result).toBe('');
   });
 
   test('should integrate properly in extractUserData', () => {
