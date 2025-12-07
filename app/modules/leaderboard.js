@@ -48,7 +48,99 @@ class LeaderboardManager {
       )
     `).run();
 
+    // Migration: Add streamer_id column if it doesn't exist (for legacy databases)
+    this.migrateToStreamerIdColumn();
+
     logger.info('Leaderboard tables initialized');
+  }
+
+  /**
+   * Migrate legacy databases to include streamer_id column
+   */
+  migrateToStreamerIdColumn() {
+    try {
+      // Check if streamer_id column exists
+      const tableInfo = this.db.prepare('PRAGMA table_info(leaderboard_stats)').all();
+      const hasStreamerId = tableInfo.some(col => col.name === 'streamer_id');
+
+      if (!hasStreamerId) {
+        logger.info('Migrating leaderboard_stats table to add streamer_id column');
+
+        // Check if table has any data and if username is the primary key (old schema)
+        const hasData = this.db.prepare('SELECT COUNT(*) as count FROM leaderboard_stats').get().count > 0;
+
+        if (hasData) {
+          // Create new table with correct schema
+          this.db.prepare(`
+            CREATE TABLE leaderboard_stats_new (
+              username TEXT NOT NULL,
+              streamer_id TEXT NOT NULL,
+              total_coins INTEGER DEFAULT 0,
+              message_count INTEGER DEFAULT 0,
+              like_count INTEGER DEFAULT 0,
+              share_count INTEGER DEFAULT 0,
+              gift_count INTEGER DEFAULT 0,
+              follow_count INTEGER DEFAULT 0,
+              first_seen INTEGER NOT NULL,
+              last_seen INTEGER NOT NULL,
+              session_coins INTEGER DEFAULT 0,
+              session_messages INTEGER DEFAULT 0,
+              PRIMARY KEY (username, streamer_id)
+            )
+          `).run();
+
+          // Copy existing data with default streamer_id
+          this.db.prepare(`
+            INSERT INTO leaderboard_stats_new
+            SELECT 
+              username,
+              'default' as streamer_id,
+              total_coins,
+              message_count,
+              like_count,
+              share_count,
+              gift_count,
+              follow_count,
+              first_seen,
+              last_seen,
+              session_coins,
+              session_messages
+            FROM leaderboard_stats
+          `).run();
+
+          // Drop old table and rename new one
+          this.db.prepare('DROP TABLE leaderboard_stats').run();
+          this.db.prepare('ALTER TABLE leaderboard_stats_new RENAME TO leaderboard_stats').run();
+
+          logger.info('Successfully migrated leaderboard_stats table with streamer_id column');
+        } else {
+          // No data, just recreate the table with the correct schema
+          this.db.prepare('DROP TABLE leaderboard_stats').run();
+          this.db.prepare(`
+            CREATE TABLE leaderboard_stats (
+              username TEXT NOT NULL,
+              streamer_id TEXT NOT NULL,
+              total_coins INTEGER DEFAULT 0,
+              message_count INTEGER DEFAULT 0,
+              like_count INTEGER DEFAULT 0,
+              share_count INTEGER DEFAULT 0,
+              gift_count INTEGER DEFAULT 0,
+              follow_count INTEGER DEFAULT 0,
+              first_seen INTEGER NOT NULL,
+              last_seen INTEGER NOT NULL,
+              session_coins INTEGER DEFAULT 0,
+              session_messages INTEGER DEFAULT 0,
+              PRIMARY KEY (username, streamer_id)
+            )
+          `).run();
+
+          logger.info('Recreated empty leaderboard_stats table with streamer_id column');
+        }
+      }
+    } catch (error) {
+      logger.error('Error during leaderboard migration:', error);
+      throw error;
+    }
   }
 
   /**
