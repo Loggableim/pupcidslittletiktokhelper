@@ -445,7 +445,7 @@
 
                     <div class="btn-group">
                         <button type="submit" class="btn btn-primary">Einstellungen speichern</button>
-                        <button type="button" class="btn btn-secondary" onclick="loadConfig()">Zurücksetzen</button>
+                        <button type="button" class="btn btn-secondary" id="resetGeneralBtn">Zurücksetzen</button>
                     </div>
                 </form>
             </div>
@@ -496,7 +496,7 @@
 
                     <div class="btn-group">
                         <button type="submit" class="btn btn-primary">Prompts speichern</button>
-                        <button type="button" class="btn btn-secondary" onclick="resetPrompts()">Auf Standard zurücksetzen</button>
+                        <button type="button" class="btn btn-secondary" id="resetPromptsBtn">Auf Standard zurücksetzen</button>
                     </div>
                 </form>
             </div>
@@ -507,8 +507,8 @@
             <div class="card">
                 <div class="card-title">Item Management</div>
                 <div class="btn-group">
-                    <button class="btn btn-primary" onclick="openCreateItemModal()">+ Neues Item erstellen</button>
-                    <button class="btn btn-secondary" onclick="loadItems()">🔄 Liste aktualisieren</button>
+                    <button class="btn btn-primary" id="openCreateItemModalBtn">+ Neues Item erstellen</button>
+                    <button class="btn btn-secondary" id="refreshItemsBtn">🔄 Liste aktualisieren</button>
                 </div>
             </div>
 
@@ -732,7 +732,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">Neues Item erstellen</h2>
-                <button class="modal-close" onclick="closeCreateItemModal()" aria-label="Schließen">×</button>
+                <button class="modal-close" id="closeCreateItemModalBtn" aria-label="Schließen">×</button>
             </div>
             <form id="create-item-form">
                 <div class="config-group">
@@ -767,7 +767,7 @@
 
                 <div class="btn-group">
                     <button type="submit" class="btn btn-primary">Item erstellen</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeCreateItemModal()">Abbrechen</button>
+                    <button type="button" class="btn btn-secondary" id="cancelCreateItemBtn">Abbrechen</button>
                 </div>
             </form>
         </div>
@@ -1103,14 +1103,14 @@
                 btnEdit.className = 'btn btn-secondary';
                 btnEdit.style.cssText = 'padding: 4px 8px; font-size: 0.75rem;';
                 btnEdit.textContent = '✏️';
-                btnEdit.onclick = () => editItem(item.itemId);
+                btnEdit.addEventListener('click', () => editItem(item.itemId));
                 tdActions.appendChild(btnEdit);
                 
                 const btnDelete = document.createElement('button');
                 btnDelete.className = 'btn btn-danger';
                 btnDelete.style.cssText = 'padding: 4px 8px; font-size: 0.75rem; margin-left: 4px;';
                 btnDelete.textContent = '🗑️';
-                btnDelete.onclick = () => deleteItem(item.itemId);
+                btnDelete.addEventListener('click', () => deleteItem(item.itemId));
                 tdActions.appendChild(btnDelete);
                 
                 tr.appendChild(tdActions);
@@ -1228,6 +1228,14 @@
             }
             loadStats();
         });
+
+        // Button event listeners
+        document.getElementById('resetGeneralBtn').addEventListener('click', loadConfig);
+        document.getElementById('resetPromptsBtn').addEventListener('click', resetPrompts);
+        document.getElementById('openCreateItemModalBtn').addEventListener('click', openCreateItemModal);
+        document.getElementById('refreshItemsBtn').addEventListener('click', loadItems);
+        document.getElementById('closeCreateItemModalBtn').addEventListener('click', closeCreateItemModal);
+        document.getElementById('cancelCreateItemBtn').addEventListener('click', closeCreateItemModal);
 
         // Initialize
         loadConfig();
