@@ -31,6 +31,8 @@
     "vdoninja": "VDO.Ninja",
     "streamalchemy": "Stream-Alchemie",
     "gcce": "Globale Chat-Befehls-Engine",
+    "gcce_hud": "GCCE HUD Overlay",
+    "chatango": "Chatango",
     "thermal_printer": "Thermaldrucker",
     "config_import": "Konfiguration Importieren",
     "plugins": "Plugin-Manager",
@@ -639,5 +641,8 @@
       "title": "Aktivitätsprotokoll",
       "waiting": "Warte auf Ereignisse..."
     }
+  },
+  "gcce_hud": {
+    "description": "GCCE HUD Overlay ermöglicht die Anzeige von benutzerdefiniertem Text und Bildern über Chat-Befehle. Verwenden Sie /hudtext und /hudimage Befehle im Chat, um Inhalte anzuzeigen."
   }
 }
