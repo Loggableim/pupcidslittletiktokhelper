@@ -290,14 +290,45 @@ class GlobalChatCommandEngine {
             // Check if it's a command
             if (!this.parser.isCommand(message)) return;
 
-            // Build context
+            // Build enriched context with user data
             const context = {
                 userId: data.uniqueId || data.userId,
                 username: data.nickname || data.username || data.uniqueId,
                 userRole: this.permissionChecker.getUserRole(data),
                 timestamp: Date.now(),
-                rawData: data
+                rawData: data,
+                // Enriched user data (extracted once, reused by all plugins)
+                userData: {
+                    isFollower: data.isFollower || false,
+                    isSubscriber: data.isSubscriber || data.teamMemberLevel > 0 || false,
+                    isModerator: data.isModerator || false,
+                    isBroadcaster: data.isBroadcaster || data.isHost || false,
+                    teamMemberLevel: data.teamMemberLevel || 0,
+                    giftsSent: data.giftsSent || 0,
+                    coinsSent: data.coinsSent || 0,
+                    // Database lookup will be cached
+                    dbUser: null
+                }
             };
+
+            // Optional: Fetch user from database (cached to avoid repeated queries)
+            if (this.api.getDatabase) {
+                try {
+                    const db = this.api.getDatabase();
+                    const dbUser = db.prepare('SELECT * FROM users WHERE username = ?').get(context.username);
+                    if (dbUser) {
+                        context.userData.dbUser = dbUser;
+                        // Override with database values if available
+                        context.userData.isFollower = dbUser.is_follower || context.userData.isFollower;
+                        context.userData.teamMemberLevel = dbUser.team_member_level || context.userData.teamMemberLevel;
+                        context.userData.giftsSent = dbUser.gifts_sent || context.userData.giftsSent;
+                        context.userData.coinsSent = dbUser.coins_sent || context.userData.coinsSent;
+                    }
+                } catch (dbError) {
+                    this.api.log(`[GCCE] Database lookup error: ${dbError.message}`, 'debug');
+                    // Continue without DB data - not critical
+                }
+            }
 
             // Broadcast command input to overlay
             if (this.pluginConfig.enableOverlayMessages) {

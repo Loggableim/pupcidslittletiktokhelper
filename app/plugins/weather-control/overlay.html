@@ -1206,6 +1206,11 @@
                     handleWeatherEvent(data);
                 });
 
+                state.socket.on('weather:stop', (data) => {
+                    log(`🛑 Received weather stop event from ${data.username}`);
+                    stopAllEffects();
+                });
+
                 state.socket.on('connect_error', (error) => {
                     log(`❌ Connection error: ${error.message}`);
                     updateConnectionStatus('disconnected', `✗ Error: ${error.message}`);
@@ -1246,6 +1251,33 @@
                 
             } catch (error) {
                 log(`❌ Error handling weather event: ${error.message}`);
+            }
+        }
+
+        // Stop all active weather effects
+        function stopAllEffects() {
+            try {
+                log('🛑 Stopping all weather effects...');
+                let stoppedCount = 0;
+                
+                // Stop all active effects
+                for (const effectName in effects) {
+                    if (effects[effectName].active) {
+                        effects[effectName].stop();
+                        stoppedCount++;
+                    }
+                }
+                
+                // Clear all particles
+                state.particles.length = 0;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                log(`✅ Stopped ${stoppedCount} active effect(s)`);
+                
+            } catch (error) {
+                log(`❌ Error stopping effects: ${error.message}`);
             }
         }
 
