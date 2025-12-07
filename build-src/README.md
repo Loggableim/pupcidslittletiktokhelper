@@ -99,12 +99,16 @@ The cloud launcher includes:
 - **Features:**
   - Same as launcher-gui.go but with visible terminal window
   - Shows console output and error messages
+  - **Server terminal output is visible with detailed error logging**
+  - Both launcher and Node.js server output shown in terminal
+  - Output is logged to file AND displayed in console
   - Useful for troubleshooting startup issues
   - Does NOT use -H windowsgui flag
 - **Use when:** 
   - Debugging launcher or startup problems
   - Need to see error logs in terminal
-  - Investigating issues before app starts
+  - Need to see Node.js server errors and output
+  - Investigating issues before or during app startup
 
 ### launcher.go (launcher-console.exe)
 - **Purpose:** Simple console launcher

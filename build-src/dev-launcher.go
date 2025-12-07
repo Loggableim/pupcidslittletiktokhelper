@@ -59,12 +59,12 @@ func (l *Launcher) setupLogging(appDir string) error {
 
 	l.logFile = logFile
 
-	// Only write to file (not stdout) because in GUI mode stdout doesn't exist
-	// This prevents silent failures when built with -H windowsgui
+	// DEV MODE: Logger writes to file only, but server output goes to both file and console
+	// This ensures launcher progress is logged while server errors are visible in terminal
 	l.logger = log.New(logFile, "", log.LstdFlags)
 
 	l.logger.Println("========================================")
-	l.logger.Println("TikTok Stream Tool - Launcher Log")
+	l.logger.Println("TikTok Stream Tool - DEV Launcher Log")
 	l.logger.Println("========================================")
 	l.logger.Printf("Log file: %s\n", logPath)
 	l.logger.Printf("Platform: %s\n", runtime.GOOS)
@@ -283,18 +283,28 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 	// The GUI launcher handles the redirect to dashboard after server is ready
 	cmd.Env = append(os.Environ(), "OPEN_BROWSER=false")
 
-	// Redirect both stdout and stderr to log file only (not os.Stdout because GUI mode has no console)
+	// DEV MODE: Redirect output to BOTH log file AND console for detailed error logging
 	if l.logFile != nil {
-		cmd.Stdout = l.logFile
-		cmd.Stderr = l.logFile
+		// Use MultiWriter to send output to both log file and console
+		cmd.Stdout = io.MultiWriter(l.logFile, os.Stdout)
+		cmd.Stderr = io.MultiWriter(l.logFile, os.Stderr)
+	} else {
+		// Fallback to console only if log file isn't available
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 	}
-	// Note: We don't redirect stdin in GUI mode as there's no console
+	cmd.Stdin = os.Stdin
 
 	l.logAndSync("Starting Node.js server...")
 	l.logAndSync("Command: %s %s", l.nodePath, launchJS)
 	l.logAndSync("Working directory: %s", l.appDir)
 	l.logAndSync("OPEN_BROWSER environment variable set to: false")
 	l.logAndSync("--- Node.js Server Output Start ---")
+	
+	// Print to console as well
+	fmt.Println("\n================================================")
+	fmt.Println("  DEV MODE: Server output will be visible below")
+	fmt.Println("================================================\n")
 
 	err := cmd.Start()
 	if err != nil {
