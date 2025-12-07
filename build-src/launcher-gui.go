@@ -613,7 +613,7 @@ func main() {
 
 	exeDir := filepath.Dir(exePath)
 	launcher.appDir = filepath.Join(exeDir, "app")
-	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.png")
+	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.jpg")
 
 	// Setup logging immediately
 	if err := launcher.setupLogging(launcher.appDir); err != nil {
@@ -644,7 +644,7 @@ func main() {
         body {
             width: 100vw;
             height: 100vh;
-            background-color: #1a1a2e;
+            background-color: #f5f5f5;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -653,39 +653,50 @@ func main() {
         }
         
         .launcher-container {
-            width: 80vw;
-            height: 80vh;
+            width: 90vw;
+            height: 90vh;
             background-image: url(/bg);
-            background-size: cover;
+            background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
             position: relative;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
         }
         
         .progress-container {
-            position: absolute;
-            left: 50px;
-            bottom: 150px;
-            width: 650px;
+            position: relative;
+            right: 8%;
+            width: 40%;
+            max-width: 500px;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
         
         .status-text {
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-            font-family: Arial, sans-serif;
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.5;
+            min-height: 48px;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
         .progress-bar-bg {
             width: 100%;
-            height: 40px;
-            background-color: rgba(0, 0, 0, 0.5);
+            height: 35px;
+            background-color: #e0e0e0;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
         .progress-bar-fill {
@@ -699,7 +710,8 @@ func main() {
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0, 153, 255, 0.3);
         }
     </style>
 </head>
