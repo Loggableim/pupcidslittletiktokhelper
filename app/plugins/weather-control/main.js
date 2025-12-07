@@ -44,6 +44,36 @@ class WeatherControlPlugin {
         this.apiKey = null;
     }
 
+    /**
+     * Validate and clamp intensity value
+     * @param {number} intensity - Raw intensity value
+     * @param {string} effectName - Effect name for default lookup
+     * @returns {number} Valid intensity value
+     */
+    validateIntensity(intensity, effectName) {
+        const defaultIntensity = this.config.effects[effectName]?.defaultIntensity || 0.5;
+        return Math.max(this.minIntensity, Math.min(this.maxIntensity, parseFloat(intensity) || defaultIntensity));
+    }
+
+    /**
+     * Validate and clamp duration value
+     * @param {number} duration - Raw duration value
+     * @param {string} effectName - Effect name for default lookup
+     * @returns {number} Valid duration value in milliseconds
+     */
+    validateDuration(duration, effectName) {
+        const defaultDuration = this.config.effects[effectName]?.defaultDuration || 10000;
+        return Math.max(this.minDuration, Math.min(this.maxDuration, parseInt(duration) || defaultDuration));
+    }
+
+    /**
+     * Get GCCE plugin instance
+     * @returns {Object|null} GCCE instance or null
+     */
+    getGCCEInstance() {
+        return this.api.pluginLoader?.loadedPlugins?.get('gcce')?.instance || null;
+    }
+
     async init() {
         this.api.log('🌦️ [WEATHER CONTROL] Initializing Weather Control Plugin...', 'info');
 
@@ -263,10 +293,10 @@ class WeatherControlPlugin {
                 }
 
                 // Sanitize and validate intensity
-                const validIntensity = Math.max(this.minIntensity, Math.min(this.maxIntensity, parseFloat(intensity) || this.config.effects[action].defaultIntensity));
+                const validIntensity = this.validateIntensity(intensity, action);
                 
                 // Sanitize and validate duration
-                const validDuration = Math.max(this.minDuration, Math.min(this.maxDuration, parseInt(duration) || this.config.effects[action].defaultDuration));
+                const validDuration = this.validateDuration(duration, action);
 
                 // Create weather event
                 const weatherEvent = {
@@ -392,8 +422,8 @@ class WeatherControlPlugin {
                     return { success: false, error: `Effect "${action}" is disabled` };
                 }
 
-                const validIntensity = Math.max(this.minIntensity, Math.min(this.maxIntensity, parseFloat(intensity) || this.config.effects[action].defaultIntensity));
-                const validDuration = Math.max(this.minDuration, Math.min(this.maxDuration, parseInt(duration) || this.config.effects[action].defaultDuration));
+                const validIntensity = this.validateIntensity(intensity, action);
+                const validDuration = this.validateDuration(duration, action);
 
                 const weatherEvent = {
                     type: 'weather',
@@ -422,9 +452,9 @@ class WeatherControlPlugin {
     registerGCCECommands() {
         try {
             // Try to get GCCE plugin instance
-            const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+            const gcce = this.getGCCEInstance();
             
-            if (!gccePlugin || !gccePlugin.instance) {
+            if (!gcce) {
                 this.api.log('💬 [WEATHER CONTROL] GCCE not available, skipping command registration', 'debug');
                 return;
             }
@@ -433,8 +463,6 @@ class WeatherControlPlugin {
                 this.api.log('💬 [WEATHER CONTROL] Chat commands disabled in config', 'debug');
                 return;
             }
-
-            const gcce = gccePlugin.instance;
             
             // Define weather commands
             const commands = [
@@ -556,7 +584,7 @@ class WeatherControlPlugin {
             if (this.config.chatCommands.allowIntensityControl && args.length >= 2) {
                 const parsedIntensity = parseFloat(args[1]);
                 if (!isNaN(parsedIntensity)) {
-                    intensity = Math.max(this.minIntensity, Math.min(this.maxIntensity, parsedIntensity));
+                    intensity = this.validateIntensity(parsedIntensity, effectName);
                 }
             }
 
@@ -565,7 +593,7 @@ class WeatherControlPlugin {
             if (this.config.chatCommands.allowDurationControl && args.length >= 3) {
                 const parsedDuration = parseInt(args[2]);
                 if (!isNaN(parsedDuration)) {
-                    duration = Math.max(this.minDuration, Math.min(this.maxDuration, parsedDuration));
+                    duration = this.validateDuration(parsedDuration, effectName);
                 }
             }
 
@@ -825,9 +853,9 @@ class WeatherControlPlugin {
         
         // Unregister GCCE commands
         try {
-            const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
-            if (gccePlugin?.instance) {
-                gccePlugin.instance.unregisterCommandsForPlugin('weather-control');
+            const gcce = this.getGCCEInstance();
+            if (gcce) {
+                gcce.unregisterCommandsForPlugin('weather-control');
                 this.api.log('💬 [WEATHER CONTROL] Unregistered GCCE commands', 'debug');
             }
         } catch (error) {

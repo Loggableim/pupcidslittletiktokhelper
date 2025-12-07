@@ -1043,8 +1043,8 @@
 
                     // Chat Commands
                     if (config.chatCommands) {
-                        document.getElementById('chatCommandsEnabled').checked = config.chatCommands.enabled !== false;
-                        document.getElementById('chatCommandsRequirePermission').checked = config.chatCommands.requirePermission !== false;
+                        document.getElementById('chatCommandsEnabled').checked = config.chatCommands.enabled === true;
+                        document.getElementById('chatCommandsRequirePermission').checked = config.chatCommands.requirePermission === true;
                         document.getElementById('chatCommandsAllowIntensity').checked = config.chatCommands.allowIntensityControl === true;
                         document.getElementById('chatCommandsAllowDuration').checked = config.chatCommands.allowDurationControl === true;
                     }
