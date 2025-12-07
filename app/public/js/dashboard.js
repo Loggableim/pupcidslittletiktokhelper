@@ -336,6 +336,35 @@ function initializeButtons() {
 
     // Plugin Notice Dismissal
     initializePluginNotice();
+    
+    // Event delegation for dynamically created buttons
+    setupEventDelegation();
+}
+
+// ========== EVENT DELEGATION FOR DYNAMIC BUTTONS ==========
+function setupEventDelegation() {
+    // Event delegation for voice mapping delete buttons
+    document.body.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+        
+        const action = target.dataset.action;
+        
+        switch (action) {
+            case 'delete-voice-mapping':
+                deleteVoiceMapping(target.dataset.username);
+                break;
+            case 'test-flow':
+                testFlow(parseInt(target.dataset.flowId));
+                break;
+            case 'toggle-flow':
+                toggleFlow(parseInt(target.dataset.flowId), target.dataset.enabled === 'true');
+                break;
+            case 'delete-flow':
+                deleteFlow(parseInt(target.dataset.flowId));
+                break;
+        }
+    });
 }
 
 // ========== PLUGIN NOTICE ==========
@@ -1440,7 +1469,7 @@ async function loadVoiceMapping() {
                 <td class="py-2 pr-4">${voiceName}</td>
                 <td class="py-2 pr-4 text-gray-400 text-sm">${lastUsed}</td>
                 <td class="py-2">
-                    <button onclick="deleteVoiceMapping('${mapping.username}')"
+                    <button data-action="delete-voice-mapping" data-username="${mapping.username}"
                             class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">
                         🗑️ Delete
                     </button>
@@ -1555,16 +1584,16 @@ async function loadFlows() {
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="testFlow(${flow.id})" 
+                        <button data-action="test-flow" data-flow-id="${flow.id}"
                                 class="px-3 py-1 rounded text-sm bg-blue-600 hover:bg-blue-700"
                                 title="Test flow">
                             🧪 Test
                         </button>
-                        <button onclick="toggleFlow(${flow.id}, ${!flow.enabled})"
+                        <button data-action="toggle-flow" data-flow-id="${flow.id}" data-enabled="${!flow.enabled}"
                                 class="px-3 py-1 rounded text-sm ${flow.enabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'}">
                             ${flow.enabled ? '✅ Enabled' : '⏸️ Disabled'}
                         </button>
-                        <button onclick="deleteFlow(${flow.id})" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">
+                        <button data-action="delete-flow" data-flow-id="${flow.id}" class="bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-700">
                             🗑️
                         </button>
                     </div>

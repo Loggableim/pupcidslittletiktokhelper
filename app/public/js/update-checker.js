@@ -184,12 +184,17 @@ class UpdateUI {
                         <li>Die neue Version ist dann aktiv</li>
                     </ol>
                 </div>
-                <button class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 w-full" onclick="this.parentElement.parentElement.remove()">
+                <button class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 w-full" data-action="close-modal">
                     Verstanden
                 </button>
             </div>
         `;
         document.body.appendChild(modal);
+        
+        // Add event listener for close button
+        modal.querySelector('[data-action="close-modal"]').addEventListener('click', () => {
+            modal.remove();
+        });
     }
 
     /**
@@ -234,13 +239,18 @@ class UpdateUI {
                             <a href="${this.currentUpdateInfo.releaseUrl}" target="_blank" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700 flex-1 text-center">
                                 🌐 Zu GitHub Release
                             </a>
-                            <button class="bg-gray-600 px-6 py-2 rounded hover:bg-gray-700" onclick="this.parentElement.parentElement.parentElement.remove()">
+                            <button class="bg-gray-600 px-6 py-2 rounded hover:bg-gray-700" data-action="close-modal">
                                 Schließen
                             </button>
                         </div>
                     </div>
                 `;
                 document.body.appendChild(modal);
+                
+                // Add event listener for close button
+                modal.querySelector('[data-action="close-modal"]').addEventListener('click', () => {
+                    modal.remove();
+                });
             }
         } catch (error) {
             console.error('Failed to get instructions:', error);
