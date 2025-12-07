@@ -31,7 +31,7 @@ function initializeSocket() {
         try {
             if (typeof io !== 'undefined') {
                 socket = io({
-                    // Prevent connection attempts during page unload
+                    // Configure Socket.IO client for better reliability
                     autoConnect: true,
                     // Reduce reconnection attempts to prevent errors during page transitions
                     reconnectionAttempts: 5,
@@ -48,10 +48,9 @@ function initializeSocket() {
 
                 socket.on('connect_error', (error) => {
                     console.error('Socket.io connection error:', error);
-                    // Still resolve to allow page to function with polling fallback
-                    if (!socketReady) {
-                        resolve();
-                    }
+                    // Resolve anyway to allow page to function with polling fallback
+                    // This ensures the Promise doesn't hang indefinitely
+                    resolve();
                 });
 
                 // Setup socket event listeners
@@ -1180,17 +1179,13 @@ function startQueuePolling() {
     if (isPageUnloading) return;
     
     loadQueue().catch(err => {
-        if (!isPageUnloading) {
-            console.error('Initial queue load failed:', err);
-        }
+        console.error('Initial queue load failed:', err);
     });
     
     queuePollInterval = setInterval(() => {
         if (!isPageUnloading) {
             loadQueue().catch(err => {
-                if (!isPageUnloading) {
-                    console.error('Queue poll failed:', err);
-                }
+                console.error('Queue poll failed:', err);
             });
         }
     }, 2000);
@@ -1340,17 +1335,13 @@ function startStatsPolling() {
     if (isPageUnloading) return;
     
     loadStats().catch(err => {
-        if (!isPageUnloading) {
-            console.error('Initial stats load failed:', err);
-        }
+        console.error('Initial stats load failed:', err);
     });
     
     statsPollInterval = setInterval(() => {
         if (!isPageUnloading) {
             loadStats().catch(err => {
-                if (!isPageUnloading) {
-                    console.error('Stats poll failed:', err);
-                }
+                console.error('Stats poll failed:', err);
             });
         }
     }, 5000);
