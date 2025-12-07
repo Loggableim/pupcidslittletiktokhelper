@@ -438,7 +438,7 @@ class WeatherControlPlugin {
 
     /**
      * Check if user has permission to trigger weather effects
-     * Uses userData from GCCE context to avoid redundant DB queries
+     * Uses userData from event context to avoid redundant DB queries
      */
     async checkUserPermission(username, contextUserData = null) {
         try {
@@ -454,11 +454,11 @@ class WeatherControlPlugin {
                 return true;
             }
 
-            // Use context userData if provided (from GCCE)
+            // Use context userData if provided (from event)
             let user = null;
             if (contextUserData?.dbUser) {
                 user = contextUserData.dbUser;
-                this.api.log('🔍 [WEATHER CONTROL] Using cached user data from GCCE', 'debug');
+                this.api.log('🔍 [WEATHER CONTROL] Using cached user data from event', 'debug');
             } else {
                 // Fallback: Get user data from database
                 const db = this.api.getDatabase();

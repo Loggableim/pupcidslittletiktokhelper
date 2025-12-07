@@ -767,9 +767,7 @@ class OSCBridgePlugin {
     }
 
     /**
-     * Register GCCE commands for VRChat actions
      */
-    registerGCCECommands() {
         }
 
         if (this.isRunning) {

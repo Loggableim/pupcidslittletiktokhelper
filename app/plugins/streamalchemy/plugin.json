@@ -7,7 +7,6 @@
   "entry": "index.js",
   "enabled": false,
   "dependencies": {
-    "optional": ["gcce"]
   },
   "permissions": [
     "socket.io",

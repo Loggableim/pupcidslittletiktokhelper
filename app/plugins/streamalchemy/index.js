@@ -91,19 +91,6 @@ class StreamAlchemyPlugin {
             // Start cleanup timer (remove old gift buffers)
             this.startCleanupTimer();
 
-            // Register commands with GCCE if available (or wait for it)
-            this.registerGCCECommands();
-            
-            // Also listen for GCCE ready event in case it loads later
-            const gcceReadyHandler = async () => {
-                if (!this.commandsRegistered) {
-                    this.api.log('[STREAMALCHEMY] GCCE became available, registering commands now', 'info');
-                    this.registerGCCECommands();
-                }
-            };
-            this.api.registerSocket('gcce:ready', gcceReadyHandler);
-            this.socketListeners.push({ event: 'gcce:ready', handler: gcceReadyHandler });
-
             this.api.log('✅ [STREAMALCHEMY] StreamAlchemy Plugin initialized successfully', 'info');
         } catch (error) {
             this.api.log(`❌ [STREAMALCHEMY] Initialization failed: ${error.message}`, 'error');
@@ -848,7 +835,7 @@ class StreamAlchemyPlugin {
 
     /**
      * Legacy chat command handler structure (kept for backward compatibility)
-     * Modern commands are handled via GCCE integration
+     * 
      * @param {string} userId - User ID
      * @param {string} command - Command name
      * @param {Array} args - Command arguments
@@ -856,84 +843,8 @@ class StreamAlchemyPlugin {
     async handleChatCommand(userId, command, args) {
         this.api.log(`[STREAMALCHEMY] Chat command received: ${command} from ${userId}`, 'debug');
         
-        // Commands are now handled by GCCE
-        // This method kept for potential future direct command support
-        this.api.log('[STREAMALCHEMY] Use GCCE commands: /inventory, /inspect, /merge, /alchemy', 'info');
     }
 
-    /**
-     * Register commands with GCCE (Global Chat Command Engine)
-     */
-    registerGCCECommands() {
-        // Skip if already registered
-        if (this.commandsRegistered) {
-            return;
-        }
-        
-        // Try to get GCCE plugin from the plugin loader
-        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
-        
-        if (!gccePlugin || !gccePlugin.instance) {
-            this.api.log('[STREAMALCHEMY] GCCE not available yet - will register when available', 'debug');
-            return;
-        }
-
-        const gcce = gccePlugin.instance;
-
-        // Define StreamAlchemy commands
-        const commands = [
-            {
-                name: 'inventory',
-                description: 'View your alchemy inventory',
-                syntax: '/inventory',
-                permission: 'all',
-                enabled: true,
-                minArgs: 0,
-                maxArgs: 0,
-                category: 'Alchemy',
-                handler: async (args, context) => await this.handleInventoryCommand(args, context)
-            },
-            {
-                name: 'inspect',
-                description: 'Inspect an item in your inventory',
-                syntax: '/inspect <item_name>',
-                permission: 'all',
-                enabled: true,
-                minArgs: 1,
-                category: 'Alchemy',
-                handler: async (args, context) => await this.handleInspectCommand(args, context)
-            },
-            {
-                name: 'merge',
-                description: 'Manually merge two items (moderator only)',
-                syntax: '/merge <item1> <item2>',
-                permission: 'moderator',
-                enabled: true,
-                minArgs: 2,
-                maxArgs: 2,
-                category: 'Alchemy',
-                handler: async (args, context) => await this.handleMergeCommand(args, context)
-            },
-            {
-                name: 'alchemy',
-                description: 'View alchemy system information and help',
-                syntax: '/alchemy [help]',
-                permission: 'all',
-                enabled: true,
-                minArgs: 0,
-                maxArgs: 1,
-                category: 'Alchemy',
-                handler: async (args, context) => await this.handleAlchemyCommand(args, context)
-            }
-        ];
-
-        // Register commands
-        const result = gcce.registerCommandsForPlugin('streamalchemy', commands);
-        
-        this.commandsRegistered = result.registered.length > 0;
-        
-        this.api.log(`[STREAMALCHEMY] Registered ${result.registered.length} commands with GCCE`, 'info');
-        if (result.failed.length > 0) {
             this.api.log(`[STREAMALCHEMY] Failed to register commands: ${result.failed.join(', ')}`, 'warn');
         }
     }
