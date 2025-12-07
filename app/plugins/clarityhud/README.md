@@ -13,9 +13,10 @@ Ultra-minimalistic, VR-optimized and accessible HUD overlays for TikTok live str
    - Minimal design without logos or decorations
 
 2. **Full Activity HUD** (`/overlay/clarity/full`)
-   - Displays all TikTok events: Chat, Follows, Shares, Gifts, Subs, Treasure Chests, Joins
+   - Displays all TikTok events: Chat, Follows, Shares, Likes, Gifts, Subs, Treasure Chests, Joins
    - Each event type individually toggleable
    - Three layout modes: Single Stream, Structured, Adaptive
+   - Event deduplication to prevent double display
 
 ### Layout Modes (Full HUD)
 
@@ -101,8 +102,10 @@ Use the preset buttons for instant configuration:
 - `clarityhud.update.chat` - Chat message event
 - `clarityhud.update.follow` - Follow event
 - `clarityhud.update.share` - Share event
+- `clarityhud.update.like` - Like event
 - `clarityhud.update.gift` - Gift event
 - `clarityhud.update.subscribe` - Subscribe/Superfan event
+- `clarityhud.update.treasure` - Treasure chest event
 - `clarityhud.update.join` - Join event
 - `clarityhud.settings.chat` - Chat settings update
 - `clarityhud.settings.full` - Full settings update

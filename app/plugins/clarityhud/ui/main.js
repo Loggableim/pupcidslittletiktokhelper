@@ -326,6 +326,10 @@ function renderTabContent(dock, tabId) {
             <label for="showShares">Show Shares</label>
           </div>
           <div class="checkbox-group">
+            <input type="checkbox" id="showLikes" ${s.showLikes !== false ? 'checked' : ''}>
+            <label for="showLikes">Show Likes</label>
+          </div>
+          <div class="checkbox-group">
             <input type="checkbox" id="showGifts" ${s.showGifts !== false ? 'checked' : ''}>
             <label for="showGifts">Show Gifts</label>
           </div>
@@ -695,6 +699,7 @@ async function saveSettings() {
       showChat: getFieldValue('showChat', 'checkbox'),
       showFollows: getFieldValue('showFollows', 'checkbox'),
       showShares: getFieldValue('showShares', 'checkbox'),
+      showLikes: getFieldValue('showLikes', 'checkbox'),
       showGifts: getFieldValue('showGifts', 'checkbox'),
       showSubs: getFieldValue('showSubs', 'checkbox'),
       showTreasureChests: getFieldValue('showTreasureChests', 'checkbox'),
