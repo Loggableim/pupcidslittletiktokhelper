@@ -97,7 +97,8 @@ function makeRequest(port, hostname, path) {
       hostname: hostname,
       port: port,
       path: path,
-      method: 'GET'
+      method: 'GET',
+      timeout: 5000 // 5 second timeout
     };
 
     const req = http.request(options, (res) => {
@@ -113,6 +114,10 @@ function makeRequest(port, hostname, path) {
     });
 
     req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    });
     req.end();
   });
 }
