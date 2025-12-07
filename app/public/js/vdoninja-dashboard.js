@@ -251,6 +251,11 @@ async function loadExistingRooms() {
         const data = await response.json();
 
         const select = document.getElementById('vdo-existing-rooms');
+        if (!select) {
+            console.log('[VDO.Ninja] loadExistingRooms: UI elements not found (not on VDO.Ninja page)');
+            return;
+        }
+        
         select.innerHTML = '<option value="">Select Room...</option>';
 
         if (data.rooms && data.rooms.length > 0) {
@@ -570,6 +575,12 @@ function updateRoomUI(roomData) {
     const muteAllBtn = document.getElementById('vdo-mute-all-btn');
     const unmuteAllBtn = document.getElementById('vdo-unmute-all-btn');
 
+    // Check if UI elements exist (only present on VDO.Ninja dedicated page)
+    if (!roomNameEl || !guestCountEl) {
+        console.log('[VDO.Ninja] updateRoomUI: UI elements not found (not on VDO.Ninja page)');
+        return;
+    }
+
     if (roomData) {
         vdoState.activeRoom = roomData;
 
@@ -579,16 +590,16 @@ function updateRoomUI(roomData) {
 
         guestCountEl.textContent = `${roomData.guestCount || 0}/${roomData.maxGuests}`;
 
-        if (roomData.directorUrl && roomData.guestInviteUrl) {
+        if (roomData.directorUrl && roomData.guestInviteUrl && directorUrlEl && inviteUrlEl && roomUrlsEl) {
             directorUrlEl.value = roomData.directorUrl;
             inviteUrlEl.value = roomData.guestInviteUrl;
             roomUrlsEl.classList.remove('hidden');
         }
 
-        closeBtn.disabled = false;
-        deleteBtn.disabled = false;
-        muteAllBtn.disabled = false;
-        unmuteAllBtn.disabled = false;
+        if (closeBtn) closeBtn.disabled = false;
+        if (deleteBtn) deleteBtn.disabled = false;
+        if (muteAllBtn) muteAllBtn.disabled = false;
+        if (unmuteAllBtn) unmuteAllBtn.disabled = false;
     } else {
         vdoState.activeRoom = null;
 
@@ -597,17 +608,23 @@ function updateRoomUI(roomData) {
         roomNameEl.classList.remove('text-green-400');
 
         guestCountEl.textContent = '0/6';
-        roomUrlsEl.classList.add('hidden');
+        if (roomUrlsEl) roomUrlsEl.classList.add('hidden');
 
-        closeBtn.disabled = true;
-        deleteBtn.disabled = true;
-        muteAllBtn.disabled = true;
-        unmuteAllBtn.disabled = true;
+        if (closeBtn) closeBtn.disabled = true;
+        if (deleteBtn) deleteBtn.disabled = true;
+        if (muteAllBtn) muteAllBtn.disabled = true;
+        if (unmuteAllBtn) unmuteAllBtn.disabled = true;
     }
 }
 
 function updateGuestListUI() {
     const guestListEl = document.getElementById('vdo-guest-list');
+    
+    // Check if UI element exists (only present on VDO.Ninja dedicated page)
+    if (!guestListEl) {
+        console.log('[VDO.Ninja] updateGuestListUI: UI elements not found (not on VDO.Ninja page)');
+        return;
+    }
 
     if (vdoState.guests.size === 0) {
         guestListEl.innerHTML = `
@@ -727,7 +744,9 @@ function handleGuestJoined(data) {
 
     if (vdoState.activeRoom) {
         const guestCountEl = document.getElementById('vdo-guest-count');
-        guestCountEl.textContent = `${vdoState.guests.size}/${vdoState.activeRoom.maxGuests}`;
+        if (guestCountEl) {
+            guestCountEl.textContent = `${vdoState.guests.size}/${vdoState.activeRoom.maxGuests}`;
+        }
     }
 }
 
@@ -737,7 +756,9 @@ function handleGuestLeft(data) {
 
     if (vdoState.activeRoom) {
         const guestCountEl = document.getElementById('vdo-guest-count');
-        guestCountEl.textContent = `${vdoState.guests.size}/${vdoState.activeRoom.maxGuests}`;
+        if (guestCountEl) {
+            guestCountEl.textContent = `${vdoState.guests.size}/${vdoState.activeRoom.maxGuests}`;
+        }
     }
 }
 
