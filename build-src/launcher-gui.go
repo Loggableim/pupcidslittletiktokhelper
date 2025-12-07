@@ -156,6 +156,10 @@ func (l *Launcher) installDependencies() error {
 	l.updateProgress(45, "npm install wird gestartet...")
 	time.Sleep(500 * time.Millisecond)
 	
+	// Show initial warning about potential delay
+	l.updateProgress(45, "HINWEIS: npm install kann mehrere Minuten dauern, besonders bei langsamer Internetverbindung. Bitte warten...")
+	time.Sleep(2 * time.Second)
+	
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
@@ -184,6 +188,16 @@ func (l *Launcher) installDependencies() error {
 	// Track progress with live updates
 	progressCounter := 0
 	maxProgress := 75
+	lastUpdate := time.Now()
+	installComplete := false
+	
+	// Heartbeat ticker to show activity even when npm produces no output
+	heartbeatTicker := time.NewTicker(3 * time.Second)
+	defer heartbeatTicker.Stop()
+	
+	// Channel to signal when stdout reading is done
+	stdoutDone := make(chan bool)
+	
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
@@ -204,8 +218,10 @@ func (l *Launcher) installDependencies() error {
 					displayLine = displayLine[:117] + "..."
 				}
 				l.updateProgress(currentProgress, fmt.Sprintf("npm install: %s", displayLine))
+				lastUpdate = time.Now()
 			}
 		}
+		stdoutDone <- true
 	}()
 	
 	// Log errors
@@ -217,8 +233,34 @@ func (l *Launcher) installDependencies() error {
 		}
 	}()
 	
+	// Heartbeat goroutine to show activity
+	go func() {
+		for !installComplete {
+			select {
+			case <-heartbeatTicker.C:
+				// If no output for more than 3 seconds, show activity indicator
+				if time.Since(lastUpdate) >= 3*time.Second {
+					elapsed := int(time.Since(lastUpdate).Seconds())
+					currentProgress := 45 + (progressCounter / 2)
+					if currentProgress > maxProgress {
+						currentProgress = maxProgress
+					}
+					if currentProgress < 50 {
+						currentProgress = 50 // Show at least 50% during install
+					}
+					l.updateProgress(currentProgress, fmt.Sprintf("npm install läuft... (%ds) - Bitte warten, Downloads können mehrere Minuten dauern", elapsed))
+				}
+			}
+		}
+	}()
+	
 	// Wait for command to complete
 	err = cmd.Wait()
+	installComplete = true
+	
+	// Wait for stdout processing to complete
+	<-stdoutDone
+	
 	if err != nil {
 		l.logger.Printf("[ERROR] npm install failed: %v\n", err)
 		return fmt.Errorf("Installation fehlgeschlagen: %v", err)
