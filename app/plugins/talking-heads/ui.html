@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talking Heads - Admin UI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #00d9ff;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 30px;
+    }
+    .section {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .section h2 {
+      margin-top: 0;
+      color: #00d9ff;
+      font-size: 18px;
+    }
+    label {
+      display: block;
+      margin-bottom: 10px;
+      color: #ccc;
+    }
+    input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    input[type="number"],
+    select {
+      background: #1a1a1a;
+      border: 1px solid #444;
+      color: #fff;
+      padding: 8px;
+      border-radius: 4px;
+      width: 200px;
+    }
+    .btn {
+      background: #00d9ff;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    .btn:hover {
+      background: #00b8d4;
+    }
+    .btn-secondary {
+      background: #444;
+      color: #fff;
+    }
+    .btn-secondary:hover {
+      background: #555;
+    }
+    .overlay-url {
+      background: #1a1a1a;
+      border: 1px solid #444;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #00d9ff;
+      margin-top: 10px;
+      word-break: break-all;
+    }
+    .copy-btn {
+      margin-top: 10px;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      display: none;
+    }
+    .status.success {
+      background: #1a4d2e;
+      color: #7fff00;
+      display: block;
+    }
+    .status.error {
+      background: #4d1a1a;
+      color: #ff6b6b;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎭 Talking Heads</h1>
+    <p class="subtitle">Animated avatar overlay that reacts to TikTok Live events</p>
+
+    <div class="section">
+      <h2>⚙️ General Settings</h2>
+      <label>
+        <input type="checkbox" id="enabled" checked> Enable Talking Heads
+      </label>
+      <label>
+        <input type="checkbox" id="showChat"> Show chat messages
+      </label>
+      <label>
+        <input type="checkbox" id="showLikes"> Show like events
+      </label>
+      <label>
+        Like threshold (show every N likes):
+        <input type="number" id="likeThreshold" value="10" min="1" max="1000">
+      </label>
+    </div>
+
+    <div class="section">
+      <h2>🎨 Appearance</h2>
+      <label>
+        Avatar Type:
+        <select id="avatarType">
+          <option value="default">Default Avatar</option>
+          <option value="cartoon">Cartoon Character</option>
+          <option value="anime">Anime Style</option>
+          <option value="realistic">Realistic</option>
+        </select>
+      </label>
+      <label>
+        Position:
+        <select id="position">
+          <option value="bottom-left">Bottom Left</option>
+          <option value="bottom-right" selected>Bottom Right</option>
+          <option value="top-left">Top Left</option>
+          <option value="top-right">Top Right</option>
+        </select>
+      </label>
+      <label>
+        Size:
+        <select id="size">
+          <option value="small">Small</option>
+          <option value="medium" selected>Medium</option>
+          <option value="large">Large</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="section">
+      <h2>😊 Enabled Expressions</h2>
+      <label><input type="checkbox" id="expr-neutral" checked> Neutral</label>
+      <label><input type="checkbox" id="expr-happy" checked> Happy</label>
+      <label><input type="checkbox" id="expr-excited" checked> Excited</label>
+      <label><input type="checkbox" id="expr-talking" checked> Talking</label>
+      <label><input type="checkbox" id="expr-smile" checked> Smile</label>
+      <label><input type="checkbox" id="expr-very-happy" checked> Very Happy</label>
+      <label><input type="checkbox" id="expr-ecstatic" checked> Ecstatic</label>
+    </div>
+
+    <div class="section">
+      <h2>🔗 Overlay URL</h2>
+      <p>Add this URL as a Browser Source in OBS:</p>
+      <div class="overlay-url" id="overlayUrl">Loading...</div>
+      <button class="btn copy-btn" onclick="copyOverlayUrl()">📋 Copy URL</button>
+    </div>
+
+    <div class="section">
+      <button class="btn" onclick="saveConfig()">💾 Save Configuration</button>
+      <button class="btn btn-secondary" onclick="loadConfig()">🔄 Reload</button>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Load config on page load
+    window.addEventListener('load', () => {
+      loadConfig();
+      updateOverlayUrl();
+    });
+
+    function updateOverlayUrl() {
+      const port = window.location.port;
+      const protocol = window.location.protocol;
+      const hostname = window.location.hostname;
+      const url = `${protocol}//${hostname}${port ? ':' + port : ''}/plugins/talking-heads/overlay`;
+      document.getElementById('overlayUrl').textContent = url;
+    }
+
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/talking-heads/config');
+        const config = await response.json();
+
+        document.getElementById('enabled').checked = config.enabled;
+        document.getElementById('showChat').checked = config.showChat;
+        document.getElementById('showLikes').checked = config.showLikes;
+        document.getElementById('likeThreshold').value = config.likeThreshold || 10;
+        document.getElementById('avatarType').value = config.avatarType || 'default';
+        document.getElementById('position').value = config.position || 'bottom-right';
+        document.getElementById('size').value = config.size || 'medium';
+
+        // Load expressions
+        if (config.expressions) {
+          Object.keys(config.expressions).forEach(expr => {
+            const checkbox = document.getElementById(`expr-${expr}`);
+            if (checkbox) {
+              checkbox.checked = config.expressions[expr];
+            }
+          });
+        }
+
+        showStatus('Configuration loaded successfully', 'success');
+      } catch (error) {
+        showStatus('Failed to load configuration: ' + error.message, 'error');
+      }
+    }
+
+    async function saveConfig() {
+      const config = {
+        enabled: document.getElementById('enabled').checked,
+        showChat: document.getElementById('showChat').checked,
+        showLikes: document.getElementById('showLikes').checked,
+        likeThreshold: parseInt(document.getElementById('likeThreshold').value),
+        avatarType: document.getElementById('avatarType').value,
+        position: document.getElementById('position').value,
+        size: document.getElementById('size').value,
+        expressions: {
+          neutral: document.getElementById('expr-neutral').checked,
+          happy: document.getElementById('expr-happy').checked,
+          excited: document.getElementById('expr-excited').checked,
+          talking: document.getElementById('expr-talking').checked,
+          smile: document.getElementById('expr-smile').checked,
+          'very-happy': document.getElementById('expr-very-happy').checked,
+          ecstatic: document.getElementById('expr-ecstatic').checked
+        }
+      };
+
+      try {
+        const response = await fetch('/api/talking-heads/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(config)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          showStatus('Configuration saved successfully!', 'success');
+        } else {
+          showStatus('Failed to save configuration: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showStatus('Failed to save configuration: ' + error.message, 'error');
+      }
+    }
+
+    function copyOverlayUrl() {
+      const url = document.getElementById('overlayUrl').textContent;
+      navigator.clipboard.writeText(url).then(() => {
+        showStatus('URL copied to clipboard!', 'success');
+      }).catch(err => {
+        showStatus('Failed to copy URL', 'error');
+      });
+    }
+
+    function showStatus(message, type) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+      setTimeout(() => {
+        statusEl.style.display = 'none';
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

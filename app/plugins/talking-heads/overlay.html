@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talking Heads Overlay</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #avatar-container {
+      position: fixed;
+      transition: all 0.3s ease;
+    }
+
+    #avatar-container.bottom-left {
+      bottom: 20px;
+      left: 20px;
+    }
+
+    #avatar-container.bottom-right {
+      bottom: 20px;
+      right: 20px;
+    }
+
+    #avatar-container.top-left {
+      top: 20px;
+      left: 20px;
+    }
+
+    #avatar-container.top-right {
+      top: 20px;
+      right: 20px;
+    }
+
+    #avatar-container.small {
+      width: 150px;
+      height: 150px;
+    }
+
+    #avatar-container.medium {
+      width: 250px;
+      height: 250px;
+    }
+
+    #avatar-container.large {
+      width: 350px;
+      height: 350px;
+    }
+
+    #avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5em;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    #avatar.neutral { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    #avatar.happy { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    #avatar.excited { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    #avatar.talking { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    #avatar.smile { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    #avatar.very-happy { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+    #avatar.ecstatic { background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); }
+
+    #avatar.bounce {
+      animation: bounce 0.6s ease;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    #avatar.pulse {
+      animation: pulse 0.8s ease infinite;
+    }
+
+    #speech-bubble {
+      position: absolute;
+      bottom: 110%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 20px;
+      max-width: 300px;
+      word-wrap: break-word;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      font-size: 14px;
+      z-index: 10;
+    }
+
+    #speech-bubble.show {
+      opacity: 1;
+      animation: float 0.3s ease;
+    }
+
+    @keyframes float {
+      0% { transform: translateX(-50%) translateY(10px); opacity: 0; }
+      100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+
+    #speech-bubble::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -10px;
+      border: 10px solid transparent;
+      border-top-color: rgba(0, 0, 0, 0.9);
+    }
+
+    .user-badge {
+      font-size: 10px;
+      background: #00d9ff;
+      color: #000;
+      padding: 2px 8px;
+      border-radius: 10px;
+      display: inline-block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .emoji {
+      font-size: 4em;
+      animation: none;
+    }
+
+    .emoji.neutral::before { content: '😐'; }
+    .emoji.happy::before { content: '😊'; }
+    .emoji.excited::before { content: '🤩'; }
+    .emoji.talking::before { content: '😄'; }
+    .emoji.smile::before { content: '😁'; }
+    .emoji.very-happy::before { content: '😃'; }
+    .emoji.ecstatic::before { content: '🥳'; }
+  </style>
+</head>
+<body>
+  <div id="avatar-container" class="bottom-right medium">
+    <div id="avatar" class="neutral">
+      <span class="emoji neutral"></span>
+    </div>
+    <div id="speech-bubble"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let currentExpression = 'neutral';
+    let config = {};
+    let messageTimeout = null;
+
+    // Load configuration
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/talking-heads/config');
+        config = await response.json();
+        applyConfig();
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    }
+
+    function applyConfig() {
+      const container = document.getElementById('avatar-container');
+      
+      // Apply position
+      container.className = `${config.position || 'bottom-right'} ${config.size || 'medium'}`;
+      
+      // Set initial expression
+      setExpression('neutral');
+    }
+
+    function setExpression(expression) {
+      if (!config.expressions || !config.expressions[expression]) {
+        return; // Expression is disabled
+      }
+
+      const avatar = document.getElementById('avatar');
+      const emoji = avatar.querySelector('.emoji');
+      
+      // Remove all expression classes
+      avatar.classList.remove('neutral', 'happy', 'excited', 'talking', 'smile', 'very-happy', 'ecstatic');
+      emoji.classList.remove('neutral', 'happy', 'excited', 'talking', 'smile', 'very-happy', 'ecstatic');
+      
+      // Add new expression
+      avatar.classList.add(expression);
+      emoji.classList.add(expression);
+      
+      currentExpression = expression;
+    }
+
+    function showMessage(message, user) {
+      const bubble = document.getElementById('speech-bubble');
+      
+      let content = '';
+      if (user && user !== 'System') {
+        content += `<div class="user-badge">@${user}</div>`;
+      }
+      content += message;
+      
+      bubble.innerHTML = content;
+      bubble.classList.add('show');
+    }
+
+    function hideMessage() {
+      const bubble = document.getElementById('speech-bubble');
+      bubble.classList.remove('show');
+    }
+
+    function addAnimation(type) {
+      const avatar = document.getElementById('avatar');
+      avatar.classList.add(type);
+      setTimeout(() => {
+        avatar.classList.remove(type);
+      }, 600);
+    }
+
+    // Listen for expression events
+    socket.on('talking-heads:expression', (data) => {
+      if (!config.enabled) return;
+
+      // Clear existing message timeout
+      if (messageTimeout) {
+        clearTimeout(messageTimeout);
+      }
+
+      // Set expression
+      setExpression(data.expression);
+      
+      // Show message
+      showMessage(data.message, data.user);
+      
+      // Add animation based on event type
+      if (data.type === 'gift') {
+        addAnimation('bounce');
+      } else if (data.type === 'chat' || data.type === 'follow') {
+        addAnimation('pulse');
+      }
+
+      // Hide message after duration
+      const duration = data.duration || 3000;
+      messageTimeout = setTimeout(() => {
+        hideMessage();
+        setExpression('neutral');
+      }, duration);
+    });
+
+    // Listen for config updates
+    socket.on('talking-heads:config-updated', (newConfig) => {
+      config = newConfig;
+      applyConfig();
+    });
+
+    // Listen for plugin disabled
+    socket.on('talking-heads:disabled', () => {
+      hideMessage();
+      setExpression('neutral');
+    });
+
+    // Initialize
+    loadConfig();
+  </script>
+</body>
+</html>

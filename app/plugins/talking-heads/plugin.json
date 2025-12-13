@@ -1,0 +1,12 @@
+{
+  "id": "talking-heads",
+  "name": "Talking Heads",
+  "description": "Animated avatar overlay that reacts to TikTok Live events with expressions, animations, and speech bubbles",
+  "version": "1.0.0",
+  "author": "PupCid",
+  "entry": "main.js",
+  "enabled": false,
+  "type": "overlay",
+  "dependencies": ["express", "socket.io"],
+  "permissions": ["tiktok-events", "database", "routes", "socket"]
+}

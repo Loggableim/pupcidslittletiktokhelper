@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Story Overlay</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #story-container {
+      position: fixed;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 800px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    #story-container.show {
+      opacity: 1;
+    }
+
+    #story-text {
+      background: rgba(0, 0, 0, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      animation: slideUp 0.5s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    #story-text h2 {
+      margin: 0 0 15px 0;
+      color: #00d9ff;
+      font-size: 24px;
+      text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+    }
+
+    #story-text p {
+      margin: 0;
+      color: #fff;
+      font-size: 18px;
+      line-height: 1.6;
+    }
+
+    #choices-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .choice-option {
+      background: rgba(0, 217, 255, 0.1);
+      border: 2px solid #00d9ff;
+      padding: 20px;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      animation: fadeIn 0.5s ease;
+      animation-fill-mode: backwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .choice-option:nth-child(1) { animation-delay: 0.1s; }
+    .choice-option:nth-child(2) { animation-delay: 0.2s; }
+    .choice-option:nth-child(3) { animation-delay: 0.3s; }
+    .choice-option:nth-child(4) { animation-delay: 0.4s; }
+
+    .choice-number {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      background: #00d9ff;
+      color: #000;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      margin-right: 15px;
+    }
+
+    .choice-text {
+      color: #fff;
+      font-size: 16px;
+      display: inline;
+    }
+
+    .choice-votes {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.2);
+      padding: 5px 15px;
+      border-radius: 20px;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .vote-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #00d9ff, #00b8d4);
+      transition: width 0.5s ease;
+      border-radius: 0 0 0 10px;
+    }
+
+    .choice-option.winning {
+      border-color: #7fff00;
+      background: rgba(127, 255, 0, 0.1);
+      box-shadow: 0 0 20px rgba(127, 255, 0, 0.3);
+    }
+
+    .choice-option.winning .choice-number {
+      background: #7fff00;
+    }
+
+    .choice-option.winning .vote-bar {
+      background: linear-gradient(90deg, #7fff00, #5ecc00);
+    }
+
+    #timer {
+      text-align: center;
+      margin-top: 20px;
+      color: #00d9ff;
+      font-size: 18px;
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+    }
+
+    #timer.ending {
+      color: #ff6b6b;
+      animation: pulse 0.5s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .ending-screen {
+      background: rgba(0, 0, 0, 0.95);
+      padding: 40px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .ending-screen h2 {
+      color: #7fff00;
+      font-size: 32px;
+      margin: 0 0 20px 0;
+      text-shadow: 0 0 20px rgba(127, 255, 0, 0.5);
+    }
+
+    .ending-screen p {
+      color: #fff;
+      font-size: 20px;
+      line-height: 1.6;
+    }
+
+    .vote-instruction {
+      text-align: center;
+      color: #00d9ff;
+      font-size: 14px;
+      margin-top: 15px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div id="story-container">
+    <div id="story-text">
+      <h2 id="title">📖 Interactive Story</h2>
+      <p id="text">Loading story...</p>
+    </div>
+    <div id="choices-container"></div>
+    <div id="timer"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let currentState = null;
+    let timerInterval = null;
+    let endTime = null;
+
+    // Load current state on page load
+    window.addEventListener('load', async () => {
+      try {
+        const response = await fetch('/api/interactive-story/state');
+        const data = await response.json();
+        
+        if (data.success && data.active) {
+          currentState = data;
+          displayNode(data.node, data.votes);
+        }
+      } catch (error) {
+        console.error('Failed to load state:', error);
+      }
+    });
+
+    // Listen for story events
+    socket.on('interactive-story:started', (data) => {
+      currentState = data;
+      displayNode(data.node, {});
+    });
+
+    socket.on('interactive-story:stopped', () => {
+      hideStory();
+    });
+
+    socket.on('interactive-story:voting-started', (data) => {
+      displayNode(data.node, {});
+      startTimer(data.duration);
+    });
+
+    socket.on('interactive-story:node-changed', (node) => {
+      displayNode(node, {});
+    });
+
+    socket.on('interactive-story:votes-updated', (votes) => {
+      updateVotes(votes);
+    });
+
+    socket.on('interactive-story:choice-made', (data) => {
+      highlightChoice(data.index);
+      stopTimer();
+    });
+
+    socket.on('interactive-story:ended', (data) => {
+      showEnding(data.endingText);
+      stopTimer();
+    });
+
+    function displayNode(node, votes = {}) {
+      const container = document.getElementById('story-container');
+      const textEl = document.getElementById('text');
+      const choicesEl = document.getElementById('choices-container');
+      
+      // Show story text
+      textEl.textContent = node.text;
+      
+      // Clear existing choices
+      choicesEl.innerHTML = '';
+      
+      // Show choices if available
+      if (node.choices && node.choices.length > 0) {
+        node.choices.forEach((choice, index) => {
+          const voteCount = votes[index] || 0;
+          const choiceEl = document.createElement('div');
+          choiceEl.className = 'choice-option';
+          choiceEl.setAttribute('data-index', index);
+          choiceEl.innerHTML = `
+            <span class="choice-number">${index + 1}</span>
+            <span class="choice-text">${choice.text}</span>
+            <span class="choice-votes" id="votes-${index}">${voteCount}</span>
+            <div class="vote-bar" id="bar-${index}" style="width: 0%"></div>
+          `;
+          choicesEl.appendChild(choiceEl);
+        });
+        
+        // Show voting instruction
+        const instruction = document.createElement('div');
+        instruction.className = 'vote-instruction';
+        instruction.textContent = 'Vote in chat: !1, !2, etc. or use keywords';
+        choicesEl.appendChild(instruction);
+      } else {
+        // No choices, this is an ending
+        showEnding(node.text);
+        return;
+      }
+      
+      // Show container
+      container.classList.add('show');
+    }
+
+    function updateVotes(votes) {
+      let totalVotes = 0;
+      Object.values(votes).forEach(count => totalVotes += count);
+      
+      let maxVotes = 0;
+      Object.values(votes).forEach(count => {
+        if (count > maxVotes) maxVotes = count;
+      });
+      
+      Object.entries(votes).forEach(([index, count]) => {
+        const votesEl = document.getElementById(`votes-${index}`);
+        const barEl = document.getElementById(`bar-${index}`);
+        const choiceEl = document.querySelector(`.choice-option[data-index="${index}"]`);
+        
+        if (votesEl) {
+          votesEl.textContent = count;
+        }
+        
+        if (barEl && totalVotes > 0) {
+          const percentage = (count / totalVotes) * 100;
+          barEl.style.width = percentage + '%';
+        }
+        
+        // Highlight winning choice
+        if (choiceEl) {
+          if (count === maxVotes && maxVotes > 0) {
+            choiceEl.classList.add('winning');
+          } else {
+            choiceEl.classList.remove('winning');
+          }
+        }
+      });
+    }
+
+    function highlightChoice(index) {
+      document.querySelectorAll('.choice-option').forEach((el, i) => {
+        if (i === index) {
+          el.classList.add('winning');
+        } else {
+          el.style.opacity = '0.5';
+        }
+      });
+    }
+
+    function startTimer(duration) {
+      stopTimer();
+      
+      endTime = Date.now() + duration;
+      const timerEl = document.getElementById('timer');
+      
+      timerInterval = setInterval(() => {
+        const remaining = Math.ceil((endTime - Date.now()) / 1000);
+        
+        if (remaining <= 0) {
+          timerEl.textContent = 'Voting ended!';
+          stopTimer();
+          return;
+        }
+        
+        timerEl.textContent = `⏱️ ${remaining}s remaining to vote`;
+        
+        if (remaining <= 5) {
+          timerEl.classList.add('ending');
+        } else {
+          timerEl.classList.remove('ending');
+        }
+      }, 100);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      
+      const timerEl = document.getElementById('timer');
+      timerEl.textContent = '';
+      timerEl.classList.remove('ending');
+    }
+
+    function showEnding(text) {
+      const container = document.getElementById('story-container');
+      container.innerHTML = `
+        <div class="ending-screen">
+          <h2>🎬 The End</h2>
+          <p>${text}</p>
+        </div>
+      `;
+      container.classList.add('show');
+      
+      // Hide after 10 seconds
+      setTimeout(() => {
+        hideStory();
+      }, 10000);
+    }
+
+    function hideStory() {
+      const container = document.getElementById('story-container');
+      container.classList.remove('show');
+      stopTimer();
+    }
+  </script>
+</body>
+</html>

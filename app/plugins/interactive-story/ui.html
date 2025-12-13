@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Story - Admin UI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+      margin: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #00d9ff;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 30px;
+    }
+    .section {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .section h2 {
+      margin-top: 0;
+      color: #00d9ff;
+      font-size: 18px;
+    }
+    .btn {
+      background: #00d9ff;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    .btn:hover {
+      background: #00b8d4;
+    }
+    .btn-secondary {
+      background: #444;
+      color: #fff;
+    }
+    .btn-secondary:hover {
+      background: #555;
+    }
+    .btn-danger {
+      background: #d32f2f;
+      color: #fff;
+    }
+    .btn-danger:hover {
+      background: #b71c1c;
+    }
+    .btn-success {
+      background: #388e3c;
+      color: #fff;
+    }
+    .btn-success:hover {
+      background: #2e7d32;
+    }
+    .story-list {
+      list-style: none;
+      padding: 0;
+    }
+    .story-item {
+      background: #1a1a1a;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .story-info h3 {
+      margin: 0 0 5px 0;
+      color: #fff;
+    }
+    .story-info p {
+      margin: 0;
+      color: #888;
+      font-size: 14px;
+    }
+    .story-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .overlay-url {
+      background: #1a1a1a;
+      border: 1px solid #444;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #00d9ff;
+      margin-top: 10px;
+      word-break: break-all;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      display: none;
+    }
+    .status.success {
+      background: #1a4d2e;
+      color: #7fff00;
+      display: block;
+    }
+    .status.error {
+      background: #4d1a1a;
+      color: #ff6b6b;
+      display: block;
+    }
+    .status.info {
+      background: #1a3a4d;
+      color: #00d9ff;
+      display: block;
+    }
+    .current-story {
+      background: #2a4d2a;
+      border: 2px solid #4caf50;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .current-story h3 {
+      margin: 0 0 10px 0;
+      color: #7fff00;
+    }
+    .story-text {
+      color: #ccc;
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+    .choices {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .choice-item {
+      background: #1a1a1a;
+      padding: 10px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .votes {
+      background: #444;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    input, textarea, select {
+      background: #1a1a1a;
+      border: 1px solid #444;
+      color: #fff;
+      padding: 8px;
+      border-radius: 4px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+    .modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: #2a2a2a;
+      padding: 30px;
+      border-radius: 8px;
+      max-width: 800px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📖 Interactive Story</h1>
+    <p class="subtitle">Choose-your-own-adventure storytelling for TikTok LIVE</p>
+
+    <div id="current-story-section" style="display: none;">
+      <div class="current-story">
+        <h3>🎬 Currently Running Story</h3>
+        <div id="current-story-info"></div>
+        <button class="btn btn-danger" onclick="stopStory()">⏹️ Stop Story</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📚 Your Stories</h2>
+      <button class="btn" onclick="showCreateModal()">➕ Create New Story</button>
+      <ul id="story-list" class="story-list">
+        <li style="color: #888; text-align: center; padding: 20px;">Loading stories...</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>🔗 Overlay URL</h2>
+      <p>Add this URL as a Browser Source in OBS to display the interactive story:</p>
+      <div class="overlay-url" id="overlayUrl">Loading...</div>
+      <button class="btn" onclick="copyOverlayUrl()">📋 Copy URL</button>
+    </div>
+
+    <div class="section">
+      <h2>ℹ️ How It Works</h2>
+      <ul>
+        <li>Create a story with multiple nodes (scenes) and choices</li>
+        <li>Each node has text content and optional choices for viewers</li>
+        <li>Viewers vote using chat commands (!1, !2, etc.) or keywords</li>
+        <li>Gifts count as weighted votes based on diamond value</li>
+        <li>After voting time expires, the most voted choice is selected</li>
+        <li>Story progresses to the next node based on the choice</li>
+      </ul>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <!-- Create/Edit Story Modal -->
+  <div class="modal" id="storyModal">
+    <div class="modal-content">
+      <h2 id="modalTitle">Create New Story</h2>
+      <p style="color: #888; margin-bottom: 20px;">Note: For advanced story editing, use the JSON editor or external tools. This is a simplified interface.</p>
+      
+      <label>Story Name:
+        <input type="text" id="storyName" placeholder="My Adventure Story">
+      </label>
+      <br><br>
+      <label>Description:
+        <textarea id="storyDescription" placeholder="A thrilling adventure where viewers decide the fate..."></textarea>
+      </label>
+      <br><br>
+      
+      <h3>Example Story Template</h3>
+      <p style="color: #888;">This will create a simple two-choice story template that you can expand.</p>
+      
+      <br>
+      <button class="btn" onclick="saveStory()">💾 Create Template Story</button>
+      <button class="btn btn-secondary" onclick="closeModal()">❌ Cancel</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let stories = [];
+    let currentState = null;
+
+    window.addEventListener('load', () => {
+      loadStories();
+      loadCurrentState();
+      updateOverlayUrl();
+      
+      // Listen for story events
+      socket.on('interactive-story:started', (data) => {
+        loadCurrentState();
+      });
+      
+      socket.on('interactive-story:stopped', () => {
+        loadCurrentState();
+      });
+      
+      socket.on('interactive-story:node-changed', (node) => {
+        loadCurrentState();
+      });
+      
+      socket.on('interactive-story:votes-updated', (votes) => {
+        updateVotes(votes);
+      });
+    });
+
+    function updateOverlayUrl() {
+      const port = window.location.port;
+      const protocol = window.location.protocol;
+      const hostname = window.location.hostname;
+      const url = `${protocol}//${hostname}${port ? ':' + port : ''}/plugins/interactive-story/overlay`;
+      document.getElementById('overlayUrl').textContent = url;
+    }
+
+    async function loadStories() {
+      try {
+        const response = await fetch('/api/interactive-story/stories');
+        const data = await response.json();
+        
+        if (data.success) {
+          stories = data.stories;
+          renderStoryList();
+        }
+      } catch (error) {
+        showStatus('Failed to load stories: ' + error.message, 'error');
+      }
+    }
+
+    async function loadCurrentState() {
+      try {
+        const response = await fetch('/api/interactive-story/state');
+        const data = await response.json();
+        
+        if (data.success && data.active) {
+          currentState = data;
+          document.getElementById('current-story-section').style.display = 'block';
+          renderCurrentStory();
+        } else {
+          document.getElementById('current-story-section').style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Failed to load current state:', error);
+      }
+    }
+
+    function renderStoryList() {
+      const listEl = document.getElementById('story-list');
+      
+      if (stories.length === 0) {
+        listEl.innerHTML = '<li style="color: #888; text-align: center; padding: 20px;">No stories yet. Create your first story!</li>';
+        return;
+      }
+      
+      listEl.innerHTML = stories.map(story => `
+        <li class="story-item">
+          <div class="story-info">
+            <h3>${escapeHtml(story.name)}</h3>
+            <p>${escapeHtml(story.description || 'No description')}</p>
+            <small style="color: #666;">${story.nodes ? story.nodes.length : 0} nodes</small>
+          </div>
+          <div class="story-actions">
+            <button class="btn btn-success" onclick="startStory('${story.id}')">▶️ Start</button>
+            <button class="btn btn-danger" onclick="deleteStory('${story.id}')">🗑️ Delete</button>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function renderCurrentStory() {
+      if (!currentState) return;
+      
+      const infoEl = document.getElementById('current-story-info');
+      const node = currentState.node;
+      
+      let html = `
+        <div class="story-text">${escapeHtml(node.text)}</div>
+      `;
+      
+      if (node.choices && node.choices.length > 0) {
+        html += '<div class="choices">';
+        node.choices.forEach((choice, index) => {
+          const votes = currentState.votes ? currentState.votes[index] || 0 : 0;
+          html += `
+            <div class="choice-item">
+              <span>${index + 1}. ${escapeHtml(choice.text)}</span>
+              <div class="votes" id="vote-${index}">${votes} votes</div>
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+      
+      infoEl.innerHTML = html;
+    }
+
+    function updateVotes(votes) {
+      Object.entries(votes).forEach(([index, count]) => {
+        const voteEl = document.getElementById(`vote-${index}`);
+        if (voteEl) {
+          voteEl.textContent = `${count} votes`;
+        }
+      });
+    }
+
+    async function startStory(id) {
+      try {
+        const response = await fetch(`/api/interactive-story/start/${id}`, {
+          method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          showStatus('Story started!', 'success');
+          loadCurrentState();
+        }
+      } catch (error) {
+        showStatus('Failed to start story: ' + error.message, 'error');
+      }
+    }
+
+    async function stopStory() {
+      if (!confirm('Stop the current story?')) return;
+      
+      try {
+        const response = await fetch('/api/interactive-story/stop', {
+          method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          showStatus('Story stopped', 'info');
+          loadCurrentState();
+        }
+      } catch (error) {
+        showStatus('Failed to stop story: ' + error.message, 'error');
+      }
+    }
+
+    async function deleteStory(id) {
+      if (!confirm('Delete this story? This cannot be undone.')) return;
+      
+      try {
+        const response = await fetch(`/api/interactive-story/stories/${id}`, {
+          method: 'DELETE'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          showStatus('Story deleted', 'success');
+          loadStories();
+        }
+      } catch (error) {
+        showStatus('Failed to delete story: ' + error.message, 'error');
+      }
+    }
+
+    function showCreateModal() {
+      document.getElementById('modalTitle').textContent = 'Create New Story';
+      document.getElementById('storyName').value = '';
+      document.getElementById('storyDescription').value = '';
+      document.getElementById('storyModal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('storyModal').classList.remove('show');
+    }
+
+    async function saveStory() {
+      const name = document.getElementById('storyName').value.trim();
+      const description = document.getElementById('storyDescription').value.trim();
+      
+      if (!name) {
+        alert('Please enter a story name');
+        return;
+      }
+      
+      // Create template story
+      const story = {
+        name: name,
+        description: description,
+        nodes: [
+          {
+            id: 'start',
+            isStart: true,
+            text: 'Welcome to the adventure! You stand at a crossroads. Which path will you take?',
+            choices: [
+              {
+                text: 'Take the forest path',
+                keywords: ['forest', 'trees', '1'],
+                nextNode: 'forest'
+              },
+              {
+                text: 'Take the mountain path',
+                keywords: ['mountain', 'climb', '2'],
+                nextNode: 'mountain'
+              }
+            ],
+            voteDuration: 30
+          },
+          {
+            id: 'forest',
+            text: 'You walk through the mysterious forest. Deep in the trees, you hear a strange sound. What do you do?',
+            choices: [
+              {
+                text: 'Investigate the sound',
+                keywords: ['investigate', 'sound', '1'],
+                nextNode: 'ending1'
+              },
+              {
+                text: 'Continue walking',
+                keywords: ['continue', 'walk', '2'],
+                nextNode: 'ending2'
+              }
+            ],
+            voteDuration: 30
+          },
+          {
+            id: 'mountain',
+            text: 'You climb the steep mountain path. At the summit, you find a mysterious cave. Enter it?',
+            choices: [
+              {
+                text: 'Enter the cave',
+                keywords: ['enter', 'cave', '1'],
+                nextNode: 'ending3'
+              },
+              {
+                text: 'Stay outside',
+                keywords: ['stay', 'outside', '2'],
+                nextNode: 'ending4'
+              }
+            ],
+            voteDuration: 30
+          },
+          {
+            id: 'ending1',
+            text: 'You found a friendly forest spirit who grants you a magical gift! THE END',
+            choices: []
+          },
+          {
+            id: 'ending2',
+            text: 'You safely exit the forest and continue your journey. THE END',
+            choices: []
+          },
+          {
+            id: 'ending3',
+            text: 'Inside the cave, you discover ancient treasure! THE END',
+            choices: []
+          },
+          {
+            id: 'ending4',
+            text: 'You enjoy the beautiful mountain view and head back down. THE END',
+            choices: []
+          }
+        ]
+      };
+      
+      try {
+        const response = await fetch('/api/interactive-story/stories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(story)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showStatus('Story created successfully!', 'success');
+          closeModal();
+          loadStories();
+        }
+      } catch (error) {
+        showStatus('Failed to create story: ' + error.message, 'error');
+      }
+    }
+
+    function copyOverlayUrl() {
+      const url = document.getElementById('overlayUrl').textContent;
+      navigator.clipboard.writeText(url).then(() => {
+        showStatus('URL copied to clipboard!', 'success');
+      });
+    }
+
+    function showStatus(message, type) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+      setTimeout(() => {
+        statusEl.style.display = 'none';
+      }, 3000);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "id": "interactive-story",
+  "name": "Interactive Story",
+  "description": "Choose-your-own-adventure storytelling plugin where viewers influence the narrative through gifts, chat commands, and voting",
+  "version": "1.0.0",
+  "author": "PupCid",
+  "entry": "main.js",
+  "enabled": false,
+  "type": "overlay",
+  "dependencies": ["express", "socket.io"],
+  "permissions": ["tiktok-events", "database", "routes", "socket"]
+}
