@@ -18,6 +18,9 @@ class TTSPlugin {
     // Matches: emoticons, symbols, pictographs, transport, modifiers, sequences, flags
     static EMOJI_PATTERN = /(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{FE00}-\u{FE0F}]|[\u{200D}]|[\u{20E3}])+/gu;
     
+    // Valid TTS engine names
+    static VALID_ENGINES = ['google', 'speechify', 'elevenlabs', 'openai'];
+    
     // Error message constant for missing engines
     static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, or OpenAI)';
 
@@ -374,13 +377,24 @@ class TTSPlugin {
 
         // Try to load from database
         const saved = this.api.getConfig('config');
-        if (saved) {
-            return { ...defaultConfig, ...saved };
+        let config = saved ? { ...defaultConfig, ...saved } : defaultConfig;
+        
+        // Validate defaultEngine - if invalid, reset to 'google'
+        if (!TTSPlugin.VALID_ENGINES.includes(config.defaultEngine)) {
+            this.logger.warn(`TTS: Invalid default engine '${config.defaultEngine}' detected. Resetting to 'google'.`);
+            config.defaultEngine = 'google';
+            config.defaultVoice = 'de-DE-Wavenet-B'; // Reset to default Google voice
+            
+            // Save corrected config
+            this.api.setConfig('config', config);
         }
-
-        // Save defaults
-        this.api.setConfig('config', defaultConfig);
-        return defaultConfig;
+        
+        // Save defaults if no saved config exists
+        if (!saved) {
+            this.api.setConfig('config', config);
+        }
+        
+        return config;
     }
 
     /**
@@ -418,6 +432,14 @@ class TTSPlugin {
         this.api.registerRoute('POST', '/api/tts/config', async (req, res) => {
             try {
                 const updates = req.body;
+                
+                // Validate defaultEngine if provided
+                if (updates.defaultEngine !== undefined && !TTSPlugin.VALID_ENGINES.includes(updates.defaultEngine)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: `Invalid engine '${updates.defaultEngine}'. Valid engines: ${TTSPlugin.VALID_ENGINES.join(', ')}`
+                    });
+                }
 
                 // Validate defaultVoice is compatible with defaultEngine
                 if (updates.defaultVoice && updates.defaultEngine) {
@@ -1206,6 +1228,18 @@ class TTSPlugin {
                 // User sources (chat, etc): prioritize user custom voice, then provided voice, then defaults
                 selectedEngine = userSettings?.assigned_engine || engine || this.config.defaultEngine;
                 selectedVoice = userSettings?.assigned_voice_id || voiceId;
+            }
+            
+            // Validate selectedEngine - if invalid, reset to default
+            if (!TTSPlugin.VALID_ENGINES.includes(selectedEngine)) {
+                this.logger.warn(`TTS: Invalid engine '${selectedEngine}' detected for user ${userId}. Resetting to default: ${this.config.defaultEngine}`);
+                this._logDebug('SPEAK_STEP4', 'Invalid engine detected, using default', {
+                    invalidEngine: selectedEngine,
+                    defaultEngine: this.config.defaultEngine
+                });
+                selectedEngine = this.config.defaultEngine;
+                // Reset voice as well since the engine changed
+                selectedVoice = null;
             }
 
             this._logDebug('SPEAK_STEP4', 'Voice/Engine selection', {
