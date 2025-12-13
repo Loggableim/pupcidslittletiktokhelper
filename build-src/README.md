@@ -1,36 +1,68 @@
 # Launcher Build Instructions
 
-This directory contains the source code for the Windows launchers.
+This directory contains the source code for the LTTH launchers.
 
 ## Launchers
 
-1. **launcher.exe** - Local launcher for existing installations
+1. **launcher.exe** - Modern launcher with language selection, profile management, and tab navigation
 2. **ltthgit.exe** - Cloud launcher that downloads files from GitHub
+3. **launcher-console.exe** - Console version with visible terminal for debugging
+
+## New Modern Launcher Features
+
+The modern launcher (launcher-gui.go + launcher-http.go) includes:
+
+- **Language Selection Screen**: Choose from German, English, Spanish, or French
+- **Profile Management**: Create and switch between user profiles
+- **Tab Navigation**: Welcome, Resources, Changelog, Community, and Logging tabs
+- **Real-time Server Logs**: View live server output in the Logging tab
+- **Background npm Install**: Dependencies install in background while user selects language/profile
+- **API Key Resources**: Direct links to Euler Stream, OBS, Node.js, and documentation
+- **Keep Launcher Open**: Checkbox to keep launcher running for log monitoring
+- **Embedded Assets**: HTML/CSS/JS embedded in binary for portability
 
 ## Building the Launchers
 
-The launchers are written in Go and include embedded resources.
+The launchers are written in Go with embedded web assets.
 
 ### Prerequisites
 
 - Go 1.18 or higher
-- `go-winres` tool (for embedding icons in launcher.exe)
 
-### Building on Windows
+### Quick Build
 
-#### Local Launcher (launcher.exe)
+#### Windows
+```bash
+build.bat
+```
+
+#### Linux/Mac
+```bash
+./build.sh
+```
+
+### Manual Build
+
+#### Modern Launcher (launcher.exe)
 
 ```bash
-# Build the GUI launcher (with icon)
-go build -o launcher.exe -ldflags "-H windowsgui" launcher-gui.go
+# Build GUI version (no console window)
+go build -ldflags "-H windowsgui" -o launcher.exe launcher-gui.go launcher-http.go
 
-# Build the console launcher (without GUI)
-go build -o launcher-console.exe launcher.go
+# Build console version (for debugging)
+go build -o launcher-console.exe launcher-gui.go launcher-http.go
+```
 
-# Build the backup launcher with logging (troubleshooting)
+#### Legacy Launchers
+
+```bash
+# Build the old GUI launcher
+go build -o launcher-old.exe -ldflags "-H windowsgui" launcher-gui-old.go
+
+# Build the backup launcher with logging
 go build -o launcher-backup.exe launcher-backup.go
 
-# Build the dev launcher (GUI with visible terminal for debugging)
+# Build the dev launcher (GUI with visible terminal)
 go build -o dev_launcher.exe dev-launcher.go
 ```
 

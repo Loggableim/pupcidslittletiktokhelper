@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LTTH Launcher</title>
+    <link rel="stylesheet" href="/assets/launcher.css">
+</head>
+<body>
+    <div class="background" id="background"></div>
+    
+    <div class="container">
+        <!-- Screen 1: Language Selection -->
+        <div class="screen" id="languageScreen">
+            <div class="card">
+                <img src="/logo" alt="LTTH Logo" class="logo" />
+                <h1 id="langTitle">Select Your Language</h1>
+                <p id="langDesc">Choose your preferred language</p>
+                <div class="language-grid" id="languageGrid"></div>
+                <button class="btn primary" id="langContinue" disabled>Continue</button>
+            </div>
+        </div>
+        
+        <!-- Screen 2: Profile Selection -->
+        <div class="screen hidden" id="profileScreen">
+            <div class="card">
+                <h1 id="profileTitle">Select or Create Profile</h1>
+                
+                <div class="section">
+                    <h3>Create New Profile</h3>
+                    <input type="text" id="newProfileName" placeholder="Profile Name" class="input" />
+                    <input type="text" id="tiktokUsername" placeholder="TikTok @username (optional)" class="input" />
+                    <button class="btn secondary" onclick="app.createProfile()">Create Profile</button>
+                </div>
+                
+                <div class="section">
+                    <h3>Existing Profiles</h3>
+                    <div class="profile-list" id="profileList">
+                        <p class="text-muted">Loading profiles...</p>
+                    </div>
+                </div>
+                
+                <button class="btn primary" id="profileContinue" disabled>Continue</button>
+            </div>
+        </div>
+        
+        <!-- Screen 3: Main Launcher with Tabs -->
+        <div class="screen hidden" id="mainScreen">
+            <div class="card-large">
+                <div class="header">
+                    <img src="/logo" alt="LTTH Logo" class="logo-small" />
+                    <div>
+                        <h1>PupCid's Little TikTool Helper</h1>
+                        <p class="tagline">Professional TikTok LIVE Streaming Tool</p>
+                    </div>
+                </div>
+                
+                <div class="tabs">
+                    <button class="tab active" data-tab="welcome">Welcome</button>
+                    <button class="tab" data-tab="resources">Resources</button>
+                    <button class="tab" data-tab="changelog">Changelog</button>
+                    <button class="tab" data-tab="community">Community</button>
+                    <button class="tab" data-tab="logging">Logging</button>
+                </div>
+                
+                <div class="tab-content active" id="welcome">
+                    <h2>🎉 Thank You for Installing LTTH!</h2>
+                    <p>Welcome to PupCid's Little TikTool Helper - your professional companion for TikTok LIVE streaming.</p>
+                    <p><strong>Features:</strong> Overlays, Alerts, TTS, Automation, Plugins, and much more!</p>
+                    
+                    <div class="alert warning" id="translationWarning" style="display:none;">
+                        <strong>⚠️ Translation Help Needed</strong>
+                        <p>Your selected language is not fully supported yet. Please help with translations or use English/German version.</p>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="resources">
+                    <h2>📦 Dependencies & API Keys</h2>
+                    <div class="alert error">
+                        <strong>⚠️ Required:</strong> Euler Stream API key is mandatory for TikTok connection!
+                    </div>
+                    
+                    <div class="resource-grid">
+                        <div class="resource-card">
+                            <h3>🔑 Euler Stream API</h3>
+                            <p><a href="https://eulerstream.com" target="_blank" class="link">Get API Key →</a></p>
+                            <p class="small"><strong>Required</strong> for TikTok LIVE connection</p>
+                        </div>
+                        <div class="resource-card">
+                            <h3>🎥 OBS WebSocket</h3>
+                            <p><a href="https://obsproject.com" target="_blank" class="link">Download OBS →</a></p>
+                            <p class="small">For scene automation & overlays</p>
+                        </div>
+                        <div class="resource-card">
+                            <h3>⚙️ Node.js</h3>
+                            <p><a href="https://nodejs.org" target="_blank" class="link">Download Node.js →</a></p>
+                            <p class="small">Runtime environment (v16+)</p>
+                        </div>
+                        <div class="resource-card">
+                            <h3>📚 Documentation</h3>
+                            <p><a href="https://ltth.app" target="_blank" class="link">Visit ltth.app →</a></p>
+                            <p class="small">Full guides & documentation</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="changelog">
+                    <h2>📝 Changelog</h2>
+                    <div class="changelog-content" id="changelogContent">
+                        <p>Loading changelog...</p>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="community">
+                    <h2>🌟 Join Our Community</h2>
+                    <div class="resource-grid">
+                        <div class="resource-card">
+                            <h3>💬 Discord</h3>
+                            <p><a href="https://discord.gg/pawsunited" target="_blank" class="link">Join Discord →</a></p>
+                            <p class="small">Get support & share ideas</p>
+                        </div>
+                        <div class="resource-card">
+                            <h3>🌐 Website</h3>
+                            <p><a href="https://ltth.app" target="_blank" class="link">Visit ltth.app →</a></p>
+                            <p class="small">Documentation & updates</p>
+                        </div>
+                        <div class="resource-card">
+                            <h3>🐙 GitHub</h3>
+                            <p><a href="https://github.com/Loggableim/pupcidslittletiktokhelper" target="_blank" class="link">View on GitHub →</a></p>
+                            <p class="small">Source code & contributions</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="logging">
+                    <h2>📊 Server Logs</h2>
+                    <div class="log-controls">
+                        <label>
+                            <input type="checkbox" id="enableLogging" checked onchange="app.toggleLogging(this.checked)">
+                            Enable Real-time Logging
+                        </label>
+                        <button class="btn-small" onclick="app.clearLogs()">Clear Logs</button>
+                    </div>
+                    <div class="log-viewer" id="logViewer"></div>
+                </div>
+                
+                <div class="footer">
+                    <div class="progress-section">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressBar">0%</div>
+                        </div>
+                        <div class="status-text" id="statusText">Initializing...</div>
+                    </div>
+                    
+                    <div class="footer-actions">
+                        <label class="checkbox">
+                            <input type="checkbox" id="keepOpen" onchange="app.toggleKeepOpen(this.checked)">
+                            Keep Launcher Open
+                        </label>
+                        <button class="btn primary large" id="launchBtn" disabled>Launch Dashboard</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/assets/launcher.js"></script>
+</body>
+</html>
