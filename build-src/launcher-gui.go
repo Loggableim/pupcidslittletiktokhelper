@@ -124,9 +124,12 @@ func (l *Launcher) addServerLog(line string) {
 	l.serverLogsMux.Lock()
 	defer l.serverLogsMux.Unlock()
 
-	// Keep only last 1000 lines
-	if len(l.serverLogs) >= 1000 {
-		l.serverLogs = l.serverLogs[1:]
+	// Implement circular buffer with max 1000 lines
+	const maxLogs = 1000
+	if len(l.serverLogs) >= maxLogs {
+		// Remove oldest entry (shift left)
+		copy(l.serverLogs, l.serverLogs[1:])
+		l.serverLogs = l.serverLogs[:maxLogs-1]
 	}
 	l.serverLogs = append(l.serverLogs, line)
 
@@ -492,8 +495,13 @@ func main() {
 
 	time.Sleep(500 * time.Millisecond)
 
-	// Open browser
-	browser.OpenURL("http://127.0.0.1:58734")
+	// Open browser - if this fails, user can manually navigate to the URL
+	if err := browser.OpenURL("http://127.0.0.1:58734"); err != nil {
+		launcher.logAndSync("[WARNING] Failed to open browser automatically: %v", err)
+		launcher.logAndSync("[INFO] Please open http://127.0.0.1:58734 in your browser manually")
+	} else {
+		launcher.logAndSync("[INFO] Browser opened successfully")
+	}
 
 	// Run launcher
 	go launcher.runLauncher()

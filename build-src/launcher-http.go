@@ -42,6 +42,11 @@ func setupHTTPServer(l *Launcher) {
 	// Serve background image
 	http.HandleFunc("/bg", func(w http.ResponseWriter, r *http.Request) {
 		bgPath := filepath.Join(l.appDir, "launcherbg.jpg")
+		// Validate file exists and is within app directory
+		if !fileExistsAndSafe(bgPath, l.appDir) {
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
 		http.ServeFile(w, r, bgPath)
 	})
 
@@ -49,6 +54,11 @@ func setupHTTPServer(l *Launcher) {
 	http.HandleFunc("/logo", func(w http.ResponseWriter, r *http.Request) {
 		// Use nightmode logo
 		logoPath := filepath.Join(l.exeDir, "images", "ltthmini", "ltthmini_nightmode.jpg")
+		// Validate file exists and is within exe directory
+		if !fileExistsAndSafe(logoPath, l.exeDir) {
+			http.Error(w, "Logo not found", http.StatusNotFound)
+			return
+		}
 		http.ServeFile(w, r, logoPath)
 	})
 
@@ -381,4 +391,30 @@ func savePreference(appDir, key string, value interface{}) {
 	prefs[key] = value
 	data, _ := json.MarshalIndent(prefs, "", "  ")
 	os.WriteFile(prefsFile, data, 0644)
+}
+
+// fileExistsAndSafe checks if a file exists and is within the allowed base directory
+// This prevents directory traversal attacks
+func fileExistsAndSafe(filePath, baseDir string) bool {
+	// Get absolute paths
+	absFile, err := filepath.Abs(filePath)
+	if err != nil {
+		return false
+	}
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return false
+	}
+
+	// Check if file is within base directory
+	if !strings.HasPrefix(absFile, absBase) {
+		return false
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(absFile); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
 }
