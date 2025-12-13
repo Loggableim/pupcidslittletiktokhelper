@@ -161,7 +161,7 @@ class TalkingHeadsPlugin {
 
   getConfig() {
     const defaultConfig = {
-      enabled: true,
+      enabled: false,
       avatarType: 'default',
       showChat: true,
       showLikes: false,

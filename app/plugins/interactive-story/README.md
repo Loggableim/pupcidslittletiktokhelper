@@ -104,8 +104,8 @@ Choose-your-own-adventure storytelling plugin where TikTok LIVE viewers influenc
 ## Voting System
 
 ### Chat Commands
-- `!1` or `1` - Vote for choice 1
-- `!2` or `2` - Vote for choice 2
+- `!1` or `/1` or `1` - Vote for choice 1
+- `!2` or `/2` or `2` - Vote for choice 2
 - etc.
 
 ### Keywords

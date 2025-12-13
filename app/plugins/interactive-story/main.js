@@ -3,6 +3,9 @@
  * Choose-your-own-adventure storytelling where viewers influence the narrative
  */
 
+// Configuration constants
+const DIAMONDS_PER_VOTE = 10; // Number of diamonds needed for one vote weight
+
 class InteractiveStoryPlugin {
   constructor(api) {
     this.api = api;
@@ -284,7 +287,7 @@ class InteractiveStoryPlugin {
 
     const message = data.comment.toLowerCase().trim();
     
-    // Check for vote commands (1, 2, 3, etc.)
+    // Check for vote commands (1, 2, 3, etc.) with optional ! or / prefix
     const voteMatch = message.match(/^[!\/]?(\d+)$/);
     if (voteMatch) {
       const choiceIndex = parseInt(voteMatch[1]) - 1;
@@ -308,7 +311,7 @@ class InteractiveStoryPlugin {
     if (!this.currentNode.choices) return;
 
     // Gifts count as multiple votes based on diamond value
-    const voteWeight = Math.ceil(data.diamondCount / 10);
+    const voteWeight = Math.ceil(data.diamondCount / DIAMONDS_PER_VOTE);
     
     // Check if gift name matches a choice keyword
     this.currentNode.choices.forEach((choice, index) => {
