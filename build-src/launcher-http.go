@@ -52,8 +52,8 @@ func setupHTTPServer(l *Launcher) {
 
 	// Serve logo image
 	http.HandleFunc("/logo", func(w http.ResponseWriter, r *http.Request) {
-		// Use nightmode logo
-		logoPath := filepath.Join(l.exeDir, "images", "ltthmini", "ltthmini_nightmode.jpg")
+		// Use nightmode logo (PNG version matching app/public/ltthmini_nightmode.png)
+		logoPath := filepath.Join(l.exeDir, "images", "ltthmini", "ltthmini_nightmode.png")
 		// Validate file exists and is within exe directory
 		if !fileExistsAndSafe(logoPath, l.exeDir) {
 			http.Error(w, "Logo not found", http.StatusNotFound)
