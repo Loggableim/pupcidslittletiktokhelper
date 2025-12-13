@@ -4,6 +4,7 @@ const GoogleEngine = require('./engines/google-engine');
 const SpeechifyEngine = require('./engines/speechify-engine');
 const ElevenLabsEngine = require('./engines/elevenlabs-engine');
 const OpenAIEngine = require('./engines/openai-engine');
+const FishSpeechEngine = require('./engines/fish-speech-engine');
 const LanguageDetector = require('./utils/language-detector');
 const ProfanityFilter = require('./utils/profanity-filter');
 const PermissionManager = require('./utils/permission-manager');
@@ -19,10 +20,10 @@ class TTSPlugin {
     static EMOJI_PATTERN = /(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{FE00}-\u{FE0F}]|[\u{200D}]|[\u{20E3}])+/gu;
     
     // Valid TTS engine names
-    static VALID_ENGINES = ['google', 'speechify', 'elevenlabs', 'openai'];
+    static VALID_ENGINES = ['google', 'speechify', 'elevenlabs', 'openai', 'fishspeech'];
     
     // Error message constant for missing engines
-    static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, or OpenAI)';
+    static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, OpenAI, or Fish Speech)';
 
     constructor(api) {
         this.api = api;
@@ -45,7 +46,8 @@ class TTSPlugin {
             google: null, // Initialized if API key is available AND engine is enabled
             speechify: null, // Initialized if API key is available AND engine is enabled
             elevenlabs: null, // Initialized if API key is available AND engine is enabled
-            openai: null // Initialized if API key is available AND engine is enabled
+            openai: null, // Initialized if API key is available AND engine is enabled
+            fishspeech: null // Initialized if API key is available AND engine is enabled
         };
 
         // Helper function to check if an engine should be loaded
@@ -64,6 +66,8 @@ class TTSPlugin {
                     return this.config.enableElevenlabsFallback === true;
                 case 'openai':
                     return this.config.enableOpenAIFallback === true;
+                case 'fishspeech':
+                    return this.config.enableFishSpeechFallback === true;
                 default:
                     return false;
             }
@@ -137,6 +141,23 @@ class TTSPlugin {
             this._logDebug('INIT', 'OpenAI TTS engine NOT initialized', { hasApiKey: false });
         }
 
+        // Initialize Fish Speech engine if API key is configured AND engine is enabled
+        if (this.config.fishspeechApiKey && shouldLoadEngine('fishspeech')) {
+            this.engines.fishspeech = new FishSpeechEngine(
+                this.config.fishspeechApiKey,
+                this.logger,
+                { performanceMode: this.config.performanceMode }
+            );
+            this.logger.info('TTS: ✅ Fish Speech TTS engine initialized');
+            this._logDebug('INIT', 'Fish Speech TTS engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'fishspeech', isFallback: this.config.enableFishSpeechFallback });
+        } else if (this.config.fishspeechApiKey) {
+            this.logger.info('TTS: ⏸️  Fish Speech TTS engine NOT loaded (disabled as fallback)');
+            this._logDebug('INIT', 'Fish Speech TTS engine NOT loaded', { hasApiKey: true, disabled: true });
+        } else {
+            this.logger.info('TTS: ⚠️  Fish Speech TTS engine NOT initialized (no API key)');
+            this._logDebug('INIT', 'Fish Speech TTS engine NOT initialized', { hasApiKey: false });
+        }
+
         // Initialize utilities
         this.languageDetector = new LanguageDetector(this.logger, {
             confidenceThreshold: this.config.languageConfidenceThreshold,
@@ -154,10 +175,11 @@ class TTSPlugin {
         // Define fallback chains for each engine (TikTok removed)
         // Each engine has a preferred order of fallback engines based on quality and reliability
         this.fallbackChains = {
-            'google': ['openai', 'elevenlabs', 'speechify'],      // Google → OpenAI → Premium engines
-            'elevenlabs': ['openai', 'speechify', 'google'],      // Premium → OpenAI → Good → Standard
-            'speechify': ['openai', 'elevenlabs', 'google'],      // Speechify → OpenAI → Premium → Standard
-            'openai': ['elevenlabs', 'google', 'speechify']       // OpenAI → Premium → Standard → Good
+            'google': ['openai', 'fishspeech', 'elevenlabs', 'speechify'],      // Google → OpenAI → Fish → Premium engines
+            'elevenlabs': ['openai', 'fishspeech', 'speechify', 'google'],      // Premium → OpenAI → Fish → Good → Standard
+            'speechify': ['openai', 'fishspeech', 'elevenlabs', 'google'],      // Speechify → OpenAI → Fish → Premium → Standard
+            'openai': ['fishspeech', 'elevenlabs', 'google', 'speechify'],      // OpenAI → Fish → Premium → Standard → Good
+            'fishspeech': ['openai', 'elevenlabs', 'google', 'speechify']       // Fish → OpenAI → Premium → Standard → Good
         };
 
         this._logDebug('INIT', 'TTS Plugin initialized', {
@@ -170,7 +192,8 @@ class TTSPlugin {
                 google: this.config.enableGoogleFallback,
                 speechify: this.config.enableSpeechifyFallback,
                 elevenlabs: this.config.enableElevenlabsFallback,
-                openai: this.config.enableOpenAIFallback
+                openai: this.config.enableOpenAIFallback,
+                fishspeech: this.config.enableFishSpeechFallback
             },
             startupTimestamp: this.startupTimestamp
         });
@@ -181,6 +204,7 @@ class TTSPlugin {
         if (this.engines.speechify) availableEngines.push('Speechify');
         if (this.engines.elevenlabs) availableEngines.push('ElevenLabs');
         if (this.engines.openai) availableEngines.push('OpenAI');
+        if (this.engines.fishspeech) availableEngines.push('Fish Speech');
         
         this.logger.info(`TTS Plugin initialized successfully`);
         this.logger.info(`TTS: Available engines: ${availableEngines.length > 0 ? availableEngines.join(', ') : 'None configured'}`);
@@ -257,6 +281,20 @@ class TTSPlugin {
                 } else {
                     // User had assigned voice - use engine's default for fallback language
                     fallbackVoice = OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
+                }
+            }
+        } else if (engineName === 'fishspeech') {
+            const fishspeechVoices = FishSpeechEngine.getVoices();
+            if (!fallbackVoice || !fishspeechVoices[fallbackVoice]) {
+                // Only use language detection if user doesn't have an assigned voice
+                if (!hasUserAssignedVoice) {
+                    const langResult = this.languageDetector.detectAndGetVoice(text, FishSpeechEngine, this.config.fallbackLanguage);
+                    fallbackVoice = langResult?.voiceId || FishSpeechEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted via language detection for ${engineName}`, { fallbackVoice, langResult });
+                } else {
+                    // User had assigned voice - use engine's default for fallback language
+                    fallbackVoice = FishSpeechEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
                     this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
                 }
             }
@@ -358,6 +396,7 @@ class TTSPlugin {
             speechifyApiKey: null,
             elevenlabsApiKey: null,
             openaiApiKey: null,
+            fishspeechApiKey: null,
             tiktokSessionId: null, // Deprecated but kept for backwards compatibility
             enabledForChat: true,
             autoLanguageDetection: true,
@@ -372,18 +411,19 @@ class TTSPlugin {
             enableGoogleFallback: true, // Enable Google as fallback engine
             enableSpeechifyFallback: false, // Enable Speechify as fallback engine
             enableElevenlabsFallback: false, // Enable ElevenLabs as fallback engine
-            enableOpenAIFallback: false // Enable OpenAI as fallback engine
+            enableOpenAIFallback: false, // Enable OpenAI as fallback engine
+            enableFishSpeechFallback: false // Enable Fish Speech as fallback engine
         };
 
         // Try to load from database
         const saved = this.api.getConfig('config');
         let config = saved ? { ...defaultConfig, ...saved } : defaultConfig;
         
-        // Validate defaultEngine - if invalid, reset to 'google'
+        // Validate defaultEngine - if invalid, reset to defaults
         if (!TTSPlugin.VALID_ENGINES.includes(config.defaultEngine)) {
-            this.logger.warn(`TTS: Invalid default engine '${config.defaultEngine}' detected. Resetting to 'google'.`);
-            config.defaultEngine = 'google';
-            config.defaultVoice = 'de-DE-Wavenet-B'; // Reset to default Google voice
+            this.logger.warn(`TTS: Invalid default engine '${config.defaultEngine}' detected. Resetting to '${defaultConfig.defaultEngine}'.`);
+            config.defaultEngine = defaultConfig.defaultEngine;
+            config.defaultVoice = defaultConfig.defaultVoice; // Reset to default voice for default engine
             
             // Save corrected config
             this.api.setConfig('config', config);
@@ -423,6 +463,7 @@ class TTSPlugin {
                     speechifyApiKey: this.config.speechifyApiKey ? '***REDACTED***' : null,
                     elevenlabsApiKey: this.config.elevenlabsApiKey ? '***REDACTED***' : null,
                     openaiApiKey: this.config.openaiApiKey ? '***REDACTED***' : null,
+                    fishspeechApiKey: this.config.fishspeechApiKey ? '***REDACTED***' : null,
                     tiktokSessionId: this.config.tiktokSessionId ? '***HIDDEN***' : null
                 }
             });
@@ -454,6 +495,8 @@ class TTSPlugin {
                             engineVoices = await this.engines.elevenlabs.getVoices();
                         } else if (updates.defaultEngine === 'openai' && this.engines.openai) {
                             engineVoices = OpenAIEngine.getVoices();
+                        } else if (updates.defaultEngine === 'fishspeech' && this.engines.fishspeech) {
+                            engineVoices = FishSpeechEngine.getVoices();
                         }
                     } catch (error) {
                         this._logDebug('config', 'Failed to fetch voices for validation', { error: error.message });
@@ -473,7 +516,7 @@ class TTSPlugin {
 
                 // Update config (skip API keys and SessionID - they have dedicated handling below)
                 Object.keys(updates).forEach(key => {
-                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey' && key !== 'speechifyApiKey' && key !== 'elevenlabsApiKey' && key !== 'openaiApiKey' && key !== 'tiktokSessionId') {
+                    if (updates[key] !== undefined && key in this.config && key !== 'googleApiKey' && key !== 'speechifyApiKey' && key !== 'elevenlabsApiKey' && key !== 'openaiApiKey' && key !== 'fishspeechApiKey' && key !== 'tiktokSessionId') {
                         this.config[key] = updates[key];
                     }
                 });
@@ -531,6 +574,19 @@ class TTSPlugin {
                             this.config
                         );
                         this.logger.info('OpenAI TTS engine initialized via config update');
+                    }
+                }
+
+                // Update Fish Speech API key if provided (and not the placeholder)
+                if (updates.fishspeechApiKey && updates.fishspeechApiKey !== '***REDACTED***') {
+                    this.config.fishspeechApiKey = updates.fishspeechApiKey;
+                    if (!this.engines.fishspeech) {
+                        this.engines.fishspeech = new FishSpeechEngine(
+                            updates.fishspeechApiKey,
+                            this.logger,
+                            this.config
+                        );
+                        this.logger.info('Fish Speech TTS engine initialized via config update');
                     }
                 }
 
@@ -1238,7 +1294,11 @@ class TTSPlugin {
                     defaultEngine: this.config.defaultEngine
                 });
                 selectedEngine = this.config.defaultEngine;
-                // Reset voice as well since the engine changed
+                // Clear voice since it may not be compatible with the new engine
+                // Voice selection logic below will choose appropriate voice via:
+                // 1. Auto language detection (if enabled)
+                // 2. Config default voice
+                // 3. Hardcoded fallback
                 selectedVoice = null;
             }
 
@@ -1278,6 +1338,8 @@ class TTSPlugin {
                     engineClass = ElevenLabsEngine;
                 } else if (selectedEngine === 'openai' && this.engines.openai) {
                     engineClass = OpenAIEngine;
+                } else if (selectedEngine === 'fishspeech' && this.engines.fishspeech) {
+                    engineClass = FishSpeechEngine;
                 }
 
                 this._logDebug('SPEAK_STEP4', 'Starting language detection', {

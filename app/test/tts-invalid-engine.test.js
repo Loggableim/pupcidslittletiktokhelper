@@ -42,22 +42,22 @@ runTest('TTSPlugin should have VALID_ENGINES constant', () => {
     assert.ok(TTSPlugin.VALID_ENGINES.includes('openai'));
     assert.ok(TTSPlugin.VALID_ENGINES.includes('elevenlabs'));
     assert.ok(TTSPlugin.VALID_ENGINES.includes('speechify'));
+    assert.ok(TTSPlugin.VALID_ENGINES.includes('fishspeech'));
 });
 
 // Test 2: Invalid engine name not in valid engines
 runTest('VALID_ENGINES should not include invalid engines', () => {
     const TTSPlugin = require('../plugins/tts/main');
-    assert.ok(!TTSPlugin.VALID_ENGINES.includes('fishspeech'));
     assert.ok(!TTSPlugin.VALID_ENGINES.includes('tiktok'));
     assert.ok(!TTSPlugin.VALID_ENGINES.includes('unknown'));
     assert.ok(!TTSPlugin.VALID_ENGINES.includes('invalid'));
 });
 
 // Test 3: VALID_ENGINES has exactly the expected engines
-runTest('VALID_ENGINES should contain exactly 4 engines', () => {
+runTest('VALID_ENGINES should contain exactly 5 engines', () => {
     const TTSPlugin = require('../plugins/tts/main');
-    assert.strictEqual(TTSPlugin.VALID_ENGINES.length, 4);
-    const expectedEngines = ['google', 'speechify', 'elevenlabs', 'openai'];
+    assert.strictEqual(TTSPlugin.VALID_ENGINES.length, 5);
+    const expectedEngines = ['google', 'speechify', 'elevenlabs', 'openai', 'fishspeech'];
     expectedEngines.forEach(engine => {
         assert.ok(TTSPlugin.VALID_ENGINES.includes(engine), `Expected ${engine} to be in VALID_ENGINES`);
     });
@@ -71,4 +71,3 @@ console.log(`Total: ${passed + failed}`);
 console.log(`${'='.repeat(50)}\n`);
 
 process.exit(failed > 0 ? 1 : 0);
-
