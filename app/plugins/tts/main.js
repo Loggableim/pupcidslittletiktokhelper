@@ -22,8 +22,18 @@ class TTSPlugin {
     // Valid TTS engine names
     static VALID_ENGINES = ['google', 'speechify', 'elevenlabs', 'openai', 'fishspeech'];
     
-    // Error message constant for missing engines
-    static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, OpenAI, or Fish Speech)';
+    // Error message constant for missing engines (generated dynamically)
+    static get NO_ENGINES_ERROR() {
+        const engineNames = {
+            'google': 'Google',
+            'speechify': 'Speechify',
+            'elevenlabs': 'ElevenLabs',
+            'openai': 'OpenAI',
+            'fishspeech': 'Fish Speech'
+        };
+        const formattedEngines = TTSPlugin.VALID_ENGINES.map(e => engineNames[e] || e);
+        return `No TTS engines available - please configure at least one engine (${formattedEngines.join(', ')})`;
+    }
 
     constructor(api) {
         this.api = api;

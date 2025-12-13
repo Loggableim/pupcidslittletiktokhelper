@@ -14,23 +14,20 @@ class FishSpeechEngine {
         // Performance mode optimization
         const performanceMode = config.performanceMode || 'balanced';
         
-        // Adjust timeout and retries based on performance mode
+        // Adjust timeout based on performance mode
         if (performanceMode === 'fast') {
             // Fast mode: optimized for low-resource PCs
             this.timeout = 5000;  // 5s timeout for faster failure
-            this.maxRetries = 1;  // Only 1 retry (2 attempts total)
         } else if (performanceMode === 'quality') {
             // Quality mode: longer timeouts for better reliability
             this.timeout = 20000; // 20s timeout
-            this.maxRetries = 3;  // 3 retries (4 attempts total)
         } else {
             // Balanced mode (default): moderate settings
             this.timeout = config.timeout || 10000; // 10s timeout
-            this.maxRetries = config.maxRetries || 2;  // 2 retries (3 attempts total)
         }
         
         this.performanceMode = performanceMode;
-        this.logger.info(`Fish Speech TTS: Performance mode set to '${performanceMode}' (timeout: ${this.timeout}ms, retries: ${this.maxRetries})`);
+        this.logger.info(`Fish Speech TTS: Performance mode set to '${performanceMode}' (timeout: ${this.timeout}ms)`);
     }
 
     /**
@@ -151,7 +148,8 @@ class FishSpeechEngine {
      */
     async testConnection() {
         try {
-            await this.synthesize('Test', 'fishaudio-en-1', 1.0);
+            const testVoice = FishSpeechEngine.getDefaultVoiceForLanguage('en');
+            await this.synthesize('Test', testVoice, 1.0);
             return { success: true, message: 'Fish Speech API connection successful' };
         } catch (error) {
             return { success: false, message: error.message };
