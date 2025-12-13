@@ -645,5 +645,79 @@
   },
   "gcce_hud": {
     "description": "GCCE HUD Overlay ermöglicht die Anzeige von benutzerdefiniertem Text und Bildern über Chat-Befehle. Verwenden Sie /hudtext und /hudimage Befehle im Chat, um Inhalte anzuzeigen."
+  },
+  "launcher": {
+    "language_selection": {
+      "title": "Sprache auswählen",
+      "description": "Bitte wählen Sie Ihre bevorzugte Sprache",
+      "continue": "Weiter"
+    },
+    "profile": {
+      "title": "Profil auswählen oder erstellen",
+      "select_or_create": "Wählen Sie ein vorhandenes Profil aus oder erstellen Sie ein neues",
+      "create_new": "Neues Profil erstellen",
+      "username": "Profilname",
+      "tiktok_user": "TikTok @Benutzername (optional)",
+      "create": "Profil erstellen",
+      "select": "Auswählen",
+      "continue": "Weiter"
+    },
+    "tabs": {
+      "welcome": "Willkommen",
+      "resources": "Ressourcen",
+      "changelog": "Changelog",
+      "community": "Community",
+      "logging": "Protokolle"
+    },
+    "welcome": {
+      "thank_you": "Vielen Dank für die Installation von LTTH!",
+      "description": "Willkommen bei PupCid's Little TikTool Helper - Ihr professioneller Begleiter für TikTok LIVE-Streaming.",
+      "features": "Funktionen: Overlays, Alerts, TTS, Automatisierung, Plugins und vieles mehr!",
+      "translation_help": "Übersetzungshilfe benötigt",
+      "translation_help_desc": "Ihre ausgewählte Sprache wird noch nicht vollständig unterstützt. Bitte helfen Sie bei den Übersetzungen oder nutzen Sie die englische oder deutsche Version."
+    },
+    "resources": {
+      "title": "Abhängigkeiten & API-Schlüssel",
+      "dependencies": "Erforderliche Abhängigkeiten",
+      "api_keys": "API-Schlüssel",
+      "euler_stream_mandatory": "Euler Stream API-Schlüssel ist für die TikTok-Verbindung erforderlich!",
+      "euler_stream": "Euler Stream API",
+      "euler_stream_desc": "Erforderlich für TikTok LIVE-Verbindung",
+      "obs_websocket": "OBS WebSocket",
+      "obs_websocket_desc": "Für Szenenautomatisierung & Overlays",
+      "nodejs": "Node.js",
+      "nodejs_desc": "Laufzeitumgebung (v16+)",
+      "documentation": "Dokumentation",
+      "documentation_desc": "Vollständige Anleitungen & Dokumentation"
+    },
+    "community": {
+      "title": "Treten Sie unserer Community bei",
+      "discord": "Discord",
+      "discord_desc": "Erhalten Sie Support & teilen Sie Ideen",
+      "website": "Webseite",
+      "website_desc": "Dokumentation & Updates",
+      "github": "GitHub",
+      "github_desc": "Quellcode & Beiträge"
+    },
+    "logging": {
+      "title": "Server-Protokolle",
+      "enable_logging": "Echtzeit-Protokollierung aktivieren",
+      "clear_logs": "Protokolle löschen"
+    },
+    "progress": {
+      "checking_nodejs": "Prüfe Node.js Installation...",
+      "nodejs_found": "Node.js gefunden",
+      "checking_directory": "Prüfe App-Verzeichnis...",
+      "checking_deps": "Prüfe Abhängigkeiten...",
+      "installing_deps": "Installiere Abhängigkeiten (dies kann einige Minuten dauern)...",
+      "deps_installed": "Abhängigkeiten installiert!",
+      "checking_config": "Prüfe Konfiguration...",
+      "starting_server": "Starte Server...",
+      "waiting_for_server": "Warte auf Server-Start...",
+      "server_ready": "Server bereit!",
+      "redirecting_to_dash": "Weiterleitung zum Dashboard..."
+    },
+    "keep_launcher_open": "Launcher offen halten",
+    "launch_dashboard": "Dashboard öffnen"
   }
 }

@@ -150,5 +150,79 @@
     "loading": "Chargement de la documentation...",
     "no_results": "Aucun résultat trouvé",
     "search": "Rechercher"
+  },
+  "launcher": {
+    "language_selection": {
+      "title": "Sélectionner la Langue",
+      "description": "Veuillez sélectionner votre langue préférée",
+      "continue": "Continuer"
+    },
+    "profile": {
+      "title": "Sélectionner ou Créer un Profil",
+      "select_or_create": "Sélectionnez un profil existant ou créez-en un nouveau",
+      "create_new": "Créer un Nouveau Profil",
+      "username": "Nom du Profil",
+      "tiktok_user": "Nom d'utilisateur TikTok @pseudo (optionnel)",
+      "create": "Créer le Profil",
+      "select": "Sélectionner",
+      "continue": "Continuer"
+    },
+    "tabs": {
+      "welcome": "Bienvenue",
+      "resources": "Ressources",
+      "changelog": "Journal des Modifications",
+      "community": "Communauté",
+      "logging": "Journaux"
+    },
+    "welcome": {
+      "thank_you": "Merci d'avoir Installé LTTH !",
+      "description": "Bienvenue dans PupCid's Little TikTool Helper - votre compagnon professionnel pour le streaming en direct TikTok.",
+      "features": "Fonctionnalités : Superpositions, Alertes, TTS, Automatisation, Plugins, et bien plus !",
+      "translation_help": "Aide à la Traduction Nécessaire",
+      "translation_help_desc": "Votre langue sélectionnée n'est pas encore entièrement supportée. Veuillez aider avec les traductions ou utiliser la version anglaise ou allemande."
+    },
+    "resources": {
+      "title": "Dépendances et Clés API",
+      "dependencies": "Dépendances Requises",
+      "api_keys": "Clés API",
+      "euler_stream_mandatory": "La clé API Euler Stream est obligatoire pour la connexion TikTok !",
+      "euler_stream": "API Euler Stream",
+      "euler_stream_desc": "Requis pour la connexion TikTok LIVE",
+      "obs_websocket": "OBS WebSocket",
+      "obs_websocket_desc": "Pour l'automatisation de scènes et les superpositions",
+      "nodejs": "Node.js",
+      "nodejs_desc": "Environnement d'exécution (v16+)",
+      "documentation": "Documentation",
+      "documentation_desc": "Guides et documentation complète"
+    },
+    "community": {
+      "title": "Rejoignez Notre Communauté",
+      "discord": "Discord",
+      "discord_desc": "Obtenez de l'aide et partagez des idées",
+      "website": "Site Web",
+      "website_desc": "Documentation et mises à jour",
+      "github": "GitHub",
+      "github_desc": "Code source et contributions"
+    },
+    "logging": {
+      "title": "Journaux du Serveur",
+      "enable_logging": "Activer la Journalisation en Temps Réel",
+      "clear_logs": "Effacer les Journaux"
+    },
+    "progress": {
+      "checking_nodejs": "Vérification de l'installation de Node.js...",
+      "nodejs_found": "Node.js trouvé",
+      "checking_directory": "Vérification du répertoire de l'application...",
+      "checking_deps": "Vérification des dépendances...",
+      "installing_deps": "Installation des dépendances (cela peut prendre plusieurs minutes)...",
+      "deps_installed": "Dépendances installées !",
+      "checking_config": "Vérification de la configuration...",
+      "starting_server": "Démarrage du serveur...",
+      "waiting_for_server": "En attente du démarrage du serveur...",
+      "server_ready": "Serveur prêt !",
+      "redirecting_to_dash": "Redirection vers le tableau de bord..."
+    },
+    "keep_launcher_open": "Garder le Launcher Ouvert",
+    "launch_dashboard": "Ouvrir le Tableau de Bord"
   }
 }

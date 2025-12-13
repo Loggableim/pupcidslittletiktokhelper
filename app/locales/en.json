@@ -645,5 +645,79 @@
   },
   "gcce_hud": {
     "description": "GCCE HUD Overlay allows displaying custom text and images via chat commands. Use /hudtext and /hudimage commands in chat to display content."
+  },
+  "launcher": {
+    "language_selection": {
+      "title": "Select Language",
+      "description": "Please select your preferred language",
+      "continue": "Continue"
+    },
+    "profile": {
+      "title": "Select or Create Profile",
+      "select_or_create": "Select an existing profile or create a new one",
+      "create_new": "Create New Profile",
+      "username": "Profile Name",
+      "tiktok_user": "TikTok @username (optional)",
+      "create": "Create Profile",
+      "select": "Select",
+      "continue": "Continue"
+    },
+    "tabs": {
+      "welcome": "Welcome",
+      "resources": "Resources",
+      "changelog": "Changelog",
+      "community": "Community",
+      "logging": "Logging"
+    },
+    "welcome": {
+      "thank_you": "Thank You for Installing LTTH!",
+      "description": "Welcome to PupCid's Little TikTool Helper - your professional companion for TikTok LIVE streaming.",
+      "features": "Features: Overlays, Alerts, TTS, Automation, Plugins, and much more!",
+      "translation_help": "Translation Help Needed",
+      "translation_help_desc": "Your selected language is not fully supported yet. Please help with translations if you can, or use the English or German version."
+    },
+    "resources": {
+      "title": "Dependencies & API Keys",
+      "dependencies": "Required Dependencies",
+      "api_keys": "API Keys",
+      "euler_stream_mandatory": "Euler Stream API key is mandatory for TikTok connection!",
+      "euler_stream": "Euler Stream API",
+      "euler_stream_desc": "Required for TikTok LIVE connection",
+      "obs_websocket": "OBS WebSocket",
+      "obs_websocket_desc": "For scene automation & overlays",
+      "nodejs": "Node.js",
+      "nodejs_desc": "Runtime environment (v16+)",
+      "documentation": "Documentation",
+      "documentation_desc": "Full guides & documentation"
+    },
+    "community": {
+      "title": "Join Our Community",
+      "discord": "Discord",
+      "discord_desc": "Get support & share ideas",
+      "website": "Website",
+      "website_desc": "Documentation & updates",
+      "github": "GitHub",
+      "github_desc": "Source code & contributions"
+    },
+    "logging": {
+      "title": "Server Logs",
+      "enable_logging": "Enable Real-time Logging",
+      "clear_logs": "Clear Logs"
+    },
+    "progress": {
+      "checking_nodejs": "Checking Node.js installation...",
+      "nodejs_found": "Node.js found",
+      "checking_directory": "Checking app directory...",
+      "checking_deps": "Checking dependencies...",
+      "installing_deps": "Installing dependencies (this may take several minutes)...",
+      "deps_installed": "Dependencies installed!",
+      "checking_config": "Checking configuration...",
+      "starting_server": "Starting server...",
+      "waiting_for_server": "Waiting for server to start...",
+      "server_ready": "Server ready!",
+      "redirecting_to_dash": "Redirecting to dashboard..."
+    },
+    "keep_launcher_open": "Keep Launcher Open",
+    "launch_dashboard": "Launch Dashboard"
   }
 }
