@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} - {{.Version}}</title>
     <style>
         * {
@@ -10,189 +9,120 @@
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
+            width: 100vw;
+            height: 100vh;
+            background-color: #f5f5f5;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
             overflow: hidden;
+            position: relative;
         }
-
-        .container {
-            text-align: center;
-            max-width: 600px;
-            padding: 40px;
+        
+        .launcher-container {
+            width: 1536px;
+            height: 1024px;
+            max-width: 95vw;
+            max-height: 95vh;
+            background-image: url(/bg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
         }
-
-        .logo {
-            font-size: 72px;
-            margin-bottom: 20px;
-            animation: float 3s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-
-        h1 {
-            font-size: 42px;
-            margin-bottom: 10px;
-            font-weight: 700;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .version {
-            font-size: 18px;
-            margin-bottom: 30px;
-            opacity: 0.9;
-        }
-
-        .status {
-            font-size: 20px;
-            margin-bottom: 30px;
-            min-height: 30px;
-            font-weight: 500;
-        }
-
+        
         .progress-container {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50px;
-            height: 40px;
-            overflow: hidden;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: absolute;
+            right: 5%;
+            width: 36%;
+            height: 70%;
+            padding: 3%;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
         }
-
-        .progress-bar {
+        
+        .status-text {
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.4;
+            flex: 1;
+            overflow-y: auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .progress-bar-bg {
+            width: 100%;
+            height: 35px;
+            background-color: #e0e0e0;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+        
+        .progress-bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
-            border-radius: 50px;
-            transition: width 0.5s ease;
+            width: 0%;
+            background: linear-gradient(90deg, #00d4ff, #0099ff);
+            border-radius: 20px;
+            transition: width 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
+            color: white;
             font-weight: bold;
-            font-size: 16px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid #fff;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error {
-            background: rgba(255, 59, 48, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-            display: none;
-        }
-
-        .error.show {
-            display: block;
-            animation: shake 0.5s;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
-            20%, 40%, 60%, 80% { transform: translateX(10px); }
-        }
-
-        .footer {
-            margin-top: 40px;
-            opacity: 0.7;
             font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0, 153, 255, 0.3);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">🐕</div>
-        <h1>{{.Title}}</h1>
-        <div class="version">Version {{.Version}}</div>
-        
-        <div class="status" id="status">Initialisiere...</div>
-        
+    <div class="launcher-container">
         <div class="progress-container">
-            <div class="progress-bar" id="progress" style="width: 0%">
-                <span id="progress-text">0%</span>
+            <div class="status-text" id="status">Initialisiere...</div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar">0%</div>
             </div>
         </div>
-        
-        <div class="spinner" id="spinner"></div>
-        
-        <div class="error" id="error">
-            <strong>Fehler:</strong> <span id="error-message"></span>
-        </div>
-        
-        <div class="footer">
-            PupCid's Little TikTool Helper<br>
-            Powered by Cloud Launcher
-        </div>
     </div>
-
+    
     <script>
-        const eventSource = new EventSource('/events');
-        const statusEl = document.getElementById('status');
-        const progressEl = document.getElementById('progress');
-        const progressTextEl = document.getElementById('progress-text');
-        const errorEl = document.getElementById('error');
-        const errorMessageEl = document.getElementById('error-message');
-        const spinnerEl = document.getElementById('spinner');
-
-        eventSource.onmessage = function(event) {
-            try {
-                const data = JSON.parse(event.data);
-                
-                if (data.error) {
-                    // Show error
-                    errorMessageEl.textContent = data.error;
-                    errorEl.classList.add('show');
-                    spinnerEl.style.display = 'none';
-                } else {
-                    // Update progress
-                    if (data.progress !== undefined) {
-                        progressEl.style.width = data.progress + '%';
-                        progressTextEl.textContent = data.progress + '%';
-                    }
-                    
-                    if (data.status) {
-                        statusEl.textContent = data.status;
-                    }
-                    
-                    // Hide spinner when complete
-                    if (data.progress === 100) {
-                        spinnerEl.style.display = 'none';
-                        setTimeout(() => {
-                            statusEl.textContent = 'Fertig! Browser öffnet sich...';
-                        }, 1000);
-                    }
-                }
-            } catch (e) {
-                console.error('Failed to parse event data:', e);
+        const evtSource = new EventSource('/events');
+        
+        evtSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            // Handle redirect
+            if (data.redirect) {
+                evtSource.close();
+                // Wait a moment for the dashboard to be ready, then redirect
+                setTimeout(function() {
+                    window.location.replace(data.redirect);
+                }, 2000);
+                return;
             }
-        };
-
-        eventSource.onerror = function(error) {
-            console.error('EventSource failed:', error);
-            eventSource.close();
+            
+            // Handle progress updates
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('status');
+            
+            progressBar.style.width = data.progress + '%';
+            progressBar.textContent = data.progress + '%';
+            statusText.textContent = data.status;
         };
     </script>
 </body>
