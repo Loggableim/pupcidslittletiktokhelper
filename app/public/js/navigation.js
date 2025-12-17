@@ -389,6 +389,7 @@
             { icon: 'mic', label: 'TTS', view: 'tts', plugin: 'tts' },
             { icon: 'music', label: 'Soundboard', view: 'soundboard', plugin: 'soundboard' },
             { icon: 'cloud-rain', label: 'Emoji Rain', view: 'emoji-rain', plugin: 'emoji-rain' },
+            { icon: 'sparkles', label: 'Fireworks', view: 'fireworks', plugin: 'fireworks' },
             { icon: 'users', label: 'Multi-Guest', view: 'multi-guest', plugin: 'vdoninja' },
             { icon: 'gift', label: 'Gift Milestone', view: 'gift-milestone', plugin: 'gift-milestone' },
             { icon: 'video', label: 'Multi-Cam', view: 'multicam', plugin: 'multicam' },
