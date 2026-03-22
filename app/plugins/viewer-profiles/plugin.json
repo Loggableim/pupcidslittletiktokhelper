@@ -1,0 +1,15 @@
+{
+  "id": "viewer-profiles",
+  "name": "Viewer Profiles",
+  "version": "1.0.0",
+  "description": "Streamer Notes & Viewer CRM – Store manual notes, tags, flags, and automated viewer data. Personal viewer database for streamers.",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": false,
+  "permissions": [
+    "socket.io",
+    "routes",
+    "tiktok-events",
+    "database"
+  ]
+}

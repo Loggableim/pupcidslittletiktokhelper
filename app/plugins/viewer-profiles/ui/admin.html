@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📋 Viewer Profiles – Admin Panel</title>
+  <link rel="stylesheet" href="/css/themes.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      min-height: 100vh;
+    }
+
+    .app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 270px;
+      flex-shrink: 0;
+      background: var(--color-bg-secondary);
+      border-right: 1px solid var(--color-border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      overflow-y: auto;
+    }
+
+    .sidebar-logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-sub {
+      color: var(--color-text-muted);
+      font-size: 0.8rem;
+      margin-bottom: 24px;
+    }
+
+    .sidebar-section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--color-text-muted);
+      margin: 20px 0 8px 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--color-text-secondary);
+      border: 1px solid transparent;
+      margin-bottom: 2px;
+      transition: all .18s;
+      font-size: .9rem;
+    }
+    .nav-item:hover { background: rgba(59,130,246,.08); color: var(--color-text-primary); }
+    .nav-item.active {
+      background: rgba(59,130,246,.14);
+      border-color: rgba(59,130,246,.3);
+      color: var(--color-accent-primary);
+      font-weight: 600;
+    }
+    .nav-icon { width: 20px; text-align: center; }
+
+    .stats-card {
+      margin-top: auto;
+      padding: 14px;
+      background: rgba(59,130,246,.08);
+      border: 1px solid rgba(59,130,246,.2);
+      border-radius: 10px;
+    }
+    .stats-card-title { font-size: .75rem; color: var(--color-text-muted); margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: .85rem; }
+    .stat-label { color: var(--color-text-secondary); }
+    .stat-val { font-weight: 700; color: var(--color-text-primary); }
+    .stat-val.vip { color: #f59e0b; }
+    .stat-val.banned { color: var(--color-accent-danger); }
+    .stat-val.trusted { color: var(--color-accent-success); }
+
+    /* ── Main ────────────────────────────────────────────────────────────────── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .topbar {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: var(--color-bg-secondary);
+    }
+
+    .search-wrap { flex: 1; min-width: 220px; position: relative; }
+    .search-wrap input {
+      width: 100%;
+      padding: 9px 12px 9px 36px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      font-size: .9rem;
+    }
+    .search-wrap input:focus { outline: none; border-color: var(--color-accent-primary); }
+    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
+
+    .filter-select {
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      font-size: .875rem;
+    }
+    .filter-select:focus { outline: none; border-color: var(--color-accent-primary); }
+
+    .btn {
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: .875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .18s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: var(--color-accent-primary); color: #fff; }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-success { background: var(--color-accent-success); color: #fff; }
+    .btn-success:hover { filter: brightness(1.1); }
+    .btn-danger { background: var(--color-accent-danger); color: #fff; }
+    .btn-danger:hover { filter: brightness(1.1); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--color-text-secondary);
+      border: 1px solid var(--color-border);
+    }
+    .btn-secondary:hover { background: var(--color-bg-primary); color: var(--color-text-primary); }
+    .btn-sm { padding: 6px 10px; font-size: .8rem; }
+
+    .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+    /* ── Profile List ────────────────────────────────────────────────────────── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .page-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; }
+
+    .profiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .profile-card {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all .18s;
+      position: relative;
+      overflow: hidden;
+    }
+    .profile-card:hover { border-color: var(--color-accent-primary); transform: translateY(-1px); }
+    .profile-card .color-bar {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      border-radius: 12px 0 0 12px;
+    }
+    .profile-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .profile-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: rgba(59,130,246,.15);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      overflow: hidden;
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-name { font-weight: 700; font-size: .95rem; }
+    .profile-username { font-size: .8rem; color: var(--color-text-muted); }
+    .profile-flags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .flag-badge {
+      font-size: .7rem;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      font-weight: 700;
+    }
+    .flag-vip { background: rgba(245,158,11,.15); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
+    .flag-banned { background: rgba(239,68,68,.15); color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
+    .flag-warned { background: rgba(249,115,22,.15); color: #f97316; border: 1px solid rgba(249,115,22,.3); }
+    .flag-trusted { background: rgba(16,185,129,.15); color: #10b981; border: 1px solid rgba(16,185,129,.3); }
+    .flag-friend { background: rgba(139,92,246,.15); color: #8b5cf6; border: 1px solid rgba(139,92,246,.3); }
+    .tag-chip {
+      font-size: .7rem;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: rgba(59,130,246,.1);
+      color: var(--color-accent-primary);
+      border: 1px solid rgba(59,130,246,.2);
+    }
+    .profile-stats-mini { display: flex; gap: 12px; font-size: .75rem; color: var(--color-text-muted); margin-top: 8px; }
+    .stat-mini { display: flex; align-items: center; gap: 3px; }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .pagination span { color: var(--color-text-muted); font-size: .875rem; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--color-text-muted);
+    }
+    .empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 1rem; }
+
+    /* ── Profile Detail ──────────────────────────────────────────────────────── */
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-title { font-size: .9rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin-bottom: 16px; }
+
+    .profile-header-detail {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .avatar-large {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: rgba(59,130,246,.15);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      overflow: hidden;
+    }
+    .avatar-large img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-header-names { flex: 1; }
+    .profile-header-names h2 { font-size: 1.3rem; font-weight: 700; }
+    .profile-header-names .usn { color: var(--color-text-muted); font-size: .9rem; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: .8rem; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 5px; display: block; }
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      font-size: .875rem;
+      font-family: inherit;
+    }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--color-accent-primary); }
+    .form-textarea { resize: vertical; min-height: 90px; }
+
+    .flags-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .flag-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      cursor: pointer;
+      transition: all .18s;
+      font-size: .85rem;
+      font-weight: 600;
+      user-select: none;
+    }
+    .flag-toggle input { display: none; }
+    .flag-toggle.active-vip { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.4); color: #f59e0b; }
+    .flag-toggle.active-banned { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.4); color: #ef4444; }
+    .flag-toggle.active-warned { background: rgba(249,115,22,.12); border-color: rgba(249,115,22,.4); color: #f97316; }
+    .flag-toggle.active-trusted { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.4); color: #10b981; }
+    .flag-toggle.active-friend { background: rgba(139,92,246,.12); border-color: rgba(139,92,246,.4); color: #8b5cf6; }
+
+    .tags-editor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .tag-chip-editable {
+      font-size: .8rem;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: rgba(59,130,246,.1);
+      color: var(--color-accent-primary);
+      border: 1px solid rgba(59,130,246,.2);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tag-chip-editable button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-accent-primary);
+      padding: 0;
+      line-height: 1;
+      font-size: .85rem;
+    }
+    .tag-input {
+      padding: 4px 10px;
+      border-radius: 9999px;
+      border: 1px dashed var(--color-border);
+      background: transparent;
+      color: var(--color-text-primary);
+      font-size: .8rem;
+      width: 100px;
+    }
+    .tag-input:focus { outline: none; border-color: var(--color-accent-primary); }
+
+    .priority-select {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      font-size: .875rem;
+    }
+    .priority-select:focus { outline: none; border-color: var(--color-accent-primary); }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .stat-box {
+      text-align: center;
+      padding: 12px 8px;
+      background: var(--color-bg-primary);
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+    }
+    .stat-box-val { font-size: 1.3rem; font-weight: 800; color: var(--color-accent-primary); }
+    .stat-box-label { font-size: .7rem; color: var(--color-text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .05em; }
+
+    .notes-list { list-style: none; }
+    .note-item {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-primary);
+      margin-bottom: 8px;
+      position: relative;
+    }
+    .note-item .note-meta { font-size: .75rem; color: var(--color-text-muted); margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+    .note-badge {
+      font-size: .65rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    .note-badge.manual { background: rgba(59,130,246,.15); color: var(--color-accent-primary); }
+    .note-badge.auto { background: rgba(16,185,129,.15); color: var(--color-accent-success); }
+    .note-badge.system { background: rgba(148,163,184,.15); color: var(--color-text-muted); }
+    .note-text { font-size: .875rem; white-space: pre-wrap; word-break: break-word; }
+    .note-delete {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      font-size: .9rem;
+      padding: 2px 4px;
+    }
+    .note-delete:hover { color: var(--color-accent-danger); }
+
+    .add-note-form { display: flex; gap: 8px; margin-top: 12px; }
+    .add-note-form textarea {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      font-size: .875rem;
+      font-family: inherit;
+      resize: none;
+      min-height: 60px;
+    }
+    .add-note-form textarea:focus { outline: none; border-color: var(--color-accent-primary); }
+
+    .seen-row { font-size: .8rem; color: var(--color-text-muted); display: flex; gap: 16px; margin-top: 10px; }
+
+    /* ── Back button ─────────────────────────────────────────────────────────── */
+    .back-btn { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--color-text-secondary); margin-bottom: 16px; font-size: .9rem; }
+    .back-btn:hover { color: var(--color-accent-primary); }
+
+    /* ── Toast ───────────────────────────────────────────────────────────────── */
+    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: .875rem;
+      font-weight: 600;
+      color: #fff;
+      animation: slideIn .2s ease;
+      max-width: 320px;
+    }
+    .toast.success { background: var(--color-accent-success); }
+    .toast.error { background: var(--color-accent-danger); }
+    .toast.info { background: var(--color-accent-primary); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ── Loading ─────────────────────────────────────────────────────────────── */
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--color-border); border-top-color: var(--color-accent-primary); border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Color picker ────────────────────────────────────────────────────────── */
+    .color-picker-wrap { display: flex; align-items: center; gap: 8px; }
+    .color-picker-wrap input[type=color] { width: 36px; height: 36px; border: 1px solid var(--color-border); border-radius: 6px; cursor: pointer; padding: 2px; background: var(--color-bg-primary); }
+    .color-clear { font-size: .75rem; color: var(--color-text-muted); cursor: pointer; }
+    .color-clear:hover { color: var(--color-accent-danger); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">📋 Viewer Profiles</div>
+    <div class="sidebar-sub">Streamer Notes & Viewer CRM</div>
+
+    <div class="sidebar-section-title">Navigation</div>
+    <div class="nav-item active" data-section="profiles" onclick="showSection('profiles')">
+      <span class="nav-icon">👥</span> All Profiles
+    </div>
+    <div class="nav-item" data-section="search" onclick="showSection('search')">
+      <span class="nav-icon">🔍</span> Search
+    </div>
+    <div class="nav-item" data-section="io" onclick="showSection('io')">
+      <span class="nav-icon">📦</span> Import / Export
+    </div>
+
+    <div class="sidebar-section-title" style="margin-top:auto">Overview</div>
+    <div class="stats-card">
+      <div class="stats-card-title">Stats</div>
+      <div class="stat-row"><span class="stat-label">Total Profiles</span><span class="stat-val" id="s-total">–</span></div>
+      <div class="stat-row"><span class="stat-label">⭐ VIP</span><span class="stat-val vip" id="s-vip">–</span></div>
+      <div class="stat-row"><span class="stat-label">🚫 Banned</span><span class="stat-val banned" id="s-banned">–</span></div>
+      <div class="stat-row"><span class="stat-label">✅ Trusted</span><span class="stat-val trusted" id="s-trusted">–</span></div>
+      <div class="stat-row"><span class="stat-label">📝 Total Notes</span><span class="stat-val" id="s-notes">–</span></div>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────────── -->
+  <main class="main">
+    <div class="topbar" id="topbar-profiles">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="list-search" placeholder="Search profiles…" oninput="debounceLoadProfiles()">
+      </div>
+      <select class="filter-select" id="filter-flag" onchange="loadProfiles()">
+        <option value="">All flags</option>
+        <option value="vip">⭐ VIP</option>
+        <option value="banned">🚫 Banned</option>
+        <option value="warned">⚠️ Warned</option>
+        <option value="trusted">✅ Trusted</option>
+        <option value="friend">💜 Friend</option>
+      </select>
+      <select class="filter-select" id="filter-sort" onchange="loadProfiles()">
+        <option value="last_seen">Last seen</option>
+        <option value="created_at">Created</option>
+        <option value="total_chats">Most chats</option>
+        <option value="total_gifts">Most gifts</option>
+        <option value="total_coins">Most coins</option>
+        <option value="priority">Priority</option>
+      </select>
+      <button class="btn btn-primary" onclick="showNewProfileModal()">+ New Profile</button>
+    </div>
+
+    <div class="content">
+
+      <!-- ── Profiles list ─────────────────────────────────────────────────── -->
+      <div class="section active" id="section-profiles">
+        <div id="profiles-container">
+          <div class="empty-state"><div class="emoji"><span class="spinner"></span></div><p>Loading…</p></div>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+      <!-- ── Profile detail ────────────────────────────────────────────────── -->
+      <div class="section" id="section-detail">
+        <div class="back-btn" onclick="backToList()">← Back to list</div>
+        <div id="detail-content"></div>
+      </div>
+
+      <!-- ── Search ────────────────────────────────────────────────────────── -->
+      <div class="section" id="section-search">
+        <h2 class="page-title">🔍 Search Profiles</h2>
+        <div style="display:flex;gap:10px;margin-bottom:20px;">
+          <input type="text" class="form-input" id="search-input" placeholder="Username, notes, tags…" style="flex:1" onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="btn btn-primary" onclick="doSearch()">Search</button>
+        </div>
+        <div id="search-results"></div>
+      </div>
+
+      <!-- ── Import / Export ───────────────────────────────────────────────── -->
+      <div class="section" id="section-io">
+        <h2 class="page-title">📦 Import / Export</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:700px;">
+          <div class="card">
+            <div class="card-title">Export</div>
+            <p style="font-size:.875rem;color:var(--color-text-secondary);margin-bottom:16px;">Download all profiles and notes as a JSON file.</p>
+            <button class="btn btn-primary" onclick="doExport()">⬇ Export JSON</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Import</div>
+            <p style="font-size:.875rem;color:var(--color-text-secondary);margin-bottom:16px;">Import profiles from a previously exported JSON file.</p>
+            <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport()">
+            <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">⬆ Select JSON file</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div><!-- /app -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- New profile modal -->
+<div id="new-profile-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
+  <div class="card" style="width:400px;max-width:95vw;">
+    <div class="card-title">➕ New Profile</div>
+    <div class="form-group">
+      <label class="form-label">Username *</label>
+      <input type="text" class="form-input" id="new-username" placeholder="tiktok_username">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Display Name</label>
+      <input type="text" class="form-input" id="new-display-name" placeholder="Optional display name">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-secondary" onclick="closeNewProfileModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createNewProfile()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let currentPage = 0;
+const PAGE_SIZE = 24;
+let currentUsername = null;
+let debounceTimer = null;
+
+// ─── Socket.io ────────────────────────────────────────────────────────────────
+const socket = io();
+socket.on('viewer-profiles:updated', () => { loadStats(); if (currentUsername) loadDetail(currentUsername); });
+socket.on('viewer-profiles:note-added', () => { if (currentUsername) loadNotes(currentUsername); });
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+loadProfiles();
+loadStats();
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`[data-section="${name}"]`).classList.add('active');
+  const topbar = document.getElementById('topbar-profiles');
+  topbar.style.display = name === 'profiles' ? 'flex' : 'none';
+}
+
+function backToList() {
+  currentUsername = null;
+  showSection('profiles');
+  loadProfiles();
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const s = await apiGet('/api/viewer-profiles/stats');
+    setText('s-total', s.total);
+    setText('s-vip', s.vip);
+    setText('s-banned', s.banned);
+    setText('s-trusted', s.trusted);
+    setText('s-notes', s.totalNotes);
+  } catch {}
+}
+
+// ─── Profiles List ────────────────────────────────────────────────────────────
+function debounceLoadProfiles() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(loadProfiles, 300);
+}
+
+async function loadProfiles() {
+  const search = document.getElementById('list-search').value;
+  const flag   = document.getElementById('filter-flag').value;
+  const sort   = document.getElementById('filter-sort').value;
+  const params = new URLSearchParams({ limit: PAGE_SIZE, offset: currentPage * PAGE_SIZE, sort, order: 'desc' });
+  if (search) params.set('search', search);
+  if (flag)   params.set('flag', flag);
+
+  const container = document.getElementById('profiles-container');
+  container.innerHTML = `<div class="empty-state"><div class="emoji"><span class="spinner"></span></div><p>Loading…</p></div>`;
+
+  try {
+    const data = await apiGet(`/api/viewer-profiles/profiles?${params}`);
+    renderProfileGrid(data.profiles, container);
+    renderPagination(data.total);
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state"><div class="emoji">❌</div><p>${e.message}</p></div>`;
+  }
+}
+
+function renderProfileGrid(profiles, container) {
+  if (!profiles.length) {
+    container.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>No profiles found</p></div>`;
+    return;
+  }
+  container.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'profiles-grid';
+  profiles.forEach(p => { grid.appendChild(buildProfileCard(p)); });
+  container.appendChild(grid);
+}
+
+function buildProfileCard(p) {
+  const div = document.createElement('div');
+  div.className = 'profile-card';
+  div.onclick = () => openDetail(p.username);
+
+  const colorBar = document.createElement('div');
+  colorBar.className = 'color-bar';
+  if (p.color) colorBar.style.background = p.color;
+  div.appendChild(colorBar);
+
+  const header = document.createElement('div');
+  header.className = 'profile-card-header';
+  const avatar = document.createElement('div');
+  avatar.className = 'profile-avatar';
+  if (p.profile_picture_url) {
+    const img = document.createElement('img');
+    img.src = p.profile_picture_url;
+    img.onerror = () => { avatar.innerHTML = '👤'; };
+    avatar.appendChild(img);
+  } else {
+    avatar.textContent = '👤';
+  }
+  header.appendChild(avatar);
+  const nameWrap = document.createElement('div');
+  nameWrap.innerHTML = `<div class="profile-name">${esc(p.custom_nickname || p.display_name || p.username)}</div>
+    <div class="profile-username">@${esc(p.username)}</div>`;
+  header.appendChild(nameWrap);
+  div.appendChild(header);
+
+  // Flags
+  const flags = p.flags || {};
+  const flagsDiv = document.createElement('div');
+  flagsDiv.className = 'profile-flags';
+  if (flags.vip)     flagsDiv.innerHTML += `<span class="flag-badge flag-vip">⭐ VIP</span>`;
+  if (flags.banned)  flagsDiv.innerHTML += `<span class="flag-badge flag-banned">🚫 Banned</span>`;
+  if (flags.warned)  flagsDiv.innerHTML += `<span class="flag-badge flag-warned">⚠️ Warned</span>`;
+  if (flags.trusted) flagsDiv.innerHTML += `<span class="flag-badge flag-trusted">✅ Trusted</span>`;
+  if (flags.friend)  flagsDiv.innerHTML += `<span class="flag-badge flag-friend">💜 Friend</span>`;
+  (p.tags || []).slice(0, 3).forEach(t => { flagsDiv.innerHTML += `<span class="tag-chip">${esc(t)}</span>`; });
+  div.appendChild(flagsDiv);
+
+  // Mini stats
+  const stats = document.createElement('div');
+  stats.className = 'profile-stats-mini';
+  stats.innerHTML = `<span class="stat-mini">💬 ${p.total_chats}</span>
+    <span class="stat-mini">🎁 ${p.total_gifts}</span>
+    <span class="stat-mini">💰 ${p.total_coins}</span>
+    <span class="stat-mini">❤️ ${p.total_likes}</span>`;
+  div.appendChild(stats);
+
+  if (p.last_seen) {
+    const ts = document.createElement('div');
+    ts.style.cssText = 'font-size:.72rem;color:var(--color-text-muted);margin-top:6px;';
+    ts.textContent = 'Last seen: ' + formatDate(p.last_seen);
+    div.appendChild(ts);
+  }
+
+  return div;
+}
+
+function renderPagination(total) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const container = document.getElementById('pagination');
+  if (pages <= 1) { container.innerHTML = ''; return; }
+  container.innerHTML = `
+    <button class="btn btn-secondary btn-sm" onclick="prevPage()" ${currentPage === 0 ? 'disabled' : ''}>← Prev</button>
+    <span>Page ${currentPage + 1} / ${pages} &nbsp;(${total} total)</span>
+    <button class="btn btn-secondary btn-sm" onclick="nextPage(${pages})" ${currentPage >= pages - 1 ? 'disabled' : ''}>Next →</button>`;
+}
+
+function prevPage() { if (currentPage > 0) { currentPage--; loadProfiles(); } }
+function nextPage(pages) { if (currentPage < pages - 1) { currentPage++; loadProfiles(); } }
+
+// ─── Profile Detail ───────────────────────────────────────────────────────────
+async function openDetail(username) {
+  currentUsername = username;
+  showSection('detail');
+  document.getElementById('detail-content').innerHTML = `<div class="empty-state"><span class="spinner"></span></div>`;
+  await loadDetail(username);
+}
+
+async function loadDetail(username) {
+  try {
+    const [p, notes] = await Promise.all([
+      apiGet(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}`),
+      apiGet(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}/notes`)
+    ]);
+    renderDetail(p, notes);
+  } catch (e) {
+    document.getElementById('detail-content').innerHTML = `<div class="empty-state"><div class="emoji">❌</div><p>${e.message}</p></div>`;
+  }
+}
+
+function renderDetail(p, notes) {
+  const flags = p.flags || {};
+  const tags  = p.tags  || [];
+  const username = p.username; // stored in module-level currentUsername too
+
+  // Build static HTML; interactive elements use data-* attributes for safety
+  const html = `
+    <div class="profile-header-detail">
+      <div class="avatar-large" id="det-avatar">
+        ${p.profile_picture_url ? `<img src="${esc(p.profile_picture_url)}" onerror="this.parentNode.innerHTML='👤'">` : '👤'}
+      </div>
+      <div class="profile-header-names">
+        <h2>${esc(p.custom_nickname || p.display_name || p.username)}</h2>
+        <div class="usn">@${esc(p.username)}</div>
+        <div class="seen-row">
+          <span>👁 First: ${p.first_seen ? formatDate(p.first_seen) : '–'}</span>
+          <span>🕐 Last: ${p.last_seen ? formatDate(p.last_seen) : '–'}</span>
+        </div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-shrink:0;">
+        <button class="btn btn-danger btn-sm" id="btn-delete-profile">🗑 Delete</button>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+
+      <!-- Left column -->
+      <div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Profile Info</div>
+          <div class="form-group">
+            <label class="form-label">Custom Nickname</label>
+            <input class="form-input" id="det-nickname" value="${esc(p.custom_nickname || '')}" placeholder="Nickname…">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <div class="color-picker-wrap">
+              <input type="color" id="det-color" value="${p.color || '#3b82f6'}">
+              <button class="color-clear" id="btn-color-reset">Reset</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="priority-select" id="det-priority">
+              <option value="0" ${p.priority === 0 ? 'selected' : ''}>Normal</option>
+              <option value="1" ${p.priority === 1 ? 'selected' : ''}>Low</option>
+              <option value="2" ${p.priority === 2 ? 'selected' : ''}>Medium</option>
+              <option value="3" ${p.priority === 3 ? 'selected' : ''}>High</option>
+              <option value="4" ${p.priority === 4 ? 'selected' : ''}>Critical</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-textarea" id="det-notes" placeholder="Free-text notes (Markdown supported)…">${esc(p.notes || '')}</textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-save-profile">💾 Save Changes</button>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Tags</div>
+          <div class="tags-editor" id="det-tags"></div>
+          <div style="margin-top:10px;font-size:.75rem;color:var(--color-text-muted)">Press Enter to add a tag</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Flags</div>
+          <div class="flags-grid" id="det-flags"></div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Auto Stats</div>
+          <div class="stat-grid">
+            <div class="stat-box"><div class="stat-box-val">${p.total_chats}</div><div class="stat-box-label">💬 Chats</div></div>
+            <div class="stat-box"><div class="stat-box-val">${p.total_gifts}</div><div class="stat-box-label">🎁 Gifts</div></div>
+            <div class="stat-box"><div class="stat-box-val">${p.total_coins}</div><div class="stat-box-label">💰 Coins</div></div>
+            <div class="stat-box"><div class="stat-box-val">${p.total_likes}</div><div class="stat-box-label">❤️ Likes</div></div>
+            <div class="stat-box"><div class="stat-box-val">${p.total_shares}</div><div class="stat-box-label">🔗 Shares</div></div>
+            <div class="stat-box"><div class="stat-box-val">${p.total_follows ? '✓' : '–'}</div><div class="stat-box-label">➕ Follow</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Notes History (<span id="notes-count">${notes.length}</span>)</div>
+          <ul class="notes-list" id="det-notes-list"></ul>
+          <div id="notes-empty" style="color:var(--color-text-muted);font-size:.875rem;${notes.length ? 'display:none' : ''}">No notes yet.</div>
+          <div class="add-note-form">
+            <textarea id="new-note-text" placeholder="Add a note…"></textarea>
+            <button class="btn btn-primary btn-sm" id="btn-add-note">Add</button>
+          </div>
+        </div>
+      </div>
+
+    </div>`;
+
+  document.getElementById('detail-content').innerHTML = html;
+
+  // ── Attach event listeners safely (no user data in HTML attributes) ──
+  document.getElementById('btn-delete-profile').addEventListener('click', () => deleteProfile(username));
+  document.getElementById('btn-save-profile').addEventListener('click', () => saveProfile(username));
+  document.getElementById('btn-color-reset').addEventListener('click', () => {
+    document.getElementById('det-color').value = '#3b82f6';
+  });
+  document.getElementById('btn-add-note').addEventListener('click', () => addNote(username));
+
+  // Render tags editor
+  renderTagsEditor(username, tags);
+
+  // Render flag toggles
+  renderFlagToggles(username, flags);
+
+  // Render notes
+  renderNotesList(username, notes);
+}
+
+function renderTagsEditor(username, tags) {
+  const container = document.getElementById('det-tags');
+  if (!container) return;
+  container.innerHTML = '';
+
+  tags.forEach(tag => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip-editable';
+    const text = document.createTextNode(tag + ' ');
+    chip.appendChild(text);
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.addEventListener('click', () => removeTag(username, tag));
+    chip.appendChild(btn);
+    container.appendChild(chip);
+  });
+
+  const input = document.createElement('input');
+  input.className = 'tag-input';
+  input.id = 'tag-new-input';
+  input.placeholder = 'Add tag…';
+  input.addEventListener('keydown', (e) => handleTagInput(e, username));
+  container.appendChild(input);
+}
+
+function renderFlagToggles(username, flags) {
+  const container = document.getElementById('det-flags');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const flagDefs = [
+    { key: 'vip',     label: '⭐ VIP'     },
+    { key: 'banned',  label: '🚫 Banned'  },
+    { key: 'warned',  label: '⚠️ Warned'  },
+    { key: 'trusted', label: '✅ Trusted' },
+    { key: 'friend',  label: '💜 Friend'  }
+  ];
+
+  flagDefs.forEach(({ key, label }) => {
+    const el = document.createElement('div');
+    el.className = 'flag-toggle' + (flags[key] ? ` active-${key}` : '');
+    el.id = `flag-${key}`;
+    el.innerHTML = `<span>${label}</span>`;
+    el.addEventListener('click', () => toggleFlag(username, key));
+    container.appendChild(el);
+  });
+}
+
+function renderNotesList(username, notes) {
+  const list = document.getElementById('det-notes-list');
+  const emptyEl = document.getElementById('notes-empty');
+  const countEl = document.getElementById('notes-count');
+  if (!list) return;
+
+  list.innerHTML = '';
+  notes.forEach(n => list.appendChild(buildNoteItem(n)));
+  if (emptyEl) emptyEl.style.display = notes.length ? 'none' : '';
+  if (countEl) countEl.textContent = notes.length;
+}
+
+function buildFlagToggle(username, flag, label, active) {
+  // Kept for compatibility; actual rendering now uses renderFlagToggles
+  const cls = active ? `flag-toggle active-${flag}` : 'flag-toggle';
+  return `<div class="${cls}" id="flag-${flag}"><span>${label}</span></div>`;
+}
+
+function buildNoteItem(n) {
+  const li = document.createElement('li');
+  li.className = 'note-item';
+
+  const meta = document.createElement('div');
+  meta.className = 'note-meta';
+  const badge = document.createElement('span');
+  badge.className = `note-badge ${esc(n.note_type)}`;
+  badge.textContent = n.note_type;
+  meta.appendChild(badge);
+  const dateSpan = document.createElement('span');
+  dateSpan.textContent = formatDate(n.created_at);
+  meta.appendChild(dateSpan);
+  if (n.created_by && n.created_by !== 'streamer') {
+    const bySpan = document.createElement('span');
+    bySpan.textContent = n.created_by;
+    meta.appendChild(bySpan);
+  }
+  li.appendChild(meta);
+
+  const textDiv = document.createElement('div');
+  textDiv.className = 'note-text';
+  textDiv.textContent = n.note_text; // textContent – no XSS
+  li.appendChild(textDiv);
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'note-delete';
+  delBtn.title = 'Delete note';
+  delBtn.textContent = '✕';
+  delBtn.addEventListener('click', () => deleteNote(n.id));
+  li.appendChild(delBtn);
+
+  return li;
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+async function saveProfile(username) {
+  const nickname = document.getElementById('det-nickname').value.trim();
+  const notes    = document.getElementById('det-notes').value;
+  const color    = document.getElementById('det-color').value;
+  const priority = parseInt(document.getElementById('det-priority').value, 10);
+  try {
+    await apiPost(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}`, { custom_nickname: nickname, notes, color, priority });
+    showToast('Profile saved ✓', 'success');
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function deleteProfile(username) {
+  if (!confirm(`Delete profile for @${username}? This cannot be undone.`)) return;
+  try {
+    await apiDelete(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}`);
+    showToast('Profile deleted', 'success');
+    backToList();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function toggleFlag(username, flag) {
+  try {
+    const el = document.getElementById(`flag-${flag}`);
+    const isActive = el.classList.contains(`active-${flag}`);
+    await apiPost(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}/flags`, { [flag]: !isActive });
+    if (!isActive) {
+      el.classList.add(`active-${flag}`);
+    } else {
+      el.classList.remove(`active-${flag}`);
+    }
+    loadStats();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function handleTagInput(event, username) {
+  if (event.key !== 'Enter') return;
+  const input = document.getElementById('tag-new-input');
+  const tag = input.value.trim().toLowerCase().replace(/\s+/g, '-');
+  if (!tag) return;
+  try {
+    await apiPost(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}/tags`, { tags: [tag] });
+    input.value = '';
+    // Refresh tags using safe DOM-based renderer
+    const p = await apiGet(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}`);
+    renderTagsEditor(username, p.tags || []);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function removeTag(username, tag) {
+  try {
+    const p = await apiDelete(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}/tags/${encodeURIComponent(tag)}`);
+    // Refresh tags using safe DOM-based renderer
+    renderTagsEditor(username, p.tags || []);
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function addNote(username) {
+  const text = document.getElementById('new-note-text').value.trim();
+  if (!text) return;
+  try {
+    await apiPost(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}/notes`, { note_text: text });
+    document.getElementById('new-note-text').value = '';
+    const notes = await apiGet(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}/notes`);
+    renderNotesList(username, notes);
+    showToast('Note added ✓', 'success');
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function deleteNote(id) {
+  try {
+    await apiDelete(`/api/viewer-profiles/notes/${id}`);
+    if (currentUsername) {
+      const notes = await apiGet(`/api/viewer-profiles/profiles/${encodeURIComponent(currentUsername)}/notes`);
+      renderNotesList(currentUsername, notes);
+    }
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function loadNotes(username) {
+  try {
+    const notes = await apiGet(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}/notes`);
+    renderNotesList(username, notes);
+  } catch {}
+}
+
+// ─── New Profile Modal ────────────────────────────────────────────────────────
+function showNewProfileModal() {
+  const modal = document.getElementById('new-profile-modal');
+  modal.style.display = 'flex';
+  document.getElementById('new-username').focus();
+}
+function closeNewProfileModal() {
+  document.getElementById('new-profile-modal').style.display = 'none';
+  document.getElementById('new-username').value = '';
+  document.getElementById('new-display-name').value = '';
+}
+async function createNewProfile() {
+  const username = document.getElementById('new-username').value.trim();
+  const displayName = document.getElementById('new-display-name').value.trim();
+  if (!username) { showToast('Username is required', 'error'); return; }
+  try {
+    await apiPost(`/api/viewer-profiles/profiles/${encodeURIComponent(username)}`, { display_name: displayName || undefined });
+    closeNewProfileModal();
+    showToast('Profile created ✓', 'success');
+    openDetail(username);
+    loadStats();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const container = document.getElementById('search-results');
+  container.innerHTML = `<div class="empty-state"><span class="spinner"></span></div>`;
+  try {
+    const results = await apiGet(`/api/viewer-profiles/search?q=${encodeURIComponent(q)}&limit=30`);
+    if (!results.length) {
+      container.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>No results for "${esc(q)}"</p></div>`;
+      return;
+    }
+    const grid = document.createElement('div');
+    grid.className = 'profiles-grid';
+    results.forEach(p => { grid.appendChild(buildProfileCard(p)); });
+    container.innerHTML = '';
+    container.appendChild(grid);
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state"><div class="emoji">❌</div><p>${e.message}</p></div>`;
+  }
+}
+
+// ─── Import / Export ─────────────────────────────────────────────────────────
+async function doExport() {
+  const a = document.createElement('a');
+  a.href = '/api/viewer-profiles/export';
+  a.download = 'viewer-profiles-export.json';
+  a.click();
+}
+
+function doImport() {
+  const file = document.getElementById('import-file').files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const result = await apiPost('/api/viewer-profiles/import', data);
+      showToast(`Imported ${result.profilesImported} profiles, ${result.notesImported} notes ✓`, 'success');
+      loadStats();
+    } catch (err) {
+      showToast(`Import failed: ${err.message}`, 'error');
+    }
+  };
+  reader.readAsText(file);
+  // Reset so same file can be re-imported
+  document.getElementById('import-file').value = '';
+}
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
+async function apiGet(url) {
+  const res = await fetch(url);
+  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || res.statusText); }
+  return res.json();
+}
+async function apiPost(url, body) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || res.statusText); }
+  return res.json();
+}
+async function apiDelete(url) {
+  const res = await fetch(url, { method: 'DELETE' });
+  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || res.statusText); }
+  return res.json();
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+function esc(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function formatDate(iso) {
+  if (!iso) return '–';
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+function showToast(msg, type = 'info') {
+  const tc = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  tc.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// Close new-profile modal on backdrop click
+document.getElementById('new-profile-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeNewProfileModal();
+});
+</script>
+</body>
+</html>
