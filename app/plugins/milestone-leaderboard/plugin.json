@@ -1,0 +1,16 @@
+{
+  "id": "milestone-leaderboard",
+  "name": "Milestone Leaderboard",
+  "version": "1.0.0",
+  "description": "Shows a real-time leaderboard of viewers ranked by their milestone tiers and cumulative gift coins. Milestone tiers reward top gifters with Bronze, Silver, Gold, and Diamond ranks.",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": false,
+  "type": "overlay",
+  "permissions": [
+    "socket.io",
+    "routes",
+    "tiktok-events",
+    "database"
+  ]
+}
