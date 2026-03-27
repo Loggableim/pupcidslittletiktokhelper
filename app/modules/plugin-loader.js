@@ -443,6 +443,43 @@ class PluginAPI {
     getConfigPathManager() {
         return this.configPathManager;
     }
+
+    /**
+     * Returns the map of all currently loaded plugins.
+     * Allows plugins to look up sibling plugins, e.g. for GCCE integration:
+     *   const gcce = this.api.loadedPlugins?.get('gcce')?.instance;
+     */
+    get loadedPlugins() {
+        return this.pluginLoader.plugins;
+    }
+
+    /**
+     * Proxy for PluginLoader EventEmitter – subscribe to loader-level events.
+     * Enables patterns like: this.api.on('gcce:ready', handler)
+     * @param {string} event
+     * @param {function} callback
+     */
+    on(event, callback) {
+        return this.pluginLoader.on(event, callback);
+    }
+
+    /**
+     * Proxy for PluginLoader EventEmitter – unsubscribe from loader-level events.
+     * @param {string} event
+     * @param {function} callback
+     */
+    off(event, callback) {
+        return this.pluginLoader.off(event, callback);
+    }
+
+    /**
+     * Proxy for PluginLoader EventEmitter – subscribe once to loader-level events.
+     * @param {string} event
+     * @param {function} callback
+     */
+    once(event, callback) {
+        return this.pluginLoader.once(event, callback);
+    }
 }
 
 /**

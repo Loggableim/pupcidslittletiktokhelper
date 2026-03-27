@@ -1,0 +1,15 @@
+{
+  "id": "animazingpal",
+  "name": "AnimazingPal",
+  "version": "1.0.0",
+  "description": "AI-powered stream companion with a Brain Engine that learns viewer preferences, tracks interaction patterns, and provides intelligent engagement suggestions during TikTok LIVE streams.",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": false,
+  "permissions": [
+    "socket.io",
+    "routes",
+    "tiktok-events",
+    "database"
+  ]
+}
